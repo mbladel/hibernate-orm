@@ -70,13 +70,24 @@ public final class QuotingHelper {
 	}
 
 	public static String unquoteStringLiteral(String text) {
+		return unquoteString( text, false );
+	}
+
+	public static String unquoteJavaStringLiteral(String text) {
+		return unquoteString( text, true );
+	}
+
+	public static String unquoteString(String text, boolean unescape) {
 		assert text.length() > 1;
+		int start = 0;
 		final int end = text.length() - 1;
-		final char delimiter = text.charAt( 0 );
+		final char delimiter = unescape && Character.toLowerCase( text.charAt( start ) ) == 'j' ?
+				text.charAt( ++start ) :
+				text.charAt( start );
 		assert delimiter == text.charAt( end );
 		// Unescape the parsed literal and handle escape sequences
-		final StringBuilder sb = new StringBuilder( text.length() - 2 );
-		for ( int i = 1; i < end; i++ ) {
+		final StringBuilder sb = new StringBuilder( text.length() - ( start + 2 ) );
+		for ( int i = start + 1; i < end; i++ ) {
 			char c = text.charAt( i );
 			switch ( c ) {
 				case '\'':
@@ -90,7 +101,7 @@ public final class QuotingHelper {
 					}
 					break;
 				case '\\':
-					if ( ( i + 1 ) < end ) {
+					if ( unescape && ( i + 1 ) < end ) {
 						char nextChar = text.charAt( ++i );
 						switch ( nextChar ) {
 							case 'b':
