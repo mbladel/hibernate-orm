@@ -3743,7 +3743,11 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		final Expression result;
 		if ( actualModelPart instanceof EntityValuedModelPart ) {
 			final EntityValuedModelPart entityValuedModelPart = (EntityValuedModelPart) actualModelPart;
-			final EntityValuedModelPart inferredEntityMapping = (EntityValuedModelPart) getInferredValueMapping();
+			EntityValuedModelPart inferredEntityMapping = null;
+			MappingModelExpressible<?> inferredValueMapping = getInferredValueMapping();
+			if (inferredValueMapping instanceof EntityValuedModelPart) {
+				inferredEntityMapping = (EntityValuedModelPart) inferredValueMapping;
+			}
 			final ModelPart resultModelPart;
 			final EntityValuedModelPart interpretationModelPart;
 			final TableGroup tableGroupToUse;
