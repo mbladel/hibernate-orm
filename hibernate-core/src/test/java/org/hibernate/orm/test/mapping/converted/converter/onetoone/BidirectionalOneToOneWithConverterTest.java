@@ -45,11 +45,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 @SessionFactory
 @DomainModel(annotatedClasses = {
-		BidirectionalLazyOneToOneWithConverterTest.FooEntity.class,
-		BidirectionalLazyOneToOneWithConverterTest.BarEntity.class,
+		BidirectionalOneToOneWithConverterTest.FooEntity.class,
+		BidirectionalOneToOneWithConverterTest.BarEntity.class,
 })
 @JiraKey("HHH-15950")
-public class BidirectionalLazyOneToOneWithConverterTest {
+public class BidirectionalOneToOneWithConverterTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
@@ -92,12 +92,10 @@ public class BidirectionalLazyOneToOneWithConverterTest {
 			} );
 
 			BarEntity bar = foo.getBar();
-			// no queries should be executed
 			assertEquals( 0, queryExecutionCount.get() );
 			assertEquals( 0.5, bar.getaDouble() );
 
 			FooEntity associatedFoo = bar.getFoo();
-			// no queries should be executed
 			assertEquals( 0, queryExecutionCount.get() );
 			assertEquals( "foo_name", associatedFoo.getName() );
 			assertEquals( foo, associatedFoo );
@@ -119,12 +117,10 @@ public class BidirectionalLazyOneToOneWithConverterTest {
 			} );
 
 			FooEntity foo = bar.getFoo();
-			// no queries should be executed
 			assertEquals( 0, queryExecutionCount.get() );
 			assertEquals( "foo_name", foo.getName() );
 
 			BarEntity associatedBar = foo.getBar();
-			// no queries should be executed
 			assertEquals( 0, queryExecutionCount.get() );
 			assertEquals( 0.5, associatedBar.getaDouble() );
 			assertEquals( bar, associatedBar );
