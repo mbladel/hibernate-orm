@@ -77,7 +77,8 @@ public class BidirectionalOneToOneInstanceTest {
 				}
 			} );
 
-			assertEquals( name, foo.getName() );
+			// todo marco : change column names and cleanup entities
+			// todo marco : move persist into setUp method and add tearDown
 
 			BarEntity bar = foo.getBar();
 			// no queries should be executed
@@ -88,6 +89,7 @@ public class BidirectionalOneToOneInstanceTest {
 			// no queries should be executed
 			assertEquals( 0, queryExecutionCount.get() );
 			assertEquals( foo, associatedFoo );
+			assertEquals( name, associatedFoo.getName() );
 		} );
 	}
 

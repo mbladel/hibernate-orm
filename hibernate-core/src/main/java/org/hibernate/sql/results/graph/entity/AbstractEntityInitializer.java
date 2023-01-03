@@ -389,6 +389,10 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 			if ( entityInstance == null ) {
 				resolveEntityInstance( rowProcessingState, existingLoadingEntry, entityKey.getIdentifier() );
 			}
+			// todo marco : aggiungere controllo instanceof ?
+			else if ( existingLoadingEntry != null && existingLoadingEntry.getEntityInitializer() != this /*&& this instanceof EntityResultInitializer*/ ) {
+				isInitialized = true;
+			}
 		}
 	}
 
