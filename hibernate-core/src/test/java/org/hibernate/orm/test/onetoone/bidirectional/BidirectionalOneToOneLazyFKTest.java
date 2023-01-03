@@ -72,7 +72,7 @@ public class BidirectionalOneToOneLazyFKTest {
 	}
 
 	@Test
-	public void testBidirectionalFetch(SessionFactoryScope scope) {
+	public void testBidirectionalFetchJoinColumnSide(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			FooEntity foo = session.find( FooEntity.class, 1L );
 
@@ -97,7 +97,7 @@ public class BidirectionalOneToOneLazyFKTest {
 	}
 
 	@Test
-	public void testBidirectionalFetchInverse(SessionFactoryScope scope) {
+	public void testBidirectionalFetchMappedBySide(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			BarEntity bar = session.find( BarEntity.class, 1L );
 

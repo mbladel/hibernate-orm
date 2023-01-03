@@ -15,6 +15,7 @@ import org.hibernate.persister.entity.UniqueKeyLoadable;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.DomainResultAssembler;
 import org.hibernate.sql.results.graph.FetchParentAccess;
+import org.hibernate.sql.results.graph.entity.EntityInitializer;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesSourceProcessingState;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 
@@ -35,10 +36,26 @@ public class EntitySelectFetchByUniqueKeyInitializer extends EntitySelectFetchIn
 		this.fetchedAttribute = fetchedAttribute;
 	}
 
+	private EntityInitializer getParentEntityInitializer(FetchParentAccess parentAccess) {
+		if ( parentAccess != null ) {
+			return parentAccess.findFirstEntityInitializer();
+		}
+		return null;
+	}
+
 	@Override
 	public void initializeInstance(RowProcessingState rowProcessingState) {
 		if ( entityInstance != null || isInitialized ) {
 			return;
+		}
+
+		// todo marco : why does this work ?
+		final EntityInitializer parentEntityInitializer = getParentEntityInitializer( getParentAccess() );
+		if ( parentEntityInitializer != null && parentEntityInitializer.getEntityKey() != null ) {
+			parentEntityInitializer.resolveInstance( rowProcessingState );
+			if ( parentEntityInitializer.isInitialized() ) {
+				return;
+			}
 		}
 
 		if ( !isAttributeAssignableToConcreteDescriptor() ) {

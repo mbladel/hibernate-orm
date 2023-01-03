@@ -51,6 +51,11 @@ public class EntitySelectFetchInitializer extends AbstractFetchParentAccess impl
 
 	protected Object entityInstance;
 
+	// todo marco : move
+	public FetchParentAccess getParentAccess() {
+		return parentAccess;
+	}
+
 	public EntitySelectFetchInitializer(
 			FetchParentAccess parentAccess,
 			ToOneAttributeMapping toOneMapping,

@@ -72,7 +72,7 @@ public class BidirectionalOneToOneEagerFKTest {
 	}
 
 	@Test
-	public void testBidirectionalFetch(SessionFactoryScope scope) {
+	public void testBidirectionalFetchJoinColumnSide(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			FooEntity foo = session.find( FooEntity.class, 1L );
 
@@ -97,7 +97,7 @@ public class BidirectionalOneToOneEagerFKTest {
 	}
 
 	@Test
-	public void testBidirectionalFetchInverse(SessionFactoryScope scope) {
+	public void testBidirectionalFetchMappedBySide(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			BarEntity bar = session.find( BarEntity.class, 1L );
 
@@ -114,11 +114,6 @@ public class BidirectionalOneToOneEagerFKTest {
 			assertEquals( 0, queryExecutionCount.get() );
 			assertEquals( "foo_name", foo.getName() );
 
-			// todo marco : this is null
-			//  in both tests, 2 circular fetches are created, but just 1 is bidirectional
-			//  the difference is the order of fetches : if the first is the bidirectional it's fine
-			//  otherwise, the non-bidirectional creates an additional initializer (EntitySelectByUniqueKey)
-			//  which messes up stuff
 			BarEntity associatedBar = foo.getBar();
 			assertEquals( 0, queryExecutionCount.get() );
 			assertEquals( 0.5, associatedBar.getaDouble() );
