@@ -4,16 +4,8 @@
  * License: GNU Lesser General Public License (LGPL), version 2.1 or later
  * See the lgpl.txt file in the root directory or http://www.gnu.org/licenses/lgpl-2.1.html
  */
-
-/*
- * Hibernate, Relational Persistence for Idiomatic Java
- *
- * License: GNU Lesser General Public License (LGPL), version 2.1 or later
- * See the lgpl.txt file in the root directory or http://www.gnu.org/licenses/lgpl-2.1.html
- */
 package org.hibernate.orm.test.onetoone.bidirectional;
 
-import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.hibernate.engine.internal.StatisticalLoggingSessionEventListener;
@@ -21,6 +13,8 @@ import org.hibernate.engine.internal.StatisticalLoggingSessionEventListener;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.Column;
@@ -39,24 +33,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 @SessionFactory
 @DomainModel(annotatedClasses = {
-		BidirectionalOneToOneInstanceTest.FooEntity.class,
-		BidirectionalOneToOneInstanceTest.BarEntity.class
+		BidirectionalOneToOneLazyFKTest.FooEntity.class,
+		BidirectionalOneToOneLazyFKTest.BarEntity.class
 })
-public class BidirectionalOneToOneInstanceTest {
-
-	@Test
-	public void testBidirectionalFetch(SessionFactoryScope scope) {
-		String name = "foo_name";
-		Date date = new Date();
-
+public class BidirectionalOneToOneLazyFKTest {
+	@BeforeAll
+	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			BarEntity bar = new BarEntity();
 			bar.setBusinessId( 1L );
-			bar.setDate( date );
+			bar.setaDouble( 0.5 );
 
 			FooEntity foo = new FooEntity();
 			foo.setBusinessId( 2L );
-			foo.setName( name );
+			foo.setName( "foo_name" );
 
 			foo.setBar( bar );
 			bar.setFoo( foo );
@@ -64,7 +54,18 @@ public class BidirectionalOneToOneInstanceTest {
 			session.persist( bar );
 			session.persist( foo );
 		} );
+	}
 
+	@AfterAll
+	public void tearDown(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			session.createMutationQuery( "delete from FooEntity" ).executeUpdate();
+			session.createMutationQuery( "delete from BarEntity" ).executeUpdate();
+		} );
+	}
+
+	@Test
+	public void testBidirectionalFetch(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			FooEntity foo = session.find( FooEntity.class, 1L );
 
@@ -77,19 +78,39 @@ public class BidirectionalOneToOneInstanceTest {
 				}
 			} );
 
-			// todo marco : change column names and cleanup entities
-			// todo marco : move persist into setUp method and add tearDown
-
 			BarEntity bar = foo.getBar();
-			// no queries should be executed
 			assertEquals( 0, queryExecutionCount.get() );
-			assertEquals( date, bar.getDate() );
+			assertEquals( 0.5, bar.getaDouble() );
 
 			FooEntity associatedFoo = bar.getFoo();
-			// no queries should be executed
 			assertEquals( 0, queryExecutionCount.get() );
+			assertEquals( "foo_name", associatedFoo.getName() );
 			assertEquals( foo, associatedFoo );
-			assertEquals( name, associatedFoo.getName() );
+		} );
+	}
+
+	@Test
+	public void testBidirectionalFetchInverse(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			BarEntity bar = session.find( BarEntity.class, 1L );
+
+			final AtomicInteger queryExecutionCount = new AtomicInteger();
+			session.getEventListenerManager().addListener( new StatisticalLoggingSessionEventListener() {
+				@Override
+				public void jdbcExecuteStatementStart() {
+					super.jdbcExecuteStatementStart();
+					queryExecutionCount.getAndIncrement();
+				}
+			} );
+
+			FooEntity foo = bar.getFoo();
+			assertEquals( 0, queryExecutionCount.get() );
+			assertEquals( "foo_name", foo.getName() );
+
+			BarEntity associatedBar = foo.getBar();
+			assertEquals( 0, queryExecutionCount.get() );
+			assertEquals( 0.5, associatedBar.getaDouble() );
+			assertEquals( bar, associatedBar );
 		} );
 	}
 
@@ -100,11 +121,11 @@ public class BidirectionalOneToOneInstanceTest {
 		@GeneratedValue
 		private Long id;
 
-		@Column(name = "uuid", unique = true, updatable = false)
+		@Column(name = "business_id", unique = true, updatable = false)
 		private Long businessId;
 
 		@OneToOne(fetch = FetchType.LAZY)
-		@JoinColumn(name = "bar_uuid", referencedColumnName = "uuid", nullable = false, updatable = false)
+		@JoinColumn(name = "bar_business_id", referencedColumnName = "business_id", nullable = false, updatable = false)
 		private BarEntity bar;
 
 		private String name;
@@ -149,13 +170,13 @@ public class BidirectionalOneToOneInstanceTest {
 		@GeneratedValue
 		private Long id;
 
-		@Column(name = "uuid", unique = true, updatable = false)
+		@Column(name = "business_id", unique = true, updatable = false)
 		private Long businessId;
 
 		@OneToOne(fetch = FetchType.LAZY, mappedBy = "bar")
 		private FooEntity foo;
 
-		private Date date;
+		private Double aDouble;
 
 		public FooEntity getFoo() {
 			return foo;
@@ -181,12 +202,12 @@ public class BidirectionalOneToOneInstanceTest {
 			this.businessId = businessId;
 		}
 
-		public Date getDate() {
-			return date;
+		public Double getaDouble() {
+			return aDouble;
 		}
 
-		public void setDate(Date date) {
-			this.date = date;
+		public void setaDouble(Double aDouble) {
+			this.aDouble = aDouble;
 		}
 	}
 }
