@@ -24,12 +24,8 @@ import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AbstractFetchParentAccess;
 import org.hibernate.sql.results.graph.DomainResultAssembler;
 import org.hibernate.sql.results.graph.FetchParentAccess;
-import org.hibernate.sql.results.graph.Initializer;
-import org.hibernate.sql.results.graph.embeddable.EmbeddableInitializer;
-import org.hibernate.sql.results.graph.entity.AbstractEntityInitializer;
 import org.hibernate.sql.results.graph.entity.EntityInitializer;
 import org.hibernate.sql.results.graph.entity.LoadingEntityEntry;
-import org.hibernate.sql.results.jdbc.spi.JdbcValuesSourceProcessingState;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 import org.hibernate.type.Type;
 
@@ -151,20 +147,6 @@ public class EntityDelayedFetchInitializer extends AbstractFetchParentAccess imp
 									&& isEnhancedForLazyLoading( parentEntityInitializer ) ) {
 								return;
 							}
-
-							// check for existing initializers
-							final Initializer initializer = persistenceContext.getLoadContexts()
-									.findInitializer( euk );
-							if ( initializer == null ) {
-								final JdbcValuesSourceProcessingState jdbcValuesSourceProcessingState =
-										rowProcessingState.getJdbcValuesSourceProcessingState();
-								jdbcValuesSourceProcessingState.registerInitializer( euk, this );
-							}
-							else {
-								registerResolutionListener( instance -> entityInstance = instance );
-								return;
-							}
-
 							entityInstance = ( (UniqueKeyLoadable) concreteDescriptor ).loadByUniqueKey(
 									uniqueKeyPropertyName,
 									identifier,
