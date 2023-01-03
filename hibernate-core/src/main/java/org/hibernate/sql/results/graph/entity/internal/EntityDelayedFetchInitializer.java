@@ -82,8 +82,11 @@ public class EntityDelayedFetchInitializer extends AbstractFetchParentAccess imp
 		}
 
 		final EntityInitializer parentEntityInitializer = getParentEntityInitializer( parentAccess );
-		if ( parentEntityInitializer != null && parentEntityInitializer.isInitialized() ) {
-			return;
+		if ( parentEntityInitializer != null && parentEntityInitializer.getEntityKey() != null ) {
+			parentEntityInitializer.resolveInstance( rowProcessingState );
+			if ( parentEntityInitializer.isInitialized() ) {
+				return;
+			}
 		}
 
 		if ( !isAttributeAssignableToConcreteDescriptor( parentAccess, referencedModelPart ) ) {
