@@ -92,6 +92,8 @@ public class BidirectionalOneToOneWithConverterEagerTest {
 			assertEquals( 0, queryExecutionCount.get() );
 			assertEquals( "foo_name", associatedFoo.getName() );
 			assertEquals( foo, associatedFoo );
+
+			assertEquals( bar, associatedFoo.getBar() );
 		} );
 	}
 
@@ -117,6 +119,8 @@ public class BidirectionalOneToOneWithConverterEagerTest {
 			assertEquals( 0, queryExecutionCount.get() );
 			assertEquals( 0.5, associatedBar.getaDouble() );
 			assertEquals( bar, associatedBar );
+
+			assertEquals( foo, associatedBar.getFoo() );
 		} );
 	}
 

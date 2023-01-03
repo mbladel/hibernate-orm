@@ -65,10 +65,8 @@ public class BidirectionalOneToOneEagerFKTest {
 	}
 
 	@Test
-	public void testBidirectionalFetch(SessionFactoryScope scope) {
+	public void testBidirectionalFetchJoinColumnSide(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			FooEntity foo = session.find( FooEntity.class, 1L );
-
 			final AtomicInteger queryExecutionCount = new AtomicInteger();
 			session.getEventListenerManager().addListener( new StatisticalLoggingSessionEventListener() {
 				@Override
@@ -78,22 +76,24 @@ public class BidirectionalOneToOneEagerFKTest {
 				}
 			} );
 
+			FooEntity foo = session.find( FooEntity.class, 1L );
+
 			BarEntity bar = foo.getBar();
-			assertEquals( 0, queryExecutionCount.get() );
+			assertEquals( 1, queryExecutionCount.get() );
 			assertEquals( 0.5, bar.getaDouble() );
 
 			FooEntity associatedFoo = bar.getFoo();
-			assertEquals( 0, queryExecutionCount.get() );
+			assertEquals( 1, queryExecutionCount.get() );
 			assertEquals( "foo_name", associatedFoo.getName() );
 			assertEquals( foo, associatedFoo );
+
+			assertEquals( bar, associatedFoo.getBar() );
 		} );
 	}
 
 	@Test
-	public void testBidirectionalFetchInverse(SessionFactoryScope scope) {
+	public void testBidirectionalFetchMappedBySide(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			BarEntity bar = session.find( BarEntity.class, 1L );
-
 			final AtomicInteger queryExecutionCount = new AtomicInteger();
 			session.getEventListenerManager().addListener( new StatisticalLoggingSessionEventListener() {
 				@Override
@@ -103,19 +103,19 @@ public class BidirectionalOneToOneEagerFKTest {
 				}
 			} );
 
+			BarEntity bar = session.find( BarEntity.class, 1L );
+			assertEquals( 1, queryExecutionCount.get() );
+
 			FooEntity foo = bar.getFoo();
-			assertEquals( 0, queryExecutionCount.get() );
+			assertEquals( 1, queryExecutionCount.get() );
 			assertEquals( "foo_name", foo.getName() );
 
-			// todo marco : this is null
-			//  in both tests, 2 circular fetches are created, but just 1 is bidirectional
-			//  the difference is the order of fetches : if the first is the bidirectional it's fine
-			//  otherwise, the non-bidirectional creates an additional initializer (EntitySelectByUniqueKey)
-			//  which messes up stuff
 			BarEntity associatedBar = foo.getBar();
-			assertEquals( 0, queryExecutionCount.get() );
+			assertEquals( 1, queryExecutionCount.get() );
 			assertEquals( 0.5, associatedBar.getaDouble() );
 			assertEquals( bar, associatedBar );
+
+			assertEquals( foo, associatedBar.getFoo() );
 		} );
 	}
 
