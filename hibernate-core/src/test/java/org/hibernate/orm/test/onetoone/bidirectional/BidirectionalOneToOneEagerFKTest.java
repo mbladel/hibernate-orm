@@ -99,6 +99,10 @@ public class BidirectionalOneToOneEagerFKTest {
 	@Test
 	public void testBidirectionalFetchMappedBySide(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
+			// todo marco : in questo caso vengono fatte 2 query quando in realtà ne basterebbe una
+			//  sembra dovuto al fatto che c'è un EntitySelectByUniqueKeyInitializer in più
+			//  che forse non dovrebbe esserci ?
+
 			BarEntity bar = session.find( BarEntity.class, 1L );
 
 			final AtomicInteger queryExecutionCount = new AtomicInteger();

@@ -36,13 +36,6 @@ public class EntitySelectFetchByUniqueKeyInitializer extends EntitySelectFetchIn
 		this.fetchedAttribute = fetchedAttribute;
 	}
 
-	private EntityInitializer getParentEntityInitializer(FetchParentAccess parentAccess) {
-		if ( parentAccess != null ) {
-			return parentAccess.findFirstEntityInitializer();
-		}
-		return null;
-	}
-
 	@Override
 	public void initializeInstance(RowProcessingState rowProcessingState) {
 		if ( entityInstance != null || isInitialized ) {
@@ -50,7 +43,7 @@ public class EntitySelectFetchByUniqueKeyInitializer extends EntitySelectFetchIn
 		}
 
 		// todo marco : why does this work ?
-		final EntityInitializer parentEntityInitializer = getParentEntityInitializer( getParentAccess() );
+		final EntityInitializer parentEntityInitializer = getParentEntityInitializer( parentAccess );
 		if ( parentEntityInitializer != null && parentEntityInitializer.getEntityKey() != null ) {
 			parentEntityInitializer.resolveInstance( rowProcessingState );
 			if ( parentEntityInitializer.isInitialized() ) {
@@ -112,4 +105,10 @@ public class EntitySelectFetchByUniqueKeyInitializer extends EntitySelectFetchIn
 		isInitialized = true;
 	}
 
+	private EntityInitializer getParentEntityInitializer(FetchParentAccess parentAccess) {
+		if ( parentAccess != null ) {
+			return parentAccess.findFirstEntityInitializer();
+		}
+		return null;
+	}
 }
