@@ -4,10 +4,16 @@
  * License: GNU Lesser General Public License (LGPL), version 2.1 or later
  * See the lgpl.txt file in the root directory or http://www.gnu.org/licenses/lgpl-2.1.html
  */
-package org.hibernate.orm.test.mapping.converted.converter;
+
+/*
+ * Hibernate, Relational Persistence for Idiomatic Java
+ *
+ * License: GNU Lesser General Public License (LGPL), version 2.1 or later
+ * See the lgpl.txt file in the root directory or http://www.gnu.org/licenses/lgpl-2.1.html
+ */
+package org.hibernate.orm.test.mapping.converted.converter.onetoone;
 
 import java.io.Serializable;
-import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -17,6 +23,8 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.JiraKey;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.AttributeConverter;
@@ -37,24 +45,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 @SessionFactory
 @DomainModel(annotatedClasses = {
-		BidirectionalOneToOneWithConverterTest.FooEntity.class,
-		BidirectionalOneToOneWithConverterTest.BarEntity.class,
+		BidirectionalLazyOneToOneWithConverterTest.FooEntity.class,
+		BidirectionalLazyOneToOneWithConverterTest.BarEntity.class,
 })
 @JiraKey("HHH-15950")
-public class BidirectionalOneToOneWithConverterTest {
-	@Test
-	public void testBidirectionalFetch(SessionFactoryScope scope) {
-		String name = "foo_name";
-		Date date = new Date();
-
+public class BidirectionalLazyOneToOneWithConverterTest {
+	@BeforeAll
+	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			BarEntity bar = new BarEntity();
 			bar.setBusinessId( new BusinessId( UUID.randomUUID().toString() ) );
-			bar.setDate( date );
+			bar.setaDouble( 0.5 );
 
 			FooEntity foo = new FooEntity();
 			foo.setBusinessId( new BusinessId( UUID.randomUUID().toString() ) );
-			foo.setName( name );
+			foo.setName( "foo_name" );
 
 			foo.setBar( bar );
 			bar.setFoo( foo );
@@ -62,10 +67,20 @@ public class BidirectionalOneToOneWithConverterTest {
 			session.persist( bar );
 			session.persist( foo );
 		} );
+	}
 
+	@AfterAll
+	public void tearDown(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			session.createMutationQuery( "delete from FooEntity" ).executeUpdate();
+			session.createMutationQuery( "delete from BarEntity" ).executeUpdate();
+		} );
+	}
+
+	@Test
+	public void testBidirectionalFetch(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			FooEntity foo = session.find( FooEntity.class, 1L );
-			assertEquals( name, foo.getName() );
 
 			final AtomicInteger queryExecutionCount = new AtomicInteger();
 			session.getEventListenerManager().addListener( new StatisticalLoggingSessionEventListener() {
@@ -79,19 +94,42 @@ public class BidirectionalOneToOneWithConverterTest {
 			BarEntity bar = foo.getBar();
 			// no queries should be executed
 			assertEquals( 0, queryExecutionCount.get() );
-			assertEquals( date, bar.getDate() );
+			assertEquals( 0.5, bar.getaDouble() );
 
-			 FooEntity associatedFoo = bar.getFoo();
+			FooEntity associatedFoo = bar.getFoo();
 			// no queries should be executed
-			 assertEquals(0, queryExecutionCount.get());
-			 assertEquals( foo, associatedFoo );
+			assertEquals( 0, queryExecutionCount.get() );
+			assertEquals( "foo_name", associatedFoo.getName() );
+			assertEquals( foo, associatedFoo );
 		} );
 	}
 
-	// todo marco : verifica che get su associazione non faccia altra query
-	//  foo.getBar() - non deve fare query
-	//  bar.getFoo() - non deve fare query + deve essere stessa instance di quello col find
-	// todo marco : provare anche contrario (session.find(Bar.class, 1L);
+	@Test
+	public void testBidirectionalFetchInverse(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			BarEntity bar = session.find( BarEntity.class, 1L );
+
+			final AtomicInteger queryExecutionCount = new AtomicInteger();
+			session.getEventListenerManager().addListener( new StatisticalLoggingSessionEventListener() {
+				@Override
+				public void jdbcExecuteStatementStart() {
+					super.jdbcExecuteStatementStart();
+					queryExecutionCount.getAndIncrement();
+				}
+			} );
+
+			FooEntity foo = bar.getFoo();
+			// no queries should be executed
+			assertEquals( 0, queryExecutionCount.get() );
+			assertEquals( "foo_name", foo.getName() );
+
+			BarEntity associatedBar = foo.getBar();
+			// no queries should be executed
+			assertEquals( 0, queryExecutionCount.get() );
+			assertEquals( 0.5, associatedBar.getaDouble() );
+			assertEquals( bar, associatedBar );
+		} );
+	}
 
 	// todo marco : fare un altro test con associazione EAGER
 	//  questo dovrebbe fare il detect della circularity
@@ -127,7 +165,7 @@ public class BidirectionalOneToOneWithConverterTest {
 		}
 	}
 
-	@Entity
+	@Entity(name = "FooEntity")
 	@Table(name = "foo")
 	public static class FooEntity {
 		@Id
@@ -177,7 +215,7 @@ public class BidirectionalOneToOneWithConverterTest {
 		}
 	}
 
-	@Entity
+	@Entity(name = "BarEntity")
 	@Table(name = "bar")
 	public static class BarEntity {
 		@Id
@@ -191,7 +229,7 @@ public class BidirectionalOneToOneWithConverterTest {
 		@OneToOne(fetch = FetchType.LAZY, mappedBy = "bar")
 		private FooEntity foo;
 
-		private Date date;
+		private Double aDouble;
 
 		public FooEntity getFoo() {
 			return foo;
@@ -217,12 +255,12 @@ public class BidirectionalOneToOneWithConverterTest {
 			this.businessId = businessId;
 		}
 
-		public Date getDate() {
-			return date;
+		public Double getaDouble() {
+			return aDouble;
 		}
 
-		public void setDate(Date date) {
-			this.date = date;
+		public void setaDouble(Double aDouble) {
+			this.aDouble = aDouble;
 		}
 	}
 }
