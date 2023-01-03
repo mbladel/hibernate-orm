@@ -64,36 +64,45 @@ public class BidirectionalOneToOneWithConverterTest {
 
 		scope.inTransaction( session -> {
 			session.find( FooEntity.class, 1L );
+
+			// todo marco : aggiungi assert su modello (magari con nuovi attributi)
+			// todo marco : verifica che get su associazione non faccia altra query
+			//  foo.getBar() - non deve fare query
+			//  bar.getFoo() - non deve fare query + deve essere stessa instance di quello col find
+			// todo marco : provare anche contrario (session.find(Bar.class, 1L);
+
+				// todo marco : fare un altro test con associazione EAGER
+			//  questo dovrebbe fare il detect della circularity
 		} );
 	}
 
-	@MappedSuperclass
-	public static class BaseEntity {
-		@Id
-		@Column(name = "id")
-		@GeneratedValue(strategy = GenerationType.IDENTITY)
-		private Long id;
-
-		@Column(name = "uuid", unique = true, updatable = false, columnDefinition = "varchar")
-		@Convert(converter = BusinessIdConverter.class)
-		private BusinessId businessId;
-
-		public Long getId() {
-			return id;
-		}
-
-		public void setId(Long id) {
-			this.id = id;
-		}
-
-		public BusinessId getBusinessId() {
-			return businessId;
-		}
-
-		public void setBusinessId(BusinessId businessId) {
-			this.businessId = businessId;
-		}
-	}
+//	@MappedSuperclass
+//	public static class BaseEntity {
+//		@Id
+//		@Column(name = "id")
+//		@GeneratedValue(strategy = GenerationType.IDENTITY)
+//		private Long id;
+//
+//		@Column(name = "uuid", unique = true, updatable = false, columnDefinition = "varchar")
+//		@Convert(converter = BusinessIdConverter.class)
+//		private BusinessId businessId;
+//
+//		public Long getId() {
+//			return id;
+//		}
+//
+//		public void setId(Long id) {
+//			this.id = id;
+//		}
+//
+//		public BusinessId getBusinessId() {
+//			return businessId;
+//		}
+//
+//		public void setBusinessId(BusinessId businessId) {
+//			this.businessId = businessId;
+//		}
+//	}
 
 	public static class BusinessId implements Serializable {
 		private String value;
@@ -133,7 +142,7 @@ public class BidirectionalOneToOneWithConverterTest {
 
 	@Entity
 	@Table(name = "foo")
-	public static class FooEntity extends BaseEntity {
+	public static class FooEntity {
 		@OneToOne(fetch = FetchType.LAZY, optional = false)
 		@JoinColumn(name = "bar_uuid", referencedColumnName = "uuid", nullable = false, updatable = false)
 		private BarEntity bar;
@@ -145,11 +154,36 @@ public class BidirectionalOneToOneWithConverterTest {
 		public void setBar(BarEntity bar) {
 			this.bar = bar;
 		}
+
+		@Id
+		@Column(name = "id")
+		@GeneratedValue(strategy = GenerationType.IDENTITY)
+		private Long id;
+
+		@Column(name = "uuid", unique = true, updatable = false, columnDefinition = "varchar")
+		@Convert(converter = BusinessIdConverter.class)
+		private BusinessId businessId;
+
+		public Long getId() {
+			return id;
+		}
+
+		public void setId(Long id) {
+			this.id = id;
+		}
+
+		public BusinessId getBusinessId() {
+			return businessId;
+		}
+
+		public void setBusinessId(BusinessId businessId) {
+			this.businessId = businessId;
+		}
 	}
 
 	@Entity
 	@Table(name = "bar")
-	public static class BarEntity extends BaseEntity {
+	public static class BarEntity {
 		@OneToOne(fetch = FetchType.LAZY, mappedBy = "bar")
 		private FooEntity foo;
 
@@ -159,6 +193,31 @@ public class BidirectionalOneToOneWithConverterTest {
 
 		public void setFoo(FooEntity foo) {
 			this.foo = foo;
+		}
+
+		@Id
+		@Column(name = "id")
+		@GeneratedValue(strategy = GenerationType.IDENTITY)
+		private Long id;
+
+		@Column(name = "uuid", unique = true, updatable = false, columnDefinition = "varchar")
+		@Convert(converter = BusinessIdConverter.class)
+		private BusinessId businessId;
+
+		public Long getId() {
+			return id;
+		}
+
+		public void setId(Long id) {
+			this.id = id;
+		}
+
+		public BusinessId getBusinessId() {
+			return businessId;
+		}
+
+		public void setBusinessId(BusinessId businessId) {
+			this.businessId = businessId;
 		}
 	}
 
