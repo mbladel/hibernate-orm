@@ -270,8 +270,11 @@ public class ToOneAttributeMapping
 				}
 				this.bidirectionalAttributeName = bidirectionalAttributeName;
 			}
-			else {
+			else if ( cardinality == Cardinality.MANY_TO_ONE ) {
 				this.bidirectionalAttributeName = referencedPropertyName;
+			}
+			else {
+				this.bidirectionalAttributeName = null;
 			}
 			if ( bootValue.isNullable() ) {
 				isKeyTableNullable = true;
