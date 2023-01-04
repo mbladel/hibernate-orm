@@ -27,6 +27,7 @@ import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.dialect.aggregate.AggregateSupport;
 import org.hibernate.dialect.aggregate.PostgreSQLAggregateSupport;
 import org.hibernate.dialect.function.CommonFunctionFactory;
+import org.hibernate.dialect.function.PostgreSQLLegacyTruncFunction;
 import org.hibernate.dialect.function.PostgreSQLMinMaxFunction;
 import org.hibernate.dialect.identity.IdentityColumnSupport;
 import org.hibernate.dialect.identity.PostgreSQLIdentityColumnSupport;
@@ -524,7 +525,6 @@ public class PostgreSQLDialect extends Dialect {
 		CommonFunctionFactory functionFactory = new CommonFunctionFactory(queryEngine);
 
 		functionFactory.round_roundFloor(); //Postgres round(x,n) does not accept double
-		functionFactory.trunc_truncFloor();
 		functionFactory.cot();
 		functionFactory.radians();
 		functionFactory.degrees();
@@ -588,6 +588,11 @@ public class PostgreSQLDialect extends Dialect {
 			queryEngine.getSqmFunctionRegistry().register( "min", new PostgreSQLMinMaxFunction( "min" ) );
 			queryEngine.getSqmFunctionRegistry().register( "max", new PostgreSQLMinMaxFunction( "max" ) );
 		}
+
+		queryEngine.getSqmFunctionRegistry().register(
+				"trunc", new PostgreSQLLegacyTruncFunction( true )
+		);
+		queryEngine.getSqmFunctionRegistry().registerAlternateKey( "truncate", "trunc" );
 	}
 
 	/**

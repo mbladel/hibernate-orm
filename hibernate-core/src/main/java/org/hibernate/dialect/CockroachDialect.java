@@ -26,6 +26,7 @@ import org.hibernate.QueryTimeoutException;
 import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.dialect.function.CommonFunctionFactory;
 import org.hibernate.dialect.function.FormatFunction;
+import org.hibernate.dialect.function.PostgreSQLLegacyTruncFunction;
 import org.hibernate.dialect.identity.CockroachDBIdentityColumnSupport;
 import org.hibernate.dialect.identity.IdentityColumnSupport;
 import org.hibernate.dialect.pagination.LimitHandler;
@@ -113,7 +114,10 @@ import static org.hibernate.type.descriptor.DateTimeUtils.appendAsTimestampWithM
  */
 public class CockroachDialect extends Dialect {
 
-	private static final CoreMessageLogger LOG = Logger.getMessageLogger( CoreMessageLogger.class, CockroachDialect.class.getName() );
+	private static final CoreMessageLogger LOG = Logger.getMessageLogger(
+			CoreMessageLogger.class,
+			CockroachDialect.class.getName()
+	);
 	private static final CockroachDBIdentityColumnSupport IDENTITY_COLUMN_SUPPORT = new CockroachDBIdentityColumnSupport();
 	// KNOWN LIMITATIONS:
 	// * no support for java.sql.Clob
@@ -135,19 +139,19 @@ public class CockroachDialect extends Dialect {
 	}
 
 	public CockroachDialect(DatabaseVersion version) {
-		super(version);
+		super( version );
 		driverKind = PostgreSQLDriverKind.PG_JDBC;
 	}
 
 	public CockroachDialect(DatabaseVersion version, PostgreSQLDriverKind driverKind) {
-		super(version);
+		super( version );
 		this.driverKind = driverKind;
 	}
 
-	protected static DatabaseVersion fetchDataBaseVersion( DialectResolutionInfo info ) {
+	protected static DatabaseVersion fetchDataBaseVersion(DialectResolutionInfo info) {
 		String versionString = null;
 		if ( info.getDatabaseMetadata() != null ) {
-			try (java.sql.Statement s = info.getDatabaseMetadata().getConnection().createStatement() ) {
+			try (java.sql.Statement s = info.getDatabaseMetadata().getConnection().createStatement()) {
 				final ResultSet rs = s.executeQuery( "SELECT version()" );
 				if ( rs.next() ) {
 					versionString = rs.getString( 1 );
@@ -160,18 +164,18 @@ public class CockroachDialect extends Dialect {
 		return parseVersion( versionString );
 	}
 
-	protected static DatabaseVersion parseVersion(String versionString ) {
+	protected static DatabaseVersion parseVersion(String versionString) {
 		DatabaseVersion databaseVersion = null;
 		// What the DB select returns is similar to "CockroachDB CCL v21.2.10 (x86_64-unknown-linux-gnu, built 2022/05/02 17:38:58, go1.16.6)"
 		Matcher m = CRDB_VERSION_PATTERN.matcher( versionString == null ? "" : versionString );
 		if ( m.find() ) {
-				String[] versionParts = m.group().substring( 1 ).split( "\\." );
-				// if we got to this point, there is at least a major version, so no need to check [].length > 0
-				int majorVersion = Integer.parseInt( versionParts[0] );
-				int minorVersion = versionParts.length > 1 ? Integer.parseInt( versionParts[1] ) : 0;
-				int microVersion = versionParts.length > 2 ? Integer.parseInt( versionParts[2] ) : 0;
+			String[] versionParts = m.group().substring( 1 ).split( "\\." );
+			// if we got to this point, there is at least a major version, so no need to check [].length > 0
+			int majorVersion = Integer.parseInt( versionParts[0] );
+			int minorVersion = versionParts.length > 1 ? Integer.parseInt( versionParts[1] ) : 0;
+			int microVersion = versionParts.length > 2 ? Integer.parseInt( versionParts[2] ) : 0;
 
-				databaseVersion=  new SimpleDatabaseVersion( majorVersion, minorVersion, microVersion);
+			databaseVersion = new SimpleDatabaseVersion( majorVersion, minorVersion, microVersion );
 		}
 		if ( databaseVersion == null ) {
 			LOG.unableToDetermineCockroachDatabaseVersion(
@@ -294,7 +298,10 @@ public class CockroachDialect extends Dialect {
 				// PostgreSQL names array types by prepending an underscore to the base name
 				if ( jdbcType instanceof ArrayJdbcType && columnTypeName.charAt( 0 ) == '_' ) {
 					final String componentTypeName = columnTypeName.substring( 1 );
-					final Integer sqlTypeCode = resolveSqlTypeCode( componentTypeName, jdbcTypeRegistry.getTypeConfiguration() );
+					final Integer sqlTypeCode = resolveSqlTypeCode(
+							componentTypeName,
+							jdbcTypeRegistry.getTypeConfiguration()
+					);
 					if ( sqlTypeCode != null ) {
 						return ( (ArrayJdbcType) jdbcType ).resolveType(
 								jdbcTypeRegistry.getTypeConfiguration(),
@@ -366,7 +373,7 @@ public class CockroachDialect extends Dialect {
 
 	@Override
 	public void initializeFunctionRegistry(QueryEngine queryEngine) {
-		super.initializeFunctionRegistry(queryEngine);
+		super.initializeFunctionRegistry( queryEngine );
 
 		final CommonFunctionFactory functionFactory = new CommonFunctionFactory( queryEngine );
 		functionFactory.ascii();
@@ -389,7 +396,6 @@ public class CockroachDialect extends Dialect {
 		functionFactory.degrees();
 		functionFactory.radians();
 		functionFactory.pi();
-		functionFactory.trunc(); //TODO: emulate second arg
 		functionFactory.log();
 		functionFactory.log10_log();
 
@@ -413,6 +419,11 @@ public class CockroachDialect extends Dialect {
 		functionFactory.listagg_stringAgg( "string" );
 		functionFactory.inverseDistributionOrderedSetAggregates();
 		functionFactory.hypotheticalOrderedSetAggregates_windowEmulation();
+
+		queryEngine.getSqmFunctionRegistry().register(
+				"trunc",
+				new PostgreSQLLegacyTruncFunction( getVersion().isSameOrAfter( 22, 2 ) )
+		);
 	}
 
 	@Override
@@ -501,7 +512,7 @@ public class CockroachDialect extends Dialect {
 	}
 
 	@Override
-	public String getCaseInsensitiveLike(){
+	public String getCaseInsensitiveLike() {
 		return "ilike";
 	}
 
@@ -638,7 +649,7 @@ public class CockroachDialect extends Dialect {
 				break;
 			case TIMESTAMP:
 				appender.appendSql( "timestamp with time zone '" );
-				appendAsTimestampWithMicros( appender,date, jdbcTimeZone );
+				appendAsTimestampWithMicros( appender, date, jdbcTimeZone );
 				appender.appendSql( '\'' );
 				break;
 			default:
@@ -683,19 +694,23 @@ public class CockroachDialect extends Dialect {
 	public String extractPattern(TemporalUnit unit) {
 		switch ( unit ) {
 			case DAY_OF_WEEK:
-				return "(" + super.extractPattern(unit) + "+1)";
+				return "(" + super.extractPattern( unit ) + "+1)";
 			default:
-				return super.extractPattern(unit);
+				return super.extractPattern( unit );
 		}
 	}
 
 	@Override
 	public String translateExtractField(TemporalUnit unit) {
 		switch ( unit ) {
-			case DAY_OF_MONTH: return "day";
-			case DAY_OF_YEAR: return "dayofyear";
-			case DAY_OF_WEEK: return "dayofweek";
-			default: return super.translateExtractField( unit );
+			case DAY_OF_MONTH:
+				return "day";
+			case DAY_OF_YEAR:
+				return "dayofyear";
+			case DAY_OF_WEEK:
+				return "dayofweek";
+			default:
+				return super.translateExtractField( unit );
 		}
 	}
 
@@ -732,7 +747,7 @@ public class CockroachDialect extends Dialect {
 		if ( unit == null ) {
 			return "(?3-?2)";
 		}
-		switch (unit) {
+		switch ( unit ) {
 			case YEAR:
 				return "(extract(year from ?3)-extract(year from ?2))";
 			case QUARTER:
@@ -747,7 +762,7 @@ public class CockroachDialect extends Dialect {
 			return "(?3-?2)" + DAY.conversionFactor( unit, this );
 		}
 		else {
-			switch (unit) {
+			switch ( unit ) {
 				case WEEK:
 					return "extract_duration(hour from ?3-?2)/168";
 				case DAY:
@@ -762,9 +777,9 @@ public class CockroachDialect extends Dialect {
 
 	@Override
 	public String translateDurationField(TemporalUnit unit) {
-		return unit==NATIVE
+		return unit == NATIVE
 				? "microsecond"
-				: super.translateDurationField(unit);
+				: super.translateDurationField( unit );
 	}
 
 	@Override
@@ -796,13 +811,13 @@ public class CockroachDialect extends Dialect {
 			LockMode lockMode = lockOptions.getLockMode();
 			for ( Map.Entry<String, LockMode> entry : lockOptions.getAliasSpecificLocks() ) {
 				// seek the highest lock mode
-				if ( entry.getValue().greaterThan(lockMode) ) {
+				if ( entry.getValue().greaterThan( lockMode ) ) {
 					aliases = entry.getKey();
 				}
 			}
 		}
 		LockMode lockMode = lockOptions.getAliasSpecificLockMode( aliases );
-		if (lockMode == null ) {
+		if ( lockMode == null ) {
 			lockMode = lockOptions.getLockMode();
 		}
 		switch ( lockMode ) {
@@ -814,10 +829,10 @@ public class CockroachDialect extends Dialect {
 			}
 			case UPGRADE_NOWAIT:
 			case PESSIMISTIC_FORCE_INCREMENT: {
-				return getForUpdateNowaitString(aliases);
+				return getForUpdateNowaitString( aliases );
 			}
 			case UPGRADE_SKIPLOCKED: {
-				return getForUpdateSkipLockedString(aliases);
+				return getForUpdateSkipLockedString( aliases );
 			}
 			default: {
 				return "";
@@ -826,7 +841,7 @@ public class CockroachDialect extends Dialect {
 	}
 
 	private String withTimeout(String lockString, int timeout) {
-		switch (timeout) {
+		switch ( timeout ) {
 			case LockOptions.NO_WAIT: {
 				return supportsNoWait() ? lockString + " nowait" : lockString;
 			}
@@ -851,12 +866,12 @@ public class CockroachDialect extends Dialect {
 
 	@Override
 	public String getReadLockString(int timeout) {
-		return withTimeout(" for share", timeout );
+		return withTimeout( " for share", timeout );
 	}
 
 	@Override
 	public String getReadLockString(String aliases, int timeout) {
-		return withTimeout(" for share of " + aliases, timeout );
+		return withTimeout( " for share of " + aliases, timeout );
 	}
 
 	@Override
@@ -970,16 +985,20 @@ public class CockroachDialect extends Dialect {
 				switch ( Integer.parseInt( sqlState ) ) {
 					// CHECK VIOLATION
 					case 23514:
-						return extractUsingTemplate( "violates check constraint \"","\"", sqle.getMessage() );
+						return extractUsingTemplate( "violates check constraint \"", "\"", sqle.getMessage() );
 					// UNIQUE VIOLATION
 					case 23505:
-						return extractUsingTemplate( "violates unique constraint \"","\"", sqle.getMessage() );
+						return extractUsingTemplate( "violates unique constraint \"", "\"", sqle.getMessage() );
 					// FOREIGN KEY VIOLATION
 					case 23503:
-						return extractUsingTemplate( "violates foreign key constraint \"","\"", sqle.getMessage() );
+						return extractUsingTemplate( "violates foreign key constraint \"", "\"", sqle.getMessage() );
 					// NOT NULL VIOLATION
 					case 23502:
-						return extractUsingTemplate( "null value in column \"","\" violates not-null constraint", sqle.getMessage() );
+						return extractUsingTemplate(
+								"null value in column \"",
+								"\" violates not-null constraint",
+								sqle.getMessage()
+						);
 					// TODO: RESTRICT VIOLATION
 					case 23001:
 						return null;
@@ -999,10 +1018,10 @@ public class CockroachDialect extends Dialect {
 			switch ( sqlState ) {
 				case "40P01":
 					// DEADLOCK DETECTED
-					return new LockAcquisitionException( message, sqlException, sql);
+					return new LockAcquisitionException( message, sqlException, sql );
 				case "55P03":
 					// LOCK NOT AVAILABLE
-					return new PessimisticLockException( message, sqlException, sql);
+					return new PessimisticLockException( message, sqlException, sql );
 				case "57014":
 					return new QueryTimeoutException( message, sqlException, sql );
 				default:
