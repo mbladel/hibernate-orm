@@ -26,7 +26,7 @@ import org.hibernate.QueryTimeoutException;
 import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.dialect.function.CommonFunctionFactory;
 import org.hibernate.dialect.function.FormatFunction;
-import org.hibernate.dialect.function.PostgreSQLLegacyTruncFunction;
+import org.hibernate.dialect.function.PostgreSQLTruncRoundFunction;
 import org.hibernate.dialect.identity.CockroachDBIdentityColumnSupport;
 import org.hibernate.dialect.identity.IdentityColumnSupport;
 import org.hibernate.dialect.pagination.LimitHandler;
@@ -422,8 +422,9 @@ public class CockroachDialect extends Dialect {
 
 		queryEngine.getSqmFunctionRegistry().register(
 				"trunc",
-				new PostgreSQLLegacyTruncFunction( getVersion().isSameOrAfter( 22, 2 ) )
+				new PostgreSQLTruncRoundFunction( "trunc", getVersion().isSameOrAfter( 22, 2 ) )
 		);
+		queryEngine.getSqmFunctionRegistry().registerAlternateKey( "trunc", "truncate" );
 	}
 
 	@Override

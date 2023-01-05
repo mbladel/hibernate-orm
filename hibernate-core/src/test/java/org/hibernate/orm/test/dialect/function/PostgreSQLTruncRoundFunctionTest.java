@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SessionFactory(statementInspectorClass = SQLStatementInspector.class)
 @RequiresDialect(PostgreSQLDialect.class)
 @RequiresDialect(CockroachDialect.class)
-public class PostgreSQLLegacyTruncFunctionTest {
+public class PostgreSQLTruncRoundFunctionTest {
 
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
@@ -46,20 +46,29 @@ public class PostgreSQLLegacyTruncFunctionTest {
 	}
 
 	@Test
-	public void testPostgreSqlLegacyTruncFunction(SessionFactoryScope scope) {
+	public void testTruncFunction(SessionFactoryScope scope) {
+		testFunction( scope, "trunc" );
+	}
+
+	@Test
+	public void testRoundFunction(SessionFactoryScope scope) {
+		testFunction( scope, "round" );
+	}
+
+	private void testFunction(SessionFactoryScope scope, String functionName) {
 		final SQLStatementInspector sqlStatementInspector = (SQLStatementInspector) scope.getStatementInspector();
 		scope.inTransaction( session -> {
 			// float / double types should use floor() workaround
 			sqlStatementInspector.clear();
-			assertEquals( session.createQuery( "select trunc(h.heightInches, 2) from Human h", Double.class ).getSingleResult(), 1.78d );
+			assertEquals( 1.78d, session.createQuery( "select " + functionName + "(h.heightInches, 2) from Human h", Double.class ).getSingleResult() );
 			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( "floor" ) );
 			sqlStatementInspector.clear();
-			assertEquals( session.createQuery( "select trunc(h.floatValue, 2) from Human h", Float.class ).getSingleResult(), 1.78f );
+			assertEquals( 1.78f, session.createQuery( "select " + functionName + "(h.floatValue, 2) from Human h", Float.class ).getSingleResult() );
 			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( "floor" ) );
-			// numeric / decimal types should use trunc()
+			// numeric / decimal types should use nativa trunc() function
 			sqlStatementInspector.clear();
-			assertEquals( session.createQuery( "select trunc(h.bigDecimalValue, 2) from Human h", BigDecimal.class ).getSingleResult(), new BigDecimal( "1.78" ) );
-			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( "trunc" ) );
+			assertEquals( new BigDecimal( "1.78" ), session.createQuery( "select " + functionName + "(h.bigDecimalValue, 2) from Human h", BigDecimal.class ).getSingleResult() );
+			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( functionName ) );
 		} );
 	}
 }

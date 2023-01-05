@@ -8,11 +8,6 @@ package org.hibernate.dialect.function;
 
 import java.util.List;
 
-import org.hibernate.dialect.CockroachDialect;
-import org.hibernate.dialect.Dialect;
-import org.hibernate.dialect.PostgreSQLDialect;
-import org.hibernate.metamodel.mapping.BasicValuedMapping;
-import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.query.sqm.function.AbstractSqmSelfRenderingFunctionDescriptor;
 import org.hibernate.query.sqm.produce.function.ArgumentTypesValidator;
 import org.hibernate.query.sqm.produce.function.StandardArgumentsValidators;
@@ -22,36 +17,43 @@ import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.ast.tree.SqlAstNode;
 import org.hibernate.sql.ast.tree.expression.Expression;
+import org.hibernate.sql.ast.tree.expression.Literal;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 
 import static org.hibernate.query.sqm.produce.function.FunctionParameterType.INTEGER;
 import static org.hibernate.query.sqm.produce.function.FunctionParameterType.NUMERIC;
 
 /**
- * PostgreSQL only supports the two-argument {@code trunc} function with the signature:
- * {@code trunc(numeric, integer)}.
- * <p>
- * This custom function falls back to using {@code floor} as a workaround only when necessary:
+ * PostgreSQL only supports the two-argument {@code trunc} and {@code round} functions
+ * with the following signatures:
  * <ul>
- *     <li>The first argument is of type {@code double precision}</li>
+ *     <li>{@code trunc(numeric, integer)}</li>
+ *     <li>{@code round(numeric, integer)}</li>
+ * </ul>
+ * <p>
+ * This custom function falls back to using {@code floor} as a workaround only when necessary,
+ * e.g. when:
+ * <ul>
+ *     <li>There are 2 arguments to the function</li>
+ *     <li>The first argument is not of type {@code numeric}</li>
  *     <li>The dialect doesn't support the two-argument {@code trunc} function</li>
  * </ul>
  *
- * @see https://www.postgresql.org/docs/current/functions-math.html
- *
  * @author Marco Belladelli
+ * @see <a href="https://www.postgresql.org/docs/current/functions-math.html">PostgreSQL documentation</a>
  */
-public class PostgreSQLLegacyTruncFunction extends AbstractSqmSelfRenderingFunctionDescriptor {
-	private boolean supportsTwoArgumentTrunc;
+public class PostgreSQLTruncRoundFunction extends AbstractSqmSelfRenderingFunctionDescriptor {
+	private final boolean supportsTwoArguments;
 
-	public PostgreSQLLegacyTruncFunction(boolean supportsTwoArgumentTrunc) {
+	public PostgreSQLTruncRoundFunction(String name, boolean supportsTwoArguments) {
 		super(
-				"trunc",
+				name,
 				new ArgumentTypesValidator( StandardArgumentsValidators.between( 1, 2 ), NUMERIC, INTEGER ),
 				StandardFunctionReturnTypeResolvers.useArgType( 1 ),
 				StandardFunctionArgumentTypeResolvers.invariant( NUMERIC, INTEGER )
 		);
-		this.supportsTwoArgumentTrunc = supportsTwoArgumentTrunc;
+		assert name.equals( "trunc" ) || name.equals( "round" ); // todo marco : remove ?
+		this.supportsTwoArguments = supportsTwoArguments;
 	}
 
 	@Override
@@ -60,11 +62,12 @@ public class PostgreSQLLegacyTruncFunction extends AbstractSqmSelfRenderingFunct
 			List<? extends SqlAstNode> arguments,
 			SqlAstTranslator<?> walker) {
 		final int numberOfArguments = arguments.size();
-		Expression firstArg = (Expression) arguments.get( 0 );
-		final JdbcType jdbcType = firstArg.getExpressionType().getJdbcMappings().get( 0 ).getJdbcType();
-		if ( numberOfArguments == 1 || supportsTwoArgumentTrunc && jdbcType.isDecimal() ) {
-			// use native trunc function
-			sqlAppender.appendSql( "trunc(" );
+		final Expression firstArg = (Expression) arguments.get( 0 );
+		if ( numberOfArguments == 1 || supportsTwoArguments && (firstArg instanceof Literal || // todo marco : tenere per literal ?
+				firstArg.getExpressionType().getJdbcMappings().get( 0 ).getJdbcType().isDecimal()) ) {
+			// use native two-argument function
+			sqlAppender.appendSql( getName() );
+			sqlAppender.appendSql( "(" );
 			firstArg.accept( walker );
 			if ( numberOfArguments > 1 ) {
 				sqlAppender.appendSql( ", " );
@@ -74,12 +77,21 @@ public class PostgreSQLLegacyTruncFunction extends AbstractSqmSelfRenderingFunct
 		}
 		else {
 			// workaround using floor
-			sqlAppender.appendSql( "sign(" );
-			firstArg.accept( walker );
-			sqlAppender.appendSql( ")*floor(abs(" );
-			firstArg.accept( walker );
-			sqlAppender.appendSql( ")*1e" );
-			arguments.get( 1 ).accept( walker );
+			if ( getName().equals( "trunc" ) ) {
+				sqlAppender.appendSql( "sign(" );
+				firstArg.accept( walker );
+				sqlAppender.appendSql( ")*floor(abs(" );
+				firstArg.accept( walker );
+				sqlAppender.appendSql( ")*1e" );
+				arguments.get( 1 ).accept( walker );
+			}
+			else {
+				sqlAppender.appendSql( "floor(" );
+				firstArg.accept( walker );
+				sqlAppender.appendSql( "*1e" );
+				arguments.get( 1 ).accept( walker );
+				sqlAppender.appendSql( "+0.5" );
+			}
 			sqlAppender.appendSql( ")/1e" );
 			arguments.get( 1 ).accept( walker );
 		}
