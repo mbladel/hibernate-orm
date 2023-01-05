@@ -398,6 +398,7 @@ public class CockroachDialect extends Dialect {
 		functionFactory.pi();
 		functionFactory.log();
 		functionFactory.log10_log();
+		functionFactory.round();
 
 		functionFactory.bitandorxornot_operator();
 		functionFactory.bitAndOr();
@@ -424,7 +425,7 @@ public class CockroachDialect extends Dialect {
 				"trunc",
 				new PostgreSQLTruncRoundFunction( "trunc", getVersion().isSameOrAfter( 22, 2 ) )
 		);
-		queryEngine.getSqmFunctionRegistry().registerAlternateKey( "trunc", "truncate" );
+		queryEngine.getSqmFunctionRegistry().registerAlternateKey( "truncate", "trunc" );
 	}
 
 	@Override

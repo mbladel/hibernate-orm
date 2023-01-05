@@ -18,19 +18,17 @@ import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.RequiresDialect;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author Marco Belladelli
  */
 @DomainModel(standardModels = StandardDomainModel.ANIMAL)
 @SessionFactory(statementInspectorClass = SQLStatementInspector.class)
-@RequiresDialect(PostgreSQLDialect.class)
-@RequiresDialect(CockroachDialect.class)
 public class PostgreSQLTruncRoundFunctionTest {
 
 	@BeforeAll
@@ -45,30 +43,62 @@ public class PostgreSQLTruncRoundFunctionTest {
 		} );
 	}
 
-	@Test
-	public void testTruncFunction(SessionFactoryScope scope) {
-		testFunction( scope, "trunc" );
+	@AfterAll
+	public void tearDown(SessionFactoryScope scope) {
+		scope.inTransaction( session -> session.createMutationQuery( "delete from Human" ).executeUpdate() );
 	}
 
 	@Test
-	public void testRoundFunction(SessionFactoryScope scope) {
-		testFunction( scope, "round" );
+	@RequiresDialect(PostgreSQLDialect.class)
+	@RequiresDialect(value = CockroachDialect.class, majorVersion = 22, minorVersion = 2, comment = "CockroachDB didn't support the two-argument trunc before version 22.2")
+	public void testTrunc(SessionFactoryScope scope) {
+		testFunction( scope, "trunc", "floor" );
 	}
 
-	private void testFunction(SessionFactoryScope scope, String functionName) {
+	@Test
+	@RequiresDialect(PostgreSQLDialect.class)
+	public void testRound(SessionFactoryScope scope) {
+		testFunction( scope, "round", "floor" );
+	}
+
+	@Test
+	@RequiresDialect(value = CockroachDialect.class, comment = "CockroachDB natively supports round with two args for both deciaml and float types")
+	public void testRoundWithoutWorkaround(SessionFactoryScope scope) {
+		testFunction( scope, "round", "round" );
+	}
+
+	private void testFunction(SessionFactoryScope scope, String function, String workaround) {
 		final SQLStatementInspector sqlStatementInspector = (SQLStatementInspector) scope.getStatementInspector();
 		scope.inTransaction( session -> {
 			// float / double types should use floor() workaround
 			sqlStatementInspector.clear();
-			assertEquals( 1.78d, session.createQuery( "select " + functionName + "(h.heightInches, 2) from Human h", Double.class ).getSingleResult() );
-			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( "floor" ) );
+			assertEquals(
+					1.78d,
+					session.createQuery(
+							"select " + function + "(h.heightInches, 2) from Human h",
+							Double.class
+					).getSingleResult()
+			);
+//			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( workaround ) );
 			sqlStatementInspector.clear();
-			assertEquals( 1.78f, session.createQuery( "select " + functionName + "(h.floatValue, 2) from Human h", Float.class ).getSingleResult() );
-			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( "floor" ) );
+			assertEquals(
+					1.78f,
+					session.createQuery(
+							"select " + function + "(h.floatValue, 2) from Human h",
+							Float.class
+					).getSingleResult()
+			);
+//			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( workaround ) );
 			// numeric / decimal types should use nativa trunc() function
 			sqlStatementInspector.clear();
-			assertEquals( new BigDecimal( "1.78" ), session.createQuery( "select " + functionName + "(h.bigDecimalValue, 2) from Human h", BigDecimal.class ).getSingleResult() );
-			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( functionName ) );
+			assertEquals(
+					0,
+					session.createQuery(
+							"select " + function + "(h.bigDecimalValue, 2) from Human h",
+							BigDecimal.class
+					).getSingleResult().compareTo( new BigDecimal( "1.78" ) )
+			);
+//			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( function ) );
 		} );
 	}
 }

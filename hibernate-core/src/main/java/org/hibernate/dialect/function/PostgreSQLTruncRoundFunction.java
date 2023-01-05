@@ -32,10 +32,10 @@ import static org.hibernate.query.sqm.produce.function.FunctionParameterType.NUM
  * </ul>
  * <p>
  * This custom function falls back to using {@code floor} as a workaround only when necessary,
- * e.g. when:
+ * e.g. when there are 2 arguments to the function and either:
  * <ul>
- *     <li>There are 2 arguments to the function</li>
  *     <li>The first argument is not of type {@code numeric}</li>
+ *     or
  *     <li>The dialect doesn't support the two-argument {@code trunc} function</li>
  * </ul>
  *
@@ -52,7 +52,6 @@ public class PostgreSQLTruncRoundFunction extends AbstractSqmSelfRenderingFuncti
 				StandardFunctionReturnTypeResolvers.useArgType( 1 ),
 				StandardFunctionArgumentTypeResolvers.invariant( NUMERIC, INTEGER )
 		);
-		assert name.equals( "trunc" ) || name.equals( "round" ); // todo marco : remove ?
 		this.supportsTwoArguments = supportsTwoArguments;
 	}
 
@@ -63,8 +62,8 @@ public class PostgreSQLTruncRoundFunction extends AbstractSqmSelfRenderingFuncti
 			SqlAstTranslator<?> walker) {
 		final int numberOfArguments = arguments.size();
 		final Expression firstArg = (Expression) arguments.get( 0 );
-		if ( numberOfArguments == 1 || supportsTwoArguments && (firstArg instanceof Literal || // todo marco : tenere per literal ?
-				firstArg.getExpressionType().getJdbcMappings().get( 0 ).getJdbcType().isDecimal()) ) {
+		final JdbcType jdbcType = firstArg.getExpressionType().getJdbcMappings().get( 0 ).getJdbcType();
+		if ( numberOfArguments == 1 || supportsTwoArguments && jdbcType.isDecimal() ) {
 			// use native two-argument function
 			sqlAppender.appendSql( getName() );
 			sqlAppender.appendSql( "(" );
