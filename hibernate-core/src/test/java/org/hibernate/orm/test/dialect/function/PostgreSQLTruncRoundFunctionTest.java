@@ -23,6 +23,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author Marco Belladelli
@@ -79,7 +80,7 @@ public class PostgreSQLTruncRoundFunctionTest {
 							Double.class
 					).getSingleResult()
 			);
-//			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( workaround ) );
+			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( workaround ) );
 			sqlStatementInspector.clear();
 			assertEquals(
 					1.78f,
@@ -88,7 +89,7 @@ public class PostgreSQLTruncRoundFunctionTest {
 							Float.class
 					).getSingleResult()
 			);
-//			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( workaround ) );
+			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( workaround ) );
 			// numeric / decimal types should use nativa trunc() function
 			sqlStatementInspector.clear();
 			assertEquals(
@@ -98,7 +99,7 @@ public class PostgreSQLTruncRoundFunctionTest {
 							BigDecimal.class
 					).getSingleResult().compareTo( new BigDecimal( "1.78" ) )
 			);
-//			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( function ) );
+			assertTrue( sqlStatementInspector.getSqlQueries().get( 0 ).contains( function ) );
 		} );
 	}
 }
