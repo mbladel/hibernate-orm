@@ -36,6 +36,7 @@ import org.hibernate.sql.results.graph.collection.CollectionInitializer;
 import org.hibernate.sql.results.graph.entity.EntityInitializer;
 import org.hibernate.sql.results.internal.NullValueAssembler;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
+import org.hibernate.type.descriptor.java.PrimitiveCharacterArrayJavaType;
 
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
@@ -309,7 +310,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 				|| EntityIdentifierMapping.ROLE_LOCAL_NAME.equals( embedded.getFetchableName() );
 		for ( int i = 0; i < assemblers.size(); i++ ) {
 			final DomainResultAssembler<?> assembler = assemblers.get( i );
-			final Object contributorValue = assembler.assemble(
+			Object contributorValue = assembler.assemble(
 					processingState,
 					processingState.getJdbcValuesSourceProcessingState().getProcessingOptions()
 			);
@@ -318,7 +319,14 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 				rowState[i] = null;
 			}
 			else {
-				rowState[i] = contributorValue;
+				// need to specially handle String attributes being assigned char[] values
+				if ( String.class.isAssignableFrom( assembler.getAssembledJavaType().getJavaTypeClass() )
+						&& contributorValue instanceof char[] ) {
+					rowState[i] = new String( (char[]) contributorValue );
+				}
+				else {
+					rowState[i] = contributorValue;
+				}
 			}
 			if ( contributorValue != null ) {
 				stateAllNull = false;
