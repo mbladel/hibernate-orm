@@ -6,134 +6,115 @@
  */
 package org.hibernate.internal.util.collections;
 
+import java.lang.reflect.Array;
 import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Iterator;
+import java.util.Arrays;
+import java.util.NoSuchElementException;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
  * A general-purpose stack impl supporting null values.
+ * <p>
+ * Most of the implementation was inspired by {@link ArrayDeque} methods
+ * and follows the same logic.
  *
  * @param <T> The type of things stored in the stack
  *
  * @author Steve Ebersole
  * @author Sanne Grinovero
+ * @author Marco Belladelli
  */
 public final class StandardStack<T> implements Stack<T> {
+	private T[] elements;
+	private int head = 0;
+	private int tail = 0;
 
-	private ArrayDeque<T> internalStack;
-	private static final Object NULL_TOKEN = new Object();
-
-	public StandardStack() {
+	@SuppressWarnings("unchecked")
+	public StandardStack(Class<T> type) {
+		elements = (T[]) Array.newInstance( type, 8 );
 	}
 
-	public StandardStack(T initial) {
-		stackInstanceExpected().addFirst( initial );
+	public StandardStack(Class<T> type, T initial) {
+		this( type );
+		push( initial );
 	}
 
 	@Override
-	public void push(T newCurrent) {
-		T toStore = newCurrent;
-		if ( newCurrent == null ) {
-			toStore = (T) NULL_TOKEN;
+	public void push(T e) {
+		head = dec( head );
+		elements[head] = e;
+		if ( head == tail ) {
+			grow();
 		}
-		stackInstanceExpected().addFirst( toStore );
-	}
-
-	private Deque<T> stackInstanceExpected() {
-		if ( internalStack == null ) {
-			//"7" picked to use 8, but skipping the odd initialCapacity method
-			internalStack = new ArrayDeque<>( 7 );
-		}
-		return internalStack;
 	}
 
 	@Override
 	public T pop() {
-		return convert( stackInstanceExpected().removeFirst() );
-	}
-
-	private T convert(final Object internalStoredObject) {
-		if ( internalStoredObject == NULL_TOKEN ) {
-			return null;
+		if ( isEmpty() ) {
+			throw new NoSuchElementException();
 		}
-		return (T) internalStoredObject;
+		T e = elements[head];
+		elements[head] = null;
+		head = inc( head );
+		return e;
 	}
 
 	@Override
 	public T getCurrent() {
-		if ( internalStack == null ) {
-			return null;
-		}
-		return convert( internalStack.peekFirst() );
+		return elements[head];
 	}
 
 	@Override
 	public T getRoot() {
-		if ( internalStack == null ) {
-			return null;
-		}
-		return convert( internalStack.peekLast() );
+		return elements[dec( tail )];
 	}
 
 	@Override
 	public int depth() {
-		if ( internalStack == null ) {
-			return 0;
+		int length = tail - head;
+		if ( length < 0 ) {
+			length += elements.length;
 		}
-		return internalStack.size();
+		return length;
 	}
 
 	@Override
 	public boolean isEmpty() {
-		if ( internalStack == null ) {
-			return true;
-		}
-		return internalStack.isEmpty();
+		return head == tail;
 	}
 
 	@Override
 	public void clear() {
-		if ( internalStack != null ) {
-			internalStack.clear();
+		circularClear( elements, head, tail );
+		head = tail = 0;
+	}
+
+	private static void circularClear(Object[] es, int i, int end) {
+		for ( int to = ( i <= end ) ? end : es.length; ; i = 0, to = end ) {
+			for ( ; i < to; i++ ) {
+				es[i] = null;
+			}
+			if ( to == end ) {
+				break;
+			}
 		}
 	}
 
 	@Override
 	public void visitRootFirst(Consumer<T> action) {
-		if ( internalStack == null ) {
-			return;
-		}
-		final Iterator<T> iterator = internalStack.descendingIterator();
-		while ( iterator.hasNext() ) {
-			action.accept( iterator.next() );
+		for ( int i = dec( tail ), remaining = depth();
+				remaining > 0; i = dec( i ), remaining-- ) {
+			action.accept( elements[i] );
 		}
 	}
 
 	@Override
 	public <X> X findCurrentFirst(Function<T, X> function) {
-		if ( internalStack == null ) {
-			return null;
-		}
-		for (T t : internalStack) {
-			final X result = function.apply(t);
-			if (result != null) {
-				return result;
-			}
-		}
-
-		return null;
-	}
-
-	@Override
-	public <X,Y> X findCurrentFirstWithParameter(Y parameter, BiFunction<T, Y, X> biFunction) {
-		if ( internalStack == null ) {
-			return null;
-		}
-		for ( T t : internalStack ) {
-			final X result = biFunction.apply( t, parameter );
+		for ( int i = head, remaining = depth();
+				remaining > 0; i = inc( i ), remaining-- ) {
+			final X result = function.apply( elements[i] );
 			if ( result != null ) {
 				return result;
 			}
@@ -141,4 +122,43 @@ public final class StandardStack<T> implements Stack<T> {
 		return null;
 	}
 
+	@Override
+	public <X, Y> X findCurrentFirstWithParameter(Y parameter, BiFunction<T, Y, X> biFunction) {
+		for ( int i = head, remaining = depth();
+				remaining > 0; i = inc( i ), remaining-- ) {
+			final X result = biFunction.apply( elements[i], parameter );
+			if ( result != null ) {
+				return result;
+			}
+		}
+		return null;
+	}
+
+	private int inc(int i) {
+		if ( ++i >= elements.length ) {
+			i = 0;
+		}
+		return i;
+	}
+
+	private int dec(int i) {
+		if ( --i < 0 ) {
+			i = elements.length - 1;
+		}
+		return i;
+	}
+
+	private void grow() {
+		final int oldCapacity = elements.length;
+		int jump = ( oldCapacity < 64 ) ? ( oldCapacity + 2 ) : ( oldCapacity >> 1 );
+		int newCapacity = oldCapacity + jump;
+		elements = Arrays.copyOf( elements, newCapacity );
+		if ( tail < head || ( tail == head && elements[head] != null ) ) {
+			int newSpace = newCapacity - oldCapacity;
+			System.arraycopy( elements, head, elements, head + newSpace, oldCapacity - head );
+			for ( int i = head, to = ( head += newSpace ); i < to; i++ ) {
+				elements[i] = null;
+			}
+		}
+	}
 }
