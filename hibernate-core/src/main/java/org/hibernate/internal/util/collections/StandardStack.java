@@ -7,7 +7,6 @@
 package org.hibernate.internal.util.collections;
 
 import java.lang.reflect.Array;
-import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.function.BiFunction;
@@ -16,9 +15,6 @@ import java.util.function.Function;
 
 /**
  * A general-purpose stack impl supporting null values.
- * <p>
- * Most of the implementation was inspired by {@link ArrayDeque} methods
- * and follows the same logic.
  *
  * @param <T> The type of things stored in the stack
  *
@@ -28,12 +24,12 @@ import java.util.function.Function;
  */
 public final class StandardStack<T> implements Stack<T> {
 	private T[] elements;
-	private int head = 0;
-	private int tail = 0;
+	private int top = 0;
 
-	@SuppressWarnings("unchecked")
+	private Class<T> type;
+
 	public StandardStack(Class<T> type) {
-		elements = (T[]) Array.newInstance( type, 8 );
+		this.type = type;
 	}
 
 	public StandardStack(Class<T> type, T initial) {
@@ -41,13 +37,21 @@ public final class StandardStack<T> implements Stack<T> {
 		push( initial );
 	}
 
+	@SuppressWarnings("unchecked")
+	private void init() {
+		elements = (T[]) Array.newInstance( type, 8 );
+		type = null; // don't need this anymore
+	}
+
 	@Override
 	public void push(T e) {
-		head = dec( head );
-		elements[head] = e;
-		if ( head == tail ) {
+		if ( elements == null ) {
+			init();
+		}
+		if ( top == elements.length ) {
 			grow();
 		}
+		elements[top++] = e;
 	}
 
 	@Override
@@ -55,65 +59,55 @@ public final class StandardStack<T> implements Stack<T> {
 		if ( isEmpty() ) {
 			throw new NoSuchElementException();
 		}
-		T e = elements[head];
-		elements[head] = null;
-		head = inc( head );
+		T e = elements[--top];
+		elements[top] = null;
 		return e;
 	}
 
 	@Override
 	public T getCurrent() {
-		return elements[head];
+		if ( isEmpty() ) {
+			return null;
+		}
+		return elements[top - 1];
 	}
 
 	@Override
 	public T getRoot() {
-		return elements[dec( tail )];
+		if ( isEmpty() ) {
+			return null;
+		}
+		return elements[0];
 	}
 
 	@Override
 	public int depth() {
-		int length = tail - head;
-		if ( length < 0 ) {
-			length += elements.length;
-		}
-		return length;
+		return top;
 	}
 
 	@Override
 	public boolean isEmpty() {
-		return head == tail;
+		return top == 0;
 	}
 
 	@Override
 	public void clear() {
-		circularClear( elements, head, tail );
-		head = tail = 0;
-	}
-
-	private static void circularClear(Object[] es, int i, int end) {
-		for ( int to = ( i <= end ) ? end : es.length; ; i = 0, to = end ) {
-			for ( ; i < to; i++ ) {
-				es[i] = null;
-			}
-			if ( to == end ) {
-				break;
-			}
+		for ( int i = 0; i < top; i++ ) {
+			elements[i] = null;
 		}
+		top = 0;
 	}
 
 	@Override
 	public void visitRootFirst(Consumer<T> action) {
-		for ( int i = dec( tail ), remaining = depth();
-				remaining > 0; i = dec( i ), remaining-- ) {
+		for ( int i = 0; i < top; i++ ) {
 			action.accept( elements[i] );
 		}
 	}
 
 	@Override
 	public <X> X findCurrentFirst(Function<T, X> function) {
-		for ( int i = head, remaining = depth();
-				remaining > 0; i = inc( i ), remaining-- ) {
+		for ( int i = top - 1; i >= 0; i-- ) {
 			final X result = function.apply( elements[i] );
 			if ( result != null ) {
 				return result;
@@ -124,8 +118,7 @@ public final class StandardStack<T> implements Stack<T> {
 
 	@Override
 	public <X, Y> X findCurrentFirstWithParameter(Y parameter, BiFunction<T, Y, X> biFunction) {
-		for ( int i = head, remaining = depth();
-				remaining > 0; i = inc( i ), remaining-- ) {
+		for ( int i = top - 1; i >= 0; i-- ) {
 			final X result = biFunction.apply( elements[i], parameter );
 			if ( result != null ) {
 				return result;
@@ -134,31 +127,10 @@ public final class StandardStack<T> implements Stack<T> {
 		return null;
 	}
 
-	private int inc(int i) {
-		if ( ++i >= elements.length ) {
-			i = 0;
-		}
-		return i;
-	}
-
-	private int dec(int i) {
-		if ( --i < 0 ) {
-			i = elements.length - 1;
-		}
-		return i;
-	}
-
 	private void grow() {
 		final int oldCapacity = elements.length;
 		int jump = ( oldCapacity < 64 ) ? ( oldCapacity + 2 ) : ( oldCapacity >> 1 );
 		int newCapacity = oldCapacity + jump;
 		elements = Arrays.copyOf( elements, newCapacity );
-		if ( tail < head || ( tail == head && elements[head] != null ) ) {
-			int newSpace = newCapacity - oldCapacity;
-			System.arraycopy( elements, head, elements, head + newSpace, oldCapacity - head );
-			for ( int i = head, to = ( head += newSpace ); i < to; i++ ) {
-				elements[i] = null;
-			}
-		}
 	}
 }

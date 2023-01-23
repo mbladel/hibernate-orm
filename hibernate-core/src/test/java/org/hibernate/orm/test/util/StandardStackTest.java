@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -34,31 +35,19 @@ public class StandardStackTest {
 	}
 
 	@Test
-	public void testClear() {
-		final Stack<Integer> stack = allocateStack( 42 );
-		assertEquals( 42, stack.depth() );
-		assertFalse( stack.isEmpty() );
-		stack.clear();
-		assertEquals( 0, stack.depth() );
-		assertTrue( stack.isEmpty() );
-	}
-
-	@Test
-	public void testPopOnEmptyStackShouldThrow() {
-		final Stack<Integer> emptyStack = allocateStack( 0 );
-		assertTrue( emptyStack.isEmpty() );
-		assertThrows( NoSuchElementException.class, emptyStack::pop );
-		final Stack<Integer> clearedStack = allocateStack( 1 );
-		clearedStack.pop();
-		assertTrue( clearedStack.isEmpty() );
-		assertThrows( NoSuchElementException.class, clearedStack::pop );
+	public void testNullValues() {
+		final Stack<Integer> stack = allocateStack( 1 );
+		stack.push( null );
+		assertNull( stack.getCurrent() );
+		assertNull( stack.pop() );
+		assertNotNull( stack.getCurrent() );
 	}
 
 	@Test
 	public void testVisitRootFirst() {
-		final Stack<Integer> clearedStack = allocateStack( 5 );
+		final Stack<Integer> stack = allocateStack( 5 );
 		final int[] i = { 0 };
-		clearedStack.visitRootFirst( value -> {
+		stack.visitRootFirst( value -> {
 			assertEquals( i[0], value );
 			i[0]++;
 		} );
@@ -66,21 +55,97 @@ public class StandardStackTest {
 
 	@Test
 	public void testFindCurrentFirst() {
-		final Stack<Integer> clearedStack = allocateStack( 5 );
-		final Integer result = clearedStack.findCurrentFirst( value -> value == 1 ? value : null );
+		final Stack<Integer> stack = allocateStack( 5 );
+		final Integer result = stack.findCurrentFirst( value -> value == 1 ? value : null );
 		assertEquals( 1, result );
-		final Integer nullResult = clearedStack.findCurrentFirst( value -> value == 42 ? value : null );
+		final Integer nullResult = stack.findCurrentFirst( value -> value == 42 ? value : null );
 		assertNull( nullResult );
 	}
 
 	@Test
 	public void testFindCurrentFirstWithParameter() {
-		final Stack<Integer> clearedStack = allocateStack( 5 );
-		final Integer result = clearedStack.findCurrentFirstWithParameter( 1, this::returnIfEquals );
+		final Stack<Integer> stack = allocateStack( 5 );
+		final Integer result = stack.findCurrentFirstWithParameter( 1, this::returnIfEquals );
 		assertEquals( 1, result );
-		final Integer nullResult = clearedStack.findCurrentFirstWithParameter( 42, this::returnIfEquals );
+		final Integer nullResult = stack.findCurrentFirstWithParameter( 42, this::returnIfEquals );
 		assertNull( nullResult );
 	}
+
+	// empty stack tests
+
+	@Test
+	public void testEmptyStackAccess() {
+		final Stack<Integer> emptyStack = allocateStack( 0 );
+		assertTrue( emptyStack.isEmpty() );
+		assertNull( emptyStack.getRoot() );
+		assertNull( emptyStack.getCurrent() );
+		assertEquals( 0, emptyStack.depth() );
+		assertThrows( NoSuchElementException.class, emptyStack::pop );
+	}
+
+	@Test
+	public void testVisitRootFirstEmpty() {
+		final Stack<Integer> emptyStack = allocateStack( 0 );
+		final int[] i = { 0 };
+		emptyStack.visitRootFirst( value -> i[0]++ );
+		assertEquals( 0, i[0] ); // lambda function should never have been invoked
+	}
+
+	@Test
+	public void testFindCurrentFirstEmpty() {
+		final Stack<Integer> emptyStack = allocateStack( 0 );
+		final Integer result = emptyStack.findCurrentFirst( value -> value );
+		assertNull( result );
+	}
+
+	@Test
+	public void testFindCurrentFirstWithParameterEmpty() {
+		final Stack<Integer> emptyStack = allocateStack( 0 );
+		final Integer result = emptyStack.findCurrentFirstWithParameter( 1, (value, param) -> value );
+		assertNull( result );
+	}
+
+	// cleared stack tests
+
+	@Test
+	public void testClear() {
+		final Stack<Integer> clearedStack = allocateStack( 42 );
+		assertEquals( 42, clearedStack.depth() );
+		assertFalse( clearedStack.isEmpty() );
+		clearedStack.clear();
+		assertTrue( clearedStack.isEmpty() );
+		assertNull( clearedStack.getRoot() );
+		assertNull( clearedStack.getCurrent() );
+		assertEquals( 0, clearedStack.depth() );
+		assertThrows( NoSuchElementException.class, clearedStack::pop );
+	}
+
+	@Test
+	public void testVisitRootFirstCleared() {
+		final Stack<Integer> clearedStack = allocateStack( 5 );
+		clearedStack.clear();
+		final int[] i = { 0 };
+		clearedStack.visitRootFirst( value -> i[0]++ );
+		assertEquals( 0, i[0] ); // lambda function should never have been run
+	}
+
+	@Test
+	public void testFindCurrentFirstCleared() {
+		final Stack<Integer> clearedStack = allocateStack( 5 );
+		clearedStack.clear();
+		final Integer result = clearedStack.findCurrentFirst( value -> value );
+		assertNull( result );
+	}
+
+	@Test
+	public void testFindCurrentFirstWithParameterCleared() {
+		final Stack<Integer> clearedStack = allocateStack( 5 );
+		clearedStack.clear();
+		final Integer result = clearedStack.findCurrentFirstWithParameter( 1, (value, param) -> value );
+		assertNull( result );
+	}
+
+	// utility functions
 
 	private Stack<Integer> allocateStack(int size) {
 		final Stack<Integer> stack = new StandardStack<>( Integer.class );
