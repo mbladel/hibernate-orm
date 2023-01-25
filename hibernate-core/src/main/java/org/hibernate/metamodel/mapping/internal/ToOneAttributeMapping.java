@@ -1192,6 +1192,7 @@ public class ToOneAttributeMapping
 					fetchParent,
 					creationState
 			);
+
 			if ( fetchTiming == FetchTiming.IMMEDIATE ) {
 				return new EntityFetchSelectImpl(
 						fetchParent,

@@ -42,6 +42,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * @author Marco Belladelli
@@ -103,7 +104,8 @@ public class TreatPathTest {
 	public void testTreatPluralValue(EntityManagerFactoryScope scope) {
 		scope.inTransaction( entityManager -> {
 			try {
-				testCriteriaTreat( entityManager, "synonyms", List.of( "ciao" ) );
+				testCriteriaTreat( entityManager, "synonyms", "ciao", true );
+				fail( "exception expected" );
 			}
 			catch (Exception e) {
 				assertEquals( UnsupportedOperationException.class, e.getClass() );
@@ -129,13 +131,17 @@ public class TreatPathTest {
 	}
 
 	private void testCriteriaTreat(EntityManager entityManager, String property, Object value) {
-		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-		CriteriaQuery<Linkage> criteria = cb.createQuery( Linkage.class );
-		Root<Linkage> root = criteria.from( Linkage.class );
-		Path<LocalTerm> asLocalTerm = cb.treat( root.get( "term" ), LocalTerm.class );
-		Predicate predicate;
-		if ( value instanceof Collection<?> ) {
-			predicate = asLocalTerm.get( property ).in( value );
+		testCriteriaTreat( entityManager, property, value, false );
+	}
+
+	private void testCriteriaTreat(EntityManager entityManager, String property, Object value, boolean useIn) {
+		final CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		final CriteriaQuery<Linkage> criteria = cb.createQuery( Linkage.class );
+		final Root<Linkage> root = criteria.from( Linkage.class );
+		final Path<LocalTerm> asLocalTerm = cb.treat( root.get( "term" ), LocalTerm.class );
+		final Predicate predicate;
+		if ( useIn ) {
+			predicate = cb.literal( value ).in( asLocalTerm.get( property ) );
 		}
 		else {
 			predicate = cb.equal( asLocalTerm.get( property ), value );
