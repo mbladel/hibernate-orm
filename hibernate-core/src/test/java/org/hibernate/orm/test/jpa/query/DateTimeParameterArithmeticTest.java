@@ -1,8 +1,8 @@
 package org.hibernate.orm.test.jpa.query;
 
 import java.time.LocalDateTime;
+import java.util.Calendar;
 
-import org.hibernate.testing.orm.domain.gambit.EntityOfBasics;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -13,28 +13,42 @@ import org.junit.jupiter.api.Test;
  * @author Marco Belladelli
  */
 @SessionFactory
-@DomainModel(annotatedClasses = EntityOfBasics.class)
+@DomainModel
 public class DateTimeParameterArithmeticTest {
 	@Test
-	public void testSumAttributeHql(SessionFactoryScope scope) {
+	public void testSum(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			session.createQuery( "select eob.theLocalDateTime + 1 day from EntityOfBasics eob" )
-					.getResultList();
+			java.util.Date utilDate = new java.util.Date();
+			session.createQuery( "select :d1 + 1 day" )
+					.setParameter( "d1", utilDate )
+					.getSingleResult();
+			session.createQuery( "select :d2 + 1 day" )
+					.setParameter( "d2", new java.sql.Date( utilDate.getTime() ) )
+					.getSingleResult();
+			session.createQuery( "select :d3 + 1 day" )
+					.setParameter( "d3", Calendar.getInstance() )
+					.getSingleResult();
+			session.createQuery( "select :d4 + 1 day" )
+					.setParameter( "d4", LocalDateTime.now() )
+					.getSingleResult();
 		} );
 	}
 
 	@Test
-	public void testSumLiteralHql(SessionFactoryScope scope) {
+	public void testDiff(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-//			final java.util.Date javaUtilDate = new java.util.Date();
-//			session.createQuery( "select :dt + 1 day" )
-//					.setParameter( "dt", javaUtilDate )
-//					.getSingleResult();
-//			session.createQuery( "select :dt + 1 day" )
-//					.setParameter( "dt", new java.sql.Date( javaUtilDate.getTime() ) )
-//					.getSingleResult();
-			session.createQuery( "select :dt + 1 day" )
-					.setParameter( "dt", LocalDateTime.now() )
+			java.util.Date utilDate = new java.util.Date();
+			session.createQuery( "select :d1 - 1 day" )
+					.setParameter( "d1", utilDate )
+					.getSingleResult();
+			session.createQuery( "select :d2 - 1 day" )
+					.setParameter( "d2", new java.sql.Date( utilDate.getTime() ) )
+					.getSingleResult();
+			session.createQuery( "select :d3 - 1 day" )
+					.setParameter( "d3", Calendar.getInstance() )
+					.getSingleResult();
+			session.createQuery( "select :d4 - 1 day" )
+					.setParameter( "d4", LocalDateTime.now() )
 					.getSingleResult();
 		} );
 	}

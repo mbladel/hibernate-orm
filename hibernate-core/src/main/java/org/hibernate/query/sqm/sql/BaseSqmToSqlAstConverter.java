@@ -406,6 +406,7 @@ import jakarta.persistence.TemporalType;
 import jakarta.persistence.metamodel.SingularAttribute;
 import jakarta.persistence.metamodel.Type;
 
+import static java.util.Arrays.asList;
 import static org.hibernate.generator.EventType.INSERT;
 import static org.hibernate.internal.util.NullnessHelper.coalesceSuppliedValues;
 import static org.hibernate.query.sqm.BinaryArithmeticOperator.ADD;
@@ -5816,8 +5817,13 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 
 		boolean durationToRight = isDuration( rightOperand.getNodeType() );
 		TypeConfiguration typeConfiguration = getCreationContext().getMappingMetamodel().getTypeConfiguration();
-		TemporalType temporalTypeToLeft = typeConfiguration.getSqlTemporalType( leftOperand.getNodeType() );
-		TemporalType temporalTypeToRight = typeConfiguration.getSqlTemporalType( rightOperand.getNodeType() );
+
+//		TemporalType temporalTypeToLeft = typeConfiguration.getSqlTemporalType( leftOperand.getNodeType() );
+//		TemporalType temporalTypeToRight = typeConfiguration.getSqlTemporalType( rightOperand.getNodeType() );
+
+		final TemporalType temporalTypeToLeft = getTemporalTypeFromOperand( leftOperand, typeConfiguration );
+		final TemporalType temporalTypeToRight = getTemporalTypeFromOperand( rightOperand, typeConfiguration );
+
 		boolean temporalTypeSomewhereToLeft = adjustedTimestamp != null || temporalTypeToLeft != null;
 
 		if ( temporalTypeToLeft != null && durationToRight ) {
@@ -5862,6 +5868,17 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				);
 			}
 		}
+	}
+
+	private TemporalType getTemporalTypeFromOperand(SqmExpression<?> operand, TypeConfiguration typeConfiguration) {
+		final SqmExpressible<?> expressibleType = operand.getNodeType();
+		if ( operand instanceof SqmParameter ) {
+			final QueryParameterImplementor<?> queryParameter = domainParameterXref.getQueryParameter( (SqmParameter<?>) operand );
+			final QueryParameterBinding<?> binding = domainParameterBindings.getBinding( queryParameter );
+			// check the parameter binding type for temporal types
+			return typeConfiguration.getSqlTemporalType( (SqmExpressible<?>) binding.getBindType() );
+		}
+		return typeConfiguration.getSqlTemporalType( expressibleType );
 	}
 
 	private BasicValuedMapping getExpressionType(SqmBinaryArithmetic<?> expression) {
@@ -5919,8 +5936,14 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 
 				Expression timestamp = adjustedTimestamp;
 				SqmExpressible<?> timestampType = adjustedTimestampType;
+
 				adjustedTimestamp = toSqlExpression( lhs.accept( this ) );
-				JdbcMappingContainer type = adjustedTimestamp.getExpressionType();
+
+				if ( adjustedTimestamp instanceof SqmParameterInterpretation ) {
+					 adjustedTimestamp = addCastToParameterExpression( adjustedTimestamp );
+				}
+
+				final JdbcMappingContainer type = adjustedTimestamp.getExpressionType();
 				if ( type instanceof SqmExpressible) {
 					adjustedTimestampType = (SqmExpressible<?>) type;
 				}
@@ -6128,6 +6151,23 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			adjustmentScale = scale;
 			negativeAdjustment = negate;
 		}
+	}
+
+	private Expression addCastToParameterExpression(Expression expression) {
+		final JdbcMappingContainer expressionType = expression.getExpressionType();
+		if ( expressionType instanceof BasicType ) {
+			final BasicType<?> basicType = (BasicType<?>) expressionType;
+			final AbstractSqmSelfRenderingFunctionDescriptor functionDescriptor = resolveFunction( "cast" );
+			return new SelfRenderingAggregateFunctionSqlAstExpression(
+					functionDescriptor.getName(),
+					functionDescriptor,
+					Arrays.asList( adjustedTimestamp, new CastTarget( basicType ) ),
+					null,
+					basicType,
+					basicType
+			);
+		}
+		return expression;
 	}
 
 	Expression applyScale(Expression magnitude) {

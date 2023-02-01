@@ -6,6 +6,8 @@
  */
 package org.hibernate.query.sqm.tree.expression;
 
+import java.time.Duration;
+
 import org.hibernate.metamodel.model.domain.JpaMetamodel;
 import org.hibernate.query.sqm.BinaryArithmeticOperator;
 import org.hibernate.query.sqm.NodeBuilder;
@@ -42,7 +44,10 @@ public class SqmBinaryArithmetic<T> extends AbstractSqmExpression<T> implements 
 		this.operator = operator;
 		this.rhsOperand = rhsOperand;
 
-		this.lhsOperand.applyInferableType( rhsOperand.getNodeType() );
+		SqmExpressible<?> rhsType = rhsOperand.getNodeType();
+		if ( rhsType == null || !Duration.class.isAssignableFrom( rhsType.getBindableJavaType() ) ) {
+			this.lhsOperand.applyInferableType( rhsType );
+		}
 		this.rhsOperand.applyInferableType( lhsOperand.getNodeType() );
 	}
 
