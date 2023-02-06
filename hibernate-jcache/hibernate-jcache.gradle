@@ -8,6 +8,7 @@ dependencies {
     api libs.jcache
 
     testImplementation project( ':hibernate-testing' )
+    testImplementation project( path: ':hibernate-core', configuration: 'tests' )
 
     testRuntimeOnly(libs.ehcache3) {
         capabilities {
