@@ -1473,6 +1473,7 @@ datetimeField
 	| MINUTE
 	| SECOND
 	| NANOSECOND
+	| EPOCH
 	;
 
 dayField

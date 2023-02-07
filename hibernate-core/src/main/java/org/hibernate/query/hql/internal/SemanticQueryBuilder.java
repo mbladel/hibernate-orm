@@ -233,6 +233,7 @@ import static org.hibernate.query.sqm.TemporalUnit.DATE;
 import static org.hibernate.query.sqm.TemporalUnit.DAY_OF_MONTH;
 import static org.hibernate.query.sqm.TemporalUnit.DAY_OF_WEEK;
 import static org.hibernate.query.sqm.TemporalUnit.DAY_OF_YEAR;
+import static org.hibernate.query.sqm.TemporalUnit.EPOCH;
 import static org.hibernate.query.sqm.TemporalUnit.NANOSECOND;
 import static org.hibernate.query.sqm.TemporalUnit.OFFSET;
 import static org.hibernate.query.sqm.TemporalUnit.TIME;
@@ -4197,6 +4198,12 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 				return new SqmExtractUnit<>(
 						TemporalUnit.QUARTER,
 						resolveExpressibleTypeBasic( Integer.class ),
+						nodeBuilder
+				);
+			case HqlParser.EPOCH:
+				return new SqmExtractUnit<>(
+						EPOCH,
+						resolveExpressibleTypeBasic( Long.class ),
 						nodeBuilder
 				);
 		}

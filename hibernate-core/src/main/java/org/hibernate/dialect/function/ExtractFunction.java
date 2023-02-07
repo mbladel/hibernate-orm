@@ -33,6 +33,7 @@ import org.hibernate.usertype.internal.AbstractTimeZoneStorageCompositeUserType;
 
 import java.time.ZoneOffset;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -90,8 +91,11 @@ public class ExtractFunction
 
 		TemporalUnit unit = field.getUnit();
 		switch ( unit ) {
+			case EPOCH:
+//				return extractEpoch( expression, queryEngine, typeConfiguration );
+				return extractFromSeconds( expression, queryEngine, typeConfiguration, 1e3f );
 			case NANOSECOND:
-				return extractNanoseconds( expression, queryEngine, typeConfiguration );
+				return extractFromSeconds( expression, queryEngine, typeConfiguration, 1e9f );
 			case NATIVE:
 				throw new SemanticException("can't extract() the field TemporalUnit.NATIVE");
 			case OFFSET:
@@ -247,16 +251,44 @@ public class ExtractFunction
 				);
 	}
 
-	private SelfRenderingSqmFunction<Long> extractNanoseconds(
+	private SelfRenderingSqmFunction<Long> extractEpoch(
 			SqmExpression<?> expressionToExtract,
 			QueryEngine queryEngine,
 			TypeConfiguration typeConfiguration) {
 		final NodeBuilder builder = expressionToExtract.nodeBuilder();
 
+		final BasicType<Float> floatType = typeConfiguration.getBasicTypeForJavaType( Float.class );
+		final BasicType<Date> dateType = typeConfiguration.getBasicTypeForJavaType( Date.class );
+
+
+		final SqmLiteral<Date> epochStart = new SqmLiteral<>( new Date( 0L ), dateType, builder );
+
+		final SqmExtractUnit<Float> extractSeconds = new SqmExtractUnit<>( SECOND, floatType, builder );
+		SelfRenderingSqmFunction<?> epochSeconds = generateSqmExpression(
+				asList( extractSeconds, epochStart ),
+				floatType,
+				queryEngine,
+				typeConfiguration
+		);
+
+		return toLong(
+				epochSeconds,
+				queryEngine,
+				typeConfiguration
+		);
+	}
+
+	private SelfRenderingSqmFunction<Long> extractFromSeconds(
+			SqmExpression<?> expressionToExtract,
+			QueryEngine queryEngine,
+			TypeConfiguration typeConfiguration,
+			float multiplicationFactor) {
+		final NodeBuilder builder = expressionToExtract.nodeBuilder();
+
 		final BasicType<Float> floatType = typeConfiguration.getBasicTypeForJavaType(Float.class);
 
 		final SqmExtractUnit<Float> extractSeconds = new SqmExtractUnit<>( SECOND, floatType, builder );
-		final SqmLiteral<Float> billion = new SqmLiteral<>( 1e9f, floatType, builder );
+		final SqmLiteral<Float> billion = new SqmLiteral<>( multiplicationFactor, floatType, builder );
 		return toLong(
 				new SqmBinaryArithmetic<>(
 						MULTIPLY,

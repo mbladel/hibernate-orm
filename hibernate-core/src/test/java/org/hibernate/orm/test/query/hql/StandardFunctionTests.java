@@ -821,6 +821,12 @@ public class StandardFunctionTests {
 									.get( 0 ),
 							instanceOf( LocalTime.class )
 					);
+					assertThat(
+							session.createQuery( "select extract(epoch from local_datetime) from EntityOfBasics" )
+									.getResultList()
+									.get( 0 ),
+							instanceOf( Long.class )
+					);
 				}
 		);
 	}
