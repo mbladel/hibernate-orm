@@ -40,10 +40,11 @@ import jakarta.persistence.Version;
 		annotatedClasses = {
 				NonStrictReadWriteCacheTest.Person.class,
 				NonStrictReadWriteCacheTest.Phone.class
-		}, integrationSettings = {
-		@Setting(name = AvailableSettings.USE_SECOND_LEVEL_CACHE, value = "true"),
-		@Setting(name = AvailableSettings.CACHE_REGION_FACTORY, value = "jcache"),
-}
+		},
+		integrationSettings = {
+				@Setting(name = AvailableSettings.USE_SECOND_LEVEL_CACHE, value = "true"),
+				@Setting(name = AvailableSettings.CACHE_REGION_FACTORY, value = "jcache"),
+		}
 )
 public class NonStrictReadWriteCacheTest {
 	private final Logger log = Logger.getLogger( NonStrictReadWriteCacheTest.class );
