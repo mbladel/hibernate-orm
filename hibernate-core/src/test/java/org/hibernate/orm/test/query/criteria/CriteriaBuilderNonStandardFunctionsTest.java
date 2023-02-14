@@ -12,18 +12,23 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
 
 import org.hibernate.dialect.CockroachDialect;
 import org.hibernate.dialect.DB2Dialect;
+import org.hibernate.dialect.H2Dialect;
+import org.hibernate.dialect.OracleDialect;
 import org.hibernate.dialect.PostgreSQLDialect;
 import org.hibernate.query.criteria.HibernateCriteriaBuilder;
+import org.hibernate.query.sqm.TemporalUnit;
 
 import org.hibernate.testing.orm.domain.StandardDomainModel;
 import org.hibernate.testing.orm.domain.gambit.EntityOfBasics;
 import org.hibernate.testing.orm.junit.DialectFeatureChecks;
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.JiraKey;
 import org.hibernate.testing.orm.junit.RequiresDialect;
 import org.hibernate.testing.orm.junit.RequiresDialectFeature;
 import org.hibernate.testing.orm.junit.SessionFactory;
@@ -221,6 +226,34 @@ public class CriteriaBuilderNonStandardFunctionsTest {
 			assertEquals( eob.getTheLocalDateTime().getDayOfMonth(), result.get( 3 ) );
 			assertEquals( eob.getTheLocalDateTime().getHour(), result.get( 4 ) );
 			assertEquals( eob.getTheLocalDateTime().getMinute(), result.get( 5 ) );
+		} );
+	}
+
+	@Test
+	@JiraKey("HHH-16130")
+	@RequiresDialect(H2Dialect.class)
+	@RequiresDialect(DB2Dialect.class)
+	@RequiresDialect(OracleDialect.class)
+	@RequiresDialect(PostgreSQLDialect.class)
+	public void testDateTruncFunctions(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			HibernateCriteriaBuilder cb = session.getCriteriaBuilder();
+			CriteriaQuery<Tuple> query = cb.createTupleQuery();
+			Root<EntityOfBasics> from = query.from( EntityOfBasics.class );
+
+			Expression<LocalDateTime> theLocalDateTime = from.get( "theLocalDateTime" );
+			query.multiselect(
+					from.get( "id" ),
+					cb.dateTrunc( theLocalDateTime, TemporalUnit.DAY ),
+					cb.dateTrunc( theLocalDateTime, TemporalUnit.HOUR ),
+					cb.dateTrunc( theLocalDateTime, TemporalUnit.MINUTE )
+			).where( cb.isNotNull( theLocalDateTime ) );
+
+			Tuple result = session.createQuery( query ).getSingleResult();
+			EntityOfBasics eob = session.find( EntityOfBasics.class, result.get( 0 ) );
+			assertEquals( eob.getTheLocalDateTime().truncatedTo( ChronoUnit.DAYS ), result.get( 1 ) );
+			assertEquals( eob.getTheLocalDateTime().truncatedTo( ChronoUnit.HOURS ), result.get( 2 ) );
+			assertEquals( eob.getTheLocalDateTime().truncatedTo( ChronoUnit.MINUTES ), result.get( 3 ) );
 		} );
 	}
 
