@@ -2567,8 +2567,8 @@ public class CommonFunctionFactory {
 				.register();
 	}
 
-	public void dateTrunc_trunc() {
-		functionRegistry.patternDescriptorBuilder( "date_trunc", "trunc(?2,'?1')" )
+	public void dateTrunc_datetrunc() {
+		functionRegistry.patternDescriptorBuilder( "date_trunc", "datetrunc(?1,?2)" )
 				.setReturnTypeResolver( useArgType( 2 ) )
 				.setExactArgumentCount( 2 )
 				.setParameterTypes( TEMPORAL_UNIT, TEMPORAL )
@@ -2576,4 +2576,14 @@ public class CommonFunctionFactory {
 				.register();
 	}
 
+	public void dateTrunc_trunc() {
+		functionRegistry.register( "date_trunc", new DateTruncTrunc( typeConfiguration ) );
+	}
+
+	public void dateTrunc_format(String toDateFunction, boolean useConvertToFormat) {
+		functionRegistry.register(
+				"date_trunc",
+				new DateTruncEmulation( toDateFunction, useConvertToFormat, typeConfiguration )
+		);
+	}
 }

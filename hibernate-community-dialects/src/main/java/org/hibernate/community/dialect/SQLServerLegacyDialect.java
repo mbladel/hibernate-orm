@@ -366,6 +366,11 @@ public class SQLServerLegacyDialect extends AbstractTransactSQLDialect {
 		}
 		if ( getVersion().isSameOrAfter( 16 ) ) {
 			functionFactory.leastGreatest();
+			functionFactory.dateTrunc_datetrunc();
+		}
+		else {
+			// todo marco : this won't work for sure
+			functionFactory.dateTrunc_format( "convert", false );
 		}
 	}
 

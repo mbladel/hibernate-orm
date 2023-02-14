@@ -15,6 +15,7 @@ import org.hibernate.dialect.MariaDBDialect;
 import org.hibernate.dialect.MySQLDialect;
 import org.hibernate.dialect.OracleDialect;
 import org.hibernate.dialect.PostgreSQLDialect;
+import org.hibernate.dialect.SybaseDialect;
 import org.hibernate.dialect.TiDBDialect;
 import org.hibernate.testing.TestForIssue;
 import org.hibernate.testing.orm.domain.StandardDomainModel;
@@ -512,13 +513,18 @@ public class FunctionTests {
 	}
 
 	@Test
-	@RequiresDialect(H2Dialect.class)
-	@RequiresDialect(DB2Dialect.class)
-	@RequiresDialect(OracleDialect.class)
-	@RequiresDialect(PostgreSQLDialect.class)
+	@SkipForDialect(dialectClass = DerbyDialect.class, reason = "Derby doesn't support any form of date truncation")
+	@SkipForDialect(dialectClass = SybaseDialect.class, reason = "Sybase doesn't support any form of date truncation")
 	public void testDateTruncFunction(SessionFactoryScope scope) {
 		scope.inTransaction(
-				session -> session.createQuery("select date_trunc(year,current_timestamp)", Timestamp.class).getSingleResult()
+				session -> {
+					session.createQuery( "select date_trunc(year,current_timestamp)", Timestamp.class ).getSingleResult();
+					session.createQuery( "select date_trunc(month,current_timestamp)", Timestamp.class ).getSingleResult();
+					session.createQuery( "select date_trunc(day,current_timestamp)", Timestamp.class ).getSingleResult();
+					session.createQuery( "select date_trunc(hour,current_timestamp)", Timestamp.class ).getSingleResult();
+					session.createQuery( "select date_trunc(minute,current_timestamp)", Timestamp.class ).getSingleResult();
+					session.createQuery( "select date_trunc(second,current_timestamp)", Timestamp.class ).getSingleResult();
+				}
 		);
 	}
 
