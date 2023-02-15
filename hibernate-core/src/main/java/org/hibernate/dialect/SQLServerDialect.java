@@ -309,7 +309,6 @@ public class SQLServerDialect extends AbstractTransactSQLDialect {
 
 		functionFactory.log_log();
 
-		functionFactory.trunc_round();
 		functionFactory.round_round();
 		functionFactory.everyAny_minMaxIif();
 		functionFactory.octetLength_pattern( "datalength(?1)" );
@@ -371,9 +370,10 @@ public class SQLServerDialect extends AbstractTransactSQLDialect {
 		if ( getVersion().isSameOrAfter( 16 ) ) {
 			functionFactory.leastGreatest();
 			functionFactory.dateTrunc_datetrunc();
+			functionFactory.trunc_round_datetrunc();
 		}
 		else {
-			functionFactory.dateTrunc_format( "convert", false );
+			functionFactory.trunc_round_format();
 		}
 	}
 

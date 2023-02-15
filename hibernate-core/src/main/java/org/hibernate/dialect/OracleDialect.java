@@ -222,7 +222,7 @@ public class OracleDialect extends Dialect {
 		functionFactory.cosh();
 		functionFactory.sinh();
 		functionFactory.tanh();
-		functionFactory.trunc();
+		functionFactory.trunc_dateTrunc_trunc();
 		functionFactory.log();
 		functionFactory.log10_log();
 		functionFactory.soundex();
@@ -236,7 +236,6 @@ public class OracleDialect extends Dialect {
 		functionFactory.bitand();
 		functionFactory.lastDay();
 		functionFactory.toCharNumberDateTimestamp();
-		functionFactory.dateTrunc_trunc();
 		functionFactory.ceiling_ceil();
 		functionFactory.concat_pipeOperator();
 		functionFactory.rownumRowid();

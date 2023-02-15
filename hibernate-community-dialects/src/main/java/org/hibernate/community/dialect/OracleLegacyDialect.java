@@ -185,7 +185,7 @@ public class OracleLegacyDialect extends Dialect {
 		functionFactory.cosh();
 		functionFactory.sinh();
 		functionFactory.tanh();
-		functionFactory.trunc();
+		functionFactory.trunc_dateTrunc_trunc();
 		functionFactory.log();
 		functionFactory.log10_log();
 		functionFactory.soundex();

@@ -541,8 +541,6 @@ public class PostgreSQLLegacyDialect extends Dialect {
 
 		CommonFunctionFactory functionFactory = new CommonFunctionFactory(functionContributions);
 
-		functionFactory.round_roundFloor(); //Postgres round(x,n) does not accept double
-		functionFactory.trunc_truncFloor();
 		functionFactory.cot();
 		functionFactory.radians();
 		functionFactory.degrees();
@@ -571,7 +569,6 @@ public class PostgreSQLLegacyDialect extends Dialect {
 		functionFactory.toCharNumberDateTimestamp();
 		functionFactory.concat_pipeOperator( "convert_from(lo_get(?1),pg_client_encoding())" );
 		functionFactory.localtimeLocaltimestamp();
-		functionFactory.dateTrunc();
 		functionFactory.length_characterLength_pattern( "length(lo_get(?1),pg_client_encoding())" );
 		functionFactory.bitLength_pattern( "bit_length(?1)", "length(lo_get(?1))*8" );
 		functionFactory.octetLength_pattern( "octet_length(?1)", "length(lo_get(?1))" );
@@ -612,10 +609,8 @@ public class PostgreSQLLegacyDialect extends Dialect {
 		functionContributions.getFunctionRegistry().register(
 				"round", new PostgreSQLTruncRoundFunction( "round", true )
 		);
-		functionContributions.getFunctionRegistry().register(
-				"trunc", new PostgreSQLTruncRoundFunction( "trunc", true )
-		);
-		functionContributions.getFunctionRegistry().registerAlternateKey( "truncate", "trunc" );
+		functionFactory.dateTrunc();
+		functionFactory.trunc_truncFloor();
 	}
 
 	/**
