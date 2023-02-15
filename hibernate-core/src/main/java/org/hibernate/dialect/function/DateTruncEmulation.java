@@ -48,9 +48,9 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 	public DateTruncEmulation(String toDateFunction, boolean useConvertToFormat, TypeConfiguration typeConfiguration) {
 		super(
 				"date_trunc",
-				new ArgumentTypesValidator( StandardArgumentsValidators.exactly( 2 ), TEMPORAL_UNIT, TEMPORAL ),
-				StandardFunctionReturnTypeResolvers.useArgType( 2 ),
-				StandardFunctionArgumentTypeResolvers.invariant( typeConfiguration, TEMPORAL_UNIT, TEMPORAL )
+				new ArgumentTypesValidator( StandardArgumentsValidators.exactly( 2 ), TEMPORAL, TEMPORAL_UNIT ),
+				StandardFunctionReturnTypeResolvers.useArgType( 1 ),
+				StandardFunctionArgumentTypeResolvers.invariant( typeConfiguration, TEMPORAL, TEMPORAL_UNIT )
 		);
 		this.toDateFunction = toDateFunction;
 		this.useConvertToFormat = useConvertToFormat;
@@ -78,11 +78,11 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 			// custom implementation that uses convert instead of format for Sybase
 			// see: https://infocenter.sybase.com/help/index.jsp?topic=/com.sybase.infocenter.dc36271.1600/doc/html/san1393050437990.html
 			sqlAppender.append( "datetime,substring(convert(varchar," );
-			sqlAstArguments.get( 1 ).accept( walker );
-			sqlAppender.append( ",21),1,17-len(" );
 			sqlAstArguments.get( 0 ).accept( walker );
+			sqlAppender.append( ",21),1,17-len(" );
+			sqlAstArguments.get( 1 ).accept( walker );
 			sqlAppender.append( "))+" );
-			sqlAstArguments.get( 0  ).accept( walker );
+			sqlAstArguments.get( 1  ).accept( walker );
 			sqlAppender.append( ",21" );
 		}
 		sqlAppender.append( ')' );
@@ -95,7 +95,7 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 			QueryEngine queryEngine,
 			TypeConfiguration typeConfiguration) {
 		final NodeBuilder nodeBuilder = queryEngine.getCriteriaBuilder();
-		final TemporalUnit temporalUnit = ( (SqmDurationUnit<?>) arguments.get( 0 ) ).getUnit();
+		final TemporalUnit temporalUnit = ( (SqmDurationUnit<?>) arguments.get( 1 ) ).getUnit();
 		final String pattern;
 		final String literal;
 		switch ( temporalUnit ) {
@@ -127,7 +127,7 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 				throw new UnsupportedOperationException( "Temporal unit not supported [" + temporalUnit + "]" );
 		}
 
-		final SqmTypedNode<?> datetime = arguments.get( 1 );
+		final SqmTypedNode<?> datetime = arguments.get( 0 );
 		final List<SqmTypedNode<?>> args = new ArrayList<>( 2 );
 		if ( !useConvertToFormat ) {
 			// use standard format function
@@ -175,19 +175,19 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 			) );
 		}
 		else {
+			args.add( datetime );
 			args.add( new SqmLiteral<>(
 					literal != null ? literal.replace( "-", "/" ) : "",
 					typeConfiguration.getBasicTypeForJavaType( String.class ),
 					nodeBuilder
 			) );
-			args.add( datetime );
 		}
 		return new SelfRenderingSqmFunction<>(
 				this,
 				this,
 				args,
 				impliedResultType,
-				getArgumentsValidator(),
+				null,
 				getReturnTypeResolver(),
 				nodeBuilder,
 				"date_trunc"

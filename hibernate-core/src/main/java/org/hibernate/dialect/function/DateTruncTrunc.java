@@ -6,7 +6,6 @@
  */
 package org.hibernate.dialect.function;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.hibernate.dialect.OracleDialect;
@@ -29,6 +28,7 @@ import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.ast.tree.SqlAstNode;
 import org.hibernate.type.spi.TypeConfiguration;
 
+import static java.util.Arrays.asList;
 import static org.hibernate.query.sqm.produce.function.FunctionParameterType.TEMPORAL;
 import static org.hibernate.query.sqm.produce.function.FunctionParameterType.TEMPORAL_UNIT;
 
@@ -43,9 +43,9 @@ public class DateTruncTrunc extends AbstractSqmFunctionDescriptor implements Fun
 	public DateTruncTrunc(TypeConfiguration typeConfiguration) {
 		super(
 				"date_trunc",
-				new ArgumentTypesValidator( StandardArgumentsValidators.exactly( 2 ), TEMPORAL_UNIT, TEMPORAL ),
-				StandardFunctionReturnTypeResolvers.useArgType( 2 ),
-				StandardFunctionArgumentTypeResolvers.invariant( typeConfiguration, TEMPORAL_UNIT, TEMPORAL )
+				new ArgumentTypesValidator( StandardArgumentsValidators.exactly( 2 ), TEMPORAL, TEMPORAL_UNIT ),
+				StandardFunctionReturnTypeResolvers.useArgType( 1 ),
+				StandardFunctionArgumentTypeResolvers.invariant( typeConfiguration, TEMPORAL, TEMPORAL_UNIT )
 		);
 	}
 
@@ -55,9 +55,9 @@ public class DateTruncTrunc extends AbstractSqmFunctionDescriptor implements Fun
 			List<? extends SqlAstNode> sqlAstArguments,
 			SqlAstTranslator<?> walker) {
 		sqlAppender.appendSql( "trunc(" );
-		sqlAstArguments.get( 1 ).accept( walker );
-		sqlAppender.append( ',' );
 		sqlAstArguments.get( 0 ).accept( walker );
+		sqlAppender.append( ',' );
+		sqlAstArguments.get( 1 ).accept( walker );
 		sqlAppender.append( ')' );
 	}
 
@@ -68,7 +68,7 @@ public class DateTruncTrunc extends AbstractSqmFunctionDescriptor implements Fun
 			QueryEngine queryEngine,
 			TypeConfiguration typeConfiguration) {
 		final NodeBuilder nodeBuilder = queryEngine.getCriteriaBuilder();
-		final TemporalUnit temporalUnit = ( (SqmDurationUnit<?>) arguments.get( 0 ) ).getUnit();
+		final TemporalUnit temporalUnit = ( (SqmDurationUnit<?>) arguments.get( 1 ) ).getUnit();
 		final String pattern;
 		switch ( temporalUnit ) {
 			case YEAR:
@@ -106,17 +106,17 @@ public class DateTruncTrunc extends AbstractSqmFunctionDescriptor implements Fun
 				throw new UnsupportedOperationException( "Temporal unit not supported [" + temporalUnit + "]" );
 		}
 
-		final List<SqmTypedNode<?>> args = new ArrayList<>( 2 );
-		args.add( new SqmLiteral<>(
-				pattern,
-				typeConfiguration.getBasicTypeForJavaType( String.class ),
-				nodeBuilder
-		) );
-		args.add( arguments.get( 1 ) );
 		return new SelfRenderingSqmFunction<>(
 				this,
 				this,
-				args,
+				asList(
+						arguments.get( 0 ),
+						new SqmLiteral<>(
+								pattern,
+								typeConfiguration.getBasicTypeForJavaType( String.class ),
+								nodeBuilder
+						)
+				),
 				impliedResultType,
 				getArgumentsValidator(),
 				getReturnTypeResolver(),

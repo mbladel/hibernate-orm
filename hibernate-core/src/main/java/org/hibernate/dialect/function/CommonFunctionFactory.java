@@ -268,7 +268,6 @@ public class CommonFunctionFactory {
 				.setParameterTypes(NUMERIC, INTEGER)
 				.setArgumentListSignature( "(NUMERIC number[, INTEGER places])" )
 				.register();
-		functionRegistry.registerAlternateKey( "truncate", "trunc" );
 	}
 
 	/**
@@ -282,7 +281,6 @@ public class CommonFunctionFactory {
 				NUMERIC, INTEGER,
 				typeConfiguration
 		).setArgumentListSignature( "(NUMERIC number[, INTEGER places])" );
-		functionRegistry.registerAlternateKey( "truncate", "trunc" );
 	}
 
 	/**
@@ -296,7 +294,6 @@ public class CommonFunctionFactory {
 				NUMERIC, INTEGER,
 				typeConfiguration
 		).setArgumentListSignature( "(NUMERIC number[, INTEGER places])" );
-		functionRegistry.registerAlternateKey( "truncate", "trunc" );
 	}
 
 	/**
@@ -310,7 +307,6 @@ public class CommonFunctionFactory {
 				NUMERIC, INTEGER,
 				typeConfiguration
 		).setArgumentListSignature( "(NUMERIC number[, INTEGER places])" );
-		functionRegistry.registerAlternateKey( "truncate", "trunc" );
 	}
 
 	/**
@@ -324,7 +320,6 @@ public class CommonFunctionFactory {
 				NUMERIC, INTEGER,
 				typeConfiguration
 		).setArgumentListSignature( "(NUMERIC number[, INTEGER places])" );
-		functionRegistry.registerAlternateKey( "truncate", "trunc" );
 	}
 
 	/**
@@ -338,7 +333,6 @@ public class CommonFunctionFactory {
 				NUMERIC, INTEGER,
 				typeConfiguration
 		).setArgumentListSignature( "(NUMERIC number[, INTEGER places])" );
-		functionRegistry.registerAlternateKey( "truncate", "trunc" );
 	}
 
 	public void truncate() {
@@ -373,7 +367,6 @@ public class CommonFunctionFactory {
 				NUMERIC, INTEGER,
 				typeConfiguration
 		).setArgumentListSignature( "(NUMERIC number[, INTEGER places])" );
-		functionRegistry.registerAlternateKey( "truncate", "trunc" );
 	}
 
 	/**
@@ -2268,7 +2261,6 @@ public class CommonFunctionFactory {
 				NUMERIC, INTEGER,
 				typeConfiguration
 		).setArgumentListSignature( "(NUMERIC number[, INTEGER places])" );
-		functionRegistry.registerAlternateKey( "truncate", "trunc" );
 	}
 
 	/**
@@ -2558,6 +2550,9 @@ public class CommonFunctionFactory {
 				.register();
 	}
 
+	/**
+	 * H2, DB2 and PostgreSQL style, register both native and 2trunc form for HQL trunc/truncate
+	 */
 	public void dateTrunc() {
 		functionRegistry.patternDescriptorBuilder( "date_trunc", "date_trunc('?1',?2)" )
 				.setReturnTypeResolver( useArgType( 2 ) )
@@ -2565,24 +2560,39 @@ public class CommonFunctionFactory {
 				.setParameterTypes( TEMPORAL_UNIT, TEMPORAL )
 				.setArgumentListSignature( "(TEMPORAL_UNIT field, TEMPORAL datetime)" )
 				.register();
+		functionRegistry.patternDescriptorBuilder( "2trunc", "date_trunc('?2',?1)" )
+				.setReturnTypeResolver( useArgType( 1 ) )
+				.setExactArgumentCount( 2 )
+				.setParameterTypes( TEMPORAL, TEMPORAL_UNIT )
+				.setArgumentListSignature( "(TEMPORAL datetime, TEMPORAL_UNIT field)" )
+				.register();
 	}
 
+	/**
+	 * SQLServer-style, register both native and 2trunc form for HQL trunc/truncate
+	 */
 	public void dateTrunc_datetrunc() {
-		functionRegistry.patternDescriptorBuilder( "date_trunc", "datetrunc(?1,?2)" )
+		functionRegistry.patternDescriptorBuilder( "datetrunc", "datetrunc(?1,?2)" )
 				.setReturnTypeResolver( useArgType( 2 ) )
 				.setExactArgumentCount( 2 )
 				.setParameterTypes( TEMPORAL_UNIT, TEMPORAL )
 				.setArgumentListSignature( "(TEMPORAL_UNIT field, TEMPORAL datetime)" )
 				.register();
+		functionRegistry.patternDescriptorBuilder( "2trunc", "datetrunc(?2,?1)" )
+				.setReturnTypeResolver( useArgType( 1 ) )
+				.setExactArgumentCount( 2 )
+				.setParameterTypes( TEMPORAL, TEMPORAL_UNIT )
+				.setArgumentListSignature( "(TEMPORAL datetime, TEMPORAL_UNIT field)" )
+				.register();
 	}
 
 	public void dateTrunc_trunc() {
-		functionRegistry.register( "date_trunc", new DateTruncTrunc( typeConfiguration ) );
+		functionRegistry.register( "2trunc", new DateTruncTrunc( typeConfiguration ) );
 	}
 
 	public void dateTrunc_format(String toDateFunction, boolean useConvertToFormat) {
 		functionRegistry.register(
-				"date_trunc",
+				"2trunc",
 				new DateTruncEmulation( toDateFunction, useConvertToFormat, typeConfiguration )
 		);
 	}
