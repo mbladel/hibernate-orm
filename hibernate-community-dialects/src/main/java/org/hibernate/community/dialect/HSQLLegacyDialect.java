@@ -20,6 +20,7 @@ import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.OracleDialect;
 import org.hibernate.dialect.SimpleDatabaseVersion;
 import org.hibernate.dialect.function.CommonFunctionFactory;
+import org.hibernate.dialect.function.TruncFunction;
 import org.hibernate.dialect.identity.HSQLIdentityColumnSupport;
 import org.hibernate.dialect.identity.IdentityColumnSupport;
 import org.hibernate.dialect.lock.LockingStrategy;
@@ -199,9 +200,7 @@ public class HSQLLegacyDialect extends Dialect {
 		functionFactory.degrees();
 		functionFactory.log10();
 		functionFactory.rand();
-		functionFactory.trunc();
-//		functionFactory.truncate();
-		functionFactory.dateTrunc_trunc();
+		functionFactory.trunc_dateTrunc_trunc();
 		functionFactory.pi();
 		functionFactory.soundex();
 		functionFactory.reverse();

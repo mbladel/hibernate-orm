@@ -6,78 +6,107 @@
  */
 package org.hibernate.dialect.function;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.dialect.OracleDialect;
+import org.hibernate.dialect.PostgreSQLDialect;
+import org.hibernate.dialect.SybaseDialect;
 import org.hibernate.query.ReturnableType;
 import org.hibernate.query.spi.QueryEngine;
+import org.hibernate.query.sqm.NodeBuilder;
+import org.hibernate.query.sqm.TemporalUnit;
 import org.hibernate.query.sqm.function.AbstractSqmFunctionDescriptor;
+import org.hibernate.query.sqm.function.FunctionRenderingSupport;
 import org.hibernate.query.sqm.function.SelfRenderingSqmFunction;
-import org.hibernate.query.sqm.function.SqmFunctionDescriptor;
-import org.hibernate.query.sqm.function.SqmFunctionRegistry;
 import org.hibernate.query.sqm.produce.function.ArgumentTypesValidator;
+import org.hibernate.query.sqm.produce.function.ArgumentsValidator;
 import org.hibernate.query.sqm.produce.function.StandardArgumentsValidators;
 import org.hibernate.query.sqm.produce.function.StandardFunctionArgumentTypeResolvers;
 import org.hibernate.query.sqm.produce.function.StandardFunctionReturnTypeResolvers;
+import org.hibernate.query.sqm.produce.function.internal.PatternRenderer;
 import org.hibernate.query.sqm.tree.SqmTypedNode;
-import org.hibernate.query.sqm.tree.expression.SqmDurationUnit;
+import org.hibernate.query.sqm.tree.expression.SqmExtractUnit;
+import org.hibernate.query.sqm.tree.expression.SqmLiteral;
+import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
+import org.hibernate.sql.ast.SqlAstTranslator;
+import org.hibernate.sql.ast.spi.SqlAppender;
+import org.hibernate.sql.ast.tree.SqlAstNode;
 import org.hibernate.type.spi.TypeConfiguration;
 
-import static org.hibernate.query.sqm.produce.function.FunctionParameterType.ANY;
-import static org.hibernate.query.sqm.produce.function.FunctionParameterType.INTEGER;
 import static org.hibernate.query.sqm.produce.function.FunctionParameterType.NUMERIC;
 import static org.hibernate.query.sqm.produce.function.FunctionParameterType.TEMPORAL;
 import static org.hibernate.query.sqm.produce.function.FunctionParameterType.TEMPORAL_UNIT;
-import static org.hibernate.query.sqm.produce.function.StandardFunctionReturnTypeResolvers.useArgType;
 
 /**
- * Trunc function manages both numeric and datetime implementations
+ * Custom function that manages both numeric and datetime truncation
  *
  * @author Marco Belladelli
  */
-public class TruncFunction extends AbstractSqmFunctionDescriptor {
-
-	public enum NumericTruncType {
-		TRUNC,
-		TRUNC_TRUNCATE,
-		ROUND,
-		FLOOR_POWER,
-		TRUNC_FLOOR,
-		FLOOR,
-		TRUNCATE,
-		TRUNCATE_ROUND,
-		TRUNCATE_ROUND_MODE
-	}
-
-	public enum DatetimeTruncType {
-		TRUNC,
-		DATETRUNC,
-		TRUNC_TRUNC,
-		TRUNC_FORMAT
-	}
-
-	private final NumericTruncType numericTruncType;
-
-	private final DatetimeTruncType datetimeTruncType;
-
+public class TruncFunction extends AbstractSqmFunctionDescriptor implements FunctionRenderingSupport {
+	private final String truncPattern;
+	private final String twoArgTruncPattern;
+	private final DatetimeTrunc datetimeTrunc;
 	private final String toDateFunction;
 
-	private final Boolean useConvertToFormatDatetimes;
+	private boolean numericTrunc;
+
+	public enum DatetimeTrunc {
+		DATE_TRUNC( "date_trunc('?2',?1)" ),
+		DATETRUNC( "datetrunc(?2,?1)" ),
+		TRUNC( "trunc(?1,?2)" ),
+		FORMAT( null );
+
+		private final String pattern;
+
+		DatetimeTrunc(String pattern) {
+			this.pattern = pattern;
+		}
+
+		public String getPattern() {
+			return pattern;
+		}
+	}
 
 	public TruncFunction(
-			NumericTruncType numericTruncType,
-			DatetimeTruncType datetimeTruncType,
-			String toDateFunction,
-			Boolean useConvertToFormatDatetimes) {
+			String truncPattern,
+			String twoArgTruncPattern,
+			DatetimeTrunc datetimeTrunc,
+			String toDateFunction) {
 		super(
 				"trunc",
-				new ArgumentTypesValidator( StandardArgumentsValidators.between( 1, 2 ), ANY, ANY ),
+				new TruncArgumentsValidator(),
 				StandardFunctionReturnTypeResolvers.useArgType( 1 ),
-				StandardFunctionArgumentTypeResolvers.argumentsOrImplied( 1 )
+				StandardFunctionArgumentTypeResolvers.ARGUMENT_OR_IMPLIED_RESULT_TYPE
 		);
-		this.numericTruncType = numericTruncType;
-		this.datetimeTruncType = datetimeTruncType;
+		this.truncPattern = truncPattern;
+		this.twoArgTruncPattern = twoArgTruncPattern;
+		this.datetimeTrunc = datetimeTrunc;
 		this.toDateFunction = toDateFunction;
-		this.useConvertToFormatDatetimes = useConvertToFormatDatetimes;
+	}
+
+	@Override
+	public void render(
+			SqlAppender sqlAppender,
+			List<? extends SqlAstNode> sqlAstArguments,
+			SqlAstTranslator<?> walker) {
+		final String pattern;
+		if ( numericTrunc ) {
+			if ( sqlAstArguments.size() == 2 && twoArgTruncPattern != null ) {
+				pattern = twoArgTruncPattern;
+			}
+			else {
+				pattern = truncPattern;
+			}
+		}
+		else {
+			pattern = datetimeTrunc.getPattern();
+		}
+		new PatternRenderer( pattern, SqlAstNodeRenderingMode.DEFAULT ).render(
+				sqlAppender,
+				sqlAstArguments,
+				walker
+		);
 	}
 
 	@Override
@@ -86,155 +115,118 @@ public class TruncFunction extends AbstractSqmFunctionDescriptor {
 			ReturnableType<T> impliedResultType,
 			QueryEngine queryEngine,
 			TypeConfiguration typeConfiguration) {
-		// The second argument is what determines if this trunc function
-		// is applied with numeric or datetime semantic
-		if ( arguments.get( 1 ) instanceof SqmDurationUnit ) {
-			return generateDatetimeTruncFunction( arguments, impliedResultType, queryEngine, typeConfiguration );
+		final NodeBuilder nodeBuilder = queryEngine.getCriteriaBuilder();
+		final List<SqmTypedNode<?>> args = new ArrayList<>( arguments );
+		if ( arguments.size() == 2 && arguments.get( 1 ) instanceof SqmExtractUnit ) {
+			// datetime truncation
+			numericTrunc = false;
+			if ( datetimeTrunc == null ) {
+				throw new UnsupportedOperationException( "Datetime truncation is not supported for this database" );
+			}
+			if ( datetimeTrunc.getPattern() == null ) {
+				final boolean useConvertToFormat = nodeBuilder.getSessionFactory()
+						.getJdbcServices()
+						.getDialect() instanceof SybaseDialect;
+				return new DateTruncEmulation(
+						toDateFunction,
+						useConvertToFormat,
+						typeConfiguration
+				).generateSqmFunctionExpression( arguments, impliedResultType, queryEngine, typeConfiguration );
+			}
+			else if ( datetimeTrunc == DatetimeTrunc.TRUNC ) {
+				// the trunc() function requires translating the temporal_unit to a format string
+				final TemporalUnit temporalUnit = ( (SqmExtractUnit<?>) arguments.get( 1 ) ).getUnit();
+				final String pattern;
+				switch ( temporalUnit ) {
+					case YEAR:
+						pattern = "YYYY";
+						break;
+					case MONTH:
+						pattern = "MM";
+						break;
+					case WEEK:
+						pattern = "IW";
+						break;
+					case DAY:
+						pattern = "DD";
+						break;
+					case HOUR:
+						pattern = "HH";
+						break;
+					case MINUTE:
+						pattern = "MI";
+						break;
+					case SECOND:
+						if ( nodeBuilder.getSessionFactory().getJdbcServices().getDialect() instanceof OracleDialect ) {
+							// Oracle does not support truncating to seconds with the native function, use emulation
+							return new DateTruncEmulation( "to_date", false, typeConfiguration )
+									.generateSqmFunctionExpression(
+											arguments,
+											impliedResultType,
+											queryEngine,
+											typeConfiguration
+									);
+						}
+						pattern = "SS";
+						break;
+					default:
+						throw new UnsupportedOperationException( "Temporal unit not supported [" + temporalUnit + "]" );
+				}
+				// replace temporal_unit parameter with translated string format literal
+				args.set( 1, new SqmLiteral<>(
+						pattern,
+						typeConfiguration.getBasicTypeForJavaType( String.class ),
+						nodeBuilder
+				) );
+			}
 		}
 		else {
-			return generateNumericTruncFunction( arguments, impliedResultType, queryEngine, typeConfiguration );
+			// numeric truncation
+			if ( nodeBuilder.getSessionFactory().getJdbcServices().getDialect() instanceof PostgreSQLDialect ) {
+				return new PostgreSQLTruncRoundFunction( getName(), true ).generateSqmFunctionExpression(
+						arguments,
+						impliedResultType,
+						queryEngine,
+						typeConfiguration
+				);
+			}
+			numericTrunc = true;
 		}
-	}
 
-	private <T> SelfRenderingSqmFunction<T> generateDatetimeTruncFunction(
-			List<? extends SqmTypedNode<?>> arguments,
-			ReturnableType<T> impliedResultType,
-			QueryEngine queryEngine,
-			TypeConfiguration typeConfiguration) {
-		final SqmFunctionRegistry functionRegistry = queryEngine.getSqmFunctionRegistry();
-		final String pattern;
-		if ( datetimeTruncType == DatetimeTruncType.TRUNC ) {
-			pattern = "date_trunc('?1',?2)";
-		}
-		else if ( datetimeTruncType == DatetimeTruncType.DATETRUNC ) {
-			pattern = "datetrunc(?1,?2)";
-		}
-		else {
-			pattern = null;
-		}
-		final SqmFunctionDescriptor descriptor;
-		if ( pattern != null ) {
-			descriptor = functionRegistry.patternDescriptorBuilder( "date_trunc", pattern )
-					.setReturnTypeResolver( useArgType( 1 ) )
-					.setExactArgumentCount( 2 )
-					.setParameterTypes( TEMPORAL, TEMPORAL_UNIT )
-					.setArgumentListSignature( "(TEMPORAL_UNIT field, TEMPORAL datetime)" )
-					.descriptor();
-		}
-		else if ( datetimeTruncType == DatetimeTruncType.TRUNC_TRUNC ) {
-			descriptor = new DateTruncTrunc( typeConfiguration );
-		}
-		else if ( datetimeTruncType == DatetimeTruncType.TRUNC_FORMAT ) {
-			descriptor = new DateTruncEmulation( toDateFunction, useConvertToFormatDatetimes, typeConfiguration );
-		}
-		else {
-			throw new IllegalArgumentException( "Invalid DatetimeTruncType [" + datetimeTruncType + "]" );
-		}
-		return descriptor.generateSqmExpression(
-				arguments,
+		return new SelfRenderingSqmFunction<>(
+				this,
+				this,
+				args,
 				impliedResultType,
-				queryEngine,
-				typeConfiguration
+				getArgumentsValidator(),
+				getReturnTypeResolver(),
+				queryEngine.getCriteriaBuilder(),
+				getName()
 		);
 	}
 
-	private <T> SelfRenderingSqmFunction<T> generateNumericTruncFunction(
-			List<? extends SqmTypedNode<?>> arguments,
-			ReturnableType<T> impliedResultType,
-			QueryEngine queryEngine,
-			TypeConfiguration typeConfiguration) {
-		final SqmFunctionRegistry functionRegistry = queryEngine.getSqmFunctionRegistry();
-		final SqmFunctionDescriptor descriptor;
-		String pattern;
-		switch ( numericTruncType ) {
-			case TRUNC:
-				descriptor = functionRegistry.namedDescriptorBuilder( "trunc" )
-						.setReturnTypeResolver( useArgType( 1 ) )
-						.setArgumentCountBetween( 1, 2 )
-						.setParameterTypes( NUMERIC, INTEGER )
-						.setArgumentListSignature( "(NUMERIC number[, INTEGER places])" )
-						.descriptor();
-				break;
-			case TRUNC_TRUNCATE:
-				pattern = arguments.size() == 1 ? "0" : "?2";
-				descriptor = functionRegistry.patternDescriptorBuilder( "trunc", "truncate(?1," + pattern + ")" )
-						.setExactArgumentCount( arguments.size() )
-						.setParameterTypes( NUMERIC, INTEGER )
-						.setReturnTypeResolver( useArgType( 1 ) )
-						.setArgumentListSignature( "(NUMERIC number[, INTEGER places])" )
-						.descriptor();
-				break;
-			case ROUND:
-				pattern = arguments.size() == 1 ? "0" : "?2";
-				descriptor = functionRegistry.patternDescriptorBuilder( "trunc", "round(?1," + pattern + ",1)" )
-						.setExactArgumentCount( arguments.size() )
-						.setParameterTypes( NUMERIC, INTEGER )
-						.setReturnTypeResolver( useArgType( 1 ) )
-						.setArgumentListSignature( "(NUMERIC number[, INTEGER places])" )
-						.descriptor();
-				break;
-			case FLOOR_POWER:
-				pattern = arguments.size() == 1 ?
-						"sign(?1)*floor(abs(?1))" :
-						"sign(?1)*floor(abs(?1)*power(10,?2))/power(10,?2)";
-				descriptor = functionRegistry.patternDescriptorBuilder( "trunc", pattern )
-						.setExactArgumentCount( arguments.size() )
-						.setParameterTypes( NUMERIC, INTEGER )
-						.setReturnTypeResolver( useArgType( 1 ) )
-						.setArgumentListSignature( "(NUMERIC number[, INTEGER places])" )
-						.descriptor();
-				break;
-			case TRUNC_FLOOR:
-				pattern = arguments.size() == 1 ? "trunc(?1)" : "sign(?1)*floor(abs(?1)*1e?2)/1e?2";
-				descriptor = functionRegistry.patternDescriptorBuilder( "trunc", pattern )
-						.setExactArgumentCount( arguments.size() )
-						.setParameterTypes( NUMERIC, INTEGER )
-						.setReturnTypeResolver( useArgType( 1 ) )
-						.setArgumentListSignature( "(NUMERIC number[, INTEGER places])" )
-						.descriptor();
-				break;
-			case FLOOR:
-				pattern = arguments.size() == 1 ? "sign(?1)*floor(abs(?1))" : "sign(?1)*floor(abs(?1)*1e?2)/1e?2";
-				descriptor = functionRegistry.patternDescriptorBuilder( "trunc", pattern )
-						.setExactArgumentCount( arguments.size() )
-						.setParameterTypes( NUMERIC, INTEGER )
-						.setReturnTypeResolver( useArgType( 1 ) )
-						.setArgumentListSignature( "(NUMERIC number[, INTEGER places])" )
-						.descriptor();
-				break;
-			case TRUNCATE:
-				descriptor = functionRegistry.namedDescriptorBuilder( "truncate" )
-						.setExactArgumentCount( 2 ) //some databases allow 1 arg but in these it's a synonym for trunc()
-						.setParameterTypes( NUMERIC, INTEGER )
-						.setInvariantType( typeConfiguration.standardBasicTypeForJavaType( Double.class ) )
-						.setArgumentListSignature( "(NUMERIC number, INTEGER places)" )
-						.descriptor();
-				break;
-			case TRUNCATE_ROUND:
-				descriptor = functionRegistry.patternDescriptorBuilder( "truncate", "round(?1,?2,1)" )
-						.setExactArgumentCount( 2 )
-						.setParameterTypes( NUMERIC, INTEGER )
-						.setInvariantType( typeConfiguration.standardBasicTypeForJavaType( Double.class ) )
-						.setArgumentListSignature( "(NUMERIC number, INTEGER places)" )
-						.descriptor();
-				break;
-			case TRUNCATE_ROUND_MODE:
-				pattern = arguments.size() == 1 ? "round(?1,0,round_down)" : "round(?1,?2,round_down)";
-				descriptor = functionRegistry.patternDescriptorBuilder( "trunc", pattern )
-						.setExactArgumentCount( arguments.size() )
-						.setParameterTypes( NUMERIC, INTEGER )
-						.setReturnTypeResolver( useArgType( 1 ) )
-						.setArgumentListSignature( "(NUMERIC number[, INTEGER places])" )
-						.descriptor();
-				break;
-			default:
-				throw new IllegalArgumentException( "Invalid NumericTruncType [" + numericTruncType + "]" );
+
+
+	private static class TruncArgumentsValidator implements ArgumentsValidator {
+		@Override
+		public void validate(
+				List<? extends SqmTypedNode<?>> arguments,
+				String functionName,
+				TypeConfiguration typeConfiguration) {
+			if ( arguments.size() == 2 && arguments.get( 1 ) instanceof SqmExtractUnit ) {
+				new ArgumentTypesValidator(
+						StandardArgumentsValidators.exactly( 2 ),
+						TEMPORAL,
+						TEMPORAL_UNIT
+				).validate( arguments, functionName, typeConfiguration );
+			}
+			else {
+				new ArgumentTypesValidator(
+						StandardArgumentsValidators.between( 1, 2 ),
+						NUMERIC,
+						NUMERIC
+				).validate( arguments, functionName, typeConfiguration );
+			}
 		}
-		return descriptor.generateSqmExpression(
-				arguments,
-				impliedResultType,
-				queryEngine,
-				typeConfiguration
-		);
 	}
 }

@@ -516,12 +516,12 @@ public class FunctionTests {
 	public void testDateTruncFunction(SessionFactoryScope scope) {
 		scope.inTransaction(
 				session -> {
-					session.createQuery( "select trunc(current_timestamp to year)", Timestamp.class ).getSingleResult();
-					session.createQuery( "select trunc(current_timestamp to month)", Timestamp.class ).getSingleResult();
-					session.createQuery( "select trunc(current_timestamp to day)", Timestamp.class ).getSingleResult();
-					session.createQuery( "select truncate(current_timestamp to hour)", Timestamp.class ).getSingleResult();
-					session.createQuery( "select truncate(current_timestamp to minute)", Timestamp.class ).getSingleResult();
-					session.createQuery( "select truncate(current_timestamp to second)", Timestamp.class ).getSingleResult();
+					session.createQuery( "select trunc(current_timestamp,year)", Timestamp.class ).getSingleResult();
+					session.createQuery( "select trunc(current_timestamp,month)", Timestamp.class ).getSingleResult();
+					session.createQuery( "select trunc(current_timestamp,day)", Timestamp.class ).getSingleResult();
+					session.createQuery( "select truncate(current_timestamp,hour)", Timestamp.class ).getSingleResult();
+					session.createQuery( "select truncate(current_timestamp,minute)", Timestamp.class ).getSingleResult();
+					session.createQuery( "select truncate(current_timestamp,second)", Timestamp.class ).getSingleResult();
 				}
 		);
 	}

@@ -4328,27 +4328,17 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 	}
 
 	@Override
-	public Object visitTruncateFunction(HqlParser.TruncateFunctionContext ctx) {
+	public Object visitTruncFunction(HqlParser.TruncFunctionContext ctx) {
 		final SqmExpression<?> expression = (SqmExpression<?>) ctx.getChild( 2 ).accept( this );
-		final SqmTypedNode<?> secondArg;
-		final String functionName;
+		final SqmTypedNode<?> secondArg; // could be null, expression or temporal_unit
 		if ( ctx.getChildCount() == 6 ) {
-			final ParseTree child = ctx.getChild( 4 );
-			if ( child instanceof HqlParser.DatetimeFieldContext ) {
-				secondArg = toDurationUnit( (SqmExtractUnit<?>) child.accept( this ) );
-				functionName = "2trunc";
-			}
-			else {
-				secondArg = (SqmTypedNode<?>) child.accept( this );
-				functionName = "trunc";
-			}
+			secondArg = (SqmTypedNode<?>) ctx.getChild( 4 ).accept( this );
 		}
 		else {
-			functionName = "trunc";
 			secondArg = null;
 		}
 
-		return getFunctionDescriptor( functionName ).generateSqmExpression(
+		return getFunctionDescriptor( "trunc" ).generateSqmExpression(
 				secondArg == null ? singletonList( expression ) : asList( expression, secondArg ),
 				null,
 				creationContext.getQueryEngine(),

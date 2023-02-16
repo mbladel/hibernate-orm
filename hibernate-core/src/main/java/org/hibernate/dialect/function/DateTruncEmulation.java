@@ -21,8 +21,8 @@ import org.hibernate.query.sqm.produce.function.StandardArgumentsValidators;
 import org.hibernate.query.sqm.produce.function.StandardFunctionArgumentTypeResolvers;
 import org.hibernate.query.sqm.produce.function.StandardFunctionReturnTypeResolvers;
 import org.hibernate.query.sqm.tree.SqmTypedNode;
-import org.hibernate.query.sqm.tree.expression.SqmDurationUnit;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
+import org.hibernate.query.sqm.tree.expression.SqmExtractUnit;
 import org.hibernate.query.sqm.tree.expression.SqmFormat;
 import org.hibernate.query.sqm.tree.expression.SqmLiteral;
 import org.hibernate.sql.ast.SqlAstTranslator;
@@ -35,7 +35,7 @@ import static org.hibernate.query.sqm.produce.function.FunctionParameterType.TEM
 import static org.hibernate.query.sqm.produce.function.FunctionParameterType.TEMPORAL_UNIT;
 
 /**
- * Emulation of {@code datetrunc} function that leverages
+ * Emulation of {@code trunc(datetime, temporal_unit)} function that leverages
  * formatting the datetime to string and back to truncate it
  *
  * @author Marco Belladelli
@@ -47,7 +47,7 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 
 	public DateTruncEmulation(String toDateFunction, boolean useConvertToFormat, TypeConfiguration typeConfiguration) {
 		super(
-				"date_trunc",
+				"trunc",
 				new ArgumentTypesValidator( StandardArgumentsValidators.exactly( 2 ), TEMPORAL, TEMPORAL_UNIT ),
 				StandardFunctionReturnTypeResolvers.useArgType( 1 ),
 				StandardFunctionArgumentTypeResolvers.invariant( typeConfiguration, TEMPORAL, TEMPORAL_UNIT )
@@ -66,12 +66,12 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 		if ( !useConvertToFormat ) {
 			if ( toDateFunction.equalsIgnoreCase( "convert" ) ) {
 				sqlAppender.append( "datetime," );
-				sqlAstArguments.get( 0 ).accept( walker );
+				sqlAstArguments.get( 1 ).accept( walker );
 			}
 			else {
-				sqlAstArguments.get( 0 ).accept( walker );
-				sqlAppender.append( ',' );
 				sqlAstArguments.get( 1 ).accept( walker );
+				sqlAppender.append( ',' );
+				sqlAstArguments.get( 2 ).accept( walker );
 			}
 		}
 		else {
@@ -95,7 +95,7 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 			QueryEngine queryEngine,
 			TypeConfiguration typeConfiguration) {
 		final NodeBuilder nodeBuilder = queryEngine.getCriteriaBuilder();
-		final TemporalUnit temporalUnit = ( (SqmDurationUnit<?>) arguments.get( 1 ) ).getUnit();
+		final TemporalUnit temporalUnit = ( (SqmExtractUnit<?>) arguments.get( 1 ) ).getUnit();
 		final String pattern;
 		final String literal;
 		switch ( temporalUnit ) {
@@ -129,8 +129,8 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 
 		final SqmTypedNode<?> datetime = arguments.get( 0 );
 		final List<SqmTypedNode<?>> args = new ArrayList<>( 2 );
+		args.add( datetime );
 		if ( !useConvertToFormat ) {
-			// use standard format function
 			final SqmExpression<?> formatExpression = queryEngine.getSqmFunctionRegistry()
 					.findFunctionDescriptor( "format" )
 					.generateSqmExpression(
@@ -175,7 +175,6 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 			) );
 		}
 		else {
-			args.add( datetime );
 			args.add( new SqmLiteral<>(
 					literal != null ? literal.replace( "-", "/" ) : "",
 					typeConfiguration.getBasicTypeForJavaType( String.class ),

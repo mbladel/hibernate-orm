@@ -20,6 +20,7 @@ import org.hibernate.PessimisticLockException;
 import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.dialect.function.CommonFunctionFactory;
+import org.hibernate.dialect.function.TruncFunction;
 import org.hibernate.dialect.hint.IndexQueryHintHandler;
 import org.hibernate.dialect.identity.H2FinalTableIdentityColumnSupport;
 import org.hibernate.dialect.identity.H2IdentityColumnSupport;
@@ -286,8 +287,7 @@ public class H2Dialect extends Dialect {
 		if ( useLocalTime ) {
 			functionFactory.localtimeLocaltimestamp();
 		}
-		functionFactory.trunc();
-//		functionFactory.truncate();
+		functionFactory.trunc_dateTrunc();
 		functionFactory.dateTrunc();
 		functionFactory.bitLength();
 		functionFactory.octetLength();

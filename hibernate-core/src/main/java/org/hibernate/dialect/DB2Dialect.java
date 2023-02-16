@@ -28,6 +28,7 @@ import org.hibernate.dialect.function.CountFunction;
 import org.hibernate.dialect.function.DB2FormatEmulation;
 import org.hibernate.dialect.function.DB2PositionFunction;
 import org.hibernate.dialect.function.DB2SubstringFunction;
+import org.hibernate.dialect.function.TruncFunction;
 import org.hibernate.dialect.identity.DB2IdentityColumnSupport;
 import org.hibernate.dialect.identity.IdentityColumnSupport;
 import org.hibernate.dialect.pagination.DB2LimitHandler;
@@ -289,8 +290,6 @@ public class DB2Dialect extends Dialect {
 		functionFactory.octetLength();
 		functionFactory.ascii();
 		functionFactory.char_chr();
-		functionFactory.trunc();
-//		functionFactory.truncate();
 		functionFactory.insert();
 		functionFactory.characterLength_length( SqlAstNodeRenderingMode.DEFAULT );
 		functionFactory.stddev();
@@ -306,6 +305,7 @@ public class DB2Dialect extends Dialect {
 			functionFactory.varPopSamp();
 			functionFactory.varianceSamp();
 			functionFactory.dateTrunc();
+			functionFactory.trunc_dateTrunc();
 		}
 		else {
 			// Before version 11, the position function required the use of the code units
@@ -321,7 +321,7 @@ public class DB2Dialect extends Dialect {
 			functionFactory.stddevSamp_sumCount();
 			functionContributions.getFunctionRegistry().registerAlternateKey( "var_pop", "variance" );
 			functionFactory.varSamp_sumCount();
-			functionFactory.dateTrunc_trunc();
+			functionFactory.trunc_dateTrunc_trunc();
 		}
 
 		functionFactory.addYearsMonthsDaysHoursMinutesSeconds();

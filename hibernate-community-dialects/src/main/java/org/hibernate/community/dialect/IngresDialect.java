@@ -19,6 +19,7 @@ import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.MySQLDialect;
 import org.hibernate.dialect.TimeZoneSupport;
 import org.hibernate.dialect.function.CommonFunctionFactory;
+import org.hibernate.dialect.function.TruncFunction;
 import org.hibernate.dialect.identity.IdentityColumnSupport;
 import org.hibernate.dialect.pagination.LimitHandler;
 import org.hibernate.dialect.sequence.ANSISequenceSupport;
@@ -251,8 +252,7 @@ public class IngresDialect extends Dialect {
 		functionFactory.octetLength();
 		functionFactory.repeat();
 		functionFactory.trim2();
-		functionFactory.trunc();
-//		functionFactory.truncate();
+		functionFactory.trunc_dateTrunc();
 		functionFactory.initcap();
 		functionFactory.yearMonthDay();
 		functionFactory.hourMinuteSecond();
@@ -269,7 +269,6 @@ public class IngresDialect extends Dialect {
 		functionFactory.sysdate();
 		functionFactory.position();
 		functionFactory.format_dateFormat();
-		functionFactory.dateTrunc();
 		functionFactory.bitLength_pattern( "octet_length(hex(?1))*4" );
 
 		final BasicType<Integer> integerType = functionContributions.getTypeConfiguration().getBasicTypeRegistry()
