@@ -1,7 +1,6 @@
 [[access]]
 === Access strategies
 :root-project-dir: ../../../../../../..
-:documentation-project-dir: {root-project-dir}/documentation
 :core-project-dir: {root-project-dir}/hibernate-core
 :example-dir-access: {core-project-dir}/src/test/java/org/hibernate/orm/test/mapping/access
 :extrasdir: extras
