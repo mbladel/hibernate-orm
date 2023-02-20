@@ -421,19 +421,13 @@ public class MetadataContext {
 		if ( persistentClass.hasIdentifierProperty() ) {
 			final Property declaredIdentifierProperty = persistentClass.getDeclaredIdentifierProperty();
 			if ( declaredIdentifierProperty != null ) {
-				final SingularPersistentAttribute<?, Object> idAttribute = attributeFactory.buildIdAttribute(
-						identifiableType,
-						declaredIdentifierProperty
-				);
-
-				//noinspection unchecked rawtypes
-				( ( AttributeContainer) identifiableType ).getInFlightAccess().applyIdAttribute( idAttribute );
+				applyIdAttribute( identifiableType, declaredIdentifierProperty );
 			}
 			else if ( persistentClass.getIdentifier() instanceof Component
 					&& persistentClass.getIdentifierProperty() != getSuperclassIdentifier( persistentClass ) ) {
-				// If the identifier is a generic component, we have to call buildIdAttribute anyway,
-				// as this will create and register the EmbeddableType for the subtype
-				attributeFactory.buildIdAttribute( identifiableType, persistentClass.getIdentifierProperty() );
+				// If the identifier is a different component than the superclass, we have to apply the id
+				// attribute anyway, as this will create and register the EmbeddableType for the subtype
+				applyIdAttribute( identifiableType, persistentClass.getIdentifierProperty() );
 			}
 		}
 		else {
@@ -481,6 +475,15 @@ public class MetadataContext {
 			//noinspection unchecked
 			container.getInFlightAccess().applyNonAggregatedIdAttributes( idAttributes, idClassType );
 		}
+	}
+
+	private void applyIdAttribute(IdentifiableDomainType<?> identifiableType, Property identifierProperty) {
+		final SingularPersistentAttribute<?, Object> idAttribute = attributeFactory.buildIdAttribute(
+				identifiableType,
+				identifierProperty
+		);
+		//noinspection unchecked rawtypes
+		( (AttributeContainer) identifiableType ).getInFlightAccess().applyIdAttribute( idAttribute );
 	}
 
 	private Property getSuperclassIdentifier(PersistentClass persistentClass) {
