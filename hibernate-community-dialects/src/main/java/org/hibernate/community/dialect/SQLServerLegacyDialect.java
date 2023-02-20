@@ -21,6 +21,7 @@ import org.hibernate.dialect.TimeZoneSupport;
 import org.hibernate.dialect.function.CommonFunctionFactory;
 import org.hibernate.dialect.function.CountFunction;
 import org.hibernate.dialect.function.SQLServerFormatEmulation;
+import org.hibernate.dialect.function.SqlServerConvertTruncFunction;
 import org.hibernate.dialect.identity.IdentityColumnSupport;
 import org.hibernate.dialect.identity.SQLServerIdentityColumnSupport;
 import org.hibernate.dialect.pagination.LimitHandler;
@@ -369,7 +370,7 @@ public class SQLServerLegacyDialect extends AbstractTransactSQLDialect {
 			functionFactory.trunc_round_datetrunc();
 		}
 		else {
-			functionFactory.trunc_round_format();
+			functionContributions.getFunctionRegistry().register( "trunc", new SqlServerConvertTruncFunction() );
 		}
 	}
 

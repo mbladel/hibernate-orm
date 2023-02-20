@@ -6,7 +6,6 @@
  */
 package org.hibernate.dialect.function;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.hibernate.query.ReturnableType;
@@ -41,11 +40,9 @@ import static org.hibernate.query.sqm.produce.function.FunctionParameterType.TEM
  * @author Marco Belladelli
  */
 public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements FunctionRenderingSupport {
-	private final String toDateFunction;
+	protected final String toDateFunction;
 
-	private final boolean useConvertToFormat;
-
-	public DateTruncEmulation(String toDateFunction, boolean useConvertToFormat, TypeConfiguration typeConfiguration) {
+	protected DateTruncEmulation(String toDateFunction, TypeConfiguration typeConfiguration) {
 		super(
 				"trunc",
 				new ArgumentTypesValidator( StandardArgumentsValidators.exactly( 2 ), TEMPORAL, TEMPORAL_UNIT ),
@@ -53,7 +50,6 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 				StandardFunctionArgumentTypeResolvers.invariant( typeConfiguration, TEMPORAL, TEMPORAL_UNIT )
 		);
 		this.toDateFunction = toDateFunction;
-		this.useConvertToFormat = useConvertToFormat;
 	}
 
 	@Override
@@ -63,28 +59,9 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 			SqlAstTranslator<?> walker) {
 		sqlAppender.appendSql( toDateFunction );
 		sqlAppender.append( '(' );
-		if ( !useConvertToFormat ) {
-			if ( toDateFunction.equalsIgnoreCase( "convert" ) ) {
-				sqlAppender.append( "datetime," );
-				sqlAstArguments.get( 1 ).accept( walker );
-			}
-			else {
-				sqlAstArguments.get( 1 ).accept( walker );
-				sqlAppender.append( ',' );
-				sqlAstArguments.get( 2 ).accept( walker );
-			}
-		}
-		else {
-			// custom implementation that uses convert instead of format for Sybase
-			// see: https://infocenter.sybase.com/help/index.jsp?topic=/com.sybase.infocenter.dc36271.1600/doc/html/san1393050437990.html
-			sqlAppender.append( "datetime,substring(convert(varchar," );
-			sqlAstArguments.get( 0 ).accept( walker );
-			sqlAppender.append( ",21),1,17-len(" );
-			sqlAstArguments.get( 1 ).accept( walker );
-			sqlAppender.append( "))+" );
-			sqlAstArguments.get( 1  ).accept( walker );
-			sqlAppender.append( ",21" );
-		}
+		sqlAstArguments.get( 1 ).accept( walker );
+		sqlAppender.append( ',' );
+		sqlAstArguments.get( 2 ).accept( walker );
 		sqlAppender.append( ')' );
 	}
 
@@ -126,18 +103,31 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 			default:
 				throw new UnsupportedOperationException( "Temporal unit not supported [" + temporalUnit + "]" );
 		}
-
 		final SqmTypedNode<?> datetime = arguments.get( 0 );
-		final List<SqmTypedNode<?>> args = new ArrayList<>( 2 );
-		args.add( datetime );
-		if ( !useConvertToFormat ) {
-			final SqmExpression<?> formatExpression = queryEngine.getSqmFunctionRegistry()
-					.findFunctionDescriptor( "format" )
+		final SqmExpression<?> formatExpression = queryEngine.getSqmFunctionRegistry()
+				.findFunctionDescriptor( "format" )
+				.generateSqmExpression(
+						asList(
+								datetime,
+								new SqmFormat(
+										pattern,
+										typeConfiguration.getBasicTypeForJavaType( String.class ),
+										nodeBuilder
+								)
+						),
+						null,
+						queryEngine,
+						typeConfiguration
+				);
+		final SqmExpression<?> formattedDatetime;
+		if ( literal != null ) {
+			formattedDatetime = queryEngine.getSqmFunctionRegistry()
+					.findFunctionDescriptor( "concat" )
 					.generateSqmExpression(
 							asList(
-									datetime,
-									new SqmFormat(
-											pattern,
+									formatExpression,
+									new SqmLiteral<>(
+											literal,
 											typeConfiguration.getBasicTypeForJavaType( String.class ),
 											nodeBuilder
 									)
@@ -146,50 +136,25 @@ public class DateTruncEmulation extends AbstractSqmFunctionDescriptor implements
 							queryEngine,
 							typeConfiguration
 					);
-			final SqmExpression<?> formattedDatetime;
-			if ( literal != null ) {
-				formattedDatetime = queryEngine.getSqmFunctionRegistry()
-						.findFunctionDescriptor( "concat" )
-						.generateSqmExpression(
-								asList(
-										formatExpression,
-										new SqmLiteral<>(
-												literal,
-												typeConfiguration.getBasicTypeForJavaType( String.class ),
-												nodeBuilder
-										)
-								),
-								null,
-								queryEngine,
-								typeConfiguration
-						);
-			}
-			else {
-				formattedDatetime = formatExpression;
-			}
-			args.add( formattedDatetime );
-			args.add( new SqmFormat(
-					"yyyy-MM-dd HH:mm:ss",
-					typeConfiguration.getBasicTypeForJavaType( String.class ),
-					nodeBuilder
-			) );
 		}
 		else {
-			args.add( new SqmLiteral<>(
-					literal != null ? literal.replace( "-", "/" ) : "",
-					typeConfiguration.getBasicTypeForJavaType( String.class ),
-					nodeBuilder
-			) );
+			formattedDatetime = formatExpression;
 		}
+		final SqmFormat sqmFormat = new SqmFormat(
+				"yyyy-MM-dd HH:mm:ss",
+				typeConfiguration.getBasicTypeForJavaType( String.class ),
+				nodeBuilder
+		);
+
 		return new SelfRenderingSqmFunction<>(
 				this,
 				this,
-				args,
+				asList( datetime, formattedDatetime, sqmFormat ),
 				impliedResultType,
 				null,
 				getReturnTypeResolver(),
 				nodeBuilder,
-				"date_trunc"
+				getName()
 		);
 	}
 }

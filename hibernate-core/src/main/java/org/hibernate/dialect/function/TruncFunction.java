@@ -9,9 +9,6 @@ package org.hibernate.dialect.function;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.hibernate.dialect.OracleDialect;
-import org.hibernate.dialect.PostgreSQLDialect;
-import org.hibernate.dialect.SybaseDialect;
 import org.hibernate.query.ReturnableType;
 import org.hibernate.query.spi.QueryEngine;
 import org.hibernate.query.sqm.NodeBuilder;
@@ -28,7 +25,6 @@ import org.hibernate.query.sqm.produce.function.internal.PatternRenderer;
 import org.hibernate.query.sqm.tree.SqmTypedNode;
 import org.hibernate.query.sqm.tree.expression.SqmExtractUnit;
 import org.hibernate.query.sqm.tree.expression.SqmLiteral;
-import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.ast.tree.SqlAstNode;
@@ -44,12 +40,13 @@ import static org.hibernate.query.sqm.produce.function.FunctionParameterType.TEM
  * @author Marco Belladelli
  */
 public class TruncFunction extends AbstractSqmFunctionDescriptor implements FunctionRenderingSupport {
-	private final String truncPattern;
-	private final String twoArgTruncPattern;
-	private final DatetimeTrunc datetimeTrunc;
+	private final PatternRenderer truncPattern;
+	private final PatternRenderer twoArgTruncPattern;
+	protected final DatetimeTrunc datetimeTrunc;
+	private final PatternRenderer datetimeTruncPattern;
 	private final String toDateFunction;
 
-	private boolean numericTrunc;
+	protected boolean numericTrunc;
 
 	public enum DatetimeTrunc {
 		DATE_TRUNC( "date_trunc('?2',?1)" ),
@@ -79,10 +76,12 @@ public class TruncFunction extends AbstractSqmFunctionDescriptor implements Func
 				StandardFunctionReturnTypeResolvers.useArgType( 1 ),
 				StandardFunctionArgumentTypeResolvers.ARGUMENT_OR_IMPLIED_RESULT_TYPE
 		);
-		this.truncPattern = truncPattern;
-		this.twoArgTruncPattern = twoArgTruncPattern;
+		this.truncPattern = new PatternRenderer( truncPattern );
+		this.twoArgTruncPattern = twoArgTruncPattern != null ? new PatternRenderer( twoArgTruncPattern ) : null;
 		this.datetimeTrunc = datetimeTrunc;
 		this.toDateFunction = toDateFunction;
+		this.datetimeTruncPattern = datetimeTrunc != null && datetimeTrunc.getPattern() != null ? new PatternRenderer(
+				datetimeTrunc.getPattern() ) : null;
 	}
 
 	@Override
@@ -90,7 +89,7 @@ public class TruncFunction extends AbstractSqmFunctionDescriptor implements Func
 			SqlAppender sqlAppender,
 			List<? extends SqlAstNode> sqlAstArguments,
 			SqlAstTranslator<?> walker) {
-		final String pattern;
+		final PatternRenderer pattern;
 		if ( numericTrunc ) {
 			if ( sqlAstArguments.size() == 2 && twoArgTruncPattern != null ) {
 				pattern = twoArgTruncPattern;
@@ -100,9 +99,9 @@ public class TruncFunction extends AbstractSqmFunctionDescriptor implements Func
 			}
 		}
 		else {
-			pattern = datetimeTrunc.getPattern();
+			pattern = datetimeTruncPattern;
 		}
-		new PatternRenderer( pattern, SqlAstNodeRenderingMode.DEFAULT ).render(
+		pattern.render(
 				sqlAppender,
 				sqlAstArguments,
 				walker
@@ -124,12 +123,8 @@ public class TruncFunction extends AbstractSqmFunctionDescriptor implements Func
 				throw new UnsupportedOperationException( "Datetime truncation is not supported for this database" );
 			}
 			if ( datetimeTrunc.getPattern() == null ) {
-				final boolean useConvertToFormat = nodeBuilder.getSessionFactory()
-						.getJdbcServices()
-						.getDialect() instanceof SybaseDialect;
 				return new DateTruncEmulation(
 						toDateFunction,
-						useConvertToFormat,
 						typeConfiguration
 				).generateSqmFunctionExpression( arguments, impliedResultType, queryEngine, typeConfiguration );
 			}
@@ -157,16 +152,6 @@ public class TruncFunction extends AbstractSqmFunctionDescriptor implements Func
 						pattern = "MI";
 						break;
 					case SECOND:
-						if ( nodeBuilder.getSessionFactory().getJdbcServices().getDialect() instanceof OracleDialect ) {
-							// Oracle does not support truncating to seconds with the native function, use emulation
-							return new DateTruncEmulation( "to_date", false, typeConfiguration )
-									.generateSqmFunctionExpression(
-											arguments,
-											impliedResultType,
-											queryEngine,
-											typeConfiguration
-									);
-						}
 						pattern = "SS";
 						break;
 					default:
@@ -182,14 +167,6 @@ public class TruncFunction extends AbstractSqmFunctionDescriptor implements Func
 		}
 		else {
 			// numeric truncation
-			if ( nodeBuilder.getSessionFactory().getJdbcServices().getDialect() instanceof PostgreSQLDialect ) {
-				return new PostgreSQLTruncRoundFunction( getName(), true ).generateSqmFunctionExpression(
-						arguments,
-						impliedResultType,
-						queryEngine,
-						typeConfiguration
-				);
-			}
 			numericTrunc = true;
 		}
 
@@ -205,27 +182,29 @@ public class TruncFunction extends AbstractSqmFunctionDescriptor implements Func
 		);
 	}
 
-
-
 	private static class TruncArgumentsValidator implements ArgumentsValidator {
+		private static final ArgumentTypesValidator DATETIME_VALIDATOR = new ArgumentTypesValidator(
+				StandardArgumentsValidators.exactly( 2 ),
+				TEMPORAL,
+				TEMPORAL_UNIT
+		);
+
+		private static final ArgumentTypesValidator NUMERIC_VALIDATOR = new ArgumentTypesValidator(
+				StandardArgumentsValidators.between( 1, 2 ),
+				NUMERIC,
+				NUMERIC
+		);
+
 		@Override
 		public void validate(
 				List<? extends SqmTypedNode<?>> arguments,
 				String functionName,
 				TypeConfiguration typeConfiguration) {
 			if ( arguments.size() == 2 && arguments.get( 1 ) instanceof SqmExtractUnit ) {
-				new ArgumentTypesValidator(
-						StandardArgumentsValidators.exactly( 2 ),
-						TEMPORAL,
-						TEMPORAL_UNIT
-				).validate( arguments, functionName, typeConfiguration );
+				DATETIME_VALIDATOR.validate( arguments, functionName, typeConfiguration );
 			}
 			else {
-				new ArgumentTypesValidator(
-						StandardArgumentsValidators.between( 1, 2 ),
-						NUMERIC,
-						NUMERIC
-				).validate( arguments, functionName, typeConfiguration );
+				NUMERIC_VALIDATOR.validate( arguments, functionName, typeConfiguration );
 			}
 		}
 	}

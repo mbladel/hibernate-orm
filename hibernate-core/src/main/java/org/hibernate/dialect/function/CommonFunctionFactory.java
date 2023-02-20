@@ -296,36 +296,10 @@ public class CommonFunctionFactory {
 	}
 
 	/**
-	 * SQL Server < 16
+	 * SQL Server >= 16
 	 */
 	public void trunc_round_datetrunc() {
 		trunc( "round(?1,0,1)", "round(?1,?2,1)", TruncFunction.DatetimeTrunc.DATETRUNC, "convert" );
-	}
-
-	/**
-	 * SQL Server >= 16
-	 */
-	public void trunc_round_format() {
-		trunc( "round(?1,0,1)", "round(?1,?2,1)", TruncFunction.DatetimeTrunc.FORMAT, "convert" );
-	}
-
-	/**
-	 * Sybase
-	 */
-	public void trunc_floorPower() {
-		trunc(
-				"sign(?1)*floor(abs(?1))",
-				"sign(?1)*floor(abs(?1)*power(10,?2))/power(10,?2)",
-				TruncFunction.DatetimeTrunc.FORMAT,
-				"convert"
-		);
-	}
-
-	/**
-	 * PostgreSQL (only works if the second arg is constant, as it almost always is)
-	 */
-	public void trunc_truncFloor() {
-		trunc( "trunc(?1)", "sign(?1)*floor(abs(?1)*1e?2)/1e?2", TruncFunction.DatetimeTrunc.DATE_TRUNC, null );
 	}
 
 	/**
@@ -333,27 +307,6 @@ public class CommonFunctionFactory {
 	 */
 	public void trunc_floor() {
 		trunc( "sign(?1)*floor(abs(?1))", "sign(?1)*floor(abs(?1)*1e?2)/1e?2", null, null );
-	}
-
-	public void truncate() {
-		functionRegistry.namedDescriptorBuilder( "truncate" )
-				.setExactArgumentCount( 2 ) //some databases allow 1 arg but in these it's a synonym for trunc()
-				.setParameterTypes( NUMERIC, INTEGER )
-				.setInvariantType( doubleType )
-				.setArgumentListSignature( "(NUMERIC number, INTEGER places)" )
-				.register();
-	}
-
-	/**
-	 * SQL Server
-	 */
-	public void truncate_round() {
-		functionRegistry.patternDescriptorBuilder( "truncate", "round(?1,?2,1)" )
-				.setExactArgumentCount( 2 )
-				.setParameterTypes( NUMERIC, INTEGER )
-				.setInvariantType( doubleType )
-				.setArgumentListSignature( "(NUMERIC number, INTEGER places)" )
-				.register();
 	}
 
 	/**
