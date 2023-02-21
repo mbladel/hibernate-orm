@@ -12,6 +12,7 @@ import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.proxy.HibernateProxy;
 
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.FailureExpected;
 import org.hibernate.testing.orm.junit.JiraKey;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -166,7 +167,7 @@ public class EagerProxyNotFoundTest {
 	}
 
 	@Test
-	@Disabled("This test seems wrong, I don't think the default behavior is to trigger an exception") // todo marco
+	@FailureExpected(reason = "This test is wrong, by default no exception should be thrown for a not-found foreign key")
 	public void testExistingProxyWithNonExistingAssociation(SessionFactoryScope scope) {
 		scope.inTransaction(
 				session -> {

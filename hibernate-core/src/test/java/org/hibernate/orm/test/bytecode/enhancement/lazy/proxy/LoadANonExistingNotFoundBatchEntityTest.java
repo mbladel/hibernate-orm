@@ -76,9 +76,11 @@ public class LoadANonExistingNotFoundBatchEntityTest extends BaseNonConfigCoreFu
 			}
 		} );
 
-		// not-found associations are always join-fetched, so we should
-		// get `NUMBER_OF_ENTITIES` queries
-		assertEquals( NUMBER_OF_ENTITIES, statistics.getPrepareStatementCount() );
+		// A "not found" association cannot be batch fetched because
+		// Employee#employer must be initialized immediately.
+		// Enhanced proxies (and HibernateProxy objects) should never be created
+		// for a "not found" association.
+		assertEquals( 2 * NUMBER_OF_ENTITIES, statistics.getPrepareStatementCount() );
 	}
 
 	@Test
@@ -94,9 +96,11 @@ public class LoadANonExistingNotFoundBatchEntityTest extends BaseNonConfigCoreFu
 			}
 		} );
 
-		// not-found associations are always join-fetched, so we should
-		// get `NUMBER_OF_ENTITIES` queries
-		assertThat( statistics.getPrepareStatementCount() ).isEqualTo( NUMBER_OF_ENTITIES  );
+		// A "not found" association cannot be batch fetched because
+		// Employee#employer must be initialized immediately.
+		// Enhanced proxies (and HibernateProxy objects) should never be created
+		// for a "not found" association.
+		assertEquals( 2 * NUMBER_OF_ENTITIES, statistics.getPrepareStatementCount() );
 	}
 
 	@Test

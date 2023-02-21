@@ -67,9 +67,10 @@ public class LoadANonExistingNotFoundEntityTest extends BaseNonConfigCoreFunctio
 				}
 		);
 
-		// not-found associations are always join-fetched, so we should
-		// get 1 query for the Employee with join
-		assertEquals( 1, statistics.getPrepareStatementCount() );
+		// The Employee#employer must be initialized immediately because
+		// enhanced proxies (and HibernateProxy objects) should never be created
+		// for a "not found" association.
+		assertEquals( 2, statistics.getPrepareStatementCount() );
 	}
 
 	@Test
@@ -85,9 +86,10 @@ public class LoadANonExistingNotFoundEntityTest extends BaseNonConfigCoreFunctio
 				}
 		);
 
-		// not-found associations are always join-fetched, so we should
-		// get 1 query for the Employee with join
-		assertEquals( 1, statistics.getPrepareStatementCount() );
+		// The Employee#employer must be initialized immediately because
+		// enhanced proxies (and HibernateProxy objects) should never be created
+		// for a "not found" association.
+		assertEquals( 2, statistics.getPrepareStatementCount() );
 	}
 
 	@Test

@@ -44,11 +44,11 @@ public class FkRefTests {
 	@Test
 	@JiraKey( "HHH-15099" )
 	@JiraKey( "HHH-15106" )
-	@FailureExpected(
-			reason = "Coin is selected and so its currency needs to be fetched.  At the " +
-					"moment, that fetch always happens via a join-fetch.  Ideally we'd support " +
-					"loading these via subsequent-select also"
-	)
+//	@FailureExpected(
+//			reason = "Coin is selected and so its currency needs to be fetched.  At the " +
+//					"moment, that fetch always happens via a join-fetch.  Ideally we'd support " +
+//					"loading these via subsequent-select also"
+//	)
 	public void testSimplePredicateUse(SessionFactoryScope scope) {
 		final SQLStatementInspector statementInspector = scope.getCollectingStatementInspector();
 		statementInspector.clear();
@@ -160,11 +160,11 @@ public class FkRefTests {
 	@Test
 	@JiraKey( "HHH-15099" )
 	@JiraKey( "HHH-15106" )
-	@FailureExpected(
-			reason = "Coin is selected and so its currency needs to be fetched.  At the " +
-					"moment, that fetch always happens via a join-fetch.  Ideally we'd support " +
-					"loading these via subsequent-select also"
-	)
+//	@FailureExpected(
+//			reason = "Coin is selected and so its currency needs to be fetched.  At the " +
+//					"moment, that fetch always happens via a join-fetch.  Ideally we'd support " +
+//					"loading these via subsequent-select also"
+//	)
 	public void testNullnessPredicateUse2(SessionFactoryScope scope) {
 		final SQLStatementInspector statementInspector = scope.getCollectingStatementInspector();
 		statementInspector.clear();

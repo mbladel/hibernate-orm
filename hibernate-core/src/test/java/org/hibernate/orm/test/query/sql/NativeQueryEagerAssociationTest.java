@@ -84,7 +84,7 @@ public class NativeQueryEagerAssociationTest {
 	}
 
 	@Test
-	public void testNativeQueryToOneAssociationNotFound(SessionFactoryScope scope) {
+	public void testNativeQueryNotFound(SessionFactoryScope scope) {
 		assertThrows( FetchNotFoundException.class, () -> scope.inTransaction(
 				session -> session.createNativeQuery(
 						"select * from classroom where id = 2", Classroom.class ).getSingleResult()
