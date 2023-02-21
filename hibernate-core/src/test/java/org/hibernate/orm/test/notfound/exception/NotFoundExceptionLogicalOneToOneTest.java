@@ -91,12 +91,11 @@ public class NotFoundExceptionLogicalOneToOneTest {
 		scope.inTransaction( (session) -> {
 			session.get( Coin.class, 2 );
 
-			assertThat( statementInspector.getSqlQueries() ).hasSize( 1 );
+			assertThat( statementInspector.getSqlQueries() ).hasSize( 2 );
 			assertThat( statementInspector.getSqlQueries().get( 0 ) ).contains( " Coin " );
-			assertThat( statementInspector.getSqlQueries().get( 0 ) ).contains( " Currency " );
-			assertThat( statementInspector.getSqlQueries().get( 0 ) ).contains( " join " );
-			assertThat( statementInspector.getSqlQueries().get( 0 ) ).doesNotContain( " inner " );
-			assertThat( statementInspector.getSqlQueries().get( 0 ) ).doesNotContain( " cross " );
+			assertThat( statementInspector.getSqlQueries().get( 1 ) ).contains( " Currency " );
+			assertThat( statementInspector.getSqlQueries().get( 0 ) ).doesNotContain( " join " );
+			assertThat( statementInspector.getSqlQueries().get( 1 ) ).doesNotContain( " join " );
 		} );
 
 		scope.inTransaction( (session) -> {
@@ -224,7 +223,7 @@ public class NotFoundExceptionLogicalOneToOneTest {
 			final List<Coin> coins = session.createQuery( hql, Coin.class ).getResultList();
 			assertThat( coins ).hasSize( 1 );
 
-			assertThat( statementInspector.getSqlQueries() ).hasSize( 1 );
+			assertThat( statementInspector.getSqlQueries() ).hasSize( 2 );
 			assertThat( statementInspector.getSqlQueries().get( 0 ) ).contains( " Coin " );
 			assertThat( statementInspector.getSqlQueries().get( 0 ) ).contains( " Currency " );
 			assertThat( statementInspector.getSqlQueries().get( 0 ) ).contains( " join " );

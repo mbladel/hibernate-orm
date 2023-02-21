@@ -300,7 +300,7 @@ public class ToOneAttributeMapping
 				}
 			}
 			isOptional = ( (ManyToOne) bootValue ).isIgnoreNotFound();
-			isInternalLoadNullable = ( isNullable && bootValue.isForeignKeyEnabled() ) || notFoundAction == NotFoundAction.IGNORE;
+			isInternalLoadNullable = ( isNullable && bootValue.isForeignKeyEnabled() ) || hasNotFoundAction();
 		}
 		else {
 			assert bootValue instanceof OneToOne;
@@ -1316,7 +1316,7 @@ public class ToOneAttributeMapping
 
 		 having the left join we don't want to add an extra implicit join that will be translated into an SQL inner join (see HHH-15342)
 		*/
-		if ( fetchTiming == FetchTiming.IMMEDIATE && selected || hasNotFoundAction() ) {
+		if ( fetchTiming == FetchTiming.IMMEDIATE && selected ) {
 			final TableGroup tableGroup = determineTableGroupForFetch(
 					fetchablePath,
 					fetchParent,
@@ -1406,7 +1406,7 @@ public class ToOneAttributeMapping
 		);
 		final boolean selectByUniqueKey = isSelectByUniqueKey( side );
 
-		if ( fetchTiming == FetchTiming.IMMEDIATE ) {
+		if ( fetchTiming == FetchTiming.IMMEDIATE || hasNotFoundAction() ) {
 			return new EntityFetchSelectImpl(
 					fetchParent,
 					this,

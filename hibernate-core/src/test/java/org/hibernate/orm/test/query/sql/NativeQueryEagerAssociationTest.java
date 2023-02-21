@@ -9,7 +9,10 @@ package org.hibernate.orm.test.query.sql;
 
 import java.util.List;
 
+import org.hibernate.FetchNotFoundException;
 import org.hibernate.Hibernate;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.JiraKey;
@@ -26,6 +29,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -44,10 +48,16 @@ public class NativeQueryEagerAssociationTest {
 			final Building building1 = new Building( 1L, "building_1" );
 			final Building building2 = new Building( 2L, "building_2" );
 			final Building building3 = new Building( 3L, "building_3" );
+			final Building building4 = new Building( 4L, "building_4" );
 			session.persist( building1 );
 			session.persist( building2 );
 			session.persist( building3 );
 			session.persist( new Classroom( 1L, "classroom_1", building1, List.of( building2, building3 ) ) );
+			session.persist( new Classroom( 2L, "classroom_2", building4, null ) );
+		} );
+		scope.inTransaction( session -> {
+			// delete associated entity to trigger @NotFound
+			session.createMutationQuery( "delete from Building where id = 4L" ).executeUpdate();
 		} );
 	}
 
@@ -62,14 +72,34 @@ public class NativeQueryEagerAssociationTest {
 	@Test
 	public void testNativeQuery(SessionFactoryScope scope) {
 		final Classroom result = scope.fromTransaction(
-				session -> session.createNativeQuery( "select id, description, building_id from classroom", Classroom.class ).getSingleResult()
+				session -> session.createNativeQuery( "select * from classroom where id = 1", Classroom.class )
+						.getSingleResult()
 		);
 		assertEquals( 1L, result.getId() );
 		assertTrue( Hibernate.isInitialized( result.getBuilding() ) );
 		assertTrue( Hibernate.isInitialized( result.getAdjacentBuildings() ) );
 		assertEquals( 1L, result.getBuilding().getId() );
+		assertEquals( "building_1", result.getBuilding().getDescription() );
 		assertEquals( 2, result.getAdjacentBuildings().size() );
 	}
+
+	@Test
+	public void testNativeQueryToOneAssociationNotFound(SessionFactoryScope scope) {
+		assertThrows( FetchNotFoundException.class, () -> scope.inTransaction(
+				session -> session.createNativeQuery(
+						"select * from classroom where id = 2", Classroom.class ).getSingleResult()
+		) );
+	}
+
+	@Test
+	public void testQueryAssociationNotFound(SessionFactoryScope scope) {
+		// todo marco : this should throw an exception!
+		assertThrows( FetchNotFoundException.class, () -> scope.inTransaction(
+				session -> session.createQuery( "from Classroom where id = 2", Classroom.class )
+						.getSingleResult()
+		) );
+	}
+
 
 	@Entity(name = "Building")
 	public static class Building {
@@ -103,6 +133,7 @@ public class NativeQueryEagerAssociationTest {
 		private String description;
 
 		@ManyToOne(fetch = FetchType.EAGER)
+		@NotFound(action = NotFoundAction.EXCEPTION)
 		private Building building;
 
 		@OneToMany(fetch = FetchType.EAGER)
