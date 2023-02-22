@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.hibernate.LockMode;
+import org.hibernate.annotations.NotFound;
 import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.engine.FetchStyle;
 import org.hibernate.engine.FetchTiming;
@@ -1154,6 +1155,7 @@ public class ToOneAttributeMapping
 				return new EntityFetchJoinedImpl(
 						fetchParent,
 						this,
+						notFoundAction,
 						tableGroup,
 						keyDomainResult,
 						fetchablePath,
@@ -1329,7 +1331,8 @@ public class ToOneAttributeMapping
 			return withRegisteredAssociationKeys(
 					() -> {
 						final DomainResult<?> keyResult;
-						if ( notFoundAction != null ) {
+						NotFoundAction fetchNotFoundAction = notFoundAction;
+						 if ( notFoundAction != NotFoundAction.IGNORE ) {
 							if ( sideNature == ForeignKeyDescriptor.Nature.KEY ) {
 								keyResult = foreignKeyDescriptor.createKeyDomainResult(
 										fetchablePath,
@@ -1345,6 +1348,9 @@ public class ToOneAttributeMapping
 										fetchParent,
 										creationState
 								);
+								if ( notFoundAction == null && isNullable ) {
+									fetchNotFoundAction = NotFoundAction.IGNORE;
+								}
 							}
 						}
 						else {
@@ -1354,9 +1360,11 @@ public class ToOneAttributeMapping
 						return new EntityFetchJoinedImpl(
 								fetchParent,
 								this,
+								fetchNotFoundAction,
 								tableGroup,
 								keyResult,
-								fetchablePath,creationState
+								fetchablePath,
+								creationState
 						);
 					},
 					creationState

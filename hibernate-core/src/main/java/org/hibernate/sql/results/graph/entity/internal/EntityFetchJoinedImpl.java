@@ -34,13 +34,14 @@ public class EntityFetchJoinedImpl extends AbstractNonLazyEntityFetch {
 	public EntityFetchJoinedImpl(
 			FetchParent fetchParent,
 			ToOneAttributeMapping toOneMapping,
+			NotFoundAction notFoundAction,
 			TableGroup tableGroup,
 			DomainResult<?> keyResult,
 			NavigablePath navigablePath,
 			DomainResultCreationState creationState) {
 		super( fetchParent, toOneMapping, navigablePath );
 		this.keyResult = keyResult;
-		this.notFoundAction = toOneMapping.getNotFoundAction();
+		this.notFoundAction = notFoundAction;
 		this.sourceAlias = tableGroup.getSourceAlias();
 
 		this.entityResult = new EntityResultImpl(
