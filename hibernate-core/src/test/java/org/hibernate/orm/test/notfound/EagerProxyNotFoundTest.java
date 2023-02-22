@@ -218,6 +218,7 @@ public class EagerProxyNotFoundTest {
 		}
 		catch (EntityNotFoundException expected) {
 		}
+
 		// also test explicit join
 		try {
 			scope.inTransaction( session -> session.createQuery(

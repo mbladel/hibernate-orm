@@ -1332,8 +1332,11 @@ public class ToOneAttributeMapping
 					() -> {
 						final DomainResult<?> keyResult;
 						NotFoundAction fetchNotFoundAction = notFoundAction;
-						 if ( notFoundAction != NotFoundAction.IGNORE ) {
-							if ( sideNature == ForeignKeyDescriptor.Nature.KEY ) {
+
+						if ( sideNature == ForeignKeyDescriptor.Nature.KEY ) {
+							if ( ( !( fetchablePath.getRealParent() instanceof TreatedNavigablePath )
+									&& !isInternalLoadNullable )
+									|| notFoundAction == NotFoundAction.EXCEPTION ) {
 								keyResult = foreignKeyDescriptor.createKeyDomainResult(
 										fetchablePath,
 										parentTableGroup,
@@ -1342,16 +1345,16 @@ public class ToOneAttributeMapping
 								);
 							}
 							else {
-								keyResult = foreignKeyDescriptor.createTargetDomainResult(
-										fetchablePath,
-										parentTableGroup,
-										fetchParent,
-										creationState
-								);
-								if ( notFoundAction == null && isNullable ) {
-									fetchNotFoundAction = NotFoundAction.IGNORE;
-								}
+								keyResult = null;
 							}
+						}
+						else if ( notFoundAction != null ) {
+							keyResult = foreignKeyDescriptor.createTargetDomainResult(
+									fetchablePath,
+									parentTableGroup,
+									fetchParent,
+									creationState
+							);
 						}
 						else {
 							keyResult = null;
