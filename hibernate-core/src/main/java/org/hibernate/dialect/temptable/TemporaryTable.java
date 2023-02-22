@@ -216,8 +216,9 @@ public class TemporaryTable implements Exportable, Contributable {
 										}
 										final ModelPart fkTarget = keyDescriptor.getTargetPart();
 										if ( !fkTarget.isEntityIdentifierMapping() ) {
-											final Value value = entityBinding.getSubclassProperty( pluralAttribute.getAttributeName() )
-													.getValue();
+											final PersistentClass declaringClass = runtimeModelCreationContext.getBootModel()
+													.getEntityBinding( ( (EntityMappingType) pluralAttribute.getDeclaringType() ).getEntityName() );
+											final Value value = declaringClass.getProperty( pluralAttribute.getAttributeName() ).getValue();
 											final Iterator<Selectable> columnIterator =
 													( (Collection) value ).getKey().getColumnIterator();
 											fkTarget.forEachSelectable(
@@ -356,8 +357,9 @@ public class TemporaryTable implements Exportable, Contributable {
 					entityDescriptor.visitSubTypeAttributeMappings(
 							attribute -> {
 								if ( !( attribute instanceof PluralAttributeMapping ) ) {
-									final SimpleValue value = (SimpleValue) entityBinding.getSubclassProperty( attribute.getAttributeName() )
-											.getValue();
+									final PersistentClass declaringClass = runtimeModelCreationContext.getBootModel()
+											.getEntityBinding( ( (EntityMappingType) attribute.getDeclaringType() ).getEntityName() );
+									final SimpleValue value = (SimpleValue) declaringClass.getProperty( attribute.getAttributeName() ).getValue();
 									final Iterator<Selectable> columnIterator = value.getConstraintColumnIterator();
 									attribute.forEachSelectable(
 											(columnIndex, selection) -> {
