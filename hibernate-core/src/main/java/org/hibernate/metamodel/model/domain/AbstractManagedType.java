@@ -56,6 +56,7 @@ public abstract class AbstractManagedType<J>
 
 	private final Map<String, SingularPersistentAttribute<J, ?>> declaredSingularAttributes = new LinkedHashMap<>();
 	private volatile Map<String, PluralPersistentAttribute<J, ?, ?>> declaredPluralAttributes ;
+	private final Map<String, SingularPersistentAttribute<J, ?>> declaredGenericEmbeddedAttributes = new HashMap<>();
 
 	private final List<ManagedDomainType> subTypes = new ArrayList<>();
 
@@ -465,6 +466,24 @@ public abstract class AbstractManagedType<J>
 
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// Generic Embeddable attributes
+
+	@Override
+	public SingularPersistentAttribute<? super J, ?> findGenericEmbeddableAttribute(String name) {
+		SingularPersistentAttribute<? super J, ?> attribute = findDeclaredGenericEmbeddableAttribute( name );
+		if ( attribute == null && getSuperType() != null ) {
+			attribute = getSuperType().findDeclaredGenericEmbeddableAttribute( name );
+		}
+		return attribute;
+	}
+
+	@Override
+	public SingularPersistentAttribute<? super J, ?> findDeclaredGenericEmbeddableAttribute(String name) {
+		return declaredGenericEmbeddedAttributes.get( name );
+	}
+
+
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Bags
 
 	@Override
@@ -738,6 +757,11 @@ public abstract class AbstractManagedType<J>
 						"Unable to classify attribute as singular or plural [" + attribute + "] for `" + this + '`'
 				);
 			}
+		}
+
+		@Override
+		public void applyGenericEmbeddableAttribute(SingularPersistentAttribute<J, ?> attribute) {
+			declaredGenericEmbeddedAttributes.put( attribute.getName(), attribute );
 		}
 
 		@Override

@@ -6,8 +6,10 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
+import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
+import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.query.PathException;
 import org.hibernate.query.hql.spi.SqmCreationState;
@@ -75,6 +77,30 @@ public class SqmEmbeddedValuedSimplePath<T>
 		final SqmPath<?> sqmPath = get( name );
 		creationState.getProcessingStateStack().getCurrent().getPathRegistry().register( sqmPath );
 		return sqmPath;
+	}
+
+	@Override
+	public SqmPath<?> get(String attributeName) {
+		final DomainType<?> domainType = getRoot( getLhs() ).getReferencedPathSource().getSqmPathType();
+		if ( domainType instanceof ManagedDomainType ) {
+			//noinspection rawtypes
+			final SqmPathSource<?> genericEmbeddable = ( (ManagedDomainType) domainType ).findGenericEmbeddableAttribute(
+					getReferencedPathSource().getPathName() );
+			if ( genericEmbeddable != null ) {
+				final SqmPathSource<?> subNavigable = genericEmbeddable.getSubPathSource( attributeName );
+				return resolvePath( attributeName, subNavigable );
+			}
+		}
+		return super.get( attributeName );
+	}
+
+	private SqmPath<?> getRoot(SqmPath<?> path) {
+		if ( path.getLhs() != null ) {
+			return getRoot( path.getLhs() );
+		}
+		else {
+			return path;
+		}
 	}
 
 	@Override

@@ -43,6 +43,12 @@ public interface AttributeContainer<J> {
 			);
 		}
 
+		default void applyGenericEmbeddableAttribute(SingularPersistentAttribute<J, ?> idAttribute) {
+			throw new UnsupportedMappingException(
+					"AttributeContainer [" + getClass().getName() + "] does not generic embeddables"
+			);
+		}
+
 		/**
 		 * todo (6.0) : we still need to implement this properly and the contract may change
 		 * 		- specifically I am not certain we will be able to re-use `SingularPersistentAttribute`
