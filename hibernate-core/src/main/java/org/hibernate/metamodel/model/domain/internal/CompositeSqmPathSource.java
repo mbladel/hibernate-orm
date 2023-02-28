@@ -12,4 +12,5 @@ import org.hibernate.query.sqm.SqmPathSource;
  * @author Steve Ebersole
  */
 public interface CompositeSqmPathSource<J> extends SqmPathSource<J> {
+	boolean isGeneric();
 }

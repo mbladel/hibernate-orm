@@ -36,6 +36,11 @@ public class NonAggregatedCompositeSqmPathSource<J> extends AbstractSqmPathSourc
 	}
 
 	@Override
+	public boolean isGeneric() {
+		return false;
+	}
+
+	@Override
 	public SqmPath<J> createSqmPath(SqmPath<?> lhs, SqmPathSource<?> intermediatePathSource) {
 		final NavigablePath navigablePath;
 		if ( intermediatePathSource == null ) {
