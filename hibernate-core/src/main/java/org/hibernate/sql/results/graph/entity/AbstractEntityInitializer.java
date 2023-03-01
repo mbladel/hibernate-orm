@@ -98,7 +98,7 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 	private EntityKey entityKey;
 	private Object entityInstance;
 	private Object entityInstanceForNotify;
-	private boolean missing;
+	protected boolean missing;
 	boolean isInitialized;
 	private boolean isOwningInitializer;
 	private Object[] resolvedEntityState;
@@ -379,7 +379,7 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 	@Override
 	public void resolveInstance(RowProcessingState rowProcessingState) {
 		if ( !missing && !isInitialized ) {
-			if ( shouldSkipResolveInstance( rowProcessingState ) ) {
+			if ( shouldSkipResolveInstance( navigablePath, referencedModelPart, rowProcessingState ) ) {
 				missing = true;
 				return;
 			}
@@ -399,26 +399,45 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 		}
 	}
 
-	private boolean shouldSkipResolveInstance(RowProcessingState rowProcessingState) {
-		final NavigablePath parent = navigablePath.getParent();
-		if ( parent != null ) {
-			final Initializer parentInitializer = rowProcessingState.resolveInitializer( parent );
-			if ( parentInitializer != null && parentInitializer.isEntityInitializer() ) {
-				if ( isReferencedModelPartAssignableToConcreteParent( parentInitializer ) ) {
-					return true;
+	protected boolean shouldSkipResolveInstance(
+			NavigablePath navigablePath,
+			ModelPart modelPart,
+			RowProcessingState rowProcessingState) {
+		if ( navigablePath.getParent() != null ) {
+			Initializer parentInitializer = rowProcessingState.resolveInitializer( navigablePath.getParent() );
+			if ( parentInitializer != null ) {
+				// Walk back initializers until we find an EntityInitializer
+				while ( parentInitializer != null && !parentInitializer.isEntityInitializer() ) {
+					modelPart = parentInitializer.getInitializedPart();
+					navigablePath = navigablePath.getParent();
+					parentInitializer = rowProcessingState.resolveInitializer( navigablePath.getParent() );
+				}
+				if ( parentInitializer != null && parentInitializer.asEntityInitializer()
+						.getEntityDescriptor()
+						.getEntityMetamodel()
+						.isPolymorphic() ) {
+					parentInitializer.resolveKey( rowProcessingState );
+					return isReferencedModelPartInConcreteParent(
+							modelPart,
+							navigablePath,
+							parentInitializer
+					);
 				}
 			}
 		}
 		return false;
 	}
 
-	private boolean isReferencedModelPartAssignableToConcreteParent(Initializer parentInitializer) {
+	private boolean isReferencedModelPartInConcreteParent(
+			ModelPart modelPart,
+			NavigablePath partNavigablePath,
+			Initializer parentInitializer) {
 		final EntityPersister parentConcreteDescriptor = parentInitializer.asEntityInitializer()
 				.getConcreteDescriptor();
-		if ( parentConcreteDescriptor != null && parentConcreteDescriptor.getEntityMetamodel().isPolymorphic()) {
-			final ModelPart concreteModelPart = parentConcreteDescriptor.findByPath( navigablePath.getLocalName() );
+		if ( parentConcreteDescriptor != null && parentConcreteDescriptor.getEntityMetamodel().isPolymorphic() ) {
+			final ModelPart concreteModelPart = parentConcreteDescriptor.findByPath( partNavigablePath.getLocalName() );
 			if ( concreteModelPart == null
-					|| !referencedModelPart.getJavaType().getJavaTypeClass()
+					|| !modelPart.getJavaType().getJavaTypeClass()
 					.isAssignableFrom( concreteModelPart.getJavaType().getJavaTypeClass() ) ) {
 		/*
 			Given:
