@@ -24,7 +24,6 @@ import org.hibernate.internal.HEMLogging;
 import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.mapping.Component;
-import org.hibernate.mapping.KeyValue;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
@@ -274,6 +273,7 @@ public class MetadataContext {
 
 					applyIdMetadata( safeMapping, jpaMapping );
 					applyVersionAttribute( safeMapping, jpaMapping );
+					applyGenericEmbeddableProperties( safeMapping, jpaMapping );
 
 					for ( Property property : safeMapping.getDeclaredProperties() ) {
 						if ( property.getValue() == safeMapping.getIdentifierMapper() ) {
@@ -570,6 +570,25 @@ public class MetadataContext {
 			( ( AttributeContainer<X>) jpaMappingType ).getInFlightAccess().applyVersionAttribute(
 					attributeFactory.buildVersionAttribute( jpaMappingType, declaredVersion )
 			);
+		}
+	}
+
+	private <X> void applyGenericEmbeddableProperties(
+			PersistentClass persistentClass,
+			EntityDomainType<X> entityType) {
+		final MappedSuperclass mappedSuperclass = persistentClass.getSuperMappedSuperclass();
+		if ( mappedSuperclass != null ) {
+			for ( Property superclassProperty : mappedSuperclass.getDeclaredProperties() ) {
+				if ( superclassProperty.isGeneric() && superclassProperty.isComposite() ) {
+					final Property property = persistentClass.getProperty( superclassProperty.getName() );
+					final SingularPersistentAttribute<X, ?> attribute = (SingularPersistentAttribute<X, ?>) attributeFactory.buildAttribute(
+							entityType,
+							property
+					);
+					//noinspection unchecked rawtypes
+					( (AttributeContainer) entityType ).getInFlightAccess().addConcreteEmbeddableAttribute( attribute );
+				}
+			}
 		}
 	}
 
