@@ -69,7 +69,6 @@ dependencies {
     testRuntimeOnly testLibs.wildFlyTxnClient
     testRuntimeOnly jakartaLibs.jsonb
     testRuntimeOnly libs.jackson
-    testRuntimeOnly libs.jacksonXml
 
     testAnnotationProcessor project( ':hibernate-jpamodelgen' )
 
