@@ -40,34 +40,6 @@ dependencies {
 	reportAggregation project(':hibernate-jpamodelgen')
 
 	implementation project( ':hibernate-core' )
-
-	annotationProcessor project( ':hibernate-jpamodelgen' )
-
-	testImplementation project(':hibernate-testing')
-	testImplementation project(':hibernate-envers')
-	testImplementation project(':hibernate-spatial')
-	testImplementation project(':hibernate-jcache')
-	testImplementation project( path: ':hibernate-core', configuration: 'tests' )
-
-	testImplementation 'org.apache.commons:commons-lang3:3.4'
-	testImplementation 'org.osgi:org.osgi.core:4.3.1'
-
-	testImplementation testLibs.mockito
-	testImplementation testLibs.mockitoInline
-
-	testImplementation jakartaLibs.jaxbApi
-	testImplementation jakartaLibs.jaxb
-	testImplementation jakartaLibs.jsonb
-	testImplementation libs.jacksonXml
-
-	testRuntimeOnly testLibs.wildFlyTxnClient
-	testRuntimeOnly(libs.ehcache3) {
-		capabilities {
-			requireCapability 'org.ehcache.modules:ehcache-xml-jakarta'
-		}
-	}
-	// Needed for JSON tests
-	testRuntimeOnly libs.jackson
 }
 
 
