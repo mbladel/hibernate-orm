@@ -178,6 +178,8 @@ public class JoinedInheritanceSameAttributeNameTest {
 		)
 		private Set<String> comments;
 
+		private Integer testProperty;
+
 		public NestedEmbeddable() {
 			comments = new HashSet<>();
 		}
@@ -188,6 +190,14 @@ public class JoinedInheritanceSameAttributeNameTest {
 
 		public void setComments(Set<String> comments) {
 			this.comments = comments;
+		}
+
+		public Integer getTestProperty() {
+			return testProperty;
+		}
+
+		public void setTestProperty(Integer testProperty) {
+			this.testProperty = testProperty;
 		}
 	}
 

@@ -11,17 +11,15 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.relational.Exportable;
 import org.hibernate.boot.model.relational.QualifiedNameParser;
 import org.hibernate.boot.model.relational.QualifiedTableName;
-import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.Size;
+import org.hibernate.generator.Generator;
 import org.hibernate.id.OptimizableGenerator;
 import org.hibernate.id.enhanced.Optimizer;
 import org.hibernate.internal.CoreLogging;
@@ -29,12 +27,11 @@ import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.collections.ArrayHelper;
 import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Column;
-import org.hibernate.mapping.Component;
 import org.hibernate.mapping.Contributable;
 import org.hibernate.mapping.PersistentClass;
+import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Selectable;
 import org.hibernate.mapping.SimpleValue;
-import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
@@ -45,10 +42,11 @@ import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.SingleTableEntityPersister;
-import org.hibernate.generator.Generator;
 import org.hibernate.type.BasicType;
 import org.hibernate.type.StandardBasicTypes;
 import org.hibernate.type.spi.TypeConfiguration;
+
+import static org.hibernate.boot.model.internal.BinderHelper.findPropertyByName;
 
 /**
  * @author Steve Ebersole
@@ -178,8 +176,8 @@ public class TemporaryTable implements Exportable, Contributable {
 				runtimeModelCreationContext,
 				temporaryTable -> {
 					final List<TemporaryTableColumn> columns = new ArrayList<>();
-					final MetadataImplementor bootModel = runtimeModelCreationContext.getBootModel();
-					final PersistentClass entityBinding = bootModel.getEntityBinding( entityDescriptor.getEntityName() );
+					final PersistentClass entityBinding = runtimeModelCreationContext.getBootModel()
+							.getEntityBinding( entityDescriptor.getEntityName() );
 
 					final Iterator<JdbcMapping> jdbcMappings = entityDescriptor.getIdentifierMapping()
 							.getJdbcMappings()
@@ -204,10 +202,10 @@ public class TemporaryTable implements Exportable, Contributable {
 						);
 					}
 
-					visitPluralAttributes( entityDescriptor, bootModel, (pluralAttribute, componentSupplier) -> {
+					visitPluralAttributes( entityDescriptor, (pluralAttribute, attributeName) -> {
 						if ( pluralAttribute.getSeparateCollectionTable() != null ) {
 							// Ensure that the FK target columns are available
-							ForeignKeyDescriptor keyDescriptor = pluralAttribute.getKeyDescriptor();
+							final ForeignKeyDescriptor keyDescriptor = pluralAttribute.getKeyDescriptor();
 							if ( keyDescriptor == null ) {
 								// This is expected to happen when processing a
 								// PostInitCallbackEntry because the callbacks
@@ -218,17 +216,11 @@ public class TemporaryTable implements Exportable, Contributable {
 							}
 							final ModelPart fkTarget = keyDescriptor.getTargetPart();
 							if ( !fkTarget.isEntityIdentifierMapping() ) {
-								final Value value;
-								if ( componentSupplier != null ) {
-									value = componentSupplier.get().getProperty( pluralAttribute.getAttributeName() ).getValue();
-								}
-								else {
-									final PersistentClass declaringClass = bootModel.getEntityBinding(
-											( (EntityMappingType) pluralAttribute.getDeclaringType() ).getEntityName()
-									);
-									value = declaringClass.getProperty( pluralAttribute.getAttributeName() ).getValue();
-								}
-								final Iterator<Selectable> columnIterator = ( (Collection) value ).getKey().getColumnIterator();
+								final PersistentClass declaringClass = runtimeModelCreationContext.getBootModel()
+										.getEntityBinding( ( (EntityMappingType) pluralAttribute.getDeclaringType() ).getEntityName() );
+								final Property property = findPropertyByName( declaringClass, attributeName );
+								assert property != null;
+								final Iterator<Selectable> columnIterator = ( (Collection) property.getValue() ).getKey().getColumnIterator();
 								fkTarget.forEachSelectable(
 										(columnIndex, selection) -> {
 											final Selectable selectable = columnIterator.next();
@@ -262,22 +254,16 @@ public class TemporaryTable implements Exportable, Contributable {
 
 	private static void visitPluralAttributes(
 			EntityMappingType entityDescriptor,
-			MetadataImplementor bootModel,
-			BiConsumer<PluralAttributeMapping, Supplier<Component>> consumer) {
+			BiConsumer<PluralAttributeMapping, String> consumer) {
 		entityDescriptor.visitSubTypeAttributeMappings(
-				attributeMapping -> {
-					if ( attributeMapping instanceof PluralAttributeMapping ) {
-						consumer.accept( (PluralAttributeMapping) attributeMapping, null );
+				attribute -> {
+					if ( attribute instanceof PluralAttributeMapping ) {
+						consumer.accept( (PluralAttributeMapping) attribute, attribute.getAttributeName() );
 					}
-					else if ( attributeMapping instanceof EmbeddedAttributeMapping ) {
+					else if ( attribute instanceof EmbeddedAttributeMapping ) {
 						visitPluralAttributes(
-								(EmbeddedAttributeMapping) attributeMapping,
-								() -> {
-									final PersistentClass declaringClass = bootModel.getEntityBinding(
-											( (EntityMappingType) attributeMapping.getDeclaringType() ).getEntityName()
-									);
-									return (Component) declaringClass.getProperty( attributeMapping.getAttributeName() ).getValue();
-								},
+								(EmbeddedAttributeMapping) attribute,
+								attribute.getAttributeName(),
 								consumer
 						);
 					}
@@ -287,23 +273,19 @@ public class TemporaryTable implements Exportable, Contributable {
 
 	private static void visitPluralAttributes(
 			EmbeddedAttributeMapping attributeMapping,
-			Supplier<Component> componentSupplier,
-			BiConsumer<PluralAttributeMapping, Supplier<Component>> consumer) {
+			String attributeName,
+			BiConsumer<PluralAttributeMapping, String> consumer) {
 		attributeMapping.visitSubParts(
 				modelPart -> {
 					if ( modelPart instanceof PluralAttributeMapping ) {
-						consumer.accept(
-								(PluralAttributeMapping) modelPart,
-								componentSupplier
-						);
+						final PluralAttributeMapping pluralAttribute = (PluralAttributeMapping) modelPart;
+						consumer.accept( pluralAttribute, attributeName + "." + pluralAttribute.getAttributeName() );
 					}
 					else if ( modelPart instanceof EmbeddedAttributeMapping ) {
-						final EmbeddedAttributeMapping embeddedAttributeMapping = (EmbeddedAttributeMapping) modelPart;
+						final EmbeddedAttributeMapping embeddedAttribute = (EmbeddedAttributeMapping) modelPart;
 						visitPluralAttributes(
-								embeddedAttributeMapping,
-								() -> (Component) componentSupplier.get()
-										.getProperty( embeddedAttributeMapping.getAttributeName() )
-										.getValue(),
+								embeddedAttribute,
+								attributeName + "." + embeddedAttribute.getAttributeName(),
 								consumer
 						);
 					}
