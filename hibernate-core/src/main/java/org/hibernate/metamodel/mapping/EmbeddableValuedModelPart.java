@@ -127,4 +127,8 @@ public interface EmbeddableValuedModelPart extends ValuedModelPart, Fetchable, F
 			Clause clause,
 			SqmToSqlAstConverter walker,
 			SqlAstCreationState sqlAstCreationState);
+
+	default boolean isBackref() {
+		return false;
+	}
 }

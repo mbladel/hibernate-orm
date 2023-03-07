@@ -42,6 +42,7 @@ import org.hibernate.metamodel.mapping.Restrictable;
 import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
 import org.hibernate.metamodel.mapping.internal.SimpleForeignKeyDescriptor;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
+import org.hibernate.metamodel.mapping.internal.VirtualEmbeddedAttributeMapping;
 import org.hibernate.metamodel.mapping.ordering.OrderByFragment;
 import org.hibernate.query.sqm.ComparisonOperator;
 import org.hibernate.spi.EntityIdentifierNavigablePath;
@@ -841,6 +842,13 @@ public class LoaderSelectBuilder {
 					// For non-join fetches, we reset the currentBagRole and set it to the previous value in the finally block
 					currentBagRole = null;
 				}
+
+				if ( fetchable.isVirtual() && ( fetchable instanceof VirtualEmbeddedAttributeMapping
+						&& ( ( (VirtualEmbeddedAttributeMapping) fetchable ).isBackref() ) ) ) {
+					// Skip fetching virtual embedded backrefs
+					return;
+				}
+
 				final Fetch fetch = fetchParent.generateFetchableFetch(
 						fetchable,
 						fetchablePath,

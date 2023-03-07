@@ -329,7 +329,8 @@ public class MappingModelCreationHelper {
 								FetchStyle.JOIN,
 								attributeMappingType,
 								declaringType,
-								propertyAccess
+								propertyAccess,
+								bootProperty.isBackRef()
 						);
 					}
 					else {

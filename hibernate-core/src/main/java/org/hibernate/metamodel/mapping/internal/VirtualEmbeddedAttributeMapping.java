@@ -22,6 +22,7 @@ import org.hibernate.sql.ast.tree.from.TableGroupProducer;
  * @author Christian Beikov
  */
 public class VirtualEmbeddedAttributeMapping extends EmbeddedAttributeMapping implements VirtualModelPart {
+	private final boolean isBackref;
 
 	public VirtualEmbeddedAttributeMapping(
 			String name,
@@ -35,7 +36,8 @@ public class VirtualEmbeddedAttributeMapping extends EmbeddedAttributeMapping im
 			FetchStyle mappedFetchStyle,
 			EmbeddableMappingType embeddableMappingType,
 			ManagedMappingType declaringType,
-			PropertyAccess propertyAccess) {
+			PropertyAccess propertyAccess,
+			boolean isBackref) {
 		super(
 				name,
 				navigableRole,
@@ -50,35 +52,7 @@ public class VirtualEmbeddedAttributeMapping extends EmbeddedAttributeMapping im
 				declaringType,
 				propertyAccess
 		);
-	}
-
-	public VirtualEmbeddedAttributeMapping(
-			String name,
-			NavigableRole navigableRole,
-			int stateArrayPosition,
-			int fetchableIndex,
-			String tableExpression,
-			AttributeMetadata attributeMetadata,
-			PropertyAccess parentInjectionAttributePropertyAccess,
-			FetchTiming mappedFetchTiming,
-			FetchStyle mappedFetchStyle,
-			EmbeddableMappingType embeddableMappingType,
-			ManagedMappingType declaringType,
-			PropertyAccess propertyAccess) {
-		super(
-				name,
-				navigableRole,
-				stateArrayPosition,
-				fetchableIndex,
-				tableExpression,
-				attributeMetadata,
-				parentInjectionAttributePropertyAccess,
-				mappedFetchTiming,
-				mappedFetchStyle,
-				embeddableMappingType,
-				declaringType,
-				propertyAccess
-		);
+		this.isBackref = isBackref;
 	}
 
 	// Constructor is only used for creating the inverse attribute mapping
@@ -97,6 +71,11 @@ public class VirtualEmbeddedAttributeMapping extends EmbeddedAttributeMapping im
 				embeddableTypeDescriptor,
 				creationProcess
 		);
+		this.isBackref = false;
 	}
 
+	@Override
+	public boolean isBackref() {
+		return isBackref;
+	}
 }
