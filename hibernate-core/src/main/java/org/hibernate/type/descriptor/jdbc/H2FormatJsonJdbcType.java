@@ -27,15 +27,15 @@ import org.hibernate.type.descriptor.java.JavaType;
  * @author Christian Beikov
  * @author Marco Belladelli
  */
-public class H2JsonBlobJdbcType implements AggregateJdbcType {
+public class H2FormatJsonJdbcType implements AggregateJdbcType {
 	/**
 	 * Singleton access
 	 */
-	public static final H2JsonBlobJdbcType INSTANCE = new H2JsonBlobJdbcType( null );
+	public static final H2FormatJsonJdbcType INSTANCE = new H2FormatJsonJdbcType( null );
 
 	private final EmbeddableMappingType embeddableMappingType;
 
-	protected H2JsonBlobJdbcType(EmbeddableMappingType embeddableMappingType) {
+	protected H2FormatJsonJdbcType(EmbeddableMappingType embeddableMappingType) {
 		this.embeddableMappingType = embeddableMappingType;
 	}
 
@@ -65,7 +65,7 @@ public class H2JsonBlobJdbcType implements AggregateJdbcType {
 			EmbeddableMappingType mappingType,
 			String sqlType,
 			RuntimeModelCreationContext creationContext) {
-		return new H2JsonBlobJdbcType( mappingType );
+		return new H2FormatJsonJdbcType( mappingType );
 	}
 
 	@Override
@@ -118,7 +118,7 @@ public class H2JsonBlobJdbcType implements AggregateJdbcType {
 			@Override
 			protected void doBind(PreparedStatement st, X value, int index, WrapperOptions options)
 					throws SQLException {
-				final String json = H2JsonBlobJdbcType.this.toString(
+				final String json = H2FormatJsonJdbcType.this.toString(
 						value,
 						getJavaType(),
 						options
@@ -129,7 +129,7 @@ public class H2JsonBlobJdbcType implements AggregateJdbcType {
 			@Override
 			protected void doBind(CallableStatement st, X value, String name, WrapperOptions options)
 					throws SQLException {
-				final String json = H2JsonBlobJdbcType.this.toString(
+				final String json = H2FormatJsonJdbcType.this.toString(
 						value,
 						getJavaType(),
 						options
@@ -161,7 +161,7 @@ public class H2JsonBlobJdbcType implements AggregateJdbcType {
 				if ( json == null ) {
 					return null;
 				}
-				return H2JsonBlobJdbcType.this.fromString(
+				return H2FormatJsonJdbcType.this.fromString(
 						new String( json, StandardCharsets.UTF_8 ),
 						getJavaType(),
 						options
