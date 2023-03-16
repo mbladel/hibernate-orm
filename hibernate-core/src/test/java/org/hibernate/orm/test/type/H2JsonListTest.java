@@ -31,14 +31,21 @@ import jakarta.persistence.Table;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SessionFactory
-@DomainModel( annotatedClasses = { JsonListTest.Path.class, JsonListTest.PathClob.class } )
-public class JsonListTest {
+@DomainModel( annotatedClasses = { H2JsonListTest.Path.class, H2JsonListTest.PathClob.class } )
+@RequiresDialect( H2Dialect.class )
+public class H2JsonListTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
-		scope.inTransaction( session -> session.persist( new Path( List.of(
-				UUID.randomUUID(),
-				UUID.randomUUID()
-		) ) ) );
+		scope.inTransaction( session -> {
+			session.persist( new Path( List.of(
+					UUID.randomUUID(),
+					UUID.randomUUID()
+			) ) );
+			session.persist( new PathClob( List.of(
+					UUID.randomUUID(),
+					UUID.randomUUID()
+			) ) );
+		} );
 	}
 
 	@AfterAll
@@ -49,43 +56,16 @@ public class JsonListTest {
 	@Test
 	public void testJsonRetrieval(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			final Path path = session.createQuery( "from Path", Path.class ).getSingleResult();
+			final Path path = session.find( Path.class, 1L );
 			assertThat( path ).isNotNull();
 			assertThat( path.getRelativePaths() ).hasSize( 2 );
 		} );
 	}
 
 	@Test
-	public void testFormatJsonSyntax(SessionFactoryScope scope) {
+	public void testClobRetrieval(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			session.createNativeMutationQuery( "insert into paths (relativePaths,id) values (?1 FORMAT JSON, ?2)" )
-					.setParameter(
-							1,
-							"[\"2b099c92-95ff-42e0-9f8c-f08c2518792d\", \"8d2164db-86b4-460a-91d0-bf821a8ca3d7\"]"
-					)
-					.setParameter( 2, 1L )
-					.executeUpdate();
-		} );
-		scope.inTransaction( session -> {
-			final Path path = session.createQuery( "from Path", Path.class ).getSingleResult();
-			assertThat( path ).isNotNull();
-			assertThat( path.getRelativePaths() ).hasSize( 2 );
-		} );
-	}
-
-	@Test
-	public void testFormatJsonSyntaxClob(SessionFactoryScope scope) {
-		scope.inTransaction( session -> {
-			session.createNativeMutationQuery( "insert into paths_clob (relativePaths,id) values (?1 FORMAT JSON, ?2)" )
-					.setParameter(
-							1,
-							"[\"2b099c92-95ff-42e0-9f8c-f08c2518792d\", \"8d2164db-86b4-460a-91d0-bf821a8ca3d7\"]"
-					)
-					.setParameter( 2, 1L )
-					.executeUpdate();
-		} );
-		scope.inTransaction( session -> {
-			final PathClob path = session.createQuery( "from PathClob", PathClob.class ).getSingleResult();
+			final PathClob path = session.find( PathClob.class, 1L );
 			assertThat( path ).isNotNull();
 			assertThat( path.getRelativePaths() ).hasSize( 2 );
 		} );
@@ -99,7 +79,7 @@ public class JsonListTest {
 		public Long id;
 
 		@JdbcTypeCode( SqlTypes.JSON )
-		@Column( columnDefinition = "json", nullable = false, updatable = false )
+		@Column( /*columnDefinition = "json",*/ nullable = false, updatable = false )
 		public List<UUID> relativePaths;
 
 		public Path() {
