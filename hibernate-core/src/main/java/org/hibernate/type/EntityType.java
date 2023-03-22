@@ -460,7 +460,13 @@ public abstract class EntityType extends AbstractType implements AssociationType
 			return null;
 		}
 		else {
-			EntityPersister entityPersister = getAssociatedEntityPersister( session.getFactory() );
+			final EntityPersister entityPersister = getAssociatedEntityPersister( session.getFactory() );
+			final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( value );
+			if ( lazyInitializer != null ) {
+				// If the value object is a proxy we need to force initialization and get the actual
+				// instance of the associated entity before getting the unique key property value
+				value = lazyInitializer.getImplementation();
+			}
 			Object propertyValue = entityPersister.getPropertyValue( value, uniqueKeyPropertyName );
 			// We now have the value of the property-ref we reference.  However,
 			// we need to dig a little deeper, as that property might also be
