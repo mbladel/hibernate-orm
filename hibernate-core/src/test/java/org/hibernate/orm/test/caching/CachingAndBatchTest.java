@@ -1,5 +1,6 @@
 package org.hibernate.orm.test.caching;
 
+import org.hibernate.Hibernate;
 import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
@@ -25,6 +26,7 @@ import jakarta.persistence.criteria.Root;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Jpa(
 		annotatedClasses = {
@@ -40,6 +42,7 @@ public class CachingAndBatchTest {
 		MyEntity1 myEntity1 = scope.fromTransaction(
 				entityManager -> {
 					MyEntity2 entity2 = new MyEntity2();
+					entity2.setName( "entity_2" );
 					entityManager.persist( entity2 );
 
 					MyEntity1 entity1 = new MyEntity1();
@@ -69,6 +72,11 @@ public class CachingAndBatchTest {
 					MyEntity1 entity1 = entityManager.find( MyEntity1.class, myEntity1.getId() );
 					assertEquals( myEntity1.getId(), entity1.getId() );
 					assertNotNull( entity1.getRef() );
+					// todo marco : this works when there's a proxy, but only because
+					//  the ToOne gets re-fetched when retrieving entity1 from cache,
+					//  and in the cache we only save the foreign key (entity2's id)
+					assertTrue( Hibernate.isInitialized( entity1.getRef() ) );
+					assertEquals( "entity_2", entity1.getRef().getName() );
 				}
 		);
 	}
@@ -129,6 +137,8 @@ public class CachingAndBatchTest {
 		@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_sequence")
 		private Long id;
 
+		private String name;
+
 		public MyEntity2() {
 		}
 
@@ -138,6 +148,14 @@ public class CachingAndBatchTest {
 
 		public void setId(Long id) {
 			this.id = id;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
 		}
 	}
 

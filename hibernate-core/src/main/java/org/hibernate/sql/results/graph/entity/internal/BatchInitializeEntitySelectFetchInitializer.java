@@ -70,6 +70,16 @@ public class BatchInitializeEntitySelectFetchInitializer extends AbstractBatchEn
 				entityInstance = loadingEntityEntry.getEntityInstance();
 			}
 			else {
+				// todo marco : this is always needed if we want to delay the fetching of children
+				//  after all parent rows are read: the parent gets saved to cache in finishUpRow
+				// 	which gets called before all other parents (for 2+ rows) are initialized. This
+				//  makes it impossible to set the child on all parents after the first using a strategy
+				//  like BatchEntitySelectFetchInitializer.
+				//  Possible solutions:
+				// 		a. delay saving parent to cache after endLoading ?
+				// 		b. finding a way of stopping infinite initialization loops for proxies
+				// 		(be able to know we're already initializing the proxy, but how can we
+				// 		call preLoad with that?)
 				// Force creating a proxy
 				entityInstance = session.internalLoad(
 						entityKey.getEntityName(),

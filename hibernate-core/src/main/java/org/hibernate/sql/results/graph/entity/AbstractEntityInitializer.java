@@ -723,17 +723,32 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 	@Override
 	public void initializeInstance(RowProcessingState rowProcessingState) {
 		if ( !missing && !isInitialized ) {
-			preLoad( rowProcessingState );
-
 			final LazyInitializer lazyInitializer = extractLazyInitializer( entityInstance );
 			final SharedSessionContractImplementor session = rowProcessingState.getSession();
 			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
 			if ( lazyInitializer != null ) {
+				// todo marco : this is wrong, we can't pass something to the user which isn't in the persistence context
+				//  this would prevent any and all cases of passing a proxy to a preLoad event
+				//  which could be dangerous if triggering an initialization
+				final LoadingEntityEntry loadingEntityEntry = persistenceContext.getLoadContexts().findLoadingEntityEntry( entityKey );
+				final Object preLoadInstance;
+				final boolean foundEntry;
+				if ( loadingEntityEntry != null && loadingEntityEntry.getEntityInstance() != null ) {
+					preLoadInstance = loadingEntityEntry.getEntityInstance();
+					foundEntry = true;
+				}
+				else {
+					// this.entityInstance is a proxy, create a temporary empty instance to pass to preLoad
+					preLoadInstance = instantiateEntity( entityKey.getIdentifier(), rowProcessingState.getSession() );
+					foundEntry = false;
+				}
+				preLoad( preLoadInstance, rowProcessingState );
+
 				Object instance = persistenceContext.getEntity( entityKey );
 				if ( instance == null ) {
 					instance = resolveInstance(
 							entityKey.getIdentifier(),
-							persistenceContext.getLoadContexts().findLoadingEntityEntry( entityKey ),
+							foundEntry ? loadingEntityEntry : null,
 							rowProcessingState
 					);
 					initializeEntity( instance, rowProcessingState );
@@ -742,6 +757,9 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 				entityInstanceForNotify = instance;
 			}
 			else {
+				// this.entityInstance is not a proxy, can safely call preLoad
+				preLoad( entityInstance, rowProcessingState );
+
 				if ( entityDescriptor.canReadFromCache() ) {
 					/*
 						@Cache
@@ -1085,7 +1103,7 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 		return readOnly == null ? persistenceContext.isDefaultReadOnly() : readOnly;
 	}
 
-	protected void preLoad(RowProcessingState rowProcessingState) {
+	protected void preLoad(Object entityInstance, RowProcessingState rowProcessingState) {
 		final SharedSessionContractImplementor session = rowProcessingState.getSession();
 		if ( session.isEventSource() ) {
 			final PreLoadEvent preLoadEvent = rowProcessingState.getJdbcValuesSourceProcessingState().getPreLoadEvent();
