@@ -49,7 +49,7 @@ public final class JacksonXmlFormatMapper implements FormatMapper {
 		xmlMapper.configure( SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false );
 		xmlMapper.enable( ToXmlGenerator.Feature.WRITE_NULLS_AS_XSI_NIL );
 		// Workaround for null vs empty string handling inside arrays,
-		// see: https://github.com/FasterXML/jackson-dataformat-xml/issues/344
+		// see: https://github.com/FasterXML/jackson-dataformat-xml/issues/584
 		final SimpleModule module = new SimpleModule();
 		module.addDeserializer( String[].class, new StringArrayDeserializer() );
 		xmlMapper.registerModule( module );
@@ -77,12 +77,9 @@ public final class JacksonXmlFormatMapper implements FormatMapper {
 		if ( javaType.getJavaType() == String.class || javaType.getJavaType() == Object.class ) {
 			return (String) value;
 		}
-		return writeValueAsString( value, javaType, javaType.getJavaType() );
-	}
-
-	private <T> String writeValueAsString(Object value, JavaType<T> javaType, Type type) {
 		try {
-			return objectMapper.writerFor( objectMapper.constructType( type ) ).writeValueAsString( value );
+			return objectMapper.writerFor( objectMapper.constructType( javaType.getJavaType() ) )
+					.writeValueAsString( value );
 		}
 		catch (JsonProcessingException e) {
 			throw new IllegalArgumentException( "Could not serialize object of java type: " + javaType, e );
@@ -93,11 +90,8 @@ public final class JacksonXmlFormatMapper implements FormatMapper {
 		@Override
 		public String[] deserialize(JsonParser jp, DeserializationContext deserializationContext) throws IOException {
 			final ArrayList<String> result = new ArrayList<>();
-			JsonToken token;
-			while ( ( token = jp.nextValue() ) != JsonToken.END_OBJECT ) {
-				if ( token.isScalarValue() ) {
-					result.add( jp.getValueAsString() );
-				}
+			while ( jp.nextValue() != JsonToken.END_OBJECT ) {
+				result.add( jp.getValueAsString() );
 			}
 			return result.toArray( String[]::new );
 		}
