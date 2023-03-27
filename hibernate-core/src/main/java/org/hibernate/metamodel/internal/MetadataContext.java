@@ -273,7 +273,7 @@ public class MetadataContext {
 
 					applyIdMetadata( safeMapping, jpaMapping );
 					applyVersionAttribute( safeMapping, jpaMapping );
-					applyGenericEmbeddableProperties( safeMapping, jpaMapping );
+					applyGenericProperties( safeMapping, jpaMapping );
 
 					for ( Property property : safeMapping.getDeclaredProperties() ) {
 						if ( property.getValue() == safeMapping.getIdentifierMapper() ) {
@@ -439,7 +439,7 @@ public class MetadataContext {
 						persistentClass.getIdentifierProperty()
 				);
 				//noinspection unchecked
-				attributeContainer.getInFlightAccess().addConcreteEmbeddableAttribute( concreteEmbeddable );
+				attributeContainer.getInFlightAccess().addConcreteGenericAttribute( concreteEmbeddable );
 			}
 		}
 		else {
@@ -573,22 +573,23 @@ public class MetadataContext {
 		}
 	}
 
-	private <X> void applyGenericEmbeddableProperties(
-			PersistentClass persistentClass,
-			EntityDomainType<X> entityType) {
+	private <X> void applyGenericProperties(
+			PersistentClass persistentClass, EntityDomainType<X> entityType) {
 		MappedSuperclass mappedSuperclass = getMappedSuperclass( persistentClass );
 		while ( mappedSuperclass != null ) {
-			for ( Property superclassProperty : mappedSuperclass.getDeclaredProperties() ) {
-				if ( superclassProperty.isGeneric() && superclassProperty.isComposite() ) {
-					final Property property = persistentClass.getProperty( superclassProperty.getName() );
-					final SingularPersistentAttribute<X, ?> attribute = (SingularPersistentAttribute<X, ?>) attributeFactory.buildAttribute(
-							entityType,
-							property
-					);
-					//noinspection unchecked rawtypes
-					( (AttributeContainer) entityType ).getInFlightAccess().addConcreteEmbeddableAttribute( attribute );
-				}
-			}
+			mappedSuperclass.getDeclaredProperties()
+					.stream()
+					.filter( Property::isGeneric )
+					.forEach( superclassProperty -> {
+						final Property property = persistentClass.getProperty( superclassProperty.getName() );
+						// todo marco : are plural attributes needed ? do they even work ??
+						final PersistentAttribute<X, ?> attribute = attributeFactory.buildAttribute(
+								entityType,
+								property
+						);
+						//noinspection unchecked rawtypes
+						( (AttributeContainer) entityType ).getInFlightAccess().addConcreteGenericAttribute( attribute );
+					} );
 			mappedSuperclass = getMappedSuperclass( mappedSuperclass );
 		}
 	}

@@ -115,7 +115,11 @@ public class AttributeFactory {
 
 		if ( attributeMetadata instanceof PluralAttributeMetadata ) {
 			//noinspection rawtypes
-			return PluralAttributeBuilder.build( (PluralAttributeMetadata) attributeMetadata, metadataContext );
+			return PluralAttributeBuilder.build(
+					(PluralAttributeMetadata) attributeMetadata,
+					property.isGeneric(),
+					metadataContext
+			);
 		}
 
 		final SingularAttributeMetadata<X, Y> singularAttributeMetadata = (SingularAttributeMetadata<X, Y>) attributeMetadata;

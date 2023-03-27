@@ -54,7 +54,8 @@ public abstract class AbstractPluralAttribute<D, C, E>
 		this.elementPathSource = SqmMappingModelHelper.resolveSqmPathSource(
 				CollectionPart.Nature.ELEMENT.getName(),
 				builder.getValueType(),
-				BindableType.PLURAL_ATTRIBUTE
+				BindableType.PLURAL_ATTRIBUTE,
+				builder.isGeneric()
 		);
 	}
 
@@ -153,5 +154,10 @@ public abstract class AbstractPluralAttribute<D, C, E>
 				lhs,
 				lhs.nodeBuilder()
 		);
+	}
+
+	@Override
+	public boolean isGeneric() {
+		return elementPathSource.isGeneric();
 	}
 }

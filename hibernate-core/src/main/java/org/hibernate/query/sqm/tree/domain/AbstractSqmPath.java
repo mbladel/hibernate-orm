@@ -14,7 +14,9 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
+import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
+import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.metamodel.model.domain.PersistentAttribute;
 import org.hibernate.query.sqm.NodeBuilder;
 import org.hibernate.query.sqm.SqmExpressible;
@@ -161,11 +163,12 @@ public abstract class AbstractSqmPath<T> extends AbstractSqmExpression<T> implem
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings( "unchecked" )
 	public SqmPath<?> get(String attributeName) {
-
-		final SqmPathSource<?> subNavigable = getReferencedPathSource().getSubPathSource( attributeName );
-
+		final SqmPathSource<?> resolvedModel = getResolvedModel();
+		final SqmPathSource<?> subNavigable = resolvedModel != null ?
+				getResolvedModel().getSubPathSource( attributeName )
+				: getReferencedPathSource().getSubPathSource( attributeName );
 		return resolvePath( attributeName, subNavigable );
 	}
 
