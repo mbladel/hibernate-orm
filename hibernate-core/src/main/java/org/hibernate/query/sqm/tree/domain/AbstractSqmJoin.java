@@ -6,8 +6,6 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
-import org.hibernate.metamodel.model.domain.DomainType;
-import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.query.sqm.NodeBuilder;
 import org.hibernate.query.sqm.SqmPathSource;
@@ -35,22 +33,5 @@ public abstract class AbstractSqmJoin<O,T> extends AbstractSqmFrom<O,T> implemen
 	@Override
 	public SqmJoinType getSqmJoinType() {
 		return joinType;
-	}
-
-	@Override
-	public SqmPathSource<?> getResolvedModel() {
-		final DomainType<?> lhsType;
-		final SqmPathSource<T> pathSource = getReferencedPathSource();
-		if ( pathSource.isGeneric() && ( lhsType = getLhs().getReferencedPathSource()
-				.getSqmPathType() ) instanceof ManagedDomainType ) {
-			//noinspection rawtypes
-			final SqmPathSource<?> concreteEmbeddable = (SqmPathSource<?>) ( (ManagedDomainType) lhsType ).findConcreteGenericAttribute(
-					pathSource.getPathName()
-			);
-			if ( concreteEmbeddable != null ) {
-				return concreteEmbeddable;
-			}
-		}
-		return getModel();
 	}
 }

@@ -23,6 +23,7 @@ import org.hibernate.internal.EntityManagerMessageLogger;
 import org.hibernate.internal.HEMLogging;
 import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
+import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
@@ -573,23 +574,18 @@ public class MetadataContext {
 		}
 	}
 
-	private <X> void applyGenericProperties(
-			PersistentClass persistentClass, EntityDomainType<X> entityType) {
+	private <X> void applyGenericProperties(PersistentClass persistentClass, EntityDomainType<X> entityType) {
 		MappedSuperclass mappedSuperclass = getMappedSuperclass( persistentClass );
 		while ( mappedSuperclass != null ) {
-			mappedSuperclass.getDeclaredProperties()
-					.stream()
-					.filter( Property::isGeneric )
-					.forEach( superclassProperty -> {
-						final Property property = persistentClass.getProperty( superclassProperty.getName() );
-						// todo marco : are plural attributes needed ? do they even work ??
-						final PersistentAttribute<X, ?> attribute = attributeFactory.buildAttribute(
-								entityType,
-								property
-						);
-						//noinspection unchecked rawtypes
-						( (AttributeContainer) entityType ).getInFlightAccess().addConcreteGenericAttribute( attribute );
-					} );
+			for ( Property superclassProperty : mappedSuperclass.getDeclaredProperties() ) {
+				// skip registering concrete types for generic basic values as it's not needed
+				if ( superclassProperty.isGeneric() && !( superclassProperty.getValue() instanceof BasicValue ) ) {
+					final Property property = persistentClass.getProperty( superclassProperty.getName() );
+					final PersistentAttribute<X, ?> attribute = attributeFactory.buildAttribute( entityType, property );
+					//noinspection unchecked
+					( (AttributeContainer<X>) entityType ).getInFlightAccess().addConcreteGenericAttribute( attribute );
+				}
+			}
 			mappedSuperclass = getMappedSuperclass( mappedSuperclass );
 		}
 	}

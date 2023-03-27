@@ -84,7 +84,7 @@ public abstract class AbstractPluralAttribute<D, C, E>
 
 	@Override
 	public SqmPathSource<?> getIntermediatePathSource(SqmPathSource<?> pathSource) {
-		return pathSource == elementPathSource ? null : elementPathSource;
+		return pathSource.getPathName().equals( elementPathSource.getPathName() ) ? null : elementPathSource;
 	}
 
 	@Override

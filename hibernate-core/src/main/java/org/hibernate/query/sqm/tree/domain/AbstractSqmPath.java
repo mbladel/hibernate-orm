@@ -142,7 +142,19 @@ public abstract class AbstractSqmPath<T> extends AbstractSqmExpression<T> implem
 
 	@Override
 	public SqmPathSource<?> getResolvedModel() {
-		return getModel();
+		final DomainType<?> lhsType;
+		final SqmPathSource<T> pathSource = getReferencedPathSource();
+		if ( pathSource.isGeneric() && ( lhsType = getLhs().getReferencedPathSource()
+				.getSqmPathType() ) instanceof ManagedDomainType ) {
+			//noinspection rawtypes
+			final SqmPathSource<?> concreteAttribute = (SqmPathSource<?>) ( (ManagedDomainType) lhsType ).findConcreteGenericAttribute(
+					pathSource.getPathName()
+			);
+			if ( concreteAttribute != null ) {
+				return concreteAttribute;
+			}
+		}
+		return pathSource;
 	}
 
 	@Override
@@ -163,12 +175,9 @@ public abstract class AbstractSqmPath<T> extends AbstractSqmExpression<T> implem
 	}
 
 	@Override
-	@SuppressWarnings( "unchecked" )
+	@SuppressWarnings("unchecked")
 	public SqmPath<?> get(String attributeName) {
-		final SqmPathSource<?> resolvedModel = getResolvedModel();
-		final SqmPathSource<?> subNavigable = resolvedModel != null ?
-				getResolvedModel().getSubPathSource( attributeName )
-				: getReferencedPathSource().getSubPathSource( attributeName );
+		final SqmPathSource<?> subNavigable = getResolvedModel().getSubPathSource( attributeName );
 		return resolvePath( attributeName, subNavigable );
 	}
 
