@@ -23,7 +23,6 @@ import org.hibernate.internal.EntityManagerMessageLogger;
 import org.hibernate.internal.HEMLogging;
 import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
-import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
@@ -578,8 +577,7 @@ public class MetadataContext {
 		MappedSuperclass mappedSuperclass = getMappedSuperclass( persistentClass );
 		while ( mappedSuperclass != null ) {
 			for ( Property superclassProperty : mappedSuperclass.getDeclaredProperties() ) {
-				// skip registering concrete types for generic basic values as it's not needed
-				if ( superclassProperty.isGeneric() && !( superclassProperty.getValue() instanceof BasicValue ) ) {
+				if ( superclassProperty.isGeneric() ) {
 					final Property property = persistentClass.getProperty( superclassProperty.getName() );
 					final PersistentAttribute<X, ?> attribute = attributeFactory.buildAttribute( entityType, property );
 					//noinspection unchecked

@@ -154,7 +154,7 @@ public abstract class AbstractSqmPath<T> extends AbstractSqmExpression<T> implem
 				return concreteAttribute;
 			}
 		}
-		return pathSource;
+		return getModel();
 	}
 
 	@Override
@@ -177,7 +177,11 @@ public abstract class AbstractSqmPath<T> extends AbstractSqmExpression<T> implem
 	@Override
 	@SuppressWarnings("unchecked")
 	public SqmPath<?> get(String attributeName) {
-		final SqmPathSource<?> subNavigable = getResolvedModel().getSubPathSource( attributeName );
+		final SqmPathSource<?> resolvedModel;
+		final SqmPathSource<?> pathSource = ( resolvedModel = getResolvedModel() ) != null ?
+				resolvedModel :
+				getReferencedPathSource();
+		final SqmPathSource<?> subNavigable = pathSource.getSubPathSource( attributeName );
 		return resolvePath( attributeName, subNavigable );
 	}
 
