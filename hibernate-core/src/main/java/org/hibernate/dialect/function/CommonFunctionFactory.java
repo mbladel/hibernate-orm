@@ -1180,7 +1180,7 @@ public class CommonFunctionFactory {
 		functionRegistry.namedDescriptorBuilder( "to_timestamp" )
 				//always 2 args on HSQL and Postgres
 				.setArgumentCountBetween( 1, 3 )
-				.setParameterTypes( STRING, STRING, STRING )
+				.setParameterTypes( ANY, STRING, STRING )
 				.setInvariantType(timestampType)
 				.register();
 	}
