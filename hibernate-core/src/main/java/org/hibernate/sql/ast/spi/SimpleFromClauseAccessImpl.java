@@ -9,14 +9,11 @@ package org.hibernate.sql.ast.spi;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.hibernate.metamodel.mapping.ModelPartContainer;
 import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.SqlTreeCreationLogger;
 import org.hibernate.sql.ast.tree.from.CorrelatedTableGroup;
-import org.hibernate.sql.ast.tree.from.PluralTableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroup;
-import org.hibernate.sql.ast.tree.from.VirtualTableGroup;
 
 import org.jboss.logging.Logger;
 
@@ -55,37 +52,39 @@ public class SimpleFromClauseAccessImpl implements FromClauseAccess {
 	@Override
 	public TableGroup findTableGroupForGetOrCreate(NavigablePath navigablePath) {
 		final TableGroup tableGroup = findTableGroup( navigablePath );
-		if ( parent != null && tableGroup != null && navigablePath.getParent() != null ) {
+		if ( parent != null && tableGroup != null ) {
 			final NavigableRole navigableRole = tableGroup.getModelPart().getNavigableRole();
 			if ( navigableRole != null && navigableRole.getParent() != null ) {
-				// Traverse up the navigable path to the point where resolving the path leads us to a regular TableGroup
+				// Traverse up the navigable path to the point where resolving the path leads us to the first TableGroup
 				NavigableRole parentRole = navigableRole.getParent();
 				NavigablePath parentPath = navigablePath.getParent();
 				while ( parentRole.getParent() != null ) {
 					parentRole = parentRole.getParent();
 					parentPath = parentPath.getParent();
 				}
-				// Only return the TableGroup if its regular parent TableGroup corresponds to the underlying one
-				if ( getUnderlyingTableGroup( findTableGroup( parentPath ) ) == getUnderlyingTableGroup( tableGroup ) ) {
+				final TableGroup localParent = tableGroupMap.get( parentPath );
+				if ( localParent == null ) {
 					return tableGroup;
 				}
 				else {
-					return null;
+					final TableGroup parentFound = parent.findTableGroup( parentPath );
+					// Only return the TableGroup if there's no corresponding group in the parent FromClauseAccess
+					// or if there is one, but it's the same or correlated to the locally found one.
+					if ( parentFound == null || getCorrelatedTableGroup( localParent ) == getCorrelatedTableGroup( parentFound ) ) {
+						return tableGroup;
+					}
+					else {
+						return null;
+					}
 				}
 			}
 		}
 		return tableGroup;
 	}
 
-	private TableGroup getUnderlyingTableGroup(TableGroup tableGroup) {
-		if ( tableGroup instanceof VirtualTableGroup ) {
-			return getUnderlyingTableGroup( ( (VirtualTableGroup) tableGroup ).getUnderlyingTableGroup() );
-		}
-		else if ( tableGroup instanceof CorrelatedTableGroup ) {
-			return getUnderlyingTableGroup( ( (CorrelatedTableGroup) tableGroup ).getCorrelatedTableGroup() );
-		}
-		else if ( tableGroup instanceof PluralTableGroup ) {
-			return ( (PluralTableGroup) tableGroup ).getElementTableGroup();
+	private TableGroup getCorrelatedTableGroup(TableGroup tableGroup) {
+		if ( tableGroup instanceof CorrelatedTableGroup ) {
+			return getCorrelatedTableGroup( ( (CorrelatedTableGroup) tableGroup ).getCorrelatedTableGroup() );
 		}
 		return tableGroup;
 	}
