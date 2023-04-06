@@ -3472,15 +3472,27 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 	}
 
 	private TableGroup createTableGroup(TableGroup parentTableGroup, SqmPath<?> joinedPath) {
-		final TableGroup actualParentTableGroup = findActualTableGroup( parentTableGroup, joinedPath );
+		final TableGroup actualTableGroup = findActualTableGroup( parentTableGroup, joinedPath );
 		final SqmPath<?> lhsPath = joinedPath.getLhs();
 		final FromClauseIndex fromClauseIndex = getFromClauseIndex();
-		final ModelPart subPart = actualParentTableGroup.getModelPart().findSubPart(
+		final ModelPart subPart = actualTableGroup.getModelPart().findSubPart(
 				joinedPath.getReferencedPathSource().getPathName(),
 				lhsPath instanceof SqmTreatedPath
 						? resolveEntityPersister( ( (SqmTreatedPath<?, ?>) lhsPath ).getTreatTarget() )
 						: null
 		);
+
+		final TableGroup actualParentTableGroup;
+		if ( actualTableGroup instanceof CorrelatedTableGroup
+			 && subPart instanceof ToOneAttributeMapping
+			 && ( (ToOneAttributeMapping) subPart ).isFkOptimizationAllowed() ) {
+			// If the referenced model part is a ToOne's key side, we can use the foreign
+			// key directly instead of forcing a join for CorrelatedTableGroups
+			actualParentTableGroup = ( (CorrelatedTableGroup) actualTableGroup ).getCorrelatedTableGroup();
+		}
+		else {
+			actualParentTableGroup = actualTableGroup;
+		}
 
 		final TableGroup tableGroup;
 		if ( subPart instanceof TableGroupJoinProducer ) {
