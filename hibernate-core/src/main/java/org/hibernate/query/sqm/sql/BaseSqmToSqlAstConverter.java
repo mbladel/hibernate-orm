@@ -1077,25 +1077,62 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				throw new HibernateException( "Not expecting multiple table references for an SQM DELETE" );
 			}
 
+			final Predicate suppliedPredicate;
+			if ( statement.getWhereClause() != null ) {
+				suppliedPredicate = visitWhereClause( statement.getWhereClause().getPredicate() );
+			}
+			else {
+				suppliedPredicate = null;
+			}
+
+			final Predicate discriminatorRestrictions = additionalRestrictions;
+			additionalRestrictions = null;
 			FilterHelper.applyBaseRestrictions(
-					(filterPredicate) -> additionalRestrictions = combinePredicates( additionalRestrictions, filterPredicate),
+					filterPredicate -> additionalRestrictions = filterPredicate,
 					entityDescriptor,
 					rootTableGroup,
 					AbstractSqlAstTranslator.rendersTableReferenceAlias( Clause.DELETE ),
 					getLoadQueryInfluencers(),
 					this
 			);
+			final Predicate restriction = combinePredicates(
+					suppliedPredicate,
+					combinePredicates(
+							discriminatorRestrictions,
+							additionalRestrictions
+					)
+			);
 
-			Predicate suppliedPredicate = null;
-			final SqmWhereClause whereClause = statement.getWhereClause();
-			if ( whereClause != null ) {
-				suppliedPredicate = visitWhereClause( whereClause.getPredicate() );
+			final Predicate subqueryRestriction;
+			if ( entityDescriptor.getEntityPersister().hasCollections() && additionalRestrictions != null ) {
+				// Create subquery restrictions forcing use of the identification variable
+				// that will be needed when deleting associations using an "IN" subquery
+				// see: SqmMutationStrategyHelper#cleanUpCollectionTables
+				FilterHelper.applyBaseRestrictions(
+						filterPredicate -> additionalRestrictions = filterPredicate,
+						entityDescriptor,
+						rootTableGroup,
+						true,
+						getLoadQueryInfluencers(),
+						this
+				);
+				subqueryRestriction = combinePredicates(
+						suppliedPredicate,
+						combinePredicates(
+								discriminatorRestrictions,
+								additionalRestrictions
+						)
+				);
+			}
+			else {
+				subqueryRestriction = restriction;
 			}
 
 			return new DeleteStatement(
 					cteContainer,
 					(NamedTableReference) rootTableGroup.getPrimaryTableReference(),
-					combinePredicates( suppliedPredicate, additionalRestrictions ),
+					restriction,
+					subqueryRestriction,
 					Collections.emptyList()
 			);
 		}

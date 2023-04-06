@@ -27,10 +27,12 @@ public class DeleteStatement extends AbstractMutationStatement {
 
 	public static final String DEFAULT_ALIAS = "to_delete_";
 	private final Predicate restriction;
+	private final Predicate subqueryRestriction;
 
 	public DeleteStatement(NamedTableReference targetTable, Predicate restriction) {
 		super( targetTable );
 		this.restriction = restriction;
+		this.subqueryRestriction = null;
 	}
 
 	public DeleteStatement(
@@ -39,17 +41,20 @@ public class DeleteStatement extends AbstractMutationStatement {
 			List<ColumnReference> returningColumns) {
 		super( new LinkedHashMap<>(), targetTable, returningColumns );
 		this.restriction = restriction;
+		this.subqueryRestriction = null;
 	}
 
 	public DeleteStatement(
 			CteContainer cteContainer,
 			NamedTableReference targetTable,
 			Predicate restriction,
+			Predicate subqueryRestriction,
 			List<ColumnReference> returningColumns) {
 		this(
 				cteContainer.getCteStatements(),
 				targetTable,
 				restriction,
+				subqueryRestriction,
 				returningColumns
 		);
 	}
@@ -58,13 +63,19 @@ public class DeleteStatement extends AbstractMutationStatement {
 			Map<String, CteStatement> cteStatements,
 			NamedTableReference targetTable,
 			Predicate restriction,
+			Predicate subqueryRestriction,
 			List<ColumnReference> returningColumns) {
 		super( cteStatements, targetTable, returningColumns );
 		this.restriction = restriction;
+		this.subqueryRestriction = subqueryRestriction;
 	}
 
 	public Predicate getRestriction() {
 		return restriction;
+	}
+
+	public Predicate getSubqueryRestriction() {
+		return subqueryRestriction;
 	}
 
 	public static class DeleteStatementBuilder {
