@@ -16,7 +16,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Specifies a restriction written in native SQL to add to the generated
- * SQL when querying an entity or collection.
+ * SQL for entities or collections.
  * <p>
  * For example, {@code @Where} could be used to hide entity instances which
  * have been soft-deleted, either for the entity class itself:
@@ -48,9 +48,10 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * List&lt;Document&gt; documents;
  * </pre>
  * <p>
- * By default, {@code @Where} restrictions declared for an entity are
- * applied when loading associations of that entity type. This behavior can
- * be disabled using the setting {@value org.hibernate.cfg.AvailableSettings#USE_ENTITY_WHERE_CLAUSE_FOR_COLLECTIONS};
+ * By default, {@code @Where} restrictions declared for an entity are also
+ * applied when deleting and updating records for that entity.
+ * Likewise, the restriction is applied when loading associations of that entity type.
+ * This last behavior can be disabled for associations using the setting {@value org.hibernate.cfg.AvailableSettings#USE_ENTITY_WHERE_CLAUSE_FOR_COLLECTIONS};
  * note, however, that setting is disabled.
  * <p>
  * Note that {@code @Where} restrictions are always applied and cannot be
