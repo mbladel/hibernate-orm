@@ -7,6 +7,7 @@
 package org.hibernate.dialect;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
@@ -19,6 +20,7 @@ import org.hibernate.sql.ast.SqlAstJoinType;
 import org.hibernate.sql.ast.spi.SqlSelection;
 import org.hibernate.sql.ast.tree.Statement;
 import org.hibernate.sql.ast.tree.expression.BinaryArithmeticExpression;
+import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.ast.tree.expression.Expression;
 import org.hibernate.sql.ast.tree.expression.Literal;
 import org.hibernate.sql.ast.tree.expression.SqlTuple;
@@ -36,6 +38,7 @@ import org.hibernate.sql.ast.tree.select.SelectClause;
 import org.hibernate.sql.ast.tree.select.SortSpecification;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.model.internal.OptionalTableUpdate;
+import org.hibernate.sql.model.internal.TableInsertStandard;
 import org.hibernate.type.SqlTypes;
 
 /**
@@ -309,6 +312,25 @@ public class SQLServerSqlAstTranslator<T extends JdbcOperation> extends SqlAstTr
 			appendSql( "top 100 percent " );
 		}
 		super.visitSqlSelections( selectClause );
+	}
+
+	@Override
+	protected void renderInsertIntoValues(TableInsertStandard tableInsert) {
+		if ( tableInsert.getNumberOfReturningColumns() > 0 ) {
+			appendSql( " output" );
+			String separator = "";
+			for ( ColumnReference columnReference : tableInsert.getReturningColumns() ) {
+				appendSql( separator + " inserted." );
+				appendSql( columnReference.getColumnExpression() );
+				separator = COMA_SEPARATOR;
+			}
+		}
+		super.renderInsertIntoValues( tableInsert );
+	}
+
+	@Override
+	protected void visitReturningColumns(Supplier<List<ColumnReference>> returningColumnsAccess) {
+		// nothing to do since we already added the returning columns in #renderInsertIntoValues
 	}
 
 	@Override
