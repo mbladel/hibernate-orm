@@ -26,6 +26,7 @@ import org.hibernate.dialect.function.DerbyLpadEmulation;
 import org.hibernate.dialect.function.DerbyRpadEmulation;
 import org.hibernate.dialect.function.InsertSubstringOverlayEmulation;
 import org.hibernate.dialect.identity.DB2IdentityColumnSupport;
+import org.hibernate.dialect.identity.DerbyIdentityColumnSupport;
 import org.hibernate.dialect.identity.IdentityColumnSupport;
 import org.hibernate.dialect.pagination.AbstractLimitHandler;
 import org.hibernate.dialect.pagination.DerbyLimitHandler;
@@ -589,7 +590,7 @@ public class DerbyLegacyDialect extends Dialect {
 
 	@Override
 	public IdentityColumnSupport getIdentityColumnSupport() {
-		return new DB2IdentityColumnSupport();
+		return new DerbyIdentityColumnSupport();
 	}
 
 	@Override

@@ -17,6 +17,8 @@ import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.RowLockStrategy;
+import org.hibernate.dialect.identity.IdentityColumnSupport;
+import org.hibernate.dialect.identity.SybaseASEIdentityColumnSupport;
 import org.hibernate.dialect.pagination.LimitHandler;
 import org.hibernate.dialect.pagination.TopLimitHandler;
 import org.hibernate.engine.jdbc.Size;
@@ -728,5 +730,10 @@ public class SybaseASELegacyDialect extends SybaseLegacyDialect {
 			return super.getLimitHandler();
 		}
 		return new TopLimitHandler(false);
+	}
+
+	@Override
+	public IdentityColumnSupport getIdentityColumnSupport() {
+		return new SybaseASEIdentityColumnSupport();
 	}
 }

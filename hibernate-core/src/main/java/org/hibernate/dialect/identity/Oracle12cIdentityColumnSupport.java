@@ -6,6 +6,7 @@
  */
 package org.hibernate.dialect.identity;
 
+import org.hibernate.MappingException;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.id.insert.GetGeneratedKeysDelegate;
@@ -17,6 +18,11 @@ public class Oracle12cIdentityColumnSupport extends IdentityColumnSupportImpl {
 	@Override
 	public boolean supportsIdentityColumns() {
 		return true;
+	}
+
+	@Override
+	public String getIdentitySelectString(String table, String column, int type) throws MappingException {
+		return "select " + column + " from " + table;
 	}
 
 	@Override
