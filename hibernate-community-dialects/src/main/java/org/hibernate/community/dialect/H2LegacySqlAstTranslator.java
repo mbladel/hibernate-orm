@@ -7,6 +7,7 @@
 package org.hibernate.community.dialect;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.hibernate.LockMode;
 import org.hibernate.dialect.identity.H2IdentityColumnSupport;
@@ -53,35 +54,26 @@ public class H2LegacySqlAstTranslator<T extends JdbcOperation> extends AbstractS
 
 	@Override
 	public void visitStandardTableInsert(TableInsertStandard tableInsert) {
-		if ( CollectionHelper.isNotEmpty( tableInsert.getReturningColumns() ) ) {
-			visitReturningInsertStatement( tableInsert );
+		if ( tableInsert.getNumberOfReturningColumns() > 0 ) {
+			appendSql( "select " );
+			String separator = "";
+			for (ColumnReference columnReference : tableInsert.getReturningColumns()) {
+				appendSql( separator );
+				appendSql( columnReference.getColumnExpression() );
+				separator = COMA_SEPARATOR;
+			}
+			appendSql( " from final table ( " );
+			super.visitStandardTableInsert( tableInsert );
+			appendSql( ")" );
 		}
 		else {
 			super.visitStandardTableInsert( tableInsert );
 		}
 	}
 
-	public void visitReturningInsertStatement(TableInsertStandard tableInsert) {
-		assert tableInsert.getReturningColumns() != null
-				&& !tableInsert.getReturningColumns().isEmpty();
-
-		final H2IdentityColumnSupport identitySupport = (H2IdentityColumnSupport) getSessionFactory()
-				.getJdbcServices()
-				.getDialect()
-				.getIdentityColumnSupport();
-
-		identitySupport.render(
-				tableInsert,
-				this::appendSql,
-				(columnReference) -> columnReference.accept( this ),
-				() -> super.visitStandardTableInsert( tableInsert ),
-				getSessionFactory()
-		);
-	}
-
 	@Override
 	protected void visitReturningColumns(List<ColumnReference> returningColumns) {
-		// do nothing - this is handled via `#visitReturningInsertStatement`
+		// do nothing - this is handled via `#visitStandardTableInsert`
 	}
 
 	@Override

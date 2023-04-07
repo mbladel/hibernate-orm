@@ -53,39 +53,26 @@ public class H2SqlAstTranslator<T extends JdbcOperation> extends SqlAstTranslato
 
 	@Override
 	public void visitStandardTableInsert(TableInsertStandard tableInsert) {
-		if ( isNotEmpty( tableInsert.getReturningColumns() ) ) {
-			visitReturningInsertStatement( tableInsert );
+		if ( tableInsert.getNumberOfReturningColumns() > 0 ) {
+			appendSql( "select " );
+			String separator = "";
+			for (ColumnReference columnReference : tableInsert.getReturningColumns()) {
+				appendSql( separator );
+				appendSql( columnReference.getColumnExpression() );
+				separator = COMA_SEPARATOR;
+			}
+			appendSql( " from final table ( " );
+			super.visitStandardTableInsert( tableInsert );
+			appendSql( ")" );
 		}
 		else {
 			super.visitStandardTableInsert( tableInsert );
 		}
 	}
 
-	public void visitReturningInsertStatement(TableInsertStandard tableInsert) {
-		assert tableInsert.getReturningColumns() != null
-				&& !tableInsert.getReturningColumns().isEmpty();
-
-		//TODO: This is a terrible way to solve this problem, please fix it!
-		//      Not every "returning insert" statement has something to do
-		//      with identity columns! (Nor is it an elegant implementation.)
-
-		final H2IdentityColumnSupport  identitySupport = (H2IdentityColumnSupport) getSessionFactory()
-				.getJdbcServices()
-				.getDialect()
-				.getIdentityColumnSupport();
-
-		identitySupport.render(
-				tableInsert,
-				this::appendSql,
-				(columnReference) -> columnReference.accept( this ),
-				() -> super.visitStandardTableInsert( tableInsert ),
-				getSessionFactory()
-		);
-	}
-
 	@Override
 	protected void visitReturningColumns(List<ColumnReference> returningColumns) {
-		// do nothing - this is handled via `#visitReturningInsertStatement`
+		// do nothing - this is handled via `#visitStandardTableInsert`
 	}
 
 	@Override
