@@ -34,6 +34,7 @@ import org.hibernate.Internal;
 import org.hibernate.LockMode;
 import org.hibernate.QueryException;
 import org.hibernate.boot.model.process.internal.InferredBasicValueResolver;
+import org.hibernate.dialect.ColumnQualifierSupport;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.function.TimestampaddFunction;
 import org.hibernate.dialect.function.TimestampdiffFunction;
@@ -416,6 +417,7 @@ import static org.hibernate.query.sqm.TemporalUnit.NANOSECOND;
 import static org.hibernate.query.sqm.TemporalUnit.NATIVE;
 import static org.hibernate.query.sqm.TemporalUnit.SECOND;
 import static org.hibernate.query.sqm.UnaryArithmeticOperator.UNARY_MINUS;
+import static org.hibernate.sql.ast.spi.AbstractSqlAstTranslator.rendersTableReferenceAlias;
 import static org.hibernate.sql.ast.spi.SqlAstTreeHelper.combinePredicates;
 import static org.hibernate.type.spi.TypeConfiguration.isDuration;
 
@@ -824,7 +826,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 					(filterPredicate) -> additionalRestrictions = combinePredicates( additionalRestrictions, filterPredicate),
 					entityDescriptor,
 					rootTableGroup,
-					AbstractSqlAstTranslator.rendersTableReferenceAlias( Clause.UPDATE ),
+					rendersTableReferenceAlias( Clause.UPDATE ) || getDialect().getMinimumColumnQualifierSupport() != ColumnQualifierSupport.NONE,
 					getLoadQueryInfluencers(),
 					this
 			);
@@ -1085,13 +1087,15 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				suppliedPredicate = null;
 			}
 
+			final boolean useIdentificationVariable = rendersTableReferenceAlias( Clause.DELETE )
+													  || getDialect().getMinimumColumnQualifierSupport() != ColumnQualifierSupport.NONE;
 			final Predicate discriminatorRestrictions = additionalRestrictions;
 			additionalRestrictions = null;
 			FilterHelper.applyBaseRestrictions(
 					filterPredicate -> additionalRestrictions = filterPredicate,
 					entityDescriptor,
 					rootTableGroup,
-					AbstractSqlAstTranslator.rendersTableReferenceAlias( Clause.DELETE ),
+					useIdentificationVariable,
 					getLoadQueryInfluencers(),
 					this
 			);
@@ -1104,7 +1108,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			);
 
 			final Predicate subqueryRestriction;
-			if ( entityDescriptor.getEntityPersister().hasCollections() && additionalRestrictions != null ) {
+			if ( !useIdentificationVariable && entityDescriptor.getEntityPersister()
+					.hasCollections() && additionalRestrictions != null ) {
 				// Create subquery restrictions forcing use of the identification variable
 				// that will be needed when deleting associations using an "IN" subquery
 				// see: SqmMutationStrategyHelper#cleanUpCollectionTables
