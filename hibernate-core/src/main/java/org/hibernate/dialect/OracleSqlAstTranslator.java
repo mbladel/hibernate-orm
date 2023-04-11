@@ -512,13 +512,15 @@ public class OracleSqlAstTranslator<T extends JdbcOperation> extends SqlAstTrans
 		return getDialect().supportsFetchClause( FetchClauseType.ROWS_ONLY );
 	}
 
-	@Override
-	protected boolean renderNamedTableReference(NamedTableReference tableReference, LockMode lockMode) {
-		appendSql( tableReference.getTableExpression() );
-		registerAffectedTable( tableReference );
-		renderTableReferenceIdentificationVariable( tableReference );
-		return false;
-	}
+	// todo marco : this is the problem, why is `rendersTableReferenceAlias( currentClause )`
+	//  not called here?
+//	@Override
+//	protected boolean renderNamedTableReference(NamedTableReference tableReference, LockMode lockMode) {
+//		appendSql( tableReference.getTableExpression() );
+//		registerAffectedTable( tableReference );
+//		renderTableReferenceIdentificationVariable( tableReference );
+//		return false;
+//	}
 
 	@Override
 	protected void visitSetAssignment(Assignment assignment) {
@@ -548,10 +550,11 @@ public class OracleSqlAstTranslator<T extends JdbcOperation> extends SqlAstTrans
 		}
 	}
 
-	@Override
-	public void visitColumnReference(ColumnReference columnReference) {
-		columnReference.appendReadExpression( this );
-	}
+	// todo marco : why is this needed ?
+//	@Override
+//	public void visitColumnReference(ColumnReference columnReference) {
+//		columnReference.appendReadExpression( this );
+//	}
 
 	@Override
 	public void visitAggregateColumnWriteExpression(AggregateColumnWriteExpression aggregateColumnWriteExpression) {

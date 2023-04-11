@@ -46,7 +46,12 @@ public class ManyToManySubqueryDeleteWhereTest {
 
 	@Test
 	public void testWhereDeleteAll(SessionFactoryScope scope) {
+		// todo marco : Oracle fails when using table_name.col
 		scope.inTransaction( session -> {
+			// todo marco : selection works bc in select we do use alias
+			//  the problem is that JUST FOR ORACLE alias in put in FROM (and discriminator clause)
+			//  maybe rework the visitColumnReference to use a dialect flag, and use that same flag for
+			//  rendering the base restrictions?
 			final MutationQuery deleteUser = session.createMutationQuery( "DELETE FROM WhereUser" );
 			deleteUser.executeUpdate();
 		} );
