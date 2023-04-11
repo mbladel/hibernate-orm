@@ -3472,32 +3472,22 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 	}
 
 	private TableGroup createTableGroup(TableGroup parentTableGroup, SqmPath<?> joinedPath) {
-		final TableGroup actualTableGroup = findActualTableGroup( parentTableGroup, joinedPath );
+		final TableGroup actualParentTableGroup = findActualTableGroup( parentTableGroup, joinedPath );
 		final SqmPath<?> lhsPath = joinedPath.getLhs();
 		final FromClauseIndex fromClauseIndex = getFromClauseIndex();
-		final ModelPart subPart = actualTableGroup.getModelPart().findSubPart(
+		final ModelPart subPart = actualParentTableGroup.getModelPart().findSubPart(
 				joinedPath.getReferencedPathSource().getPathName(),
 				lhsPath instanceof SqmTreatedPath
 						? resolveEntityPersister( ( (SqmTreatedPath<?, ?>) lhsPath ).getTreatTarget() )
 						: null
 		);
-
-		final TableGroup actualParentTableGroup;
-		if ( actualTableGroup instanceof CorrelatedTableGroup
-			 && subPart instanceof ToOneAttributeMapping
-			 && ( (ToOneAttributeMapping) subPart ).isFkOptimizationAllowed() ) {
-			// If the referenced model part is a ToOne's key side, we can use the foreign
-			// key directly instead of forcing a join for CorrelatedTableGroups
-			actualParentTableGroup = ( (CorrelatedTableGroup) actualTableGroup ).getCorrelatedTableGroup();
-		}
-		else {
-			actualParentTableGroup = actualTableGroup;
-		}
+//		assert !(subPart instanceof ManyToManyCollectionPart);
+		final boolean fkReference = subPart instanceof EntityAssociationMapping && ( (EntityAssociationMapping) subPart ).isFkOptimizationAllowed();
 
 		final TableGroup tableGroup;
 		if ( subPart instanceof TableGroupJoinProducer ) {
 			final TableGroupJoinProducer joinProducer = (TableGroupJoinProducer) subPart;
-			if ( fromClauseIndex.findTableGroupOnCurrentFromClause( actualParentTableGroup.getNavigablePath() ) == null
+			if ( !fkReference && fromClauseIndex.findTableGroupOnCurrentFromClause( actualParentTableGroup.getNavigablePath() ) == null
 					&& !isRecursiveCte( actualParentTableGroup ) ) {
 				final QuerySpec querySpec = currentQuerySpec();
 				// The parent table group is on a parent query, so we need a root table group
@@ -3516,16 +3506,24 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				querySpec.getFromClause().addRoot( tableGroup );
 			}
 			else {
+				final TableGroup actualTableGroup;
+				if ( fkReference && actualParentTableGroup instanceof CorrelatedTableGroup ) {
+					actualTableGroup = ( (CorrelatedTableGroup) actualParentTableGroup ).getCorrelatedTableGroup();
+				}
+				else {
+					actualTableGroup = actualParentTableGroup;
+				}
+
 				// Check if we can reuse a table group join of the parent
 				final TableGroup compatibleTableGroup = findCompatibleJoinedGroup(
-						actualParentTableGroup,
+						actualTableGroup,
 						joinProducer,
 						SqlAstJoinType.INNER
 				);
 				if ( compatibleTableGroup == null ) {
 					final TableGroupJoin tableGroupJoin = joinProducer.createTableGroupJoin(
 							joinedPath.getNavigablePath(),
-							actualParentTableGroup,
+							actualTableGroup,
 							null,
 							null,
 							null,
@@ -3540,10 +3538,10 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 					final boolean nested = currentClauseStack.getCurrent() == Clause.FROM
 							&& currentlyProcessingJoin instanceof SqmAttributeJoin<?, ?>;
 					if ( nested ) {
-						actualParentTableGroup.addNestedTableGroupJoin( tableGroupJoin );
+						actualTableGroup.addNestedTableGroupJoin( tableGroupJoin );
 					}
 					else {
-						actualParentTableGroup.addTableGroupJoin( tableGroupJoin );
+						actualTableGroup.addTableGroupJoin( tableGroupJoin );
 					}
 					tableGroup = tableGroupJoin.getJoinedGroup();
 				}

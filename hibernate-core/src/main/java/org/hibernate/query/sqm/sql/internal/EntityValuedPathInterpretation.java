@@ -201,14 +201,10 @@ public class EntityValuedPathInterpretation<T> extends AbstractSqmPathInterpreta
 							.findTableGroup( tableGroup.getNavigablePath().getParent() );
 				}
 				else {
-					// todo marco : why is this isCorrelated check needed when we already set the tableGroupProducer
-					//  (here mapping) to the entity mapping type in ToOneAttributeMapping.createRootTableGroupJoin ?
-					//  note: this commented assertion never gets triggered
-					// assert !isCorrelated( tableGroup, sqlAstCreationState )
-					if ( /*isCorrelated( tableGroup, sqlAstCreationState )
-							||*/ !tableGroup.getNavigablePath().isParentOrEqual( navigablePath ) ) {
-						// Access to the parent table group is forbidden for correlated table groups. For more details,
-						// see: `ToOneAttributeMapping.createRootTableGroupJoin`
+					if ( inferredMapping != null && isCorrelated( tableGroup, sqlAstCreationState )
+							|| !tableGroup.getNavigablePath().isParentOrEqual( navigablePath ) ) {
+						// Access to the parent table group is forbidden for correlated table groups when there is an
+						// inferred mapping (e.g. we are comparing the entity valued path).
 						// Due to that, we forcefully use the model part to which this association points to i.e. the target
 
 						// Also force the use of the FK target key if the navigable path for this entity valued path is
