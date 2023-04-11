@@ -549,15 +549,4 @@ public class OracleLegacySqlAstTranslator<T extends JdbcOperation> extends Abstr
 			assignment.getAssignedValue().accept( this );
 		}
 	}
-
-	@Override
-	public void visitColumnReference(ColumnReference columnReference) {
-		columnReference.appendReadExpression( this );
-	}
-
-	@Override
-	public void visitAggregateColumnWriteExpression(AggregateColumnWriteExpression aggregateColumnWriteExpression) {
-		aggregateColumnWriteExpression.appendWriteExpression( this, this );
-	}
-
 }
