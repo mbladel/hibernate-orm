@@ -27,6 +27,7 @@ import java.util.function.Supplier;
 import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
 import org.hibernate.QueryException;
+import org.hibernate.dialect.ColumnQualifierSupport;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.RowLockStrategy;
 import org.hibernate.dialect.SelectItemReferenceStrategy;
@@ -6017,19 +6018,25 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 	public void visitColumnReference(ColumnReference columnReference) {
 		final String dmlTargetTableAlias = getDmlTargetTableAlias();
 		if ( dmlTargetTableAlias != null && dmlTargetTableAlias.equals( columnReference.getQualifier() ) ) {
-			// todo (6.0) : use the Dialect to determine how to handle column references
-			//		- specifically should they use the table-alias, the table-expression
-			//			or neither for its qualifier
-
-			final String tableExpression = getCurrentDmlStatement().getTargetTable().getTableExpression();
-			// Qualify the column reference with the table expression only in subqueries
-			final boolean qualifyColumn = !queryPartStack.isEmpty();
+			final NamedTableReference targetTable = getCurrentDmlStatement().getTargetTable();
+			final ColumnQualifierSupport qualifierSupport = getDialect().getMinimumColumnQualifierSupport();
+			final String qualifier;
+			if ( qualifierSupport == ColumnQualifierSupport.TABLE_ALIAS && targetTable.getIdentificationVariable() != null ) {
+				qualifier = targetTable.getIdentificationVariable();
+			}
+			// Qualify the column reference with the table expression also when in subqueries
+			else if ( qualifierSupport != ColumnQualifierSupport.NONE || !queryPartStack.isEmpty() ) {
+				qualifier = targetTable.getTableExpression();
+			}
+			else {
+				qualifier = null;
+			}
 			if ( columnReference.isColumnExpressionFormula() ) {
 				// For formulas, we have to replace the qualifier as the alias was already rendered into the formula
 				// This is fine for now as this is only temporary anyway until we render aliases for table references
 				final String replacement;
-				if ( qualifyColumn ) {
-					replacement = "$1" + tableExpression + ".$3";
+				if ( qualifier != null ) {
+					replacement = "$1" + qualifier + ".$3";
 				}
 				else {
 					replacement = "$1$3";
@@ -6040,7 +6047,7 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 				);
 			}
 			else {
-				columnReference.appendReadExpression( this, qualifyColumn ? tableExpression : null );
+				columnReference.appendReadExpression( this, qualifier );
 			}
 		}
 		else {

@@ -24,6 +24,7 @@ import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.cfg.Environment;
 import org.hibernate.dialect.BooleanDecoder;
+import org.hibernate.dialect.ColumnQualifierSupport;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.OracleBooleanJdbcType;
@@ -1442,5 +1443,10 @@ public class OracleLegacyDialect extends Dialect {
 	@Override
 	public String rowId(String rowId) {
 		return "rowid";
+	}
+
+	@Override
+	public ColumnQualifierSupport getMinimumColumnQualifierSupport() {
+		return ColumnQualifierSupport.TABLE_ALIAS;
 	}
 }

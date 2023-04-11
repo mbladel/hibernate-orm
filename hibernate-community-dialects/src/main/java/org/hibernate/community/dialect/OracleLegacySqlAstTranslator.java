@@ -551,11 +551,6 @@ public class OracleLegacySqlAstTranslator<T extends JdbcOperation> extends Abstr
 	}
 
 	@Override
-	public void visitColumnReference(ColumnReference columnReference) {
-		columnReference.appendReadExpression( this );
-	}
-
-	@Override
 	public void visitAggregateColumnWriteExpression(AggregateColumnWriteExpression aggregateColumnWriteExpression) {
 		aggregateColumnWriteExpression.appendWriteExpression( this, this );
 	}
