@@ -37,9 +37,9 @@ public class CircularEntityValuedPathInSubqueryTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			final EntityA entityA1 = new EntityA( "entitya_1", null );
+			final EntityA entityA1 = new EntityA( "entitya_1", 1, null );
 			session.persist( entityA1 );
-			session.persist( new EntityA( "entitya_2", entityA1 ) );
+			session.persist( new EntityA( "entitya_2", 2, entityA1 ) );
 		} );
 	}
 
@@ -47,13 +47,13 @@ public class CircularEntityValuedPathInSubqueryTest {
 	public void testFkReference(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final Query<EntityA> query = session.createQuery(
-					"select a from EntityA a where a.name = " +
-					"(select b.name from EntityA b where a.reference is null and b.reference is null)",
+					"select a from EntityA a where a.amount = " +
+					"(select max(b.amount) from EntityA b where a.reference is null and b.reference is null)",
 					EntityA.class
 			);
-			final List<EntityA> actual = query.getResultList();
-			assertThat( actual ).hasSize( 1 );
-			assertThat( actual.get( 0 ).getName() ).isEqualTo( "entitya_1" );
+			final List<EntityA> resultList = query.getResultList();
+			assertThat( resultList ).hasSize( 1 );
+			assertThat( resultList.get( 0 ).getName() ).isEqualTo( "entitya_1" );
 		} );
 	}
 
@@ -61,72 +61,83 @@ public class CircularEntityValuedPathInSubqueryTest {
 	public void testJoin(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final Query<EntityA> query = session.createQuery(
-					"select a from EntityA a where a.name = " +
-					"(select b.name from EntityA b where a.reference.name is null and b.reference is null)",
+					"select a from EntityA a where a.amount = " +
+					"(select max(b.amount) from EntityA b where a.reference.name = 'entitya_1' and b.reference is not null)",
 					EntityA.class
 			);
-			final List<EntityA> actual = query.getResultList();
-			assertThat( actual ).hasSize( 1 );
-			assertThat( actual.get( 0 ).getName() ).isEqualTo( "entitya_1" );
+			final List<EntityA> resultList = query.getResultList();
+			assertThat( resultList ).hasSize( 1 );
+			assertThat( resultList.get( 0 ).getName() ).isEqualTo( "entitya_2" );
 		} );
 	}
 
 	@Test
-	public void testCriteria(SessionFactoryScope scope) {
+	public void testFkReferenceCriteria(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final CriteriaBuilder cb = session.getCriteriaBuilder();
 			final CriteriaQuery<EntityA> query = cb.createQuery( EntityA.class );
 			final Root<EntityA> root = query.from( EntityA.class );
 
-			final Subquery<String> subquery = query.subquery( String.class );
+			final Subquery<Integer> subquery = query.subquery( Integer.class );
 			final Root<EntityA> subRoot = subquery.from( EntityA.class );
-			subquery.select( subRoot.get( "name" ) ).where( cb.and(
+			subquery.select( cb.max( subRoot.get( "amount" ) ) ).where( cb.and(
 					cb.isNull( root.get( "reference" ) ),
 					cb.isNull( subRoot.get( "reference" ) )
 			) );
 
-			query.select( root ).where( cb.equal( root.get( "name" ), subquery ) );
-			final List<EntityA> actual = session.createQuery( query ).getResultList();
-			assertThat( actual ).hasSize( 1 );
+			query.select( root ).where( cb.equal( root.get( "amount" ), subquery ) );
+			final List<EntityA> resultList = session.createQuery( query ).getResultList();
+			assertThat( resultList ).hasSize( 1 );
+			assertThat( resultList.get( 0 ).getName() ).isEqualTo( "entitya_1" );
 		} );
 	}
 
 	@Test
-	public void test2(SessionFactoryScope scope) {
+	public void testJoinCriteria(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final CriteriaBuilder cb = session.getCriteriaBuilder();
+			final CriteriaQuery<EntityA> query = cb.createQuery( EntityA.class );
+			final Root<EntityA> root = query.from( EntityA.class );
+
+			final Subquery<Integer> subquery = query.subquery( Integer.class );
+			final Root<EntityA> subRoot = subquery.from( EntityA.class );
+			subquery.select( cb.max( subRoot.get( "amount" ) ) ).where( cb.and(
+					cb.equal( root.get( "reference" ).get( "name" ), "entitya_1" ),
+					cb.isNotNull( subRoot.get( "reference" ) )
+			) );
+
+			query.select( root ).where( cb.equal( root.get( "amount" ), subquery ) );
+			final List<EntityA> resultList = session.createQuery( query ).getResultList();
+			assertThat( resultList ).hasSize( 1 );
+			assertThat( resultList.get( 0 ).getName() ).isEqualTo( "entitya_2" );
+		} );
+	}
+
+	@Test
+	public void testFkReferenceExistingTableGroup(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final Query<EntityA> query = session.createQuery(
 					"select a from EntityA a where a.reference is null and a.name = " +
 					"(select b.name from EntityA b where (a.reference is null and b.reference is null))",
 					EntityA.class
 			);
-			final List<EntityA> actual = query.getResultList();
-			assertThat( actual ).hasSize( 1 );
+			final List<EntityA> resultList = query.getResultList();
+			assertThat( resultList ).hasSize( 1 );
+			assertThat( resultList.get( 0 ).getName() ).isEqualTo( "entitya_1" );
 		} );
 	}
 
 	@Test
-	public void test22(SessionFactoryScope scope) {
+	public void testJoinExistingTableGroup(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final Query<EntityA> query = session.createQuery(
-					"select a from EntityA a where a.reference is null and a.name = " +
-					"(select b.name from EntityA b where (a.reference is null and a.reference.name is null))",
+					"select a from EntityA a where a.reference is not null and a.amount = " +
+					"(select max(b.amount) from EntityA b where a.reference.name = 'entitya_1' and b.reference is not null)",
 					EntityA.class
 			);
-			final List<EntityA> actual = query.getResultList();
-			assertThat( actual ).hasSize( 1 );
-		} );
-	}
-
-	@Test
-	public void test3(SessionFactoryScope scope) {
-		scope.inTransaction( session -> {
-			final Query<EntityA> query = session.createQuery(
-					"select a from EntityA a left join a.reference r where a.name = " +
-					"(select b.name from EntityA b where (a.reference is null and b.reference is null))",
-					EntityA.class
-			);
-			final List<EntityA> actual = query.getResultList();
-			assertThat( actual ).hasSize( 1 );
+			final List<EntityA> resultList = query.getResultList();
+			assertThat( resultList ).hasSize( 1 );
+			assertThat( resultList.get( 0 ).getName() ).isEqualTo( "entitya_2" );
 		} );
 	}
 
@@ -138,6 +149,8 @@ public class CircularEntityValuedPathInSubqueryTest {
 
 		private String name;
 
+		private Integer amount;
+
 		@ManyToOne
 		@JoinColumn( name = "reference" )
 		private EntityA reference;
@@ -145,8 +158,9 @@ public class CircularEntityValuedPathInSubqueryTest {
 		public EntityA() {
 		}
 
-		public EntityA(String name, EntityA reference) {
+		public EntityA(String name, Integer amount, EntityA reference) {
 			this.name = name;
+			this.amount = amount;
 			this.reference = reference;
 		}
 
@@ -156,6 +170,10 @@ public class CircularEntityValuedPathInSubqueryTest {
 
 		public String getName() {
 			return name;
+		}
+
+		public Integer getAmount() {
+			return amount;
 		}
 
 		public EntityA getReference() {

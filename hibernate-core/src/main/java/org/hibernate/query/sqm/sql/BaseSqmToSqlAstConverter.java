@@ -3337,7 +3337,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			if ( existingTableGroup == null ) {
 				final TableGroup createdTableGroup = createTableGroup(
 						fromClauseIndex.getTableGroup( sqmPath.getLhs().getNavigablePath() ),
-						sqmPath
+						sqmPath,
+						false
 				);
 				if ( createdTableGroup != null ) {
 					if ( sqmPath instanceof SqmTreatedPath<?, ?> ) {
@@ -3383,7 +3384,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				fromClauseIndex.register( (SqmPath<?>) parentPath, parentTableGroup );
 				return parentTableGroup;
 			}
-			final TableGroup newTableGroup = createTableGroup( parentTableGroup, (SqmPath<?>) parentPath );
+			final TableGroup newTableGroup = createTableGroup( parentTableGroup, (SqmPath<?>) parentPath, true );
 			if ( newTableGroup != null ) {
 				implicitJoinChecker.accept( newTableGroup );
 				if ( sqmPath instanceof SqmFrom<?, ?> ) {
@@ -3454,7 +3455,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				}
 				final TableGroup createdTableGroup = createTableGroup(
 						fromClauseIndex.getTableGroup( navigablePath ),
-						path
+						path,
+						false
 				);
 				if ( createdTableGroup != null ) {
 					if ( path instanceof SqmTreatedPath<?, ?> ) {
@@ -3471,18 +3473,26 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		}
 	}
 
-	private TableGroup createTableGroup(TableGroup parentTableGroup, SqmPath<?> joinedPath) {
-		final TableGroup actualParentTableGroup = findActualTableGroup( parentTableGroup, joinedPath );
+	private TableGroup createTableGroup(TableGroup parentTableGroup, SqmPath<?> joinedPath, boolean parentPath) {
+		final TableGroup actualTableGroup = findActualTableGroup( parentTableGroup, joinedPath );
 		final SqmPath<?> lhsPath = joinedPath.getLhs();
 		final FromClauseIndex fromClauseIndex = getFromClauseIndex();
-		final ModelPart subPart = actualParentTableGroup.getModelPart().findSubPart(
+		final ModelPart subPart = actualTableGroup.getModelPart().findSubPart(
 				joinedPath.getReferencedPathSource().getPathName(),
 				lhsPath instanceof SqmTreatedPath
 						? resolveEntityPersister( ( (SqmTreatedPath<?, ?>) lhsPath ).getTreatTarget() )
 						: null
 		);
-//		assert !(subPart instanceof ManyToManyCollectionPart);
-		final boolean fkReference = subPart instanceof EntityAssociationMapping && ( (EntityAssociationMapping) subPart ).isFkOptimizationAllowed();
+		final boolean fkReference = !parentPath
+									&& subPart instanceof EntityAssociationMapping
+									&& ( (EntityAssociationMapping) subPart ).isFkOptimizationAllowed();
+		final TableGroup actualParentTableGroup;
+		if ( fkReference && actualTableGroup instanceof CorrelatedTableGroup ) {
+			actualParentTableGroup = ( (CorrelatedTableGroup) actualTableGroup ).getCorrelatedTableGroup();
+		}
+		else {
+			actualParentTableGroup = actualTableGroup;
+		}
 
 		final TableGroup tableGroup;
 		if ( subPart instanceof TableGroupJoinProducer ) {
@@ -3506,24 +3516,16 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				querySpec.getFromClause().addRoot( tableGroup );
 			}
 			else {
-				final TableGroup actualTableGroup;
-				if ( fkReference && actualParentTableGroup instanceof CorrelatedTableGroup ) {
-					actualTableGroup = ( (CorrelatedTableGroup) actualParentTableGroup ).getCorrelatedTableGroup();
-				}
-				else {
-					actualTableGroup = actualParentTableGroup;
-				}
-
 				// Check if we can reuse a table group join of the parent
 				final TableGroup compatibleTableGroup = findCompatibleJoinedGroup(
-						actualTableGroup,
+						actualParentTableGroup,
 						joinProducer,
 						SqlAstJoinType.INNER
 				);
 				if ( compatibleTableGroup == null ) {
 					final TableGroupJoin tableGroupJoin = joinProducer.createTableGroupJoin(
 							joinedPath.getNavigablePath(),
-							actualTableGroup,
+							actualParentTableGroup,
 							null,
 							null,
 							null,
@@ -3538,10 +3540,10 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 					final boolean nested = currentClauseStack.getCurrent() == Clause.FROM
 							&& currentlyProcessingJoin instanceof SqmAttributeJoin<?, ?>;
 					if ( nested ) {
-						actualTableGroup.addNestedTableGroupJoin( tableGroupJoin );
+						actualParentTableGroup.addNestedTableGroupJoin( tableGroupJoin );
 					}
 					else {
-						actualTableGroup.addTableGroupJoin( tableGroupJoin );
+						actualParentTableGroup.addTableGroupJoin( tableGroupJoin );
 					}
 					tableGroup = tableGroupJoin.getJoinedGroup();
 				}
