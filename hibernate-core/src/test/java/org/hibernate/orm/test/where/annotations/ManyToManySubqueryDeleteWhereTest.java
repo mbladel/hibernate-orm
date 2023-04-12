@@ -47,7 +47,7 @@ public class ManyToManySubqueryDeleteWhereTest {
 	@Test
 	public void testWhereDeleteAll(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			final MutationQuery deleteUser = session.createMutationQuery( "DELETE FROM WhereUser" );
+			final MutationQuery deleteUser = session.createMutationQuery( "DELETE FROM WhereEntity" );
 			deleteUser.executeUpdate();
 		} );
 
