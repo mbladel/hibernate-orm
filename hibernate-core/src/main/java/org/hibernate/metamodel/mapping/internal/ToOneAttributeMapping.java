@@ -759,7 +759,13 @@ public class ToOneAttributeMapping
 				|| ( cardinality == Cardinality.ONE_TO_ONE && isNullable() );
 		this.canUseParentTableGroup = ! forceJoin
 				&& sideNature == ForeignKeyDescriptor.Nature.KEY
-				&& declaringTableGroupProducer.containsTableReference( identifyingColumnsTableExpression );
+				&& declaringTableGroupProducer.containsTableReference( identifyingColumnsTableExpression )
+				&& !isEmbeddedFkSelfReference( foreignKeyDescriptor );
+	}
+
+	private boolean isEmbeddedFkSelfReference(ForeignKeyDescriptor foreignKeyDescriptor) {
+		return entityMappingType == getDeclaringType().findContainingEntityMapping()
+				&& foreignKeyDescriptor.getKeyPart() instanceof EmbeddableValuedModelPart;
 	}
 
 	public String getIdentifyingColumnsTableExpression() {
