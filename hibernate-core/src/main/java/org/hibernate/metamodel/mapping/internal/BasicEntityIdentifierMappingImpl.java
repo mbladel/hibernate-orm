@@ -31,7 +31,9 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
+import org.hibernate.query.sqm.sql.SqmToSqlAstConverter;
 import org.hibernate.spi.NavigablePath;
+import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.spi.SqlAstCreationState;
 import org.hibernate.sql.ast.spi.SqlExpressionResolver;
 import org.hibernate.sql.ast.spi.SqlSelection;
@@ -225,7 +227,17 @@ public class BasicEntityIdentifierMappingImpl implements BasicEntityIdentifierMa
 			TableGroup tableGroup,
 			String resultVariable,
 			DomainResultCreationState creationState) {
-		final SqlSelection sqlSelection = resolveSqlSelection( navigablePath, tableGroup, true, null, creationState );
+		// If we are explicitly selecting the identifier we must disable foreign key optimization
+		// to avoid resolving self-referencing ToOne associations to the parent's primary key
+		final boolean allowFkOptimization = !( creationState instanceof SqmToSqlAstConverter )
+											|| ( (SqmToSqlAstConverter) creationState ).getCurrentClauseStack().getCurrent() != Clause.SELECT;
+		final SqlSelection sqlSelection = resolveSqlSelection(
+				navigablePath,
+				tableGroup,
+				allowFkOptimization,
+				null,
+				creationState
+		);
 
 		return new BasicResult<>(
 				sqlSelection.getValuesArrayPosition(),
