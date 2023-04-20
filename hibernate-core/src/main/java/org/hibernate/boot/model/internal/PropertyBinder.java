@@ -340,6 +340,7 @@ public class PropertyBinder {
 
 	private void setDeclaredIdentifier(RootClass rootClass, MappedSuperclass superclass, Property prop) {
 		if ( superclass == null ) {
+			ClassPropertyHolder.checkGenericComponentProperty( prop, buildingContext );
 			rootClass.setDeclaredIdentifierProperty( prop );
 			return;
 		}

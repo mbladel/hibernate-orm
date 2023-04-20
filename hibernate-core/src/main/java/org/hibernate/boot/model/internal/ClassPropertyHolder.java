@@ -229,7 +229,29 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 		return join;
 	}
 
+	public static void checkGenericComponentProperty(Property property, MetadataBuildingContext context) {
+		final Value value = property.getValue();
+		if ( value instanceof Component ) {
+			final Component component = (Component) value;
+			if ( component.isGeneric() ) {
+				Component copy = component.copy();
+				copy.getProperties().clear();
+				for ( Property prop : component.getProperties() ) {
+					prepareActualPropertyForSuperclass(
+							prop,
+							component.getComponentClass(),
+							true,
+							context,
+							copy::addProperty
+					);
+				}
+				context.getMetadataCollector().registerGenericComponent( copy );
+			}
+		}
+	}
+
 	private void addPropertyToPersistentClass(Property property, XClass declaringClass) {
+		checkGenericComponentProperty( property, getContext() );
 		if ( declaringClass != null ) {
 			final InheritanceState inheritanceState = inheritanceStatePerClass.get( declaringClass );
 			if ( inheritanceState == null ) {

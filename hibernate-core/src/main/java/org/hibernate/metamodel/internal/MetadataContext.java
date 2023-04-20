@@ -27,6 +27,7 @@ import org.hibernate.mapping.Component;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
+import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.MappingMetamodel;
 import org.hibernate.metamodel.model.domain.AbstractIdentifiableType;
 import org.hibernate.metamodel.model.domain.BasicDomainType;
@@ -427,8 +428,20 @@ public class MetadataContext {
 						identifiableType,
 						declaredIdentifierProperty
 				);
-				//noinspection unchecked
-				attributeContainer.getInFlightAccess().applyIdAttribute( idAttribute );
+				final Value value = declaredIdentifierProperty.getValue();
+				if (value instanceof Component && ((Component) value).isGeneric()) {
+					//noinspection unchecked
+					attributeContainer.getInFlightAccess().addConcreteGenericAttribute( idAttribute );
+					// copy the property and register it using the generic component value
+					final Property actualProperty = declaredIdentifierProperty.copy();
+					actualProperty.setGeneric( true );
+					// todo marco : set value to the correct generic component
+//					actualProperty.setValue( genericComponent );
+				}
+				else {
+					//noinspection unchecked
+					attributeContainer.getInFlightAccess().applyIdAttribute( idAttribute );
+				}
 			}
 			final Property superclassIdentifier = getMappedSuperclassIdentifier( persistentClass );
 			if ( superclassIdentifier != null && superclassIdentifier.isGeneric() ) {

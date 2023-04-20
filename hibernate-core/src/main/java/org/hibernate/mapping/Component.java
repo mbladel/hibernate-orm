@@ -816,4 +816,8 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	public void setStructColumnNames(String[] structColumnNames) {
 		this.structColumnNames = structColumnNames;
 	}
+
+	public boolean isGeneric() {
+		return getComponentClassName() != null && getComponentClass().getTypeParameters().length != 0;
+	}
 }
