@@ -18,7 +18,11 @@ import java.util.Set;
 import org.hibernate.AssertionFailure;
 import org.hibernate.Internal;
 import org.hibernate.MappingException;
+import org.hibernate.annotations.common.reflection.XClass;
+import org.hibernate.annotations.common.reflection.XProperty;
+import org.hibernate.boot.model.internal.PropertyInferredData;
 import org.hibernate.boot.spi.MetadataImplementor;
+import org.hibernate.boot.spi.PropertyData;
 import org.hibernate.internal.EntityManagerMessageLogger;
 import org.hibernate.internal.HEMLogging;
 import org.hibernate.internal.util.ReflectHelper;
@@ -27,6 +31,8 @@ import org.hibernate.mapping.Component;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
+import org.hibernate.mapping.SimpleValue;
+import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.MappingMetamodel;
 import org.hibernate.metamodel.model.domain.AbstractIdentifiableType;
 import org.hibernate.metamodel.model.domain.BasicDomainType;
@@ -375,6 +381,12 @@ public class MetadataContext {
 					}
 				}
 
+				// todo marco : testing limits
+				final Class<?> componentClass = component.getComponentClass();
+				if ( componentClass.getTypeParameters().length != 0 ) {
+					testMethod( component );
+				}
+
 				( ( AttributeContainer<?>) embeddable ).getInFlightAccess().finishUp();
 				// Do not process embeddables for entity types i.e. id-classes
 				if ( !( embeddable.getExpressibleJavaType() instanceof EntityJavaType<?> ) ) {
@@ -386,6 +398,52 @@ public class MetadataContext {
 				}
 			}
 		}
+	}
+
+	private void testMethod(Component component) {
+		final XClass actualDeclaringClass = runtimeModelCreationContext.getBootstrapContext()
+				.getReflectionManager()
+				.toXClass( component.getComponentClass() );
+		for ( Property prop : component.getProperties()) {
+			for ( XProperty declaredProperty : actualDeclaringClass.getDeclaredProperties( prop.getPropertyAccessorName() ) ) {
+				if ( prop.getName().equals( declaredProperty.getName() ) ) {
+					final PropertyData inferredData = new PropertyInferredData(
+							actualDeclaringClass,
+							declaredProperty,
+							null,
+							runtimeModelCreationContext.getBootstrapContext().getReflectionManager()
+					);
+					final Value originalValue = prop.getValue();
+					if ( originalValue instanceof SimpleValue ) {
+						// Avoid copying when the property doesn't depend on a type variable
+						if ( inferredData.getTypeName().equals( getTypeName( prop ) ) ) {
+							return;
+						}
+						final Property actualProperty = prop.copy();
+						actualProperty.setGeneric( true );
+						actualProperty.setReturnedClassName( inferredData.getTypeName() );
+						final Value value = actualProperty.getValue().copy();
+					}
+				}
+			}
+		}
+	}
+
+	private static String getTypeName(Property property) {
+		final String typeName = getTypeName( property.getValue() );
+		return typeName != null ? typeName : property.getReturnedClassName();
+	}
+
+	private static String getTypeName(Value value) {
+		if ( value instanceof Component ) {
+			final Component component = (Component) value;
+			final String typeName = component.getTypeName();
+			if ( typeName != null ) {
+				return typeName;
+			}
+			return component.getComponentClassName();
+		}
+		return ( (SimpleValue) value ).getTypeName();
 	}
 
 	private void addAttribute(ManagedDomainType<?> type, PersistentAttribute<Object, ?> attribute) {
@@ -796,12 +854,18 @@ public class MetadataContext {
 						}
 						else {
 							for ( int i = 0; i < cachedComponentPropertySpan; i++ ) {
-								if ( !cachedComponent.getProperty( i ).getName()
-										.equals( component.getProperty( i ).getName() ) ) {
+								final Property cachedProperty = cachedComponent.getProperty( i );
+								final Property property = component.getProperty( i );
+								if ( !cachedProperty.getName().equals( property.getName() ) ) {
 									throw new MappingException(
 											"Encountered multiple component mappings for the same java class "
 													+ embeddableClass.getName() +
 													" with different property mappings. Every property mapping combination should have its own java class" );
+								}
+								else if ( !cachedProperty.getReturnedClassName()
+										.equals( property.getReturnedClassName() ) ) {
+									// todo marco : add comment why we do this
+									return null;
 								}
 							}
 						}
