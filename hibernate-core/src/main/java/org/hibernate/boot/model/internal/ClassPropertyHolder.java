@@ -233,8 +233,13 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 		final Value value = property.getValue();
 		if ( value instanceof Component ) {
 			final Component component = (Component) value;
-			if ( component.isGeneric() ) {
-				Component copy = component.copy();
+			property.setGeneric( component.isGeneric() );
+			if ( component.isGeneric() && context.getMetadataCollector()
+					.getGenericComponent( component.getComponentClass() ) == null ) {
+				// If we didn't already, register the generic component to use it later
+				// as the metamodel type for generic embeddable attributes
+				final Component copy = component.copy();
+				copy.setGeneric( false );
 				copy.getProperties().clear();
 				for ( Property prop : component.getProperties() ) {
 					prepareActualPropertyForSuperclass(

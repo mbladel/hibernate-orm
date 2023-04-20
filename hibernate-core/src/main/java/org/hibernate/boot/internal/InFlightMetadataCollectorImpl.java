@@ -279,13 +279,18 @@ public class InFlightMetadataCollectorImpl implements InFlightMetadataCollector,
 	}
 
 	@Override
+	public void visitRegisteredComponents(Consumer<Component> consumer) {
+		composites.forEach( consumer );
+	}
+
+	@Override
 	public void registerGenericComponent(Component component) {
 		genericComponentsMap.put( component.getComponentClass(), component );
 	}
 
 	@Override
-	public void visitRegisteredComponents(Consumer<Component> consumer) {
-		composites.forEach( consumer );
+	public Component getGenericComponent(Class<?> componentClass) {
+		return genericComponentsMap.get( componentClass );
 	}
 
 	@Override
@@ -2323,6 +2328,7 @@ public class InFlightMetadataCollectorImpl implements InFlightMetadataCollector,
 					options,
 					entityBindingMap,
 					composites,
+					genericComponentsMap,
 					mappedSuperClasses,
 					collectionBindingMap,
 					typeDefRegistry.copyRegistrationMap(),

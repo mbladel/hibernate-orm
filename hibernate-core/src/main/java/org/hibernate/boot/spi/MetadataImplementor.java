@@ -6,6 +6,7 @@
  */
 package org.hibernate.boot.spi;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -56,4 +57,6 @@ public interface MetadataImplementor extends Metadata {
 	void initSessionFactory(SessionFactoryImplementor sessionFactoryImplementor);
 
 	void visitRegisteredComponents(Consumer<Component> consumer);
+
+	Component getGenericComponent(Class<?> componentClass);
 }

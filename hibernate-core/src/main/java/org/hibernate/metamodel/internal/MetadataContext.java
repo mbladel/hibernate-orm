@@ -252,6 +252,34 @@ public class MetadataContext {
 		return Collections.unmodifiableMap( identifiableTypesByName );
 	}
 
+	private PersistentAttribute<Object, ?> getGenericAttribute(Property property, EntityDomainType<Object> entityType) {
+		final PersistentAttribute<Object, ?> attribute;
+		if ( property.isGeneric() ) {
+			final Property genericProperty = property.copy();
+			final Component genericComponent = runtimeModelCreationContext.getMetadata()
+					.getGenericComponent( ( (Component) property.getValue() ).getComponentClass() );
+			genericProperty.setValue( genericComponent );
+			attribute = attributeFactory.buildIdAttribute(
+					entityType,
+					genericProperty
+			);
+			property.setGeneric( false );
+			final PersistentAttribute<Object, ?> concreteAttribute = attributeFactory.buildIdAttribute(
+					entityType,
+					property
+			);
+			//noinspection unchecked
+			( (AttributeContainer<Object>) entityType ).getInFlightAccess().addConcreteGenericAttribute( concreteAttribute );
+		}
+		else {
+			attribute = attributeFactory.buildIdAttribute(
+					entityType,
+					property
+			);
+		}
+		return attribute;
+	}
+
 	@SuppressWarnings("unchecked")
 	public void wrapUp() {
 		if ( LOG.isTraceEnabled() ) {
@@ -287,10 +315,16 @@ public class MetadataContext {
 							// skip the version property, it was already handled previously.
 							continue;
 						}
-						final PersistentAttribute<Object, ?> attribute = attributeFactory.buildAttribute(
-								jpaMapping,
-								property
-						);
+						final PersistentAttribute<Object, ?> attribute;
+						if ( property.isGeneric() ) {
+							attribute = getGenericAttribute( property, jpaMapping );
+						}
+						else {
+							attribute = attributeFactory.buildIdAttribute(
+									jpaMapping,
+									property
+							);
+						}
 						if ( attribute != null ) {
 							addAttribute( jpaMapping, attribute );
 							if ( property.isNaturalIdentifier() ) {
@@ -377,8 +411,9 @@ public class MetadataContext {
 				}
 
 				( ( AttributeContainer<?>) embeddable ).getInFlightAccess().finishUp();
-				// Do not process embeddables for entity types i.e. id-classes
-				if ( !( embeddable.getExpressibleJavaType() instanceof EntityJavaType<?> ) ) {
+				// Do not process embeddables for entity types i.e. id-classes or
+				// generic component embeddables used just for concrete type resolution
+				if ( !component.isGeneric() && !( embeddable.getExpressibleJavaType() instanceof EntityJavaType<?> ) ) {
 					embeddables.put( embeddable.getJavaType(), embeddable );
 
 					if ( staticMetamodelScanEnabled ) {
@@ -423,33 +458,47 @@ public class MetadataContext {
 			final Property declaredIdentifierProperty = persistentClass.getDeclaredIdentifierProperty();
 			//noinspection rawtypes
 			final AttributeContainer attributeContainer = (AttributeContainer) identifiableType;
+			SingularPersistentAttribute<?, Object> concreteIdentifier = null;
 			if ( declaredIdentifierProperty != null ) {
-				final SingularPersistentAttribute<?, Object> idAttribute = attributeFactory.buildIdAttribute(
-						identifiableType,
-						declaredIdentifierProperty
-				);
-				final Value value = declaredIdentifierProperty.getValue();
-				if (value instanceof Component && ((Component) value).isGeneric()) {
-					//noinspection unchecked
-					attributeContainer.getInFlightAccess().addConcreteGenericAttribute( idAttribute );
-					// copy the property and register it using the generic component value
-					final Property actualProperty = declaredIdentifierProperty.copy();
-					actualProperty.setGeneric( true );
-					// todo marco : set value to the correct generic component
-//					actualProperty.setValue( genericComponent );
+				final SingularPersistentAttribute<?, Object> idAttribute;
+				if ( declaredIdentifierProperty.isGeneric() ) {
+					// This is an embeddable using generics, we need to copy the
+					// property and register it using the generic component value
+					final Property genericProperty = declaredIdentifierProperty.copy();
+					final Component genericComponent = runtimeModelCreationContext.getMetadata()
+							.getGenericComponent( ( (Component) declaredIdentifierProperty.getValue() ).getComponentClass() );
+					genericProperty.setValue( genericComponent );
+					idAttribute = attributeFactory.buildIdAttribute(
+							identifiableType,
+							genericProperty
+					);
+					// This declared property now represents the concrete type, so set generic to false
+					declaredIdentifierProperty.setGeneric( false );
+					concreteIdentifier = attributeFactory.buildIdAttribute(
+							identifiableType,
+							declaredIdentifierProperty
+					);
 				}
 				else {
-					//noinspection unchecked
-					attributeContainer.getInFlightAccess().applyIdAttribute( idAttribute );
+					idAttribute = attributeFactory.buildIdAttribute(
+							identifiableType,
+							declaredIdentifierProperty
+					);
+				}
+				//noinspection unchecked
+				attributeContainer.getInFlightAccess().applyIdAttribute( idAttribute );
+			}
+			else {
+				final Property superclassIdentifier = getMappedSuperclassIdentifier( persistentClass );
+				if ( superclassIdentifier != null && superclassIdentifier.isGeneric() ) {
+					// If the superclass identifier is generic we have to build the attribute to register the concrete type
+					concreteIdentifier = attributeFactory.buildIdAttribute(
+							identifiableType,
+							persistentClass.getIdentifierProperty()
+					);
 				}
 			}
-			final Property superclassIdentifier = getMappedSuperclassIdentifier( persistentClass );
-			if ( superclassIdentifier != null && superclassIdentifier.isGeneric() ) {
-				// If the superclass identifier is generic we have to build the attribute to register the concrete type
-				final SingularPersistentAttribute<?, Object> concreteIdentifier = attributeFactory.buildIdAttribute(
-						identifiableType,
-						persistentClass.getIdentifierProperty()
-				);
+			if ( concreteIdentifier != null ) {
 				//noinspection unchecked
 				attributeContainer.getInFlightAccess().addConcreteGenericAttribute( concreteIdentifier );
 			}
