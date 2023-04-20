@@ -341,12 +341,12 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 		}
 	}
 
-	private static String getTypeName(Property property) {
+	public static String getTypeName(Property property) {
 		final String typeName = getTypeName( property.getValue() );
 		return typeName != null ? typeName : property.getReturnedClassName();
 	}
 
-	private static String getTypeName(Value value) {
+	public static String getTypeName(Value value) {
 		if ( value instanceof Component ) {
 			final Component component = (Component) value;
 			final String typeName = component.getTypeName();
@@ -358,7 +358,7 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 		return ( (SimpleValue) value ).getTypeName();
 	}
 
-	private static void setTypeName(Value value, String typeName) {
+	public static void setTypeName(Value value, String typeName) {
 		if ( value instanceof ToOne ) {
 			final ToOne toOne = (ToOne) value;
 			toOne.setReferencedEntityName( typeName );

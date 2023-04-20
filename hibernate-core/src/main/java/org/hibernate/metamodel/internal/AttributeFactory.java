@@ -10,21 +10,33 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
+import java.util.Iterator;
+import java.util.function.Consumer;
 
 import org.hibernate.AssertionFailure;
+import org.hibernate.MappingException;
 import org.hibernate.PropertyNotFoundException;
+import org.hibernate.annotations.common.reflection.XClass;
+import org.hibernate.annotations.common.reflection.XProperty;
 import org.hibernate.boot.model.convert.spi.ConverterDescriptor;
+import org.hibernate.boot.model.internal.PropertyInferredData;
+import org.hibernate.boot.spi.BootstrapContext;
+import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.boot.spi.PropertyData;
+import org.hibernate.boot.spi.SecondPass;
 import org.hibernate.internal.EntityManagerMessageLogger;
 import org.hibernate.internal.HEMLogging;
 import org.hibernate.mapping.Any;
 import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Component;
+import org.hibernate.mapping.IndexedCollection;
 import org.hibernate.mapping.List;
 import org.hibernate.mapping.Map;
 import org.hibernate.mapping.OneToMany;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.SimpleValue;
+import org.hibernate.mapping.ToOne;
 import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.AttributeClassification;
 import org.hibernate.metamodel.RepresentationMode;
@@ -66,6 +78,9 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.metamodel.Attribute;
 import jakarta.persistence.metamodel.Type;
+
+import static org.hibernate.boot.model.internal.ClassPropertyHolder.getTypeName;
+import static org.hibernate.boot.model.internal.ClassPropertyHolder.setTypeName;
 
 /**
  * A factory for building {@link Attribute} instances.  Exposes 3 main services for building<ol>
@@ -315,9 +330,19 @@ public class AttributeFactory {
 							context.getJpaMetamodel()
 					);
 
-					context.registerEmbeddableType( embeddableType, component );
-
-					return embeddableType;
+					if (component.getComponentClass().getTypeParameters().length != 0) {
+						// todo marco : create generic component and process that
+						final Component actualComponent = prepareActualComponent(
+								component,
+								context.getRuntimeModelCreationContext()
+										.getBootstrapContext()
+						);
+						context.registerEmbeddableType( embeddableType, actualComponent );
+					}
+					else {
+						context.registerEmbeddableType( embeddableType, component );
+						return embeddableType;
+					}
 				}
 
 				final EmbeddableTypeImpl.InFlightAccess<Y> inFlightAccess = embeddableType.getInFlightAccess();
@@ -335,6 +360,41 @@ public class AttributeFactory {
 				throw new AssertionFailure( "Unknown type : " + typeContext.getValueClassification() );
 			}
 		}
+	}
+
+	private static Component prepareActualComponent(Component component, BootstrapContext bootstrapContext) {
+		final Component actualComponent = component.copy();
+		final XClass actualDeclaringClass = bootstrapContext.getReflectionManager().toXClass( component.getComponentClass() );
+		for ( Property prop : component.getProperties() ) {
+			for ( XProperty declaredProperty : actualDeclaringClass.getDeclaredProperties( prop.getPropertyAccessorName() ) ) {
+				if ( prop.getName().equals( declaredProperty.getName() ) ) {
+					final PropertyData inferredData = new PropertyInferredData(
+							actualDeclaringClass,
+							declaredProperty,
+							null,
+							bootstrapContext.getReflectionManager()
+					);
+					final Value originalValue = prop.getValue();
+					if ( originalValue instanceof SimpleValue ) {
+						// Avoid copying when the property doesn't depend on a type variable
+						if ( inferredData.getTypeName().equals( getTypeName( prop ) ) ) {
+							actualComponent.addProperty( prop );
+							break;
+						}
+					}
+					// If the property depends on a type variable, we have to copy it and the Value
+					final Property actualProperty = prop.copy();
+					actualProperty.setGeneric( true );
+					actualProperty.setReturnedClassName( inferredData.getTypeName() );
+					final Value value = actualProperty.getValue().copy();
+					setTypeName( value, inferredData.getTypeName() );
+					actualProperty.setValue( value );
+					actualComponent.addProperty( actualProperty );
+					break;
+				}
+			}
+		}
+		return actualComponent;
 	}
 
 	private static JavaType<?> determineRelationalJavaType(
