@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 import org.hibernate.AssertionFailure;
 import org.hibernate.Internal;
@@ -27,10 +28,10 @@ import org.hibernate.mapping.Component;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
-import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.MappingMetamodel;
 import org.hibernate.metamodel.model.domain.AbstractIdentifiableType;
 import org.hibernate.metamodel.model.domain.BasicDomainType;
+import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.IdentifiableDomainType;
@@ -252,30 +253,26 @@ public class MetadataContext {
 		return Collections.unmodifiableMap( identifiableTypesByName );
 	}
 
-	private PersistentAttribute<Object, ?> getGenericAttribute(Property property, EntityDomainType<Object> entityType) {
-		final PersistentAttribute<Object, ?> attribute;
+	private <X> PersistentAttribute<X, ?> buildAttribute(
+			Property property,
+			EntityDomainType<X> entityType,
+			BiFunction<EntityDomainType<X>, Property, PersistentAttribute<X, ?>> factoryFunction) {
+		final PersistentAttribute<X, ?> attribute;
 		if ( property.isGeneric() ) {
+			// This is an embeddable property using generics, we have to retrieve the generic
+			// component previously registered and create the concrete generic attribute
 			final Property genericProperty = property.copy();
 			final Component genericComponent = runtimeModelCreationContext.getMetadata()
 					.getGenericComponent( ( (Component) property.getValue() ).getComponentClass() );
 			genericProperty.setValue( genericComponent );
-			attribute = attributeFactory.buildIdAttribute(
-					entityType,
-					genericProperty
-			);
+			attribute = factoryFunction.apply( entityType, genericProperty );
 			property.setGeneric( false );
-			final PersistentAttribute<Object, ?> concreteAttribute = attributeFactory.buildIdAttribute(
-					entityType,
-					property
-			);
+			final PersistentAttribute<X, ?> concreteAttribute = factoryFunction.apply( entityType, property );
 			//noinspection unchecked
-			( (AttributeContainer<Object>) entityType ).getInFlightAccess().addConcreteGenericAttribute( concreteAttribute );
+			( (AttributeContainer<X>) entityType ).getInFlightAccess().addConcreteGenericAttribute( concreteAttribute );
 		}
 		else {
-			attribute = attributeFactory.buildIdAttribute(
-					entityType,
-					property
-			);
+			attribute = factoryFunction.apply( entityType, property );
 		}
 		return attribute;
 	}
@@ -315,16 +312,11 @@ public class MetadataContext {
 							// skip the version property, it was already handled previously.
 							continue;
 						}
-						final PersistentAttribute<Object, ?> attribute;
-						if ( property.isGeneric() ) {
-							attribute = getGenericAttribute( property, jpaMapping );
-						}
-						else {
-							attribute = attributeFactory.buildIdAttribute(
-									jpaMapping,
-									property
-							);
-						}
+						final PersistentAttribute<Object, ?> attribute = buildAttribute(
+								property,
+								jpaMapping,
+								attributeFactory::buildAttribute
+						);
 						if ( attribute != null ) {
 							addAttribute( jpaMapping, attribute );
 							if ( property.isNaturalIdentifier() ) {
@@ -453,38 +445,18 @@ public class MetadataContext {
 	// 2) register the part (mapping role)
 	// 3) somehow get the mapping role "into" the part (setter, ?)
 
-	private void applyIdMetadata(PersistentClass persistentClass, IdentifiableDomainType<?> identifiableType) {
+	private void applyIdMetadata(PersistentClass persistentClass, EntityDomainType<?> identifiableType) {
 		if ( persistentClass.hasIdentifierProperty() ) {
 			final Property declaredIdentifierProperty = persistentClass.getDeclaredIdentifierProperty();
 			//noinspection rawtypes
 			final AttributeContainer attributeContainer = (AttributeContainer) identifiableType;
-			SingularPersistentAttribute<?, Object> concreteIdentifier = null;
 			if ( declaredIdentifierProperty != null ) {
-				final SingularPersistentAttribute<?, Object> idAttribute;
-				if ( declaredIdentifierProperty.isGeneric() ) {
-					// This is an embeddable using generics, we need to copy the
-					// property and register it using the generic component value
-					final Property genericProperty = declaredIdentifierProperty.copy();
-					final Component genericComponent = runtimeModelCreationContext.getMetadata()
-							.getGenericComponent( ( (Component) declaredIdentifierProperty.getValue() ).getComponentClass() );
-					genericProperty.setValue( genericComponent );
-					idAttribute = attributeFactory.buildIdAttribute(
-							identifiableType,
-							genericProperty
-					);
-					// This declared property now represents the concrete type, so set generic to false
-					declaredIdentifierProperty.setGeneric( false );
-					concreteIdentifier = attributeFactory.buildIdAttribute(
-							identifiableType,
-							declaredIdentifierProperty
-					);
-				}
-				else {
-					idAttribute = attributeFactory.buildIdAttribute(
-							identifiableType,
-							declaredIdentifierProperty
-					);
-				}
+				//noinspection unchecked
+				final SingularPersistentAttribute<?, Object> idAttribute = (SingularPersistentAttribute<?, Object>) buildAttribute(
+						declaredIdentifierProperty,
+						identifiableType,
+						attributeFactory::buildIdAttribute
+				);
 				//noinspection unchecked
 				attributeContainer.getInFlightAccess().applyIdAttribute( idAttribute );
 			}
@@ -492,15 +464,13 @@ public class MetadataContext {
 				final Property superclassIdentifier = getMappedSuperclassIdentifier( persistentClass );
 				if ( superclassIdentifier != null && superclassIdentifier.isGeneric() ) {
 					// If the superclass identifier is generic we have to build the attribute to register the concrete type
-					concreteIdentifier = attributeFactory.buildIdAttribute(
+					final SingularPersistentAttribute<?, Object> concreteIdentifier = attributeFactory.buildIdAttribute(
 							identifiableType,
 							persistentClass.getIdentifierProperty()
 					);
+					//noinspection unchecked
+					attributeContainer.getInFlightAccess().addConcreteGenericAttribute( concreteIdentifier );
 				}
-			}
-			if ( concreteIdentifier != null ) {
-				//noinspection unchecked
-				attributeContainer.getInFlightAccess().addConcreteGenericAttribute( concreteIdentifier );
 			}
 		}
 		else {
