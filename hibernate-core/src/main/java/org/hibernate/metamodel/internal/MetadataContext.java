@@ -255,8 +255,8 @@ public class MetadataContext {
 
 	private <X> PersistentAttribute<X, ?> buildAttribute(
 			Property property,
-			EntityDomainType<X> entityType,
-			BiFunction<EntityDomainType<X>, Property, PersistentAttribute<X, ?>> factoryFunction) {
+			IdentifiableDomainType<X> entityType,
+			BiFunction<IdentifiableDomainType<X>, Property, PersistentAttribute<X, ?>> factoryFunction) {
 		final PersistentAttribute<X, ?> attribute;
 		if ( property.isGeneric() ) {
 			// This is an embeddable property using generics, we have to retrieve the generic
@@ -356,7 +356,11 @@ public class MetadataContext {
 							// skip the version property, it was already handled previously.
 							continue;
 						}
-						final PersistentAttribute<Object, ?> attribute = attributeFactory.buildAttribute( jpaType, property );
+						final PersistentAttribute<Object, ?> attribute = buildAttribute(
+								property,
+								jpaType,
+								attributeFactory::buildAttribute
+						);
 						if ( attribute != null ) {
 							addAttribute( jpaType, attribute );
 							if ( property.isNaturalIdentifier() ) {
@@ -551,10 +555,14 @@ public class MetadataContext {
 		if ( mappingType.hasIdentifierProperty() ) {
 			final Property declaredIdentifierProperty = mappingType.getDeclaredIdentifierProperty();
 			if ( declaredIdentifierProperty != null ) {
-				final SingularPersistentAttribute<X, Object> attribute =
-						attributeFactory.buildIdAttribute( jpaMappingType, declaredIdentifierProperty );
 				//noinspection unchecked
-				( ( AttributeContainer) jpaMappingType ).getInFlightAccess().applyIdAttribute( attribute );
+				final SingularPersistentAttribute<X, Object> attribute = (SingularPersistentAttribute<X, Object>) buildAttribute(
+						declaredIdentifierProperty,
+						jpaMappingType,
+						attributeFactory::buildIdAttribute
+				);
+				//noinspection unchecked
+				( (AttributeContainer<X>) jpaMappingType ).getInFlightAccess().applyIdAttribute( attribute );
 			}
 		}
 		//a MappedSuperclass can have no identifier if the id is set below in the hierarchy
