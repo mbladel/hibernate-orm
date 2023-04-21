@@ -229,6 +229,12 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 		return join;
 	}
 
+	/**
+	 * Embeddable classes can be defined using generics. For this reason, we must check
+	 * every property value and detect this. If the value is a generic component, we must
+	 * set the property as generic, to later be able to resolve its concrete type, and
+	 * create a new component with correctly typed sub-properties for the metamodel.
+	 */
 	public static void checkGenericComponentProperty(Property property, MetadataBuildingContext context) {
 		final Value value = property.getValue();
 		if ( value instanceof Component ) {
@@ -242,7 +248,7 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 				copy.setGeneric( false );
 				copy.getProperties().clear();
 				for ( Property prop : component.getProperties() ) {
-					prepareActualPropertyForSuperclass(
+					prepareActualProperty(
 							prop,
 							component.getComponentClass(),
 							true,
@@ -280,10 +286,10 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 	private void addPropertyToMappedSuperclass(Property prop, XClass declaringClass) {
 		final Class<?> type = getContext().getBootstrapContext().getReflectionManager().toClass( declaringClass );
 		final MappedSuperclass superclass = getContext().getMetadataCollector().getMappedSuperclass( type );
-		prepareActualPropertyForSuperclass( prop, type, true, getContext(), superclass::addDeclaredProperty );
+		prepareActualProperty( prop, type, true, getContext(), superclass::addDeclaredProperty );
 	}
 
-	static void prepareActualPropertyForSuperclass(
+	static void prepareActualProperty(
 			Property prop,
 			Class<?> type,
 			boolean allowCollections,
