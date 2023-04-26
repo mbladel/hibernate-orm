@@ -296,6 +296,7 @@ public class ManyToManyCollectionPart extends AbstractEntityCollectionPart imple
 				),
 				this,
 				this,
+				null,
 				explicitSourceAlias,
 				sqlAliasBase,
 				creationState.getCreationContext().getSessionFactory(),

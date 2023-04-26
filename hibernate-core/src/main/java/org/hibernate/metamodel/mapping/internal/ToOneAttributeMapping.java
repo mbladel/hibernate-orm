@@ -2057,15 +2057,15 @@ public class ToOneAttributeMapping
 			realParentTableGroup = tableGroup;
 		}
 
-		final TableGroupProducer tableGroupProducer;
+		final TableGroupProducer initializedTableGroupProducer;
 		if ( realParentTableGroup instanceof CorrelatedTableGroup ) {
-			// If the parent is a correlated table group, we can't refer to columns of the table in the outer query,
-			// because the context in which a column is used could be an aggregate function.
+			// If the parent is a correlated table group, and we're joining (initialized), we can't refer to columns of the
+			// table in the outer query, because the context in which a column is used could be an aggregate function.
 			// Using a parent column in such a case would lead to an error if the parent query lacks a proper group by
-			tableGroupProducer = entityMappingType;
+			initializedTableGroupProducer = entityMappingType;
 		}
 		else {
-			tableGroupProducer = this;
+			initializedTableGroupProducer = null;
 		}
 
 		final LazyTableGroup lazyTableGroup = new LazyTableGroup(
@@ -2081,7 +2081,8 @@ public class ToOneAttributeMapping
 						creationState
 				),
 				this,
-				tableGroupProducer,
+				this,
+				initializedTableGroupProducer,
 				explicitSourceAlias,
 				sqlAliasBase,
 				creationState.getCreationContext().getSessionFactory(),
@@ -2105,13 +2106,15 @@ public class ToOneAttributeMapping
 			);
 		}
 
-		if ( realParentTableGroup instanceof CorrelatedTableGroup ) {
+
+		if ( requestedJoinType != null && realParentTableGroup instanceof CorrelatedTableGroup ) {
 			// Force initialization of the underlying table group join to retain cardinality
 			lazyTableGroup.getPrimaryTableReference();
 		}
 		else {
 			initializeIfNeeded( lhs, requestedJoinType, lazyTableGroup );
 		}
+
 
 		return lazyTableGroup;
 	}

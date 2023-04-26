@@ -475,6 +475,7 @@ public class AnonymousTupleEntityValuedModelPart
 				),
 				this,
 				this,
+				null,
 				explicitSourceAlias,
 				sqlAliasBase,
 				creationState.getCreationContext().getSessionFactory(),

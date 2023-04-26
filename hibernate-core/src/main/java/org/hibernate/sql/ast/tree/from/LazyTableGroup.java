@@ -32,6 +32,7 @@ public class LazyTableGroup extends DelegatingTableGroup {
 	private final NavigablePath navigablePath;
 	private final boolean fetched;
 	private final TableGroupProducer producer;
+	private final TableGroupProducer initializedModelPart;
 	private final String sourceAlias;
 	private final SqlAliasBase sqlAliasBase;
 	private final Supplier<TableGroup> tableGroupSupplier;
@@ -49,6 +50,7 @@ public class LazyTableGroup extends DelegatingTableGroup {
 			Supplier<TableGroup> tableGroupSupplier,
 			ParentTableGroupUseChecker parentTableGroupUseChecker,
 			TableGroupProducer tableGroupProducer,
+			TableGroupProducer initializedModelPart,
 			String sourceAlias,
 			SqlAliasBase sqlAliasBase,
 			SessionFactoryImplementor sessionFactory,
@@ -57,6 +59,7 @@ public class LazyTableGroup extends DelegatingTableGroup {
 		this.navigablePath = navigablePath;
 		this.fetched = fetched;
 		this.producer = tableGroupProducer;
+		this.initializedModelPart = initializedModelPart;
 		this.sourceAlias = sourceAlias;
 		this.sqlAliasBase = sqlAliasBase;
 		this.tableGroupSupplier = tableGroupSupplier;
@@ -207,7 +210,7 @@ public class LazyTableGroup extends DelegatingTableGroup {
 
 	@Override
 	public TableGroupProducer getModelPart() {
-		return producer;
+		return isInitialized() && initializedModelPart != null ? initializedModelPart : producer;
 	}
 
 	@Override
