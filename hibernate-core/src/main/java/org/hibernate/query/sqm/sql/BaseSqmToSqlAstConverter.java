@@ -50,7 +50,7 @@ import org.hibernate.id.CompositeNestedGeneratedValueGenerator;
 import org.hibernate.id.OptimizableGenerator;
 import org.hibernate.id.enhanced.Optimizer;
 import org.hibernate.internal.FilterHelper;
-import org.hibernate.internal.util.MutableObject;
+import org.hibernate.internal.util.MutableBoolean;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.internal.util.collections.StandardStack;
@@ -3336,6 +3336,19 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			registerEntityNameProjectionUsage( sqmJoin, getActualTableGroup( joinedTableGroup, sqmJoin ) );
 		}
 		registerPathAttributeEntityNameUsage( sqmJoin, ownerTableGroup );
+		if ( !sqmJoin.hasTreats() && sqmJoin.getNodeType().getSqmPathType() instanceof EntityDomainType ) {
+			final EntityDomainType<?> entityDomainType = (EntityDomainType<?>) sqmJoin.getNodeType().getSqmPathType();
+			final EntityPersister entityDescriptor = (EntityPersister) joinedTableGroup.getModelPart().getPartMappingType();
+			if ( entityDescriptor != null && entityDescriptor.getSuperMappingType() != null ) {
+				// This is a non-treated join with an entity which is an inheritance subtype,
+				// register a TREAT entity name use to filter only the entities of the correct type.
+				registerEntityNameUsage(
+						getActualTableGroup( joinedTableGroup, sqmJoin ),
+						EntityNameUse.TREAT,
+						entityDomainType.getHibernateEntityName()
+				);
+			}
+		}
 
 		// add any additional join restrictions
 		if ( sqmJoin.getJoinPredicate() != null ) {
@@ -3394,7 +3407,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 	}
 
 	private TableGroup consumeEntityJoin(SqmEntityJoin<?> sqmJoin, TableGroup lhsTableGroup, boolean transitive) {
-		final MutableObject<Predicate> predicate = new MutableObject<>();
+		final MutableBoolean needsTreat = new MutableBoolean( false );
 		final EntityPersister entityDescriptor = resolveEntityPersister( sqmJoin.getReferencedPathSource() );
 
 		final SqlAstJoinType correspondingSqlJoinType = sqmJoin.getSqmJoinType().getCorrespondingSqlJoinType();
@@ -3403,16 +3416,21 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				sqmJoin.getNavigablePath(),
 				sqmJoin.getExplicitAlias(),
 				null,
-				() -> p -> predicate.set( combinePredicates( predicate.get(), p ) ),
+				() -> p -> needsTreat.setValue( true ),
 				this
 		);
 		registerSqmFromTableGroup( sqmJoin, tableGroup );
+
+		if ( needsTreat.getValue() ) {
+			// Register new treat to apply the discriminator condition to the table reference itself, see #pruneTableGroupJoins
+			registerEntityNameUsage( tableGroup, EntityNameUse.TREAT, entityDescriptor.getEntityName() );
+		}
 
 		final TableGroupJoin tableGroupJoin = new TableGroupJoin(
 				sqmJoin.getNavigablePath(),
 				correspondingSqlJoinType,
 				tableGroup,
-				predicate.get()
+				null
 		);
 
 		if ( sqmJoin.getJoinPredicate() != null ) {
