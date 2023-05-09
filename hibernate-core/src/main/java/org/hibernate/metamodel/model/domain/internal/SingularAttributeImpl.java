@@ -22,8 +22,8 @@ import org.hibernate.metamodel.model.domain.PluralPersistentAttribute;
 import org.hibernate.metamodel.model.domain.SimpleDomainType;
 import org.hibernate.metamodel.model.domain.SingularPersistentAttribute;
 import org.hibernate.query.SemanticException;
-import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.hql.spi.SqmCreationState;
+import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.internal.SqmMappingModelHelper;
 import org.hibernate.query.sqm.spi.SqmCreationHelper;
 import org.hibernate.query.sqm.tree.SqmJoinType;
@@ -191,7 +191,7 @@ public class SingularAttributeImpl<D,J>
 		public NavigablePath createNavigablePath(SqmPath parent, String alias) {
 			if ( parent == null ) {
 				throw new IllegalArgumentException(
-						"`lhs` cannot be null for a sub-navigable reference - " + parent
+						"`lhs` cannot be null for a sub-navigable reference - " + getName()
 				);
 			}
 			NavigablePath navigablePath = parent.getNavigablePath();

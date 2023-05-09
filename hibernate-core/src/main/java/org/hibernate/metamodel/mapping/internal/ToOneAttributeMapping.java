@@ -102,6 +102,8 @@ import org.hibernate.type.EmbeddedComponentType;
 import org.hibernate.type.EntityType;
 import org.hibernate.type.Type;
 
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
+
 /**
  * @author Steve Ebersole
  */
@@ -1419,6 +1421,18 @@ public class ToOneAttributeMapping
 		return referencedNavigablePath;
 	}
 
+	private NavigablePath getRealNavigablePath(NavigablePath navigablePath) {
+		if ( navigablePath instanceof TreatedNavigablePath ) {
+			return navigablePath.getRealParent();
+		}
+		else if ( navigablePath.getRealParent() instanceof TreatedNavigablePath ) {
+			return new NavigablePath( navigablePath.getParent(), navigablePath.getLocalName() );
+		}
+		else {
+			return navigablePath;
+		}
+	}
+
 	@Override
 	public EntityFetch generateFetch(
 			FetchParent fetchParent,
@@ -1433,10 +1447,9 @@ public class ToOneAttributeMapping
 
 		final TableGroup parentTableGroup = fromClauseAccess.getTableGroup( fetchParent.getNavigablePath() );
 
-		final NavigablePath parentNavigablePath = fetchablePath.getParent();
+		final NavigablePath parentNavigablePath = castNonNull( fetchablePath.getParent() );
 		assert parentNavigablePath.equals( fetchParent.getNavigablePath() )
-				|| fetchParent.getNavigablePath() instanceof TreatedNavigablePath
-				&& parentNavigablePath.equals( fetchParent.getNavigablePath().getRealParent() );
+				|| parentNavigablePath.equals( getRealNavigablePath( fetchParent.getNavigablePath() ) );
 
 		/*
 		 In case of selected we are going to add a fetch for the `fetchablePath` only if there is not already a `TableGroupJoin`.
