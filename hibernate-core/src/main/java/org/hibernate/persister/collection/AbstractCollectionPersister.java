@@ -17,6 +17,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import javax.swing.text.NavigationFilter;
+
 import org.hibernate.AssertionFailure;
 import org.hibernate.FetchMode;
 import org.hibernate.Filter;
@@ -266,7 +268,10 @@ public abstract class AbstractCollectionPersister
 		dialect = creationContext.getDialect();
 		sqlExceptionHelper = creationContext.getJdbcServices().getSqlExceptionHelper();
 		collectionType = collectionBootDescriptor.getCollectionType();
-		navigableRole = new NavigableRole( collectionBootDescriptor.getRole() );
+		final String collectionRole = collectionBootDescriptor.getRole();
+		final int lastDotIndex = collectionRole.lastIndexOf( '.' );
+		final NavigableRole parentRole = new NavigableRole( collectionRole.substring( 0, lastDotIndex ) );
+		navigableRole = new NavigableRole( parentRole, collectionRole.substring( lastDotIndex + 1 ) );
 		ownerPersister = creationContext.getDomainModel().getEntityDescriptor( collectionBootDescriptor.getOwnerEntityName() );
 		queryLoaderName = collectionBootDescriptor.getLoaderName();
 		isMutable = collectionBootDescriptor.isMutable();
