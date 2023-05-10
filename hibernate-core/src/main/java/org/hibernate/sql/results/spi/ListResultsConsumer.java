@@ -16,6 +16,7 @@ import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.query.ResultListTransformer;
 import org.hibernate.query.spi.QueryOptions;
+import org.hibernate.sql.results.graph.instantiation.internal.DynamicInstantiationDelayedResult;
 import org.hibernate.sql.results.internal.RowProcessingStateStandardImpl;
 import org.hibernate.sql.results.jdbc.internal.JdbcValuesSourceProcessingStateStandardImpl;
 import org.hibernate.sql.results.jdbc.spi.JdbcValues;
@@ -118,6 +119,12 @@ public class ListResultsConsumer<R> implements ResultsConsumer<List<R>, R> {
 		}
 
 		public List<R> getResults() {
+			for (int i = 0;i < results.size(); i++) {
+				if ( results.get(i) instanceof DynamicInstantiationDelayedResult ) {
+					//noinspection unchecked
+					results.set( i, (R) ( (DynamicInstantiationDelayedResult<?>) results.get( i ) ).get() );
+				}
+			}
 			return results;
 		}
 	}

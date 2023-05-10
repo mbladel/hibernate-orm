@@ -48,14 +48,19 @@ public class DynamicInstantiationAssemblerConstructorImpl<R> implements DomainRe
 			args[i] = argumentReaders.get( i ).assemble( rowProcessingState, options );
 		}
 
-		try {
-			return targetConstructor.newInstance( args );
-		}
-		catch (InvocationTargetException e) {
-			throw new InstantiationException( "Error performing dynamic instantiation : " + targetConstructor.getDeclaringClass().getName(), e.getCause() );
-		}
-		catch (Exception e) {
-			throw new InstantiationException( "Error performing dynamic instantiation : " + targetConstructor.getDeclaringClass().getName(), e );
-		}
+		//noinspection unchecked
+		return (R) new DynamicInstantiationDelayedResult<>( () -> {
+			try {
+				return targetConstructor.newInstance( args );
+			}
+			catch (InvocationTargetException e) {
+				throw new InstantiationException( "Error performing dynamic instantiation : " + targetConstructor.getDeclaringClass()
+						.getName(), e.getCause() );
+			}
+			catch (Exception e) {
+				throw new InstantiationException( "Error performing dynamic instantiation : " + targetConstructor.getDeclaringClass()
+						.getName(), e );
+			}
+		} );
 	}
 }
