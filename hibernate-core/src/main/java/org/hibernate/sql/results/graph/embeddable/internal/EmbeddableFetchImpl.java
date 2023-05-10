@@ -134,15 +134,23 @@ public class EmbeddableFetchImpl extends AbstractFetchParent implements Embeddab
 		return super.resolveNavigablePath( fetchable );
 	}
 
-	private NavigablePath getNavigablePathFromUnderlying(VirtualTableGroup tableGroup, Fetchable fetchable) {
-		for ( TableGroupJoin tableGroupJoin : tableGroup.getUnderlyingTableGroup().getTableGroupJoins() ) {
-			final NavigablePath navigablePath = tableGroupJoin.getNavigablePath();
+	private NavigablePath getNavigablePathFromUnderlying(VirtualTableGroup virtualTableGroup, Fetchable fetchable) {
+		for ( TableGroupJoin tableGroupJoin : virtualTableGroup.getUnderlyingTableGroup().getTableGroupJoins() ) {
 			final TableGroup joinedGroup = tableGroupJoin.getJoinedGroup();
-			if ( navigablePath.getLocalName().equals( tableGroup.getNavigablePath().getLocalName() )
-				 && joinedGroup.getModelPart() == tableGroup.getModelPart() ) {
+			NavigablePath navigablePath;
+			if ( joinedGroup != virtualTableGroup &&
+				 joinedGroup != tableGroup &&
+				 tableGroupJoin.getNavigablePath().getLocalName().equals( virtualTableGroup.getNavigablePath().getLocalName() ) &&
+				 joinedGroup.getModelPart() == virtualTableGroup.getModelPart() ) {
 				// This table group is for the same embeddable but not treated,
 				// check if its joins contain the fetchable too
-				return getNavigablePathFromJoins( joinedGroup.getTableGroupJoins(), fetchable );
+				navigablePath = getNavigablePathFromJoins( joinedGroup.getTableGroupJoins(), fetchable );
+				if ( navigablePath == null && joinedGroup instanceof VirtualTableGroup ) {
+					navigablePath = getNavigablePathFromUnderlying( (VirtualTableGroup) joinedGroup, fetchable );
+				}
+				if ( navigablePath != null ) {
+					return navigablePath;
+				}
 			}
 		}
 		return null;

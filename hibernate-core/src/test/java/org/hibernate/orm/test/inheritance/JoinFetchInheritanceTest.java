@@ -29,6 +29,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
@@ -43,8 +44,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DomainModel( annotatedClasses = {
 		JoinFetchInheritanceTest.Animal.class,
 		JoinFetchInheritanceTest.Cat.class,
+		JoinFetchInheritanceTest.Kitten.class,
 		JoinFetchInheritanceTest.CatEmbedded.class,
-		JoinFetchInheritanceTest.Kitten.class
+		JoinFetchInheritanceTest.RootEmbeddable.class,
+		JoinFetchInheritanceTest.KittensEmbeddable.class,
 } )
 public class JoinFetchInheritanceTest {
 	private final static String CAT = "cat";
@@ -68,8 +71,9 @@ public class JoinFetchInheritanceTest {
 
 	@Test
 	public void testCollection(SessionFactoryScope scope) {
+		// todo marco : test with alias for join (to make sure nav. path is correct)
 		final List<Animal> animals = scope.fromTransaction( session -> session.createQuery(
-				"select animal from Animal animal left join fetch animal.kittens",
+				"select animal from Animal animal left join fetch animal.kittens k",
 				Animal.class
 		).getResultList() );
 		assertThat( animals ).hasSize( 4 );
@@ -83,7 +87,7 @@ public class JoinFetchInheritanceTest {
 					break;
 				case CAT_EMBEDDED:
 					final CatEmbedded catEmbedded = (CatEmbedded) animal;
-					final List<Kitten> kittensEmbedded = catEmbedded.getKittensEmbeddable().getKittens();
+					final List<Kitten> kittensEmbedded = catEmbedded.getRootEmbeddable().getKittensEmbeddable().getKittens();
 					assertThat( Hibernate.isInitialized( kittensEmbedded ) ).isFalse();
 			}
 		}
@@ -93,7 +97,7 @@ public class JoinFetchInheritanceTest {
 	public void testSingle(SessionFactoryScope scope) {
 		final List<Animal> animals = scope.fromTransaction( session -> {
 			final TypedQuery<Animal> query = session.createQuery(
-					"select animal from Animal animal left join fetch animal.singleKitten",
+					"select animal from Animal animal left join fetch animal.singleKitten k",
 					Animal.class
 			);
 			return query.getResultList();
@@ -109,7 +113,7 @@ public class JoinFetchInheritanceTest {
 					break;
 				case CAT_EMBEDDED:
 					final CatEmbedded catEmbedded = (CatEmbedded) animal;
-					final Kitten kittenEmbedded = catEmbedded.getKittensEmbeddable().getSingleKitten();
+					final Kitten kittenEmbedded = catEmbedded.getRootEmbeddable().getKittensEmbeddable().getSingleKitten();
 					assertThat( Hibernate.isInitialized( kittenEmbedded ) ).isFalse();
 			}
 		}
@@ -119,7 +123,7 @@ public class JoinFetchInheritanceTest {
 	public void testEmbeddedCollection(SessionFactoryScope scope) {
 		final List<Animal> animals = scope.fromTransaction( session -> {
 			final TypedQuery<Animal> query = session.createQuery(
-					"select animal from Animal animal left join fetch animal.kittensEmbeddable.kittens",
+					"select animal from Animal animal left join fetch animal.rootEmbeddable.kittensEmbeddable.kittens k",
 					Animal.class
 			);
 			return query.getResultList();
@@ -134,7 +138,7 @@ public class JoinFetchInheritanceTest {
 					break;
 				case CAT_EMBEDDED:
 					final CatEmbedded catEmbedded = (CatEmbedded) animal;
-					final List<Kitten> kittensEmbedded = catEmbedded.getKittensEmbeddable().getKittens();
+					final List<Kitten> kittensEmbedded = catEmbedded.getRootEmbeddable().getKittensEmbeddable().getKittens();
 					assertThat( Hibernate.isInitialized( kittensEmbedded ) ).isTrue();
 					assertThat( kittensEmbedded ).hasSizeBetween( 0, 1 );
 			}
@@ -145,7 +149,7 @@ public class JoinFetchInheritanceTest {
 	public void testEmbeddedSingle(SessionFactoryScope scope) {
 		final List<Animal> animals = scope.fromTransaction( session -> {
 			final TypedQuery<Animal> query = session.createQuery(
-					"select animal from Animal animal left join fetch animal.kittensEmbeddable.singleKitten",
+					"select animal from Animal animal left join fetch animal.rootEmbeddable.kittensEmbeddable.singleKitten k",
 					Animal.class
 			);
 			return query.getResultList();
@@ -160,7 +164,7 @@ public class JoinFetchInheritanceTest {
 					break;
 				case CAT_EMBEDDED:
 					final CatEmbedded catEmbedded = (CatEmbedded) animal;
-					final Kitten kittenEmbedded = catEmbedded.getKittensEmbeddable().getSingleKitten();
+					final Kitten kittenEmbedded = catEmbedded.getRootEmbeddable().getKittensEmbeddable().getSingleKitten();
 					assertThat( Hibernate.isInitialized( kittenEmbedded ) ).isTrue();
 					assertThat( kittenEmbedded.getName() ).isEqualTo( "kitten_2" );
 			}
@@ -201,6 +205,7 @@ public class JoinFetchInheritanceTest {
 		public List<Kitten> kittens = new ArrayList<>();
 
 		@ManyToOne( fetch = FetchType.LAZY )
+		@JoinColumn( name = "kitten_id" )
 		public Kitten singleKitten;
 
 		public Cat() {
@@ -222,12 +227,29 @@ public class JoinFetchInheritanceTest {
 	}
 
 	@Embeddable
+	public static class RootEmbeddable {
+		private KittensEmbeddable kittensEmbeddable;
+
+		public RootEmbeddable() {
+		}
+
+		public RootEmbeddable(KittensEmbeddable kittensEmbeddable) {
+			this.kittensEmbeddable = kittensEmbeddable;
+		}
+
+		public KittensEmbeddable getKittensEmbeddable() {
+			return kittensEmbeddable;
+		}
+	}
+
+	@Embeddable
 	public static class KittensEmbeddable {
 		@ManyToMany( fetch = FetchType.LAZY )
 		@JoinTable( name = "CatEmbedded_Kitten" )
 		public List<Kitten> kittens = new ArrayList<>();
 
 		@ManyToOne( fetch = FetchType.LAZY )
+		@JoinColumn( name = "embedded_kitten_id" )
 		public Kitten singleKitten;
 
 		public KittensEmbeddable() {
@@ -251,18 +273,18 @@ public class JoinFetchInheritanceTest {
 	@DiscriminatorValue( CAT_EMBEDDED )
 	public static class CatEmbedded extends Animal {
 		@Embedded
-		private KittensEmbeddable kittensEmbeddable;
+		private RootEmbeddable rootEmbeddable;
 
 		public CatEmbedded() {
 		}
 
 		public CatEmbedded(Long id, KittensEmbeddable kittensEmbeddable) {
 			super( id );
-			this.kittensEmbeddable = kittensEmbeddable;
+			this.rootEmbeddable = new RootEmbeddable( kittensEmbeddable );
 		}
 
-		public KittensEmbeddable getKittensEmbeddable() {
-			return kittensEmbeddable;
+		public RootEmbeddable getRootEmbeddable() {
+			return rootEmbeddable;
 		}
 	}
 
