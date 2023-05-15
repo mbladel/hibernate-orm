@@ -4976,6 +4976,11 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		Predicate predicate = null;
 		for ( Map.Entry<TableGroup, Map<String, EntityNameUse>> entry : conjunctTreatUsages.entrySet() ) {
 			final TableGroup tableGroup = entry.getKey();
+			if ( tableGroup.getModelPart() instanceof TableGroupJoinProducer ) {
+				// Treated joins create table groups which will inherently contain the type restriction,
+				// so we don't need to add it to the conjunct context (see #pruneTableGroupJoins)
+				continue;
+			}
 			final Set<String> entityNames = determineEntityNamesForTreatTypeRestriction(
 					(EntityMappingType) tableGroup.getModelPart().getPartMappingType(),
 					entry.getValue()
@@ -4983,7 +4988,6 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			if ( entityNames.isEmpty() ) {
 				continue;
 			}
-			registerTypeUsage( tableGroup );
 
 			final ModelPartContainer modelPart = tableGroup.getModelPart();
 			final EntityMappingType entityMapping;
