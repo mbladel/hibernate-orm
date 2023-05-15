@@ -10,14 +10,12 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.CompositeIdentifierMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
-import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
 import org.hibernate.metamodel.mapping.VirtualModelPart;
 import org.hibernate.metamodel.spi.ValueAccess;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
-import org.hibernate.spi.EntityIdentifierNavigablePath;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AbstractFetchParentAccess;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
@@ -66,7 +64,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 		final int size = embeddableTypeDescriptor.getNumberOfFetchables();
 		this.rowState = new Object[ size ];
 
-		this.isPartOfKey = isPartOfKey( navigablePath );
+		this.isPartOfKey = checkPartOfKey();
 		// We never want to create empty composites for the FK target or PK, otherwise collections would break
 		this.createEmptyCompositesEnabled = !isPartOfKey && embeddableTypeDescriptor.isCreateEmptyCompositesEnabled();
 
@@ -74,11 +72,17 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 		this.assemblers = createAssemblers( resultDescriptor, creationState, embeddableTypeDescriptor );
 	}
 
-	private static boolean isPartOfKey(NavigablePath navigablePath) {
+	@Override
+	public boolean isPartOfKey() {
+		return isPartOfKey;
+	}
+
+	private boolean checkPartOfKey() {
 		return ForeignKeyDescriptor.PART_NAME.equals( navigablePath.getLocalName() )
 				|| ForeignKeyDescriptor.TARGET_PART_NAME.equals( navigablePath.getLocalName() )
-				|| navigablePath instanceof EntityIdentifierNavigablePath
-				|| navigablePath.getParent().getParent() != null && isPartOfKey( navigablePath.getParent() );
+				|| embedded instanceof CompositeIdentifierMapping
+				|| fetchParentAccess != null && fetchParentAccess.isEmbeddableInitializer()
+					&& fetchParentAccess.asEmbeddableInitializer().isPartOfKey();
 	}
 
 	protected DomainResultAssembler<?>[] createAssemblers(

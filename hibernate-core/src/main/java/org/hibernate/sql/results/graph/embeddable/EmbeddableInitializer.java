@@ -34,6 +34,15 @@ public interface EmbeddableInitializer extends FetchParentAccess {
 		return processingState;
 	}
 
+	/**
+	 * Indicates if this initializer is part of a key (FK or PK)
+	 *
+	 * @return {@code true} if this initializer is part of a key, {@code false} otherwise
+	 */
+	default boolean isPartOfKey() {
+		return false;
+	}
+
 	@Override
 	default Object getInitializedInstance() {
 		return getCompositeInstance();

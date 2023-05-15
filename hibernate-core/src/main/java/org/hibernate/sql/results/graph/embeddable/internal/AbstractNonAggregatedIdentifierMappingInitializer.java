@@ -82,6 +82,10 @@ public abstract class AbstractNonAggregatedIdentifierMappingInitializer extends 
 		this.assemblers = createAssemblers( this, resultDescriptor, creationState, virtualIdEmbeddable );
 	}
 
+	@Override
+	public boolean isPartOfKey() {
+		return true;
+	}
 
 	protected static DomainResultAssembler<?>[] createAssemblers(
 			FetchParentAccess parentAccess,
