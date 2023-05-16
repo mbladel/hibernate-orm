@@ -4976,11 +4976,6 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		Predicate predicate = null;
 		for ( Map.Entry<TableGroup, Map<String, EntityNameUse>> entry : conjunctTreatUsages.entrySet() ) {
 			final TableGroup tableGroup = entry.getKey();
-			if ( tableGroup.getModelPart() instanceof TableGroupJoinProducer ) {
-				// Treated joins create table groups which will inherently contain the type restriction,
-				// so we don't need to add it to the conjunct context (see #pruneTableGroupJoins)
-				continue;
-			}
 			final Set<String> entityNames = determineEntityNamesForTreatTypeRestriction(
 					(EntityMappingType) tableGroup.getModelPart().getPartMappingType(),
 					entry.getValue()
@@ -5005,6 +5000,10 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 					this
 			);
 			registerTypeUsage( tableGroup );
+
+			// todo marco : try adding `or is null` to the discriminator predicate
+			//  N.B.: just for LEFT JOINS, see parent table group's method to find this tableGroup's join
+
 			predicate = combinePredicates(
 					predicate,
 					createTreatTypeRestriction(
