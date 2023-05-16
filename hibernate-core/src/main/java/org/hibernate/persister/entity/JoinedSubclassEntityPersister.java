@@ -74,6 +74,8 @@ import org.hibernate.type.spi.TypeConfiguration;
 import org.jboss.logging.Logger;
 
 import static java.util.Collections.emptyMap;
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
+import static org.hibernate.internal.util.collections.ArrayHelper.indexOf;
 import static org.hibernate.internal.util.collections.ArrayHelper.to2DStringArray;
 import static org.hibernate.internal.util.collections.ArrayHelper.toIntArray;
 import static org.hibernate.internal.util.collections.ArrayHelper.toStringArray;
@@ -1313,6 +1315,7 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 		// i.e. with parenthesis around, as that means the table reference joins will be isolated
 		final boolean innerJoinOptimization = tableGroup.canUseInnerJoins() || tableGroup.isRealTableGroup();
 		final Set<String> tablesToInnerJoin = innerJoinOptimization ? new HashSet<>() : null;
+		boolean needsTreatDiscriminator = false;
 		for ( Map.Entry<String, EntityNameUse> entry : entityNameUses.entrySet() ) {
 			final EntityNameUse.UseKind useKind = entry.getValue().getKind();
 			final JoinedSubclassEntityPersister persister =
@@ -1354,15 +1357,23 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 					}
 				}
 			}
+			final String tableName = persister.getTableName();
 			final TableReference mainTableReference = tableGroup.getTableReference(
 					null,
-					persister.getTableName(),
+					tableName,
 					false
 			);
 			if ( mainTableReference == null ) {
-				throw new UnknownTableReferenceException( persister.getTableName(), "Couldn't find table reference" );
+				throw new UnknownTableReferenceException( tableName, "Couldn't find table reference" );
 			}
 			retainedTableReferences.add( mainTableReference );
+			if ( needsDiscriminator() ) {
+				// We allow multiple joined subclasses to use the same table if they define a discriminator column.
+				// In this case, we might need to add a discriminator condition to the root table join,
+				// see SingleTableEntityPersister#pruneForSubclasses for more details on this condition
+				needsTreatDiscriminator = needsTreatDiscriminator || !persister.isAbstract() &&
+						!isTypeOrSuperType( persister ) && useKind == EntityNameUse.UseKind.TREAT;
+			}
 		}
 		// If no tables to inner join have been found, we add at least the super class tables of this persister
 		if ( innerJoinOptimization && tablesToInnerJoin.isEmpty() ) {
@@ -1393,7 +1404,12 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 					tableReferenceJoins.add( join );
 				}
 				else {
-					final String tableExpression = oldJoin.getJoinedTableReference().getTableExpression();
+					final String tableExpression = joinedTableReference.getTableExpression();
+					final int index = indexOf( getSubclassTableNames(), tableExpression );
+					if ( index > -1 && isClassOrSuperclassTable[index] ) {
+						// Always retain joins to superclass tables
+						tableReferenceJoins.add( oldJoin );
+					}
 					for ( int i = subclassCoreTableSpan; i < subclassTableNameClosure.length; i++ ) {
 						if ( tableExpression.equals( subclassTableNameClosure[i] ) ) {
 							// Retain joins to secondary tables
@@ -1406,6 +1422,14 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 		}
 		else {
 			tableReferenceJoins.removeIf( join -> !retainedTableReferences.contains( join.getJoinedTableReference() ) );
+		}
+
+		if ( needsTreatDiscriminator ) {
+			// We have to apply the discriminator condition to the root table reference to make sure
+			// we're only retrieving the correct subtype records from the shared joined table
+			final String prunedTableExpression = getPrunedTableExpression( entityNameUses, metamodel );
+			final NamedTableReference rootTableReference = (NamedTableReference) tableGroup.getTableReference( getRootTableName() );
+			castNonNull( rootTableReference ).setPrunedTableExpression( prunedTableExpression );
 		}
 	}
 
