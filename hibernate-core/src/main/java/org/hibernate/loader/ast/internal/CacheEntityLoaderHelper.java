@@ -317,12 +317,9 @@ public class CacheEntityLoaderHelper {
 			Object entity = convertCacheEntryToEntity( entry, entityKey.getIdentifier(), source, persister, instanceToLoad, entityKey );
 
 			if ( !persister.isInstance( entity ) ) {
+				// Cleanup the inconsistent return class entity from the persistence context
+				source.evict( entity );
 				return null;
-//				throw new WrongClassException(
-//						"loaded object was of wrong class " + entity.getClass(),
-//						entityKey.getIdentifier(),
-//						persister.getEntityName()
-//				);
 			}
 
 			return entity;
