@@ -7,7 +7,9 @@
 package org.hibernate.loader.ast.internal;
 
 import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Objects;
 
 import org.hibernate.LockOptions;
 import org.hibernate.collection.spi.PersistentCollection;
@@ -33,6 +35,7 @@ import org.hibernate.sql.results.internal.RowTransformerStandardImpl;
 import org.hibernate.sql.results.spi.ListResultsConsumer;
 import org.hibernate.type.BasicType;
 
+import static org.hibernate.loader.ast.internal.LoaderHelper.createTypedArray;
 import static org.hibernate.loader.ast.internal.MultiKeyLoadLogging.MULTI_KEY_LOAD_DEBUG_ENABLED;
 import static org.hibernate.loader.ast.internal.MultiKeyLoadLogging.MULTI_KEY_LOAD_LOGGER;
 
@@ -122,7 +125,11 @@ public class CollectionBatchLoaderArrayParam
 				keyBeingLoaded,
 				getLoadable()
 		);
-		return keysToInitialize;
+		return Arrays.stream( keysToInitialize ).filter( Objects::nonNull ).toArray( this::createArrayElementTypedArray );
+	}
+
+	private Object[] createArrayElementTypedArray(int length) {
+		return createTypedArray( arrayElementType, length );
 	}
 
 	private void initializeKeys(Object[] keysToInitialize, SharedSessionContractImplementor session) {

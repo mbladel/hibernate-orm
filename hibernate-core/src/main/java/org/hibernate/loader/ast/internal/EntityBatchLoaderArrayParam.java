@@ -7,8 +7,9 @@
 package org.hibernate.loader.ast.internal;
 
 import java.lang.reflect.Array;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.Locale;
+import java.util.Objects;
 
 import org.hibernate.LockOptions;
 import org.hibernate.engine.internal.BatchFetchQueueHelper;
@@ -16,7 +17,6 @@ import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.LoadQueryInfluencers;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.engine.spi.SubselectFetch;
 import org.hibernate.loader.ast.spi.EntityBatchLoader;
 import org.hibernate.loader.ast.spi.SqlArrayMultiKeyLoader;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
@@ -26,16 +26,13 @@ import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.ast.tree.expression.JdbcParameter;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
-import org.hibernate.sql.exec.internal.JdbcParameterBindingImpl;
-import org.hibernate.sql.exec.internal.JdbcParameterBindingsImpl;
 import org.hibernate.sql.exec.internal.JdbcParameterImpl;
 import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
-import org.hibernate.sql.results.internal.RowTransformerStandardImpl;
-import org.hibernate.sql.results.spi.ListResultsConsumer;
 import org.hibernate.type.BasicType;
 import org.hibernate.type.BasicTypeRegistry;
 
+import static org.hibernate.loader.ast.internal.LoaderHelper.createTypedArray;
 import static org.hibernate.loader.ast.internal.MultiKeyLoadLogging.MULTI_KEY_LOAD_DEBUG_ENABLED;
 import static org.hibernate.loader.ast.internal.MultiKeyLoadLogging.MULTI_KEY_LOAD_LOGGER;
 
@@ -56,6 +53,7 @@ public class EntityBatchLoaderArrayParam<T>
 	private JdbcParameter jdbcParameter;
 	private SelectStatement sqlAst;
 	private JdbcOperationQuerySelect jdbcSelectOperation;
+	private SingleIdEntityLoaderStandardImpl<T> singleIdLoader;
 
 
 	/**
@@ -110,14 +108,19 @@ public class EntityBatchLoaderArrayParam<T>
 	}
 
 	protected Object[] resolveIdsToInitialize(Object pkValue, SharedSessionContractImplementor session) {
-		final Object[] idsToLoad = (Object[]) Array.newInstance( identifierMapping.getJavaType().getJavaTypeClass(), domainBatchSize );
+		final Class<?> identifierType = identifierMapping.getJavaType().getJavaTypeClass();
+		final Object[] idsToLoad = (Object[]) Array.newInstance( identifierType, domainBatchSize );
 		session.getPersistenceContextInternal().getBatchFetchQueue().collectBatchLoadableEntityIds(
 				domainBatchSize,
 				(index, value) -> idsToLoad[index] = value,
 				pkValue,
 				getLoadable()
 		);
-		return idsToLoad;
+		return Arrays.stream( idsToLoad ).filter( Objects::nonNull ).toArray( this::createIdentifierTypedArray );
+	}
+
+	private Object[] createIdentifierTypedArray(int length) {
+		return createTypedArray( identifierMapping.getJavaType().getJavaTypeClass(), length );
 	}
 
 	private void initializeEntities(
@@ -127,28 +130,28 @@ public class EntityBatchLoaderArrayParam<T>
 			LockOptions lockOptions,
 			Boolean readOnly,
 			SharedSessionContractImplementor session) {
-		LoaderHelper.loadByArrayParameter(
-				idsToInitialize,
-				sqlAst,
-				jdbcSelectOperation,
-				jdbcParameter,
-				arrayJdbcMapping,
-				pkValue,
-				entityInstance,
-				getLoadable().getRootEntityDescriptor(),
-				lockOptions,
-				readOnly,
-				session
-		);
+		if ( idsToInitialize.length == 1 ) {
+			initializeSingleIdLoaderIfNeeded();
+			singleIdLoader.load( pkValue, entityInstance, lockOptions, readOnly, session );
+		}
+		else {
+			initializeArrayLoaderIfNeeded();
+			LoaderHelper.loadByArrayParameter(
+					idsToInitialize,
+					sqlAst,
+					jdbcSelectOperation,
+					jdbcParameter,
+					arrayJdbcMapping,
+					pkValue,
+					entityInstance,
+					getLoadable().getRootEntityDescriptor(),
+					lockOptions,
+					readOnly,
+					session
+			);
+		}
 
-		//noinspection ForLoopReplaceableByForEach
-		for ( int i = 0; i < idsToInitialize.length; i++ ) {
-			final Object id = idsToInitialize[i];
-			if ( id == null ) {
-				// skip any of the null padded ids
-				//		- actually we could probably even break here
-				continue;
-			}
+		for ( Object id : idsToInitialize ) {
 			// found or not, remove the key from the batch-fetch queue
 			BatchFetchQueueHelper.removeBatchLoadableEntityKey( id, getLoadable(), session );
 		}
@@ -162,6 +165,13 @@ public class EntityBatchLoaderArrayParam<T>
 	@Override
 	public void prepare() {
 		identifierMapping = (BasicEntityIdentifierMapping) getLoadable().getIdentifierMapping();
+	}
+
+	private void initializeArrayLoaderIfNeeded() {
+		if ( jdbcSelectOperation != null ) {
+			return;
+		}
+
 		final Class<?> arrayClass = Array.newInstance( identifierMapping.getJavaType().getJavaTypeClass(), 0 ).getClass();
 
 		final BasicTypeRegistry basicTypeRegistry = sessionFactory.getTypeConfiguration().getBasicTypeRegistry();
@@ -189,6 +199,15 @@ public class EntityBatchLoaderArrayParam<T>
 				.getSqlAstTranslatorFactory()
 				.buildSelectTranslator( sessionFactory, sqlAst )
 				.translate( JdbcParameterBindings.NO_BINDINGS, QueryOptions.NONE );
+	}
+
+	private void initializeSingleIdLoaderIfNeeded() {
+		if ( singleIdLoader != null ) {
+			return;
+		}
+
+		singleIdLoader = new SingleIdEntityLoaderStandardImpl<>( getLoadable(), sessionFactory );
+		singleIdLoader.prepare();
 	}
 
 	@Override
