@@ -2994,18 +2994,23 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		// Resolve the table reference for all types which we register an entity name use for
 		actualTableGroup.resolveTableReference( null, persister.getTableName() );
 
-		if ( entityNameUse == EntityNameUse.PROJECTION ) {
-			// For projections also register uses of all super and subtypes,
-			// as well as resolve the respective table references
+		if ( entityNameUse == EntityNameUse.PROJECTION || entityNameUse == EntityNameUse.TREAT ) {
+			// For projections and treat uses also resolve table refences of all super types
 			EntityMappingType superMappingType = persister;
 			while ( ( superMappingType = superMappingType.getSuperMappingType() ) != null ) {
-				entityNameUses.putIfAbsent( superMappingType.getEntityName(), EntityNameUse.PROJECTION );
+				if ( entityNameUse == EntityNameUse.PROJECTION ) {
+					// For projection, also register entity name uses
+					entityNameUses.putIfAbsent( superMappingType.getEntityName(), EntityNameUse.PROJECTION );
+				}
 				actualTableGroup.resolveTableReference(
 						null,
 						( (AbstractEntityPersister) superMappingType.getEntityPersister() ).getTableName()
 				);
 			}
+		}
 
+		if ( entityNameUse == EntityNameUse.PROJECTION ) {
+			// For projection also register uses of all subtypes as well as resolve their table references
 			for ( String subclassEntityName : persister.getSubclassEntityNames() ) {
 				entityNameUses.putIfAbsent( subclassEntityName, EntityNameUse.PROJECTION );
 			}
