@@ -97,30 +97,24 @@ public class CollectionBatchLoaderInPredicate
 			MULTI_KEY_LOAD_LOGGER.debugf( "Loading collection `%s#%s` by batch-fetch", getLoadable().getNavigableRole().getFullPath(), key );
 		}
 
-		final MutableInteger nonNullCounter = new MutableInteger();
 		final ArrayList<Object> keysToInitialize = CollectionHelper.arrayList( getDomainBatchSize() );
 		session.getPersistenceContextInternal().getBatchFetchQueue().collectBatchLoadableCollectionKeys(
 				getDomainBatchSize(),
-				(index, batchableKey) -> {
-					keysToInitialize.add( batchableKey );
-					if ( batchableKey != null ) {
-						nonNullCounter.increment();
-					}
-				},
+				(index, batchableKey) -> keysToInitialize.add( batchableKey ),
 				key,
 				getLoadable().asPluralAttributeMapping()
 		);
 
-		if ( nonNullCounter.get() <= 0 ) {
+		if ( keysToInitialize.size() <= 0 ) {
 			throw new IllegalStateException( "Number of non-null collection keys to batch fetch should never be 0" );
 		}
 
-		if ( nonNullCounter.get() == 1 ) {
+		if ( keysToInitialize.size() == 1 ) {
 			prepareSingleKeyLoaderIfNeeded();
 			return singleKeyLoader.load( key, session );
 		}
 
-		initializeKeys( key, keysToInitialize.toArray( keysToInitialize.toArray( new Object[0] ) ), nonNullCounter.get(), session );
+		initializeKeys( key, keysToInitialize.toArray( keysToInitialize.toArray( new Object[0] ) ), keysToInitialize.size(), session );
 
 		final CollectionKey collectionKey = new CollectionKey( getLoadable().getCollectionDescriptor(), key );
 		return session.getPersistenceContext().getCollection( collectionKey );

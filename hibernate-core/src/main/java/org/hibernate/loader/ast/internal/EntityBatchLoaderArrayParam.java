@@ -7,10 +7,7 @@
 package org.hibernate.loader.ast.internal;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -20,9 +17,8 @@ import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.LoadQueryInfluencers;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.engine.spi.SubselectFetch;
-import org.hibernate.internal.util.collections.ArrayHelper;
 import org.hibernate.loader.ast.spi.EntityBatchLoader;
+import org.hibernate.loader.ast.spi.SingleIdEntityLoader;
 import org.hibernate.loader.ast.spi.SqlArrayMultiKeyLoader;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
@@ -31,17 +27,12 @@ import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.ast.tree.expression.JdbcParameter;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
-import org.hibernate.sql.exec.internal.JdbcParameterBindingImpl;
-import org.hibernate.sql.exec.internal.JdbcParameterBindingsImpl;
 import org.hibernate.sql.exec.internal.JdbcParameterImpl;
 import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
-import org.hibernate.sql.results.internal.RowTransformerStandardImpl;
-import org.hibernate.sql.results.spi.ListResultsConsumer;
 import org.hibernate.type.BasicType;
 import org.hibernate.type.BasicTypeRegistry;
 
-import static org.hibernate.internal.util.collections.ArrayHelper.newInstance;
 import static org.hibernate.loader.ast.internal.MultiKeyLoadLogging.MULTI_KEY_LOAD_DEBUG_ENABLED;
 import static org.hibernate.loader.ast.internal.MultiKeyLoadLogging.MULTI_KEY_LOAD_LOGGER;
 
@@ -62,6 +53,7 @@ public class EntityBatchLoaderArrayParam<T>
 	private JdbcParameter jdbcParameter;
 	private SelectStatement sqlAst;
 	private JdbcOperationQuerySelect jdbcSelectOperation;
+	private SingleIdEntityLoader<T> singleIdLoader;
 
 
 	/**
@@ -138,19 +130,27 @@ public class EntityBatchLoaderArrayParam<T>
 			LockOptions lockOptions,
 			Boolean readOnly,
 			SharedSessionContractImplementor session) {
-		LoaderHelper.loadByArrayParameter(
-				idsToInitialize,
-				sqlAst,
-				jdbcSelectOperation,
-				jdbcParameter,
-				arrayJdbcMapping,
-				pkValue,
-				entityInstance,
-				getLoadable().getRootEntityDescriptor(),
-				lockOptions,
-				readOnly,
-				session
-		);
+		// todo marco : do the same for collection loading & single keys
+		// todo marco : do the same for IN loader ? (performance should be the same)
+		if ( idsToInitialize.length == 1) {
+			initializeSingleIdLoaderIfNeeded();
+			singleIdLoader.load( pkValue, entityInstance, lockOptions, readOnly, session );
+		}
+		else {
+			LoaderHelper.loadByArrayParameter(
+					idsToInitialize,
+					sqlAst,
+					jdbcSelectOperation,
+					jdbcParameter,
+					arrayJdbcMapping,
+					pkValue,
+					entityInstance,
+					getLoadable().getRootEntityDescriptor(),
+					lockOptions,
+					readOnly,
+					session
+			);
+		}
 
 		//noinspection ForLoopReplaceableByForEach
 		for ( int i = 0; i < idsToInitialize.length; i++ ) {
@@ -168,6 +168,12 @@ public class EntityBatchLoaderArrayParam<T>
 	@Override
 	public T load(Object pkValue, LockOptions lockOptions, Boolean readOnly, SharedSessionContractImplementor session) {
 		return load( pkValue, null, lockOptions, readOnly, session );
+	}
+
+	private void initializeSingleIdLoaderIfNeeded() {
+		if ( singleIdLoader == null ) {
+			singleIdLoader = new SingleIdEntityLoaderStandardImpl<>( getLoadable(), sessionFactory );
+		}
 	}
 
 	@Override
