@@ -7,8 +7,12 @@
 package org.hibernate.loader.ast.internal;
 
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.hibernate.LockOptions;
 import org.hibernate.engine.internal.BatchFetchQueueHelper;
@@ -17,6 +21,7 @@ import org.hibernate.engine.spi.LoadQueryInfluencers;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.engine.spi.SubselectFetch;
+import org.hibernate.internal.util.collections.ArrayHelper;
 import org.hibernate.loader.ast.spi.EntityBatchLoader;
 import org.hibernate.loader.ast.spi.SqlArrayMultiKeyLoader;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
@@ -36,6 +41,7 @@ import org.hibernate.sql.results.spi.ListResultsConsumer;
 import org.hibernate.type.BasicType;
 import org.hibernate.type.BasicTypeRegistry;
 
+import static org.hibernate.internal.util.collections.ArrayHelper.newInstance;
 import static org.hibernate.loader.ast.internal.MultiKeyLoadLogging.MULTI_KEY_LOAD_DEBUG_ENABLED;
 import static org.hibernate.loader.ast.internal.MultiKeyLoadLogging.MULTI_KEY_LOAD_LOGGER;
 
@@ -110,14 +116,19 @@ public class EntityBatchLoaderArrayParam<T>
 	}
 
 	protected Object[] resolveIdsToInitialize(Object pkValue, SharedSessionContractImplementor session) {
-		final Object[] idsToLoad = (Object[]) Array.newInstance( identifierMapping.getJavaType().getJavaTypeClass(), domainBatchSize );
+		final Map<Integer, Object> idsToLoad = new HashMap<>();
 		session.getPersistenceContextInternal().getBatchFetchQueue().collectBatchLoadableEntityIds(
 				domainBatchSize,
-				(index, value) -> idsToLoad[index] = value,
+				idsToLoad::put,
 				pkValue,
 				getLoadable()
 		);
-		return idsToLoad;
+		return idsToLoad.values().toArray( createTypedArray( 0 ) );
+	}
+
+	private <X> X[] createTypedArray(@SuppressWarnings( "SameParameterValue" ) int length) {
+		//noinspection unchecked
+		return (X[]) Array.newInstance( identifierMapping.getJavaType().getJavaTypeClass(), length );
 	}
 
 	private void initializeEntities(

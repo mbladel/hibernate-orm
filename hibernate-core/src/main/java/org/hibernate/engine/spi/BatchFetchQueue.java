@@ -221,7 +221,7 @@ public class BatchFetchQueue {
 				return;
 			}
 
-			if ( identifierMapping.areEqual( loadingId, key.getIdentifier(), context.getSession() ) ) {
+			if ( end == -1 && identifierMapping.areEqual( loadingId, key.getIdentifier(), context.getSession() ) ) {
 				end = batchPosition;
 			}
 			else {
@@ -273,7 +273,7 @@ public class BatchFetchQueue {
 					return ids;
 				}
 
-				if ( entityDescriptor.getEntityPersister().getIdentifierType()
+				if ( end == -1 && entityDescriptor.getEntityPersister().getIdentifierType()
 						.isEqual( loadingId, key.getIdentifier() ) ) {
 					end = i;
 				}

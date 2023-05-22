@@ -7,7 +7,11 @@
 package org.hibernate.loader.ast.internal;
 
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.hibernate.LockOptions;
 import org.hibernate.collection.spi.PersistentCollection;
@@ -115,14 +119,19 @@ public class CollectionBatchLoaderArrayParam
 	}
 
 	private Object[] resolveKeysToInitialize(Object keyBeingLoaded, SharedSessionContractImplementor session) {
-		final Object[] keysToInitialize = (Object[]) Array.newInstance( arrayElementType, getDomainBatchSize() );
+		final Map<Integer, Object> keysToInitialize = new HashMap<>();
 		session.getPersistenceContextInternal().getBatchFetchQueue().collectBatchLoadableCollectionKeys(
 				getDomainBatchSize(),
-				(index, value) -> keysToInitialize[index] = value,
+				keysToInitialize::put,
 				keyBeingLoaded,
 				getLoadable()
 		);
-		return keysToInitialize;
+		return keysToInitialize.values().toArray( createTypedArray( 0 ) );
+	}
+
+	private <X> X[] createTypedArray(@SuppressWarnings( "SameParameterValue" ) int length) {
+		//noinspection unchecked
+		return (X[]) Array.newInstance( arrayElementType, length );
 	}
 
 	private void initializeKeys(Object[] keysToInitialize, SharedSessionContractImplementor session) {
