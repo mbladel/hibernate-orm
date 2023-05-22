@@ -178,8 +178,16 @@ public class QualifiedJoinPathConsumer implements DotIdentifierConsumer {
 			boolean isTerminal,
 			boolean allowReuse,
 			SqmCreationState creationState) {
+		final SqmPathSource<?> referencedPathSource = lhs.getReferencedPathSource();
+		final SqmPathSource<?> pathSource;
+		if ( referencedPathSource.isGeneric() ) {
+			pathSource = lhs.getResolvedModel();
+		}
+		else {
+			pathSource = referencedPathSource;
+		}
 		//noinspection unchecked
-		final SqmPathSource<Object> subPathSource = (SqmPathSource<Object>) lhs.getReferencedPathSource().getSubPathSource( name );
+		final SqmPathSource<Object> subPathSource = (SqmPathSource<Object>) pathSource.getSubPathSource( name );
 		if ( allowReuse && !isTerminal ) {
 			for ( SqmJoin<?, ?> sqmJoin : lhs.getSqmJoins() ) {
 				if ( sqmJoin.getAlias() == null && sqmJoin.getReferencedPathSource() == subPathSource ) {
