@@ -8,11 +8,11 @@ package org.hibernate.query.internal;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
@@ -168,8 +168,8 @@ public class QueryParameterBindingsImpl implements QueryParameterBindings {
 
 	@Override
 	public QueryKey.ParameterBindingsMemento generateQueryKeyMemento(SharedSessionContractImplementor persistenceContext) {
-		final MutableCacheKeyImpl mutableCacheKey = new MutableCacheKeyImpl(parameterBindingMap.size());
-
+		// Create separate cache keys for each parameter binding
+		final List<MutableCacheKeyImpl> cacheKeys = new ArrayList<>();
 		for ( Map.Entry<QueryParameter<?>, QueryParameterBinding<?>> entry : parameterBindingMap.entrySet() ) {
 			final QueryParameterBinding<?> binding = entry.getValue();
 			final MappingModelExpressible<?> mappingType = determineMappingType(
@@ -177,20 +177,27 @@ public class QueryParameterBindingsImpl implements QueryParameterBindings {
 					entry.getKey(),
 					persistenceContext
 			);
-
+			final MutableCacheKeyImpl cacheKey;
 			if ( binding.isMultiValued() ) {
+				cacheKey = new MutableCacheKeyImpl( binding.getBindValues().size() );
 				for ( Object bindValue : binding.getBindValues() ) {
 					assert bindValue != null;
-					mappingType.addToCacheKey( mutableCacheKey, bindValue, persistenceContext );
+					mappingType.addToCacheKey( cacheKey, bindValue, persistenceContext );
 				}
 			}
 			else {
+				cacheKey = new MutableCacheKeyImpl( 1 );
 				final Object bindValue = binding.getBindValue();
-				mappingType.addToCacheKey( mutableCacheKey, bindValue, persistenceContext );
+				mappingType.addToCacheKey( cacheKey, bindValue, persistenceContext );
 			}
+			cacheKeys.add( cacheKey );
 		}
-
-		return mutableCacheKey.build();
+		// Sort the parameter cache key list using each key's hash code
+		cacheKeys.sort( Comparator.comparingInt( k -> k.hashCode ) );
+		// Finally, build the overall cache key combining the sorted list
+		final MutableCacheKeyImpl parametersCacheKey = new MutableCacheKeyImpl( parameterBindingMap.size() );
+		cacheKeys.forEach( parametersCacheKey::combine );
+		return parametersCacheKey.build();
 	}
 
 	private MappingModelExpressible<?> determineMappingType(final QueryParameterBinding<?> binding, final QueryParameter<?> queryParameter, final SharedSessionContractImplementor session) {
@@ -244,7 +251,6 @@ public class QueryParameterBindingsImpl implements QueryParameterBindings {
 	}
 
 	private static class MutableCacheKeyImpl implements MutableCacheKeyBuilder {
-
 		final List<Object> values;
 		int hashCode;
 
@@ -265,6 +271,11 @@ public class QueryParameterBindingsImpl implements QueryParameterBindings {
 		@Override
 		public QueryKey.ParameterBindingsMemento build() {
 			return new ParameterBindingsMementoImpl( values.toArray( new Object[0] ), hashCode );
+		}
+
+		private void combine(MutableCacheKeyImpl other) {
+			values.addAll( other.values );
+			addHashCode( other.hashCode );
 		}
 	}
 
