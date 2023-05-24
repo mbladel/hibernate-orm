@@ -10,7 +10,6 @@ import java.util.List;
 
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.spi.SessionImplementor;
-import org.hibernate.stat.CacheRegionStatistics;
 import org.hibernate.stat.spi.StatisticsImplementor;
 
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -29,7 +28,6 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hibernate.cache.spi.RegionFactory.DEFAULT_QUERY_RESULTS_REGION_UNQUALIFIED_NAME;
 
 /**
  * @author Marco Belladelli
@@ -58,31 +56,26 @@ public class QueryCacheParametersTest {
 
 	private void testQueryCacheHits(SessionFactoryScope scope, boolean singleCondition) {
 		scope.getSessionFactory().getCache().evictQueryRegions();
-
 		final StatisticsImplementor statistics = scope.getSessionFactory().getStatistics();
 		statistics.clear();
-
-		final CacheRegionStatistics queryStatistics = statistics.getQueryRegionStatistics(
-				DEFAULT_QUERY_RESULTS_REGION_UNQUALIFIED_NAME
-		);
 
 		// Query once (miss and populate cache)
 		scope.inTransaction( session -> executeQuery( session, singleCondition ) );
 
 		// 0 hits, 1 miss, 1 put
-		assertThat( queryStatistics.getHitCount() ).isEqualTo( 0 );
-		assertThat( queryStatistics.getMissCount() ).isEqualTo( 1 );
-		assertThat( queryStatistics.getPutCount() ).isEqualTo( 1 );
+		assertThat( statistics.getQueryCacheHitCount() ).isEqualTo( 0 );
+		assertThat( statistics.getQueryCacheMissCount() ).isEqualTo( 1 );
+		assertThat( statistics.getQueryCachePutCount() ).isEqualTo( 1 );
 
-		// Query 10 more times (10 hits)
+		// Query 10 more times with the same parameters and values
 		for ( int i = 0; i < 10; i++ ) {
 			scope.inTransaction( session -> executeQuery( session, singleCondition ) );
 		}
 
 		// 10 hits, 1 miss (unchanged), 1 put (unchanged)
-		assertThat( queryStatistics.getHitCount() ).isEqualTo( 10 );
-		assertThat( queryStatistics.getMissCount() ).isEqualTo( 1 );
-		assertThat( queryStatistics.getPutCount() ).isEqualTo( 1 );
+		assertThat( statistics.getQueryCacheHitCount() ).isEqualTo( 10 );
+		assertThat( statistics.getQueryCacheMissCount() ).isEqualTo( 1 );
+		assertThat( statistics.getQueryCachePutCount() ).isEqualTo( 1 );
 	}
 
 	private void executeQuery(SessionImplementor session, boolean singleCondition) {
