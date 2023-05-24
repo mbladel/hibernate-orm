@@ -21,8 +21,11 @@ import org.hibernate.QueryException;
 import org.hibernate.QueryParameterException;
 import org.hibernate.cache.MutableCacheKeyBuilder;
 import org.hibernate.cache.spi.QueryKey;
+import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.internal.FilterImpl;
+import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.MappingModelExpressible;
 import org.hibernate.query.BindableType;
 import org.hibernate.query.QueryParameter;
@@ -33,6 +36,8 @@ import org.hibernate.query.spi.QueryParameterImplementor;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.java.JavaTypedExpressible;
 import org.hibernate.type.spi.TypeConfiguration;
+
+import static org.hibernate.engine.internal.CacheHelper.addBasicValueToCacheKey;
 
 /**
  * Manages the group of QueryParameterBinding for a particular query.
@@ -167,7 +172,7 @@ public class QueryParameterBindingsImpl implements QueryParameterBindings {
 	}
 
 	@Override
-	public QueryKey.ParameterBindingsMemento generateQueryKeyMemento(SharedSessionContractImplementor persistenceContext) {
+	public QueryKey.ParameterBindingsMemento generateQueryKeyMemento(SharedSessionContractImplementor session) {
 		// Create separate cache keys for each parameter binding
 		final List<MutableCacheKeyImpl> cacheKeys = new ArrayList<>();
 		for ( Map.Entry<QueryParameter<?>, QueryParameterBinding<?>> entry : parameterBindingMap.entrySet() ) {
@@ -175,24 +180,36 @@ public class QueryParameterBindingsImpl implements QueryParameterBindings {
 			final MappingModelExpressible<?> mappingType = determineMappingType(
 					binding,
 					entry.getKey(),
-					persistenceContext
+					session
 			);
 			final MutableCacheKeyImpl cacheKey;
 			if ( binding.isMultiValued() ) {
 				cacheKey = new MutableCacheKeyImpl( binding.getBindValues().size() );
 				for ( Object bindValue : binding.getBindValues() ) {
 					assert bindValue != null;
-					mappingType.addToCacheKey( cacheKey, bindValue, persistenceContext );
+					mappingType.addToCacheKey( cacheKey, bindValue, session );
 				}
 			}
 			else {
 				cacheKey = new MutableCacheKeyImpl( 1 );
 				final Object bindValue = binding.getBindValue();
-				mappingType.addToCacheKey( cacheKey, bindValue, persistenceContext );
+				mappingType.addToCacheKey( cacheKey, bindValue, session );
 			}
 			cacheKeys.add( cacheKey );
 		}
-		// Sort the parameter cache key list using each key's hash code
+		// Add any enabled filter parameter values to the cache key
+		for ( String filterName : session.getLoadQueryInfluencers().getEnabledFilterNames() ) {
+			final FilterImpl filter = (FilterImpl) session.getLoadQueryInfluencers().getEnabledFilter( filterName );
+			final FilterDefinition filterDefinition = filter.getFilterDefinition();
+			for ( String paramName : filterDefinition.getParameterNames() ) {
+				final Object paramValue = filter.getParameter( paramName );
+				final JdbcMapping jdbcMapping = filterDefinition.getParameterJdbcMapping( paramName );
+				final MutableCacheKeyImpl cacheKey = new MutableCacheKeyImpl( 1 );
+				addBasicValueToCacheKey( cacheKey, paramValue, jdbcMapping, session );
+				cacheKeys.add( cacheKey );
+			}
+		}
+		// Sort the parameter cache key list using each key's hash code to ensure consistency
 		cacheKeys.sort( Comparator.comparingInt( k -> k.hashCode ) );
 		// Finally, build the overall cache key combining the sorted list
 		final MutableCacheKeyImpl parametersCacheKey = new MutableCacheKeyImpl( parameterBindingMap.size() );
