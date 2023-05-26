@@ -9,9 +9,9 @@ package org.hibernate.query.sqm.internal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -480,7 +480,8 @@ public class SqmUtil {
 
 		public void process(SqmParameter<?> parameter) {
 			if ( sqmParameters == null ) {
-				sqmParameters = new HashSet<>();
+				// Use linked hash set to ensure processing order for criteria parameters
+				sqmParameters = new LinkedHashSet<>();
 			}
 
 			if ( parameter instanceof SqmJpaCriteriaParameterWrapper<?> ) {
