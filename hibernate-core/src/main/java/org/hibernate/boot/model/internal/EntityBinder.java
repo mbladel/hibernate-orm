@@ -956,44 +956,59 @@ public class EntityBinder {
 			Map<XClass, InheritanceState> inheritanceStates) {
 
 		final Set<String> missingIdProperties = new HashSet<>( idPropertiesIfIdClass );
+		final Set<String> missingEntityProperties = new HashSet<>();
 		for ( PropertyData propertyAnnotatedElement : elementsToProcess.getElements() ) {
 			final String propertyName = propertyAnnotatedElement.getPropertyName();
 			if ( !idPropertiesIfIdClass.contains( propertyName ) ) {
-				boolean subclassAndSingleTableStrategy =
-						inheritanceState.getType() == InheritanceType.SINGLE_TABLE
-								&& inheritanceState.hasParents();
-				processElementAnnotations(
-						propertyHolder,
-						subclassAndSingleTableStrategy
-								? Nullability.FORCED_NULL
-								: Nullability.NO_CONSTRAINT,
-						propertyAnnotatedElement,
-						generators,
-						this,
-						false,
-						false,
-						false,
-						context,
-						inheritanceStates
-				);
+				if ( !idPropertiesIfIdClass.isEmpty() ) {
+					missingEntityProperties.add( propertyName );
+				}
+				else {
+					boolean subclassAndSingleTableStrategy =
+							inheritanceState.getType() == InheritanceType.SINGLE_TABLE
+									&& inheritanceState.hasParents();
+					processElementAnnotations(
+							propertyHolder,
+							subclassAndSingleTableStrategy
+									? Nullability.FORCED_NULL
+									: Nullability.NO_CONSTRAINT,
+							propertyAnnotatedElement,
+							generators,
+							this,
+							false,
+							false,
+							false,
+							context,
+							inheritanceStates
+					);
+				}
 			}
 			else {
 				missingIdProperties.remove( propertyName );
 			}
 		}
 
-		if ( missingIdProperties.size() != 0 ) {
-			final StringBuilder missings = new StringBuilder();
-			for ( String property : missingIdProperties ) {
-				if ( missings.length() > 0 ) {
-					missings.append(", ");
-				}
-				missings.append("'").append( property ).append( "'" );
-			}
+		if ( !missingIdProperties.isEmpty() ) {
 			throw new AnnotationException( "Entity '" + persistentClass.getEntityName()
-					+ "' has an '@IdClass' with properties " + missings
+					+ "' has an '@IdClass' with properties " + getMissings( missingIdProperties )
 					+ " which do not match properties of the entity class" );
 		}
+		else if ( !missingEntityProperties.isEmpty() ) {
+			throw new AnnotationException( "Entity '" + persistentClass.getEntityName()
+					+ "' has '@Id' annotated properties " + getMissings( missingEntityProperties )
+					+ " which do not match properties of the specified '@IdClass'" );
+		}
+	}
+
+	private static String getMissings(Set<String> propertyNames) {
+		final StringBuilder missings = new StringBuilder();
+		for ( String property : propertyNames ) {
+			if ( missings.length() > 0 ) {
+				missings.append(", ");
+			}
+			missings.append("'").append( property ).append( "'" );
+		}
+		return missings.toString();
 	}
 
 	private static PersistentClass makePersistentClass(
