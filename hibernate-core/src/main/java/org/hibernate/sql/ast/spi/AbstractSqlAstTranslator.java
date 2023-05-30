@@ -1050,7 +1050,16 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 		final Stack<Clause> clauseStack = getClauseStack();
 		try {
 			clauseStack.push( Clause.UPDATE );
-			renderNamedTableReference( statement.getTargetTable(), LockMode.NONE );
+			final TableGroup targetTableGroup = statement.getTargetTableGroup();
+			if ( targetTableGroup != null ) {
+				getQueryPartStack().push( new QuerySpec( false ) );
+				renderRootTableGroup( statement.getTargetTableGroup(), null );
+//				renderNamedTableReference( (NamedTableReference) targetTableGroup.getPrimaryTableReference(), LockMode.NONE );
+//				processTableGroupJoins( targetTableGroup );
+			}
+			else {
+				renderNamedTableReference( statement.getTargetTable(), LockMode.NONE );
+			}
 		}
 		finally {
 			clauseStack.pop();

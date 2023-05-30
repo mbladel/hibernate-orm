@@ -855,7 +855,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 
 			return new UpdateStatement(
 					cteContainer,
-					(NamedTableReference) rootTableGroup.getPrimaryTableReference(),
+					rootTableGroup,
 					assignments,
 					combinePredicates( suppliedPredicate, additionalRestrictions ),
 					Collections.emptyList()

@@ -14,6 +14,7 @@ import java.util.Map;
 import org.hibernate.sql.ast.tree.cte.CteStatement;
 import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
+import org.hibernate.sql.ast.tree.from.TableGroup;
 
 /**
  * @author Christian Beikov
@@ -22,6 +23,7 @@ public abstract class AbstractMutationStatement extends AbstractStatement implem
 
 	private final NamedTableReference targetTable;
 	private final List<ColumnReference> returningColumns;
+	private TableGroup tableGroup;
 
 	public AbstractMutationStatement(NamedTableReference targetTable) {
 		super( new LinkedHashMap<>() );
@@ -33,6 +35,19 @@ public abstract class AbstractMutationStatement extends AbstractStatement implem
 		super( cteStatements );
 		this.targetTable = targetTable;
 		this.returningColumns = returningColumns;
+	}
+
+	public AbstractMutationStatement(Map<String, CteStatement> cteStatements, TableGroup tableGroup, List<ColumnReference> returningColumns) {
+		super( cteStatements );
+		this.targetTable = (NamedTableReference) tableGroup.getPrimaryTableReference();
+		this.returningColumns = returningColumns;
+		this.tableGroup = tableGroup;
+	}
+
+
+	@Override
+	public TableGroup getTargetTableGroup() {
+		return tableGroup;
 	}
 
 	@Override

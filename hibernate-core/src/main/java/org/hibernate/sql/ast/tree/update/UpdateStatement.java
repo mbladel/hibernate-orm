@@ -18,6 +18,7 @@ import org.hibernate.sql.ast.tree.cte.CteContainer;
 import org.hibernate.sql.ast.tree.cte.CteStatement;
 import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
+import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.predicate.Predicate;
 
 /**
@@ -48,13 +49,13 @@ public class UpdateStatement extends AbstractMutationStatement {
 
 	public UpdateStatement(
 			CteContainer cteContainer,
-			NamedTableReference targetTable,
+			TableGroup tableGroup,
 			List<Assignment> assignments,
 			Predicate restriction,
 			List<ColumnReference> returningColumns) {
 		this(
 				cteContainer.getCteStatements(),
-				targetTable,
+				tableGroup,
 				assignments,
 				restriction,
 				returningColumns
@@ -63,11 +64,11 @@ public class UpdateStatement extends AbstractMutationStatement {
 
 	public UpdateStatement(
 			Map<String, CteStatement> cteStatements,
-			NamedTableReference targetTable,
+			TableGroup tableGroup,
 			List<Assignment> assignments,
 			Predicate restriction,
 			List<ColumnReference> returningColumns) {
-		super( cteStatements, targetTable, returningColumns );
+		super( cteStatements, tableGroup, returningColumns );
 		this.assignments = assignments;
 		this.restriction = restriction;
 	}
