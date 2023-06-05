@@ -54,6 +54,7 @@ public class SqmCorrelatedBagJoin<O, T> extends SqmBagJoin<O, T> implements SqmC
 
 	@Override
 	public SqmCorrelatedBagJoin<O, T> copy(SqmCopyContext context) {
+		final SqmFrom<?, O> lhsCopy = getLhs().copy( context );
 		final SqmCorrelatedBagJoin<O, T> existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
@@ -61,7 +62,7 @@ public class SqmCorrelatedBagJoin<O, T> extends SqmBagJoin<O, T> implements SqmC
 		final SqmCorrelatedBagJoin<O, T> path = context.registerCopy(
 				this,
 				new SqmCorrelatedBagJoin<>(
-						getLhs().copy( context ),
+						lhsCopy,
 						getAttribute(),
 						getExplicitAlias(),
 						getSqmJoinType(),

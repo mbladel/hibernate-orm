@@ -54,6 +54,7 @@ public class SqmCorrelatedListJoin<O, T> extends SqmListJoin<O, T> implements Sq
 
 	@Override
 	public SqmCorrelatedListJoin<O, T> copy(SqmCopyContext context) {
+		final SqmFrom<?, O> lhsCopy = getLhs().copy( context );
 		final SqmCorrelatedListJoin<O, T> existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
@@ -61,7 +62,7 @@ public class SqmCorrelatedListJoin<O, T> extends SqmListJoin<O, T> implements Sq
 		final SqmCorrelatedListJoin<O, T> path = context.registerCopy(
 				this,
 				new SqmCorrelatedListJoin<>(
-						getLhs().copy( context ),
+						lhsCopy,
 						getAttribute(),
 						getExplicitAlias(),
 						getSqmJoinType(),

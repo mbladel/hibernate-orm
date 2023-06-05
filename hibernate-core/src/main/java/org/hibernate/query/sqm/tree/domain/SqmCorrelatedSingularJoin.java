@@ -54,6 +54,7 @@ public class SqmCorrelatedSingularJoin<O, T> extends SqmSingularJoin<O, T> imple
 
 	@Override
 	public SqmCorrelatedSingularJoin<O, T> copy(SqmCopyContext context) {
+		final SqmFrom<?, O> lhsCopy = getLhs().copy( context );
 		final SqmCorrelatedSingularJoin<O, T> existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
@@ -61,7 +62,7 @@ public class SqmCorrelatedSingularJoin<O, T> extends SqmSingularJoin<O, T> imple
 		final SqmCorrelatedSingularJoin<O, T> path = context.registerCopy(
 				this,
 				new SqmCorrelatedSingularJoin<>(
-						getLhs().copy( context ),
+						lhsCopy,
 						getAttribute(),
 						getExplicitAlias(),
 						getSqmJoinType(),

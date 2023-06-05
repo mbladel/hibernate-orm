@@ -55,6 +55,7 @@ public class SqmListJoin<O,E>
 
 	@Override
 	public SqmListJoin<O, E> copy(SqmCopyContext context) {
+		final SqmFrom<?, O> lhsCopy = getLhs().copy( context );
 		final SqmListJoin<O, E> existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
@@ -62,8 +63,8 @@ public class SqmListJoin<O,E>
 		final SqmListJoin<O, E> path = context.registerCopy(
 				this,
 				new SqmListJoin<>(
-						getLhs().copy( context ),
-						getNavigablePath(),
+						lhsCopy,
+						getNavigablePathCopy( lhsCopy ),
 						getAttribute(),
 						getExplicitAlias(),
 						getSqmJoinType(),

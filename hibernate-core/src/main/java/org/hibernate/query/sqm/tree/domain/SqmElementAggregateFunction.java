@@ -36,10 +36,11 @@ public class SqmElementAggregateFunction<T> extends AbstractSqmSpecificPluralPar
 			return existing;
 		}
 
+		final SqmPath<?> lhsCopy = getLhs().copy( context );
 		final SqmElementAggregateFunction<T> path = context.registerCopy(
 				this,
 				new SqmElementAggregateFunction<>(
-						getLhs().copy( context ),
+						lhsCopy,
 						functionName
 				)
 		);

@@ -54,6 +54,7 @@ public class SqmCorrelatedMapJoin<O, K, V> extends SqmMapJoin<O, K, V> implement
 
 	@Override
 	public SqmCorrelatedMapJoin<O, K, V> copy(SqmCopyContext context) {
+		final SqmFrom<?, O> lhsCopy = getLhs().copy( context );
 		final SqmCorrelatedMapJoin<O, K, V> existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
@@ -61,7 +62,7 @@ public class SqmCorrelatedMapJoin<O, K, V> extends SqmMapJoin<O, K, V> implement
 		final SqmCorrelatedMapJoin<O, K, V> path = context.registerCopy(
 				this,
 				new SqmCorrelatedMapJoin<>(
-						getLhs().copy( context ),
+						lhsCopy,
 						getAttribute(),
 						getExplicitAlias(),
 						getSqmJoinType(),

@@ -36,10 +36,11 @@ public class SqmIndexAggregateFunction<T> extends AbstractSqmSpecificPluralPartP
 			return existing;
 		}
 
+		final SqmPath<?> lhsCopy = getLhs().copy( context );
 		final SqmIndexAggregateFunction<T> path = context.registerCopy(
 				this,
 				new SqmIndexAggregateFunction<>(
-						getLhs().copy( context ),
+						lhsCopy,
 						functionName
 				)
 		);
