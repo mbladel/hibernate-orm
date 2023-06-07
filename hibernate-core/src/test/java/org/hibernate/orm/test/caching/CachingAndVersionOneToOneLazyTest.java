@@ -2,6 +2,7 @@ package org.hibernate.orm.test.caching;
 
 import java.util.List;
 
+import org.hibernate.Hibernate;
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 
@@ -31,8 +32,8 @@ public class CachingAndVersionOneToOneLazyTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			final Domain domain = new Domain();
-			final DomainID domainID = new DomainID();
+			final Domain domain = new Domain( "domain" );
+			final DomainID domainID = new DomainID( "domain_id" );
 			domain.setDomainID( domainID );
 			session.persist( domain );
 			session.persist( domainID );
@@ -48,13 +49,28 @@ public class CachingAndVersionOneToOneLazyTest {
 	}
 
 	@Test
-	public void testSelect(SessionFactoryScope scope) {
+	public void testSelectDomain(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			final List<Domain> domains = session.createQuery(
-					"SELECT d from Domain d",
+			final Domain domain = session.createQuery(
+					"select d from Domain d",
 					Domain.class
-			).getResultList();
-			assertThat( domains.size() ).isEqualTo( 1 );
+			).getSingleResult();
+			assertThat( domain.getData() ).isEqualTo( "domain" );
+			assertThat( domain.getDomainID().getData() ).isEqualTo( "domain_id" );
+			assertThat( Hibernate.isInitialized( domain.getDomainID().getDomain() ) ).isTrue();
+		} );
+	}
+
+	@Test
+	public void testSelectDomainID(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final DomainID domainId = session.createQuery(
+					"select id from DomainID id",
+					DomainID.class
+			).getSingleResult();
+			assertThat( domainId.getData() ).isEqualTo( "domain_id" );
+			assertThat( Hibernate.isInitialized( domainId.getDomain() ) ).isFalse();
+			assertThat( domainId.getDomain().getData() ).isEqualTo( "domain" );
 		} );
 	}
 
@@ -69,6 +85,15 @@ public class CachingAndVersionOneToOneLazyTest {
 
 		@OneToOne( mappedBy = "domain" )
 		private DomainID domainID;
+
+		private String data;
+
+		public Domain() {
+		}
+
+		public Domain(String data) {
+			this.data = data;
+		}
 
 		public Long getId() {
 			return id;
@@ -86,6 +111,10 @@ public class CachingAndVersionOneToOneLazyTest {
 			this.domainID = domainID;
 			domainID.setDomain( this );
 		}
+
+		public String getData() {
+			return data;
+		}
 	}
 
 	@Entity( name = "DomainID" )
@@ -99,8 +128,17 @@ public class CachingAndVersionOneToOneLazyTest {
 		@Version
 		private Integer rowVersion;
 
+		private String data;
+
 		@OneToOne( fetch = FetchType.LAZY )
 		private Domain domain;
+
+		public DomainID() {
+		}
+
+		public DomainID(String data) {
+			this.data = data;
+		}
 
 		public Long getId() {
 			return id;
@@ -116,6 +154,10 @@ public class CachingAndVersionOneToOneLazyTest {
 
 		public void setDomain(Domain domain) {
 			this.domain = domain;
+		}
+
+		public String getData() {
+			return data;
 		}
 	}
 }
