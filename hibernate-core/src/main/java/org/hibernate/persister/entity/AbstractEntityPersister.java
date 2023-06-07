@@ -260,6 +260,7 @@ import org.hibernate.sql.results.graph.Fetch;
 import org.hibernate.sql.results.graph.FetchParent;
 import org.hibernate.sql.results.graph.Fetchable;
 import org.hibernate.sql.results.graph.FetchableContainer;
+import org.hibernate.sql.results.graph.entity.LoadingEntityEntry;
 import org.hibernate.sql.results.graph.entity.internal.EntityResultImpl;
 import org.hibernate.sql.results.graph.internal.ImmutableFetchList;
 import org.hibernate.sql.results.internal.SqlSelectionImpl;
@@ -3861,6 +3862,15 @@ public abstract class AbstractEntityPersister
 		// identifier or no identifier property is unsaved!
 		if ( id == null ) {
 			return true;
+		}
+
+		// check if we're currently loading this entity instance
+		final EntityKey entityKey = new EntityKey( id, this );
+		final LoadingEntityEntry loadingEntityEntry = session.getPersistenceContext()
+				.getLoadContexts()
+				.findLoadingEntityEntry( entityKey );
+		if ( loadingEntityEntry != null && loadingEntityEntry.getEntityInstance() == entity ) {
+			return false;
 		}
 
 		// check the version unsaved-value, if appropriate
