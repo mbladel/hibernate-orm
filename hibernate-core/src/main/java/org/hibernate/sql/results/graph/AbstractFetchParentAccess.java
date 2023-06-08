@@ -10,6 +10,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.hibernate.LockMode;
+import org.hibernate.engine.spi.EntityKey;
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.loader.ast.internal.CacheEntityLoaderHelper;
+import org.hibernate.persister.entity.EntityPersister;
+
 /**
  * Base support for FetchParentAccess implementations.  Mainly adds support for
  * registering and managing resolution listeners
@@ -42,5 +48,21 @@ public abstract class AbstractFetchParentAccess implements FetchParentAccess {
 		}
 
 		listeners.clear();
+	}
+
+	// todo marco : in entity initializers, we always only look in the persistence context
+	//  and never through the cache - I think this might be on purpose and due to expensive cache access for queries ?
+	protected static Object existingOrCached(EntityKey keyToLoad, EntityPersister persister, SharedSessionContractImplementor session) {
+		final Object existingEntity = session.getPersistenceContextInternal().getEntity( keyToLoad );
+		if ( existingEntity != null ) {
+			return existingEntity;
+		}
+		return CacheEntityLoaderHelper.INSTANCE.loadFromSecondLevelCache(
+				session.asEventSource(),
+				null,
+				LockMode.NONE,
+				persister,
+				keyToLoad
+		);
 	}
 }
