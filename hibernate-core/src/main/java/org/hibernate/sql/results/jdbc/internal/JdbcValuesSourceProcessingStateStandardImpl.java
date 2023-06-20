@@ -128,7 +128,11 @@ public class JdbcValuesSourceProcessingStateStandardImpl implements JdbcValuesSo
 
 	@Override
 	public LoadingEntityEntry findLoadingEntityLocally(EntityKey entityKey) {
-		return loadingEntityMap == null ? null : loadingEntityMap.get( entityKey );
+		final LoadingEntityEntry entry = loadingEntityMap == null ? null : loadingEntityMap.get( entityKey );
+		if ( entry != null && entry.getDescriptor() == entityKey.getPersister() ) {
+			return entry;
+		}
+		return null;
 	}
 
 	@Override

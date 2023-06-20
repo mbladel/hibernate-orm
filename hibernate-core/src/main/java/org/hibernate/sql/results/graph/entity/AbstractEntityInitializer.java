@@ -811,8 +811,12 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 		final PersistenceContext persistenceContextInternal =
 				rowProcessingState.getSession().getPersistenceContextInternal();
 		// Only call PersistenceContext#getEntity within the assert expression, as it is costly
-		return !persistenceContextInternal.containsEntity( entityKey )
-			|| persistenceContextInternal.getEntity( entityKey ) == toInitialize;
+		final Object entity = persistenceContextInternal.getEntity( entityKey );
+		return entityDescriptor.isInstance( toInitialize ) &&
+				// todo marco : the entityKey uses the root entity name, thus when initializing multiple
+				//  subtypes of the same root entity class we have conflicting results
+				//  why was this done like this ?
+				( entity == null || !entityDescriptor.isInstance( entity ) || entity == toInitialize );
 	}
 
 	private void initializeEntityInstance(Object toInitialize, RowProcessingState rowProcessingState) {
