@@ -1412,14 +1412,8 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 					tableReferenceJoins.add( join );
 				}
 				else {
-					final String tableExpression = joinedTableReference.getTableExpression();
-					final int index = indexOf( getSubclassTableNames(), tableExpression );
-					if ( index > -1 && isClassOrSuperclassTable[index] ) {
-						// Always retain joins to superclass tables
-						tableReferenceJoins.add( oldJoin );
-					}
 					for ( int i = subclassCoreTableSpan; i < subclassTableNameClosure.length; i++ ) {
-						if ( tableExpression.equals( subclassTableNameClosure[i] ) ) {
+						if ( joinedTableReference.getTableExpression().equals( subclassTableNameClosure[i] ) ) {
 							// Retain joins to secondary tables
 							tableReferenceJoins.add( oldJoin );
 							break;

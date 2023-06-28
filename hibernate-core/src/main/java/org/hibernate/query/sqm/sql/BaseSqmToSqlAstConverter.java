@@ -3340,14 +3340,15 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		registerPathAttributeEntityNameUsage( sqmJoin, ownerTableGroup );
 		if ( !sqmJoin.hasTreats() && sqmJoin.getNodeType().getSqmPathType() instanceof EntityDomainType ) {
 			final EntityDomainType<?> entityDomainType = (EntityDomainType<?>) sqmJoin.getNodeType().getSqmPathType();
-			final EntityPersister entityDescriptor = (EntityPersister) joinedTableGroup.getModelPart().getPartMappingType();
+			final String entityName = entityDomainType.getHibernateEntityName();
+			final EntityPersister entityDescriptor = domainModel.findEntityDescriptor( entityName );
 			if ( entityDescriptor != null && entityDescriptor.getSuperMappingType() != null ) {
 				// This is a non-treated join with an entity which is an inheritance subtype,
 				// register a TREAT entity name use to filter only the entities of the correct type.
 				registerEntityNameUsage(
 						getActualTableGroup( joinedTableGroup, sqmJoin ),
 						EntityNameUse.TREAT,
-						entityDomainType.getHibernateEntityName()
+						entityName
 				);
 			}
 		}
@@ -4572,6 +4573,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				null,
 				this
 		);
+		registerProjectionUsageFromDescriptor( tableGroup, indexDescriptor );
 
 		final CollectionPart valueDescriptor = mapDescriptor.getElementDescriptor();
 		final NavigablePath valueNavigablePath = mapNavigablePath.append( valueDescriptor.getPartName() );
@@ -4581,6 +4583,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				null,
 				this
 		);
+		registerProjectionUsageFromDescriptor( tableGroup, valueDescriptor );
 
 		return new DomainResultProducer<Map.Entry<Object, Object>>() {
 			@Override
@@ -4598,6 +4601,14 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				throw new UnsupportedOperationException();
 			}
 		};
+	}
+
+	private void registerProjectionUsageFromDescriptor(TableGroup tableGroup, CollectionPart descriptor) {
+		if ( descriptor instanceof EntityCollectionPart ) {
+			final EntityCollectionPart entityCollectionPart = (EntityCollectionPart) descriptor;
+			final EntityMappingType entityMappingType = entityCollectionPart.getEntityMappingType();
+			registerEntityNameUsage( tableGroup, EntityNameUse.PROJECTION, entityMappingType.getEntityName(), true );
+		}
 	}
 
 	protected Expression createCorrelatedAggregateSubQuery(
