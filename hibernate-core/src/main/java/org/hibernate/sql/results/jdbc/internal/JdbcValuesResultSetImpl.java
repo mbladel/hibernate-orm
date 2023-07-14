@@ -39,7 +39,6 @@ public class JdbcValuesResultSetImpl extends AbstractJdbcValues {
 	private final ExecutionContext executionContext;
 
 	private final SqlSelection[] sqlSelections;
-	private final SqlSelection[] eagerSqlSelections;
 	private final BitSet initializedIndexes;
 	private final Object[] currentRowJdbcValues;
 
@@ -63,7 +62,6 @@ public class JdbcValuesResultSetImpl extends AbstractJdbcValues {
 		this.executionContext = executionContext;
 
 		this.sqlSelections = valuesMapping.getSqlSelections().toArray( new SqlSelection[0] );
-		this.eagerSqlSelections = extractEagerSqlSelections( sqlSelections );
 		this.initializedIndexes = new BitSet( valuesMapping.getRowSize() );
 		this.currentRowJdbcValues = new Object[ valuesMapping.getRowSize() ];
 	}
@@ -71,7 +69,12 @@ public class JdbcValuesResultSetImpl extends AbstractJdbcValues {
 	/**
 	 * Determine the selections which are eager i.e. safe to always extract.
 	 * If a virtual selection exists, we must extract the value for that JDBC position lazily.
+	 *
+	 * @deprecated we no longer eagerly read jdbc values, because that was causing some performance
+	 * 	degradation when reading a large number of slow data (e.g. lobs). We instead always lazily
+	 * 	read current row values when requested, see {@link #getCurrentRowValue(int)}
 	 */
+	@Deprecated(forRemoval = true, since = "6.3")
 	private SqlSelection[] extractEagerSqlSelections(SqlSelection[] sqlSelections) {
 		BitSet lazyValuesPositions = null;
 		for ( int i = 0; i < sqlSelections.length; i++ ) {
@@ -305,26 +308,7 @@ public class JdbcValuesResultSetImpl extends AbstractJdbcValues {
 	}
 
 	private void readCurrentRowValues() {
-		final ResultSet resultSet = resultSetAccess.getResultSet();
-		final SharedSessionContractImplementor session = executionContext.getSession();
 		initializedIndexes.clear();
-		for ( final SqlSelection sqlSelection : eagerSqlSelections ) {
-			initializedIndexes.set( sqlSelection.getValuesArrayPosition() );
-			try {
-				currentRowJdbcValues[ sqlSelection.getValuesArrayPosition() ] = sqlSelection.getJdbcValueExtractor().extract(
-						resultSet,
-						sqlSelection.getJdbcResultSetIndex(),
-						session
-				);
-			}
-			catch ( SQLException e ) {
-				// do not want to wrap in ExecutionException here
-				throw executionContext.getSession().getJdbcServices().getSqlExceptionHelper().convert(
-						e,
-						"Could not extract column [" + sqlSelection.getJdbcResultSetIndex() + "] from JDBC ResultSet"
-				);
-			}
-		}
 	}
 
 	@Override
