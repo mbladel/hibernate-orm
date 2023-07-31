@@ -53,6 +53,7 @@ import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Selectable;
+import org.hibernate.mapping.SimpleValue;
 import org.hibernate.mapping.SyntheticProperty;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.ToOne;
@@ -397,7 +398,8 @@ public class BinderHelper {
 		clone.setPropertyAccessorName( property.getPropertyAccessorName() );
 		clone.setSelectable( property.isSelectable() );
 		clone.setUpdateable( property.isUpdateable() );
-		clone.setValue( property.getValue() );
+		clone.setValue( property.getValue().copy() );
+		( (SimpleValue) clone.getValue() ).setPartitionKey( false );
 		return clone;
 	}
 
