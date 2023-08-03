@@ -1045,9 +1045,9 @@ public abstract class PersistentClass implements IdentifiableTypeClass, Attribut
 	protected void checkColumnDuplication(Set<String> distinctColumns, Value value)
 			throws MappingException {
 		if ( value != null ) {
-			for ( Selectable columnOrFormula : value.getSelectables() ) {
-				if ( !columnOrFormula.isFormula() ) {
-					final Column col = (Column) columnOrFormula;
+			for ( int i = 0; i < value.getSelectables().size(); i++ ) {
+				if ( value.isColumnInsertable( i ) || value.isColumnUpdateable( i ) ) {
+					final Column col = (Column) value.getSelectables().get( i );
 					if ( !distinctColumns.add( col.getName() ) ) {
 						throw new MappingException(
 								"Column '" + col.getName()
