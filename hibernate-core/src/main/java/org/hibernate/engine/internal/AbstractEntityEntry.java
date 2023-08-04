@@ -201,6 +201,11 @@ public abstract class AbstractEntityEntry implements Serializable, EntityEntry {
 	}
 
 	@Override
+	public void setLoadedState(Object[] loadedState) {
+		this.loadedState = loadedState;
+	}
+
+	@Override
 	public Object[] getDeletedState() {
 		final EntityEntryExtraStateHolder extra = getExtraState( EntityEntryExtraStateHolder.class );
 		return extra == null ? null : extra.getDeletedState();

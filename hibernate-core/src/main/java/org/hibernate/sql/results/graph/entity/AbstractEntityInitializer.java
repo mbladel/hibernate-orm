@@ -818,7 +818,28 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 			);
 		}
 
+		version = versionAssembler != null ? versionAssembler.assemble( rowProcessingState ) : null;
+		final Object rowId = rowIdAssembler != null ? rowIdAssembler.assemble( rowProcessingState ) : null;
+
+		// from the perspective of Hibernate, an entity is read locked as soon as it is read
+		// so regardless of the requested lock mode, we upgrade to at least the read level
+		final LockMode lockModeToAcquire = lockMode == LockMode.NONE ? LockMode.READ : lockMode;
+
+		final EntityEntry entityEntry = persistenceContext.addEntry(
+				toInitialize,
+				Status.LOADING,
+				null,
+				rowId,
+				entityKey.getIdentifier(),
+				version,
+				lockModeToAcquire,
+				true,
+				concreteDescriptor,
+				false
+		);
+
 		resolvedEntityState = extractConcreteTypeStateValues( rowProcessingState );
+		entityEntry.setLoadedState( resolvedEntityState );
 
 		preLoad( rowProcessingState );
 
@@ -839,26 +860,6 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 
 		// Also register possible unique key entries
 		registerPossibleUniqueKeyEntries( toInitialize, session );
-
-		version = versionAssembler != null ? versionAssembler.assemble( rowProcessingState ) : null;
-		final Object rowId = rowIdAssembler != null ? rowIdAssembler.assemble( rowProcessingState ) : null;
-
-		// from the perspective of Hibernate, an entity is read locked as soon as it is read
-		// so regardless of the requested lock mode, we upgrade to at least the read level
-		final LockMode lockModeToAcquire = lockMode == LockMode.NONE ? LockMode.READ : lockMode;
-
-		final EntityEntry entityEntry = persistenceContext.addEntry(
-				toInitialize,
-				Status.LOADING,
-				resolvedEntityState,
-				rowId,
-				entityKey.getIdentifier(),
-				version,
-				lockModeToAcquire,
-				true,
-				concreteDescriptor,
-				false
-		);
 
 		registerNaturalIdResolution( persistenceContext, entityIdentifier );
 

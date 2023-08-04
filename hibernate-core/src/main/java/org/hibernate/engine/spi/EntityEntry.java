@@ -38,6 +38,8 @@ public interface EntityEntry {
 
 	Object[] getLoadedState();
 
+	void setLoadedState(Object[] loadedState);
+
 	Object getLoadedValue(String propertyName);
 
 	void overwriteLoadedStateCollectionValue(String propertyName, PersistentCollection<?> collection);
