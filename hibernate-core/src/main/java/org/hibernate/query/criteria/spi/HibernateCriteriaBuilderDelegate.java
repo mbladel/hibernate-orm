@@ -70,7 +70,8 @@ import jakarta.persistence.criteria.Selection;
 import jakarta.persistence.criteria.SetJoin;
 import jakarta.persistence.criteria.Subquery;
 
-public class HibernateCriteriaBuilderDelegate implements HibernateCriteriaBuilder {
+public
+class HibernateCriteriaBuilderDelegate implements HibernateCriteriaBuilder {
 	private final HibernateCriteriaBuilder criteriaBuilder;
 
 	public HibernateCriteriaBuilderDelegate(HibernateCriteriaBuilder criteriaBuilder) {
@@ -1312,6 +1313,22 @@ public class HibernateCriteriaBuilderDelegate implements HibernateCriteriaBuilde
 	@Override
 	public <T extends TemporalAccessor> JpaFunction<T> truncate(Expression<T> datetime, TemporalUnit temporalUnit) {
 		return criteriaBuilder.truncate( datetime, temporalUnit );
+	}
+
+	@Override
+	public <T extends TemporalAccessor> JpaFunction<T> timestampadd(
+			TemporalUnit temporalUnit,
+			Expression<Integer> interval,
+			Expression<T> datetime) {
+		return criteriaBuilder.timestampadd( temporalUnit, interval, datetime );
+	}
+
+	@Override
+	public <T extends TemporalAccessor> JpaFunction<Number> timestampdiff(
+			TemporalUnit temporalUnit,
+			Expression<T> from,
+			Expression<T> to) {
+		return criteriaBuilder.timestampdiff( temporalUnit, from , to );
 	}
 
 	@Override

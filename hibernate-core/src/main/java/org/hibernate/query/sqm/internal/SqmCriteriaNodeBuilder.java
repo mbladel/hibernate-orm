@@ -57,7 +57,6 @@ import org.hibernate.query.criteria.JpaCompoundSelection;
 import org.hibernate.query.criteria.JpaCriteriaQuery;
 import org.hibernate.query.criteria.JpaCteCriteriaAttribute;
 import org.hibernate.query.criteria.JpaExpression;
-import org.hibernate.query.criteria.JpaFunction;
 import org.hibernate.query.criteria.JpaOrder;
 import org.hibernate.query.criteria.JpaPredicate;
 import org.hibernate.query.criteria.JpaSearchOrder;
@@ -107,6 +106,7 @@ import org.hibernate.query.sqm.tree.expression.SqmCoalesce;
 import org.hibernate.query.sqm.tree.expression.SqmCollation;
 import org.hibernate.query.sqm.tree.expression.SqmCollectionSize;
 import org.hibernate.query.sqm.tree.expression.SqmDistinct;
+import org.hibernate.query.sqm.tree.expression.SqmDurationUnit;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
 import org.hibernate.query.sqm.tree.expression.SqmExtractUnit;
 import org.hibernate.query.sqm.tree.expression.SqmFormat;
@@ -149,6 +149,7 @@ import org.hibernate.query.sqm.tree.select.SqmSelectableNode;
 import org.hibernate.query.sqm.tree.select.SqmSortSpecification;
 import org.hibernate.query.sqm.tree.select.SqmSubQuery;
 import org.hibernate.query.sqm.tree.update.SqmUpdateStatement;
+import org.hibernate.sql.ast.tree.expression.DurationUnit;
 import org.hibernate.type.BasicType;
 import org.hibernate.type.StandardBasicTypes;
 import org.hibernate.type.descriptor.java.EnumJavaType;
@@ -2635,8 +2636,40 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, SqmCreationContext, 
 	public <T extends TemporalAccessor> SqmFunction<T> truncate(Expression<T> datetime, TemporalUnit temporalUnit) {
 		return getFunctionDescriptor( "trunc" ).generateSqmExpression(
 				asList(
-						(SqmTypedNode<?>) datetime,
+						(SqmExpression<T>) datetime,
 						new SqmExtractUnit<>( temporalUnit, getIntegerType(), this )
+				),
+				null,
+				queryEngine
+		);
+	}
+
+	@Override
+	public <T extends TemporalAccessor> SqmFunction<T> timestampadd(
+			TemporalUnit temporalUnit,
+			Expression<Integer> interval,
+			Expression<T> datetime) {
+		return getFunctionDescriptor( "timestampadd" ).generateSqmExpression(
+				asList(
+						new SqmDurationUnit<>( temporalUnit, getIntegerType(), this ),
+						(SqmExpression<Integer>) interval,
+						(SqmExpression<T>) datetime
+				),
+				null,
+				queryEngine
+		);
+	}
+
+	@Override
+	public <T extends TemporalAccessor> SqmFunction<Number> timestampdiff(
+			TemporalUnit temporalUnit,
+			Expression<T> from,
+			Expression<T> to) {
+		return getFunctionDescriptor( "timestampdiff" ).generateSqmExpression(
+				asList(
+						new SqmDurationUnit<>( temporalUnit, getIntegerType(), this ),
+						(SqmExpression<T>) from,
+						(SqmExpression<T>) to
 				),
 				null,
 				queryEngine
@@ -2820,7 +2853,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, SqmCreationContext, 
 	}
 
 	@Override
-	public JpaFunction<String> repeat(Expression<String> x, Expression<Integer> times) {
+	public SqmFunction<String> repeat(Expression<String> x, Expression<Integer> times) {
 		return getFunctionDescriptor( "repeat" ).generateSqmExpression(
 				asList( (SqmExpression<String>) x, (SqmExpression<Integer>) times ),
 				null,
@@ -2829,12 +2862,12 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, SqmCreationContext, 
 	}
 
 	@Override
-	public JpaFunction<String> repeat(Expression<String> x, int times) {
+	public SqmFunction<String> repeat(Expression<String> x, int times) {
 		return repeat( x, value( times ) );
 	}
 
 	@Override
-	public JpaFunction<String> repeat(String x, Expression<Integer> times) {
+	public SqmFunction<String> repeat(String x, Expression<Integer> times) {
 		return repeat( value( x), times );
 	}
 
