@@ -158,9 +158,10 @@ public class OracleDialect extends Dialect {
 	private static final String yqmSelect =
 		"(trunc(%2$s, 'MONTH') + numtoyminterval(%1$s, 'MONTH') + (least(extract(day from %2$s), extract(day from last_day(trunc(%2$s, 'MONTH') + numtoyminterval(%1$s, 'MONTH')))) - 1))";
 
-	private static final String ADD_YEAR_EXPRESSION = String.format( yqmSelect, "?2*12", "?3" );
-	private static final String ADD_QUARTER_EXPRESSION = String.format( yqmSelect, "?2*3", "?3" );
-	private static final String ADD_MONTH_EXPRESSION = String.format( yqmSelect, "?2", "?3" );
+	private static final String ADD_YEAR_EXPRESSION = "add_months(?3,?2*12)";
+	private static final String ADD_QUARTER_EXPRESSION = "add_months(?3,?2*3)";
+	private static final String ADD_MONTH_EXPRESSION = "add_months(?3,?2)";
+	private static final String EXTRACT_TIME_EXPRESSION = "+(?3-TRUNC(?3))";
 
 	private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make( 11, 2 );
 
@@ -518,13 +519,28 @@ public class OracleDialect extends Dialect {
 		StringBuilder pattern = new StringBuilder();
 		switch ( unit ) {
 			case YEAR:
-				pattern.append( ADD_YEAR_EXPRESSION );
+				if ( temporalType != TemporalType.DATE ) {
+					pattern.append( "to_timestamp(" + ADD_YEAR_EXPRESSION + ")" + EXTRACT_TIME_EXPRESSION );
+				}
+				else {
+					pattern.append( ADD_YEAR_EXPRESSION );
+				}
 				break;
 			case QUARTER:
-				pattern.append( ADD_QUARTER_EXPRESSION );
+				if ( temporalType != TemporalType.DATE ) {
+					pattern.append( "to_timestamp(" + ADD_QUARTER_EXPRESSION + ")" + EXTRACT_TIME_EXPRESSION );
+				}
+				else {
+					pattern.append( ADD_QUARTER_EXPRESSION );
+				}
 				break;
 			case MONTH:
-				pattern.append( ADD_MONTH_EXPRESSION );
+				if ( temporalType != TemporalType.DATE ) {
+					pattern.append( "to_timestamp(" + ADD_MONTH_EXPRESSION + ")" + EXTRACT_TIME_EXPRESSION );
+				}
+				else {
+					pattern.append( ADD_MONTH_EXPRESSION );
+				}
 				break;
 			case WEEK:
 				pattern.append("(?3+numtodsinterval((?2)*7,'day'))");
