@@ -7563,6 +7563,12 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 
 	@Override
 	public NullnessPredicate visitIsNullPredicate(SqmNullnessPredicate predicate) {
+		if ( predicate.getExpression() instanceof SqmParameter<?> && ( (SqmParameter<?>) predicate.getExpression() ).allowMultiValuedBinding() ) {
+			throw new SemanticException( String.format(
+					"Nullness predicate not allowed on multi-valued parameter '%s'.",
+					( (SqmParameter<?>) predicate.getExpression() ).getName()
+			) );
+		}
 		return new NullnessPredicate(
 				(Expression) visitWithInferredType( predicate.getExpression(), () -> basicType( Object.class )),
 				predicate.isNegated(),

@@ -3913,6 +3913,9 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 			parameterCollector.addParameter( parameter );
 			return parameter;
 		}
+		else if ( parameter.allowMultiValuedBinding() && !existingParameter.allowMultiValuedBinding() ) {
+			existingParameter.setAllowMultiValuedBinding( true );
+		}
 		//noinspection unchecked
 		return (T) existingParameter;
 	}
