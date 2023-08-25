@@ -31,7 +31,9 @@ import org.hibernate.sql.ast.tree.delete.DeleteStatement;
 import org.hibernate.sql.ast.tree.expression.Expression;
 import org.hibernate.sql.ast.tree.from.MutatingTableReferenceGroupWrapper;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
+import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.predicate.InSubQueryPredicate;
+import org.hibernate.sql.ast.tree.predicate.Predicate;
 import org.hibernate.sql.ast.tree.select.QuerySpec;
 import org.hibernate.sql.exec.spi.JdbcOperationQueryDelete;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
@@ -49,6 +51,7 @@ public class SimpleDeleteQueryPlan implements NonSelectQueryPlan {
 	private JdbcOperationQueryDelete jdbcDelete;
 	private SqmTranslation<DeleteStatement> sqmInterpretation;
 	private Map<QueryParameterImplementor<?>, Map<SqmParameter<?>, List<JdbcParametersList>>> jdbcParamsXref;
+	private Predicate additionalPredicate;
 
 	public SimpleDeleteQueryPlan(
 			EntityMappingType entityDescriptor,
@@ -131,17 +134,29 @@ public class SimpleDeleteQueryPlan implements NonSelectQueryPlan {
 		SqmMutationStrategyHelper.cleanUpCollectionTables(
 				entityDescriptor,
 				(tableReference, attributeMapping) -> {
+					additionalPredicate = null;
+					final TableGroup collectionTableGroup = new MutatingTableReferenceGroupWrapper(
+							new NavigablePath( attributeMapping.getRootPathName() ),
+							attributeMapping,
+							(NamedTableReference) tableReference
+					);
+
+					attributeMapping.applyBaseRestrictions(
+							p -> additionalPredicate = Predicate.combinePredicates( additionalPredicate, p ),
+							collectionTableGroup,
+							false,
+							executionContext.getSession().getLoadQueryInfluencers().getEnabledFilters(),
+							null,
+							null
+					);
+
 					if ( missingRestriction ) {
-						return null;
+						return additionalPredicate;
 					}
 
 					final ForeignKeyDescriptor fkDescriptor = attributeMapping.getKeyDescriptor();
 					final Expression fkColumnExpression = MappingModelCreationHelper.buildColumnReferenceExpression(
-							new MutatingTableReferenceGroupWrapper(
-									new NavigablePath( attributeMapping.getRootPathName() ),
-									attributeMapping,
-									(NamedTableReference) tableReference
-							),
+							collectionTableGroup,
 							fkDescriptor.getKeyPart(),
 							null,
 							factory
@@ -173,7 +188,10 @@ public class SimpleDeleteQueryPlan implements NonSelectQueryPlan {
 							session
 					) );
 
-					return new InSubQueryPredicate( fkColumnExpression, matchingIdSubQuery, false );
+					return Predicate.combinePredicates(
+							additionalPredicate,
+							new InSubQueryPredicate( fkColumnExpression, matchingIdSubQuery, false )
+					);
 				},
 				( missingRestriction ? JdbcParameterBindings.NO_BINDINGS : jdbcParameterBindings ),
 				executionContextAdapter

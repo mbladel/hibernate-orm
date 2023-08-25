@@ -19,6 +19,8 @@ import org.hibernate.sql.model.ast.MutatingTableReference;
  * @author Steve Ebersole
  */
 public class TableDeleteStandard extends AbstractTableDelete {
+	private final String sqlWhereString;
+
 	public TableDeleteStandard(
 			MutatingTableReference mutatingTable,
 			MutationTarget<?> mutationTarget,
@@ -27,6 +29,23 @@ public class TableDeleteStandard extends AbstractTableDelete {
 			List<ColumnValueBinding> optLockRestrictionBindings,
 			List<ColumnValueParameter> parameters) {
 		super( mutatingTable, mutationTarget, sqlComment, keyRestrictionBindings, optLockRestrictionBindings, parameters );
+		this.sqlWhereString = null;
+	}
+
+	public TableDeleteStandard(
+			MutatingTableReference mutatingTable,
+			MutationTarget<?> mutationTarget,
+			String sqlComment,
+			List<ColumnValueBinding> keyRestrictionBindings,
+			List<ColumnValueBinding> optLockRestrictionBindings,
+			List<ColumnValueParameter> parameters,
+			String sqlWhereString) {
+		super( mutatingTable, mutationTarget, sqlComment, keyRestrictionBindings, optLockRestrictionBindings, parameters );
+		this.sqlWhereString = sqlWhereString;
+	}
+
+	public String getSqlWhereString() {
+		return sqlWhereString;
 	}
 
 	@Override
