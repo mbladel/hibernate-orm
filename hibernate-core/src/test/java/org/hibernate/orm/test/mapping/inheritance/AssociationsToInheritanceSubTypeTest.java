@@ -9,14 +9,20 @@ package org.hibernate.orm.test.mapping.inheritance;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,13 +31,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Laurent Almeras
  */
 @DomainModel( annotatedClasses = {
-		OneToManyToInheritanceSubTypeTest.SuperType.class,
-		OneToManyToInheritanceSubTypeTest.TypeA.class,
-		OneToManyToInheritanceSubTypeTest.TypeB.class,
-		OneToManyToInheritanceSubTypeTest.LinkedEntity.class
+		AssociationsToInheritanceSubTypeTest.SuperType.class,
+		AssociationsToInheritanceSubTypeTest.TypeA.class,
+		AssociationsToInheritanceSubTypeTest.TypeB.class,
+		AssociationsToInheritanceSubTypeTest.LinkedEntity.class
 } )
-@SessionFactory
-public class OneToManyToInheritanceSubTypeTest {
+@SessionFactory( useCollectingStatementInspector = true )
+@Jira( "https://hibernate.atlassian.net/browse/HHH-16616" )
+public class AssociationsToInheritanceSubTypeTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction(
@@ -50,18 +57,35 @@ public class OneToManyToInheritanceSubTypeTest {
 	}
 
 	@Test
-	public void basicTest(SessionFactoryScope scope) {
+	public void testFind(SessionFactoryScope scope) {
+		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
+		inspector.clear();
+		scope.inTransaction( session -> {
+			final LinkedEntity entity = session.find( LinkedEntity.class, 4 );
+			assertThat( entity.getTypeAS() ).hasSize( 1 );
+			inspector.assertExecutedCount( 2 );
+			inspector.assertNumberOfOccurrenceInQueryNoSpace( 1, "disc_col", 1 );
+		} );
+	}
+
+	@Test
+	public void testJoinFetch(SessionFactoryScope scope) {
+		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
+		inspector.clear();
 		scope.inTransaction( session -> {
 			final LinkedEntity entity = session.createQuery(
 					"from LinkedEntity e left join fetch e.typeAS",
 					LinkedEntity.class
 			).getSingleResult();
-			final List<TypeA> typeAS = entity.getTypeAS();
-			assertThat( typeAS ).hasSize( 1 );
+			assertThat( entity.getTypeAS() ).hasSize( 1 );
+			inspector.assertExecutedCount( 1 );
+			inspector.assertNumberOfOccurrenceInQueryNoSpace( 0, "disc_col", 1 );
 		} );
 	}
 
 	@Entity( name = "SuperType" )
+	@Inheritance( strategy = InheritanceType.SINGLE_TABLE )
+	@DiscriminatorColumn( name = "disc_col" )
 	public static class SuperType {
 		@Id
 		private Integer id;
@@ -106,6 +130,7 @@ public class OneToManyToInheritanceSubTypeTest {
 		private Integer id;
 
 		@OneToMany
+		@JoinColumn( name = "linked_id" )
 		private List<TypeA> typeAS = new ArrayList<>();
 
 		public LinkedEntity() {
