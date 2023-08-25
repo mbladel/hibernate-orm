@@ -3105,7 +3105,6 @@ public abstract class AbstractEntityPersister
 			TableGroup tableGroup,
 			SqlAstCreationState creationState) {
 		if ( needsDiscriminator() ) {
-//			predicateConsumer.accept( createDiscriminatorPredicate( alias, tableGroup, creationState ) );
 			pruneForSubclasses( tableGroup, Collections.singletonMap( getEntityName(), EntityNameUse.TREAT ) );
 		}
 	}
