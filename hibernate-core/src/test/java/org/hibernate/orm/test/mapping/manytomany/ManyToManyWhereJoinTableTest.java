@@ -13,8 +13,10 @@ import org.hibernate.annotations.SQLInsert;
 import org.hibernate.annotations.WhereJoinTable;
 
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -37,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 		ManyToManyWhereJoinTableTest.ProjectUsers.class,
 } )
 @SessionFactory
+@Jira( "https://hibernate.atlassian.net/browse/HHH-17105" )
 public class ManyToManyWhereJoinTableTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
@@ -53,13 +56,20 @@ public class ManyToManyWhereJoinTableTest {
 		} );
 	}
 
+	@AfterAll
+	public void tearDown(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			session.createMutationQuery( "delete from Project" ).executeUpdate();
+			session.createMutationQuery( "delete from User" ).executeUpdate();
+		} );
+	}
+
 	@Test
-	public void test(SessionFactoryScope scope) {
+	public void testWhereJoinTableRemove(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final User user = session.find( User.class, "user" );
 			assertThat( user.getManagedProjects().stream().map( Project::getName ) ).contains( "p1" );
 			assertThat( user.getOtherProjects().stream().map( Project::getName ) ).contains( "p1", "p2" );
-
 			final Project p1 = session.find( Project.class, "p1" );
 			p1.getManagers().remove( user );
 			assertThat( p1.getMembers().stream().map( User::getName ) ).contains( "user" );
