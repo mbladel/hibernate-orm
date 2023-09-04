@@ -8179,8 +8179,9 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 					} );
 				}
 
-				if ( tableDelete.getSqlWhereString() != null ) {
-					sqlBuffer.append( " and " ).append( tableDelete.getSqlWhereString() );
+				if ( tableDelete.getAdditionalPredicate() != null ) {
+					sqlBuffer.append( " and " );
+					tableDelete.getAdditionalPredicate().accept( this );
 				}
 			}
 			finally {

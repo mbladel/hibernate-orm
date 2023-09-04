@@ -17,6 +17,7 @@ import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
 import org.hibernate.metamodel.mapping.MappingModelExpressible;
 import org.hibernate.metamodel.mapping.internal.MappingModelCreationHelper;
+import org.hibernate.persister.collection.AbstractCollectionPersister;
 import org.hibernate.query.spi.DomainQueryExecutionContext;
 import org.hibernate.query.spi.NonSelectQueryPlan;
 import org.hibernate.query.spi.QueryParameterImplementor;
@@ -148,6 +149,13 @@ public class SimpleDeleteQueryPlan implements NonSelectQueryPlan {
 							executionContext.getSession().getLoadQueryInfluencers().getEnabledFilters(),
 							null,
 							null
+					);
+					Predicate.combinePredicates(
+							additionalPredicate,
+							( (AbstractCollectionPersister) attributeMapping.getCollectionDescriptor() ).getManyToManyInSubqueryPredicate(
+									executionContext.getSession()
+											.getLoadQueryInfluencers()
+											.getEnabledFilters() )
 					);
 
 					if ( missingRestriction ) {

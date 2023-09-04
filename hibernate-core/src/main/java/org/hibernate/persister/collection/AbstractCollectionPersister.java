@@ -65,6 +65,7 @@ import org.hibernate.metamodel.CollectionClassification;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
+import org.hibernate.metamodel.mapping.internal.ManyToManyCollectionPart;
 import org.hibernate.metamodel.mapping.internal.MappingModelCreationHelper;
 import org.hibernate.metamodel.mapping.internal.PluralAttributeMappingImpl;
 import org.hibernate.metamodel.model.domain.NavigableRole;
@@ -92,10 +93,15 @@ import org.hibernate.sql.ast.spi.SqlAliasBaseConstant;
 import org.hibernate.sql.ast.spi.SqlAliasBaseManager;
 import org.hibernate.sql.ast.spi.SqlAstCreationState;
 import org.hibernate.sql.ast.spi.SqlSelection;
+import org.hibernate.sql.ast.tree.delete.DeleteStatement;
 import org.hibernate.sql.ast.tree.expression.AliasedExpression;
 import org.hibernate.sql.ast.tree.expression.ColumnReference;
+import org.hibernate.sql.ast.tree.expression.Expression;
+import org.hibernate.sql.ast.tree.from.MutatingTableReferenceGroupWrapper;
+import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableReference;
+import org.hibernate.sql.ast.tree.predicate.InSubQueryPredicate;
 import org.hibernate.sql.ast.tree.predicate.Predicate;
 import org.hibernate.sql.ast.tree.select.QuerySpec;
 import org.hibernate.sql.ast.tree.select.SelectClause;
@@ -1791,19 +1797,66 @@ public abstract class AbstractCollectionPersister
 			);
 		}
 
-		//noinspection unchecked,rawtypes
-		return (RestrictedTableMutation) new TableDeleteStandard(
+		 final TableDeleteStandard tableDelete = new TableDeleteStandard(
 				tableReference,
 				this,
 				"one-shot delete for " + getRolePath(),
 				keyRestrictionBindings,
 				Collections.emptyList(),
-				parameterBinders,
-				sqlWhereString
+				parameterBinders
 		);
+
+		applyWhereFragments( tableDelete::applyPredicate, getTableName(), sqlWhereStringTemplate );
+		tableDelete.applyPredicate( getManyToManyInSubqueryPredicate( Collections.emptyMap() ) );
+
+		//noinspection unchecked,rawtypes
+		return (RestrictedTableMutation) tableDelete;
 	}
 
+	public Predicate getManyToManyInSubqueryPredicate(Map<String, Filter> enabledFilters) {
+		if ( manyToManyWhereString == null ) {
+			return null;
+		}
 
+		final ForeignKeyDescriptor fkDescriptor = ( (ManyToManyCollectionPart) attributeMapping.getElementDescriptor() ).getForeignKeyDescriptor();
+		final Expression fkColumnExpression = MappingModelCreationHelper.buildColumnReferenceExpression(
+				new MutatingTableReferenceGroupWrapper(
+						new NavigablePath( attributeMapping.getRootPathName() ),
+						attributeMapping,
+						new NamedTableReference( fkDescriptor.getKeyTable(), fkDescriptor.getKeyTable() )
+				),
+				fkDescriptor.getKeyPart(),
+				null,
+				factory
+		);
+
+		final QuerySpec matchingIdSubQuery = new QuerySpec( false );
+		final MutatingTableReferenceGroupWrapper tableGroup = new MutatingTableReferenceGroupWrapper(
+				new NavigablePath( attributeMapping.getRootPathName() ),
+				attributeMapping,
+				new NamedTableReference( fkDescriptor.getTargetTable(), "t" )
+		);
+		final Expression fkTargetColumnExpression = MappingModelCreationHelper.buildColumnReferenceExpression(
+				tableGroup,
+				fkDescriptor.getTargetPart(),
+				null,
+				factory
+		);
+		matchingIdSubQuery.getSelectClause().addSqlSelection( new SqlSelectionImpl( 0, fkTargetColumnExpression ) );
+		matchingIdSubQuery.getFromClause().addRoot(
+				tableGroup
+		);
+
+		applyBaseManyToManyRestrictions(
+				matchingIdSubQuery::applyPredicate,
+				tableGroup,
+				true,
+				enabledFilters,
+				null,
+				null
+		);
+		return new InSubQueryPredicate( fkColumnExpression, matchingIdSubQuery, false );
+	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
