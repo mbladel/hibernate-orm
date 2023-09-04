@@ -10,6 +10,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.hibernate.annotations.SQLInsert;
+import org.hibernate.annotations.SQLJoinTableRestriction;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.WhereJoinTable;
 
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -80,6 +82,8 @@ public class ManyToManyWhereJoinTableTest {
 			assertThat( user.getManagedProjects() ).isEmpty();
 			assertThat( user.getOtherProjects().stream().map( Project::getName ) ).contains( "p1", "p2" );
 		} );
+
+		// todo marco : add another test which verifyis simple delete query plans (i.e. delete from Project where ... ?)
 	}
 
 	@Entity( name = "Project" )
@@ -94,7 +98,8 @@ public class ManyToManyWhereJoinTableTest {
 				joinColumns = { @JoinColumn( name = "project_id" ) },
 				inverseJoinColumns = { @JoinColumn( name = "user_id" ) }
 		)
-		@WhereJoinTable( clause = "role = 'MANAGER'" )
+		@SQLJoinTableRestriction( "role = 'MANAGER'" )
+		@SQLRestriction( "deleted = false" )
 		@SQLInsert( sql = "insert into project_users (project_id, user_id, role) values (?, ?, 'MANAGER')" )
 		private Set<User> managers = new HashSet<>();
 
@@ -104,7 +109,7 @@ public class ManyToManyWhereJoinTableTest {
 				joinColumns = { @JoinColumn( name = "project_id" ) },
 				inverseJoinColumns = { @JoinColumn( name = "user_id" ) }
 		)
-		@WhereJoinTable( clause = "role = 'MEMBER'" )
+		@SQLJoinTableRestriction( "role = 'MEMBER'" )
 		@SQLInsert( sql = "insert into project_users (project_id, user_id, role) values (?, ?, 'MEMBER')" )
 		private Set<User> members = new HashSet<>();
 
@@ -151,12 +156,14 @@ public class ManyToManyWhereJoinTableTest {
 		private String name;
 
 		@ManyToMany( mappedBy = "managers" )
-		@WhereJoinTable( clause = "role = 'MANAGER'" )
+		@SQLJoinTableRestriction( "role = 'MANAGER'" )
 		private Set<Project> managedProjects = new HashSet<>();
 
 		@ManyToMany( mappedBy = "members" )
-		@WhereJoinTable( clause = "role = 'MEMBER'" )
+		@SQLJoinTableRestriction( "role = 'MEMBER'" )
 		private Set<Project> otherProjects = new HashSet<>();
+
+		private boolean deleted;
 
 		public User() {
 		}
