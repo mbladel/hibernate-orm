@@ -3,7 +3,7 @@ package org.hibernate.orm.test.embeddable;
 import org.hibernate.Hibernate;
 
 import org.hibernate.testing.orm.junit.DomainModel;
-import org.hibernate.testing.orm.junit.JiraKey;
+import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.junit.jupiter.api.BeforeAll;
@@ -26,13 +26,13 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
  */
 @SessionFactory
 @DomainModel( annotatedClasses = {
-		EmbeddableWithReusedColumnWithInheritanceTest.Food.class,
-		EmbeddableWithReusedColumnWithInheritanceTest.SolidFood.class,
-		EmbeddableWithReusedColumnWithInheritanceTest.LiquidFood.class,
-		EmbeddableWithReusedColumnWithInheritanceTest.WeightAndVolume.class
+		EmbeddableReusedColumnInheritanceTest.Food.class,
+		EmbeddableReusedColumnInheritanceTest.SolidFood.class,
+		EmbeddableReusedColumnInheritanceTest.LiquidFood.class,
+		EmbeddableReusedColumnInheritanceTest.WeightAndVolume.class
 } )
-@JiraKey( "HHH-17156" )
-public class EmbeddableWithReusedColumnWithInheritanceTest {
+@Jira( "https://hibernate.atlassian.net/browse/HHH-17156" )
+public class EmbeddableReusedColumnInheritanceTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
