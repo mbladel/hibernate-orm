@@ -31,6 +31,8 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 
 	private int currentPosition;
 	private Integer maxPosition;
+	private boolean beforeFirst;
+	private boolean afterLast;
 
 	public FetchingScrollableResultsImpl(
 			JdbcValues jdbcValues,
@@ -51,6 +53,7 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 		resultInitializer = extractResultInitializer( rowReader );
 
 		this.maxPosition = jdbcValuesSourceProcessingState.getQueryOptions().getEffectiveLimit().getMaxRows();
+		beforeFirst = true;
 	}
 
 	private static <R> EntityInitializer extractResultInitializer(RowReader<R> rowReader) {
@@ -68,20 +71,31 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 		if ( maxPosition != null && maxPosition <= currentPosition ) {
 			currentRow = null;
 			currentPosition = maxPosition + 1;
+			afterLast = true;
 			return false;
 		}
 
 		if ( isResultSetEmpty() ) {
 			currentRow = null;
-			currentPosition = 0;
 			return false;
 		}
 
-		boolean afterLast = prepareCurrentRow();
+		if ( beforeFirst ) {
+			boolean hasResult = getRowProcessingState().next();
+			if ( !hasResult ) {
+				currentRow = null;
+				currentPosition = 0;
+				beforeFirst = false;
+				return false;
+			}
+		}
+
+		boolean last = prepareCurrentRow();
 
 		currentPosition++;
+		beforeFirst = false;
 
-		if ( afterLast ) {
+		if ( last ) {
 			if ( maxPosition == null ) {
 				// we just hit the last position
 				maxPosition = currentPosition;
@@ -117,7 +131,7 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 			// In the latter scenario, the previous logical row
 			// really is the last logical row.
 			//
-			if ( getRowProcessingState().isAfterLast() && maxPosition != null && currentPosition > maxPosition ) {
+			if ( afterLast ) {
 				// position cursor to the last row
 				getRowProcessingState().last();
 				keyToRead = getEntityKey();
@@ -129,6 +143,7 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 				// in skipping
 
 				getRowProcessingState().previous();
+				afterLast = false;
 
 				// sequentially read the result set in reverse until we recognize
 				// a change in the key value.  At that point, we are pointed at
@@ -154,6 +169,7 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 			// Read backwards until we read past the first physical sequential
 			// row with the key we are interested in loading
 			while ( getRowProcessingState().previous() ) {
+				afterLast = false;
 				EntityKey checkKey = getEntityKey();
 
 				if ( !keyToRead.equals( checkKey ) ) {
@@ -229,13 +245,13 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 		}
 		else {
 			final RowProcessingStateStandardImpl rowProcessingState = getRowProcessingState();
-			if ( isResultSetEmpty() || rowProcessingState.isAfterLast() ) {
+			if ( isResultSetEmpty() || afterLast ) {
 				// should not be able to reach last without maxPosition being set
 				// unless there are no results
 				return false;
 			}
 
-			while ( !rowProcessingState.isAfterLast() ) {
+			while ( !afterLast ) {
 				more = next();
 			}
 		}
@@ -258,6 +274,7 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 	@Override
 	public void beforeFirst() {
 		getRowProcessingState().beforeFirst();
+		beforeFirst = true;
 		currentRow = null;
 		currentPosition = 0;
 	}
@@ -302,13 +319,9 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 
 	private boolean prepareCurrentRow() {
 		final RowProcessingStateStandardImpl rowProcessingState = getRowProcessingState();
-		if ( rowProcessingState.isBeforeFirst() ) {
-			rowProcessingState.next();
-		}
-
 		final RowReader<R> rowReader = getRowReader();
 
-		boolean afterLast = false;
+		boolean last = false;
 		boolean resultProcessed = false;
 
 		final EntityKey entityKey = getEntityKey();
@@ -328,7 +341,7 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 					if ( !entityKey.equals( entityKey2 ) ) {
 						resultInitializer.finishUpRow( rowProcessingState );
 						resultProcessed = true;
-						afterLast = false;
+						last = false;
 					}
 					else {
 						rowReader.readRow( rowProcessingState, getProcessingOptions() );
@@ -336,7 +349,7 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 					}
 				}
 				else {
-					afterLast = true;
+					last = true;
 					resultProcessed = true;
 				}
 
@@ -349,12 +362,12 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 		}
 		persistenceContext.initializeNonLazyCollections();
 		afterScrollOperation();
-		return afterLast;
+		return last;
 	}
 
 
 	private boolean isResultSetEmpty() {
-		return currentPosition == 0 && !getRowProcessingState().isBeforeFirst() && !getRowProcessingState().isAfterLast();
+		return currentPosition == 0 && !beforeFirst && !afterLast;
 	}
 
 	private EntityKey getEntityKey() {
@@ -363,5 +376,4 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 		resultInitializer.finishUpRow( getRowProcessingState() );
 		return entityKey;
 	}
-
 }
