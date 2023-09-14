@@ -68,22 +68,17 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 
 	@Override
 	public boolean next() {
-		if ( maxPosition != null && maxPosition <= currentPosition ) {
-			currentRow = null;
+		if ( isResultSetEmpty() ) {
+			return false;
+		}
+		else if ( maxPosition != null && maxPosition <= currentPosition ) {
 			currentPosition = maxPosition + 1;
+			currentRow = null;
 			afterLast = true;
 			return false;
 		}
-
-		if ( isResultSetEmpty() ) {
-			currentRow = null;
-			return false;
-		}
-
-		if ( beforeFirst ) {
-			boolean hasResult = getRowProcessingState().next();
-			if ( !hasResult ) {
-				currentRow = null;
+		else if ( beforeFirst ) {
+			if ( !getRowProcessingState().next() ) {
 				currentPosition = 0;
 				beforeFirst = false;
 				return false;
@@ -92,8 +87,8 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 
 		boolean last = prepareCurrentRow();
 
-		currentPosition++;
 		beforeFirst = false;
+		currentPosition++;
 
 		if ( last ) {
 			if ( maxPosition == null ) {
@@ -110,15 +105,14 @@ public class FetchingScrollableResultsImpl<R> extends AbstractScrollableResults<
 
 	@Override
 	public boolean previous() {
-		if ( currentPosition <= 1 ) {
-			currentPosition = 0;
-			currentRow = null;
-			return false;
-		}
-
 		if ( getRowProcessingState().isFirst() ) {
 			// don't even bother trying to read any further
 			currentRow = null;
+		}
+		else if ( currentPosition <= 1 ) {
+			currentPosition = 0;
+			currentRow = null;
+			return false;
 		}
 		else {
 			EntityKey keyToRead = null;
