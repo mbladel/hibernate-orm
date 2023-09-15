@@ -57,6 +57,17 @@ public class AnyInsertSelectTest {
 		} );
 	}
 
+	@Test
+	public void testTypeSelect(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final Object result = session.createQuery(
+					"select type(d.parent) from DocumentEntity d",
+					Object.class
+			).getSingleResult();
+			assertThat( result ).isNotNull();
+		} );
+	}
+
 	public interface IDocumentEntity {
 		Long getId();
 
