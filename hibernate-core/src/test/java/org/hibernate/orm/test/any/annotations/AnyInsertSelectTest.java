@@ -48,7 +48,7 @@ public class AnyInsertSelectTest {
 	}
 
 	@Test
-	public void test(SessionFactoryScope scope) {
+	public void testInsertSelect(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final int count = session.createMutationQuery(
 					"insert into DocumentEntity(name, parent) select name, parent from DocumentEntity"
