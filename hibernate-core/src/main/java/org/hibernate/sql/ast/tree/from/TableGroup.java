@@ -9,6 +9,7 @@ package org.hibernate.sql.ast.tree.from;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.hibernate.Incubating;
 import org.hibernate.metamodel.mapping.EntityValuedModelPart;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.ModelPartContainer;
@@ -202,16 +203,24 @@ public interface TableGroup extends SqlAstNode, ColumnReferenceQualifier, SqmPat
 	default boolean hasRealJoins() {
 		for ( TableGroupJoin join : getTableGroupJoins() ) {
 			final TableGroup joinedGroup = join.getJoinedGroup();
-			if ( !( joinedGroup instanceof VirtualTableGroup ) || joinedGroup.hasRealJoins() ) {
+			if ( !joinedGroup.isVirtual() || joinedGroup.hasRealJoins() ) {
 				return true;
 			}
 		}
 		for ( TableGroupJoin join : getNestedTableGroupJoins() ) {
 			final TableGroup joinedGroup = join.getJoinedGroup();
-			if ( !( joinedGroup instanceof VirtualTableGroup ) || joinedGroup.hasRealJoins() ) {
+			if ( !joinedGroup.isVirtual() || joinedGroup.hasRealJoins() ) {
 				return true;
 			}
 		}
+		return false;
+	}
+
+	/**
+	 * Flag that indicates weather this table group is {@linkplain VirtualTableGroup virtual} or not
+	 */
+	@Incubating
+	default boolean isVirtual() {
 		return false;
 	}
 }
