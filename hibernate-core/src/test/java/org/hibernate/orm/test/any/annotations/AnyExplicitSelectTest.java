@@ -50,7 +50,7 @@ public class AnyExplicitSelectTest {
 	public void testSelectAny(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final IDocumentEntity result = session.createQuery(
-					"select parent from DocumentEntity",
+					"select parent from DocumentEntity where id = 1",
 					IDocumentEntity.class
 			).getSingleResult();
 			assertThat( result ).isInstanceOf( DocClientEntity.class );
@@ -62,12 +62,23 @@ public class AnyExplicitSelectTest {
 	public void testSelectTuple(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final Tuple result = session.createQuery(
-					"select id, name, parent from DocumentEntity",
+					"select id, name, parent from DocumentEntity where id = 1",
 					Tuple.class
 			).getSingleResult();
 			assertThat( result.get( 0, Long.class ) ).isEqualTo( 1L );
 			assertThat( result.get( 1, String.class ) ).isEqualTo( "test_document" );
 			assertThat( result.get( 2, IDocumentEntity.class ).getName() ).isEqualTo( "test_client" );
+		} );
+	}
+
+	@Test
+	public void testInsertSelect(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final int count = session.createMutationQuery(
+					"insert into DocumentEntity(name, parent) " +
+							"select name, parent from DocumentEntity where name = 'test_document'"
+			).executeUpdate();
+			assertThat( count ).isEqualTo( 1 );
 		} );
 	}
 
