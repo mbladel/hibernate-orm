@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Tuple;
@@ -38,9 +39,9 @@ public class AnyExplicitSelectTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			final DocClientEntity docClientEntity = new DocClientEntity( 1L, "test_client" );
+			final DocClientEntity docClientEntity = new DocClientEntity( "test_client" );
 			session.persist( docClientEntity );
-			final DocumentEntity documentEntity = new DocumentEntity( 1L, "test_document" );
+			final DocumentEntity documentEntity = new DocumentEntity( "test_document" );
 			documentEntity.setParent( docClientEntity );
 			session.persist( documentEntity );
 		} );
@@ -80,6 +81,9 @@ public class AnyExplicitSelectTest {
 			).executeUpdate();
 			assertThat( count ).isEqualTo( 1 );
 		} );
+		scope.inTransaction( session -> assertThat(
+				session.createQuery( "from DocumentEntity", DocumentEntity.class ).getResultList()
+		).hasSize( 2 ) );
 	}
 
 	@Test
@@ -89,7 +93,7 @@ public class AnyExplicitSelectTest {
 					"select type(d.parent) from DocumentEntity d",
 					Object.class
 			).getSingleResult();
-			assertThat( result ).isEqualTo("doc_client");
+			assertThat( result ).isEqualTo( "doc_client" );
 		} );
 	}
 
@@ -102,6 +106,7 @@ public class AnyExplicitSelectTest {
 	@Entity( name = "DocumentEntity" )
 	public static class DocumentEntity implements IDocumentEntity {
 		@Id
+		@GeneratedValue
 		private Long id;
 
 		private String name;
@@ -117,8 +122,7 @@ public class AnyExplicitSelectTest {
 		public DocumentEntity() {
 		}
 
-		public DocumentEntity(Long id, String name) {
-			this.id = id;
+		public DocumentEntity(String name) {
 			this.name = name;
 		}
 
@@ -144,6 +148,7 @@ public class AnyExplicitSelectTest {
 	@Entity( name = "DocClientEntity" )
 	public static class DocClientEntity implements IDocumentEntity {
 		@Id
+		@GeneratedValue
 		private Long id;
 
 		private String name;
@@ -151,8 +156,7 @@ public class AnyExplicitSelectTest {
 		public DocClientEntity() {
 		}
 
-		public DocClientEntity(Long id, String name) {
-			this.id = id;
+		public DocClientEntity(String name) {
 			this.name = name;
 		}
 
