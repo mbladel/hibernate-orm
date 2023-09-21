@@ -188,10 +188,27 @@ public class NavigablePath implements DotIdentifierSequence, Serializable {
 	 */
 	public boolean isParent(@Nullable NavigablePath navigablePath) {
 		while ( navigablePath != null ) {
-			if ( this.equals( navigablePath.getParent() ) ) {
+			if ( this.isCompatibleParent( navigablePath.getParent() ) ) {
 				return true;
 			}
 			navigablePath = navigablePath.getParent();
+		}
+		return false;
+	}
+
+	private boolean isCompatibleParent(@Nullable NavigablePath p) {
+		if ( this == p ) {
+			return true;
+		}
+		if ( p != null && localNamesMatch( p ) && Objects.equals( getAlias(), p.getAlias() ) ) {
+			// this check uses getParent() instead of getRealParent() to include treated paths
+			final NavigablePath parent = getParent();
+			if ( parent != null ) {
+				return parent.isCompatibleParent( p.getParent() );
+			}
+			else {
+				return p.getParent() == null;
+			}
 		}
 		return false;
 	}
@@ -240,7 +257,7 @@ public class NavigablePath implements DotIdentifierSequence, Serializable {
 	 */
 	public boolean isParentOrEqual(@Nullable NavigablePath navigablePath) {
 		while ( navigablePath != null ) {
-			if ( this.equals( navigablePath ) ) {
+			if ( this.isCompatibleParent( navigablePath ) ) {
 				return true;
 			}
 			navigablePath = navigablePath.getParent();
