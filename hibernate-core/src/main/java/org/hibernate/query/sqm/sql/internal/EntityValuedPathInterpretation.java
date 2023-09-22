@@ -261,9 +261,9 @@ public class EntityValuedPathInterpretation<T> extends AbstractSqmPathInterpreta
 			SqmToSqlAstConverter sqlAstCreationState) {
 		final boolean expandToAllColumns;
 		final Clause currentClause = sqlAstCreationState.getCurrentClauseStack().getCurrent();
-		if ( sqlAstCreationState.getCurrentProcessingState().isTopLevel() &&
-				( currentClause == Clause.GROUP || currentClause == Clause.ORDER ) ) {
-			final SqmQuerySpec<?> querySpec = (SqmQuerySpec<?>) sqlAstCreationState.getCurrentSqmQueryPart();
+		if ( currentClause == Clause.GROUP || currentClause == Clause.ORDER ) {
+			assert sqlAstCreationState.getCurrentSqmQueryPart().isSimpleQueryPart();
+			final SqmQuerySpec<?> querySpec = sqlAstCreationState.getCurrentSqmQueryPart().getFirstQuerySpec();
 			if ( currentClause == Clause.ORDER && !querySpec.groupByClauseContains( navigablePath ) ) {
 				// We must ensure that the order by expression be expanded but only if the group by
 				// contained the same expression, and that was expanded as well
@@ -272,7 +272,12 @@ public class EntityValuedPathInterpretation<T> extends AbstractSqmPathInterpreta
 			else {
 				// When the table group is selected and the navigablePath is selected we need to expand
 				// to all columns, as we must make sure we include all columns present in the select clause
-				expandToAllColumns = isSelected( tableGroup, navigablePath, querySpec );
+				expandToAllColumns = isSelected(
+						tableGroup,
+						navigablePath,
+						querySpec,
+						sqlAstCreationState.getCurrentProcessingState().isTopLevel()
+				);
 			}
 		}
 		else {
@@ -351,38 +356,51 @@ public class EntityValuedPathInterpretation<T> extends AbstractSqmPathInterpreta
 		);
 	}
 
-	private static boolean isSelected(TableGroup tableGroup, NavigablePath path, SqmQuerySpec<?> sqmQuerySpec) {
+	private static boolean isSelected(
+			TableGroup tableGroup,
+			NavigablePath path,
+			SqmQuerySpec<?> sqmQuerySpec,
+			boolean isTopLevel) {
 		// If the table group is selected (initialized), check if the entity valued
 		// navigable path or any child path appears in the select clause
-		return tableGroup.isInitialized() && selectClauseContains( path, sqmQuerySpec );
+		return tableGroup.isInitialized() && selectClauseContains(
+				path,
+				isTopLevel ? null : tableGroup.getNavigablePath(),
+				sqmQuerySpec
+		);
 	}
 
-	private static boolean selectClauseContains(NavigablePath path, SqmQuerySpec<?> sqmQuerySpec) {
+	private static boolean selectClauseContains(
+			NavigablePath path,
+			NavigablePath tableGroupPath,
+			SqmQuerySpec<?> sqmQuerySpec) {
 		final List<SqmSelection<?>> selections = sqmQuerySpec.getSelectClause() == null
 				? Collections.emptyList()
 				: sqmQuerySpec.getSelectClause().getSelections();
 		for ( SqmSelection<?> selection : selections ) {
-			if ( selectionContains( selection.getSelectableNode(), path ) ) {
+			if ( selectionContains( selection.getSelectableNode(), path, tableGroupPath ) ) {
 				return true;
 			}
 		}
 		return false;
 	}
 
-	private static boolean selectionContains(Selection<?> selection, NavigablePath path) {
-		if ( selection instanceof SqmPath && path.isParentOrEqual( ( (SqmPath<?>) selection ).getNavigablePath() ) ) {
-			return true;
+	private static boolean selectionContains(Selection<?> selection, NavigablePath path, NavigablePath tableGroupPath) {
+		if ( selection instanceof SqmPath<?> ) {
+			final SqmPath<?> sqmPath = (SqmPath<?>) selection;
+			return ( tableGroupPath == null || sqmPath.getLhs().getNavigablePath().equals( tableGroupPath ) )
+					&& path.isParentOrEqual( sqmPath.getNavigablePath() );
 		}
 		else if ( selection.isCompoundSelection() ) {
 			for ( Selection<?> compoundSelection : selection.getCompoundSelectionItems() ) {
-				if ( selectionContains( compoundSelection, path ) ) {
+				if ( selectionContains( compoundSelection, path, tableGroupPath ) ) {
 					return true;
 				}
 			}
 		}
 		else if ( selection instanceof SqmDynamicInstantiation ) {
 			for ( SqmDynamicInstantiationArgument<?> argument : ( (SqmDynamicInstantiation<?>) selection ).getArguments() ) {
-				if ( selectionContains( argument.getSelectableNode(), path ) ) {
+				if ( selectionContains( argument.getSelectableNode(), path, tableGroupPath ) ) {
 					return true;
 				}
 			}
