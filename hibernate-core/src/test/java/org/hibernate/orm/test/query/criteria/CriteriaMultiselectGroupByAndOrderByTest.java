@@ -10,10 +10,19 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.dialect.MySQLDialect;
+import org.hibernate.dialect.SQLServerDialect;
+import org.hibernate.dialect.SybaseDialect;
+import org.hibernate.query.criteria.HibernateCriteriaBuilder;
+import org.hibernate.query.criteria.JpaCriteriaQuery;
+import org.hibernate.query.criteria.JpaDerivedRoot;
+import org.hibernate.query.criteria.JpaSubQuery;
+
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.hibernate.testing.orm.junit.SkipForDialect;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -39,7 +48,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 		CriteriaMultiselectGroupByAndOrderByTest.Secondary.class,
 } )
 @SessionFactory
-@Jira( "https://hibernate.atlassian.net/browse/HHH-17085" )
 public class CriteriaMultiselectGroupByAndOrderByTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
@@ -72,11 +80,13 @@ public class CriteriaMultiselectGroupByAndOrderByTest {
 	}
 
 	@Test
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-17085" )
 	public void testCriteriaGroupBy(SessionFactoryScope scope) {
 		executeQuery( scope, false );
 	}
 
 	@Test
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-17085" )
 	public void testCriteriaGroupByAndOrderBy(SessionFactoryScope scope) {
 		executeQuery( scope, true );
 	}
@@ -88,14 +98,58 @@ public class CriteriaMultiselectGroupByAndOrderByTest {
 			final Root<Primary> root = query.from( Primary.class );
 			final Join<Primary, Secondary> join = root.join( "secondary" );
 			query.multiselect(
-					join.get( "entityName" ).alias( "secondary" ),
-					cb.sum( root.get( "amount" ) ).alias( "sum" )
+					join.get( "entityName" ).alias( "secondary_name" ),
+					cb.sum( root.get( "amount" ) ).alias( "amount_sum" )
 			).groupBy( join );
 			if ( order ) {
 				query.orderBy( cb.desc( join.get( "entityName" ) ) );
 			}
 			final List<Tuple> resultList = session.createQuery( query ).getResultList();
 			assertThat( resultList ).hasSize( 3 );
+			assertThat( resultList.stream().map( tuple -> tuple.get( 0, String.class ) ) ).contains( "a", "b", "c" );
+		} );
+	}
+
+	@Test
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-17231" )
+	public void testSubqueryGroupBy(SessionFactoryScope scope) {
+		executeSubquery( scope, false );
+	}
+
+	@Test
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-17231" )
+	@SkipForDialect( dialectClass = SQLServerDialect.class, reason = "The ORDER BY clause is invalid derived tables, used for tuple in-subquery emulation")
+	@SkipForDialect( dialectClass = SybaseDialect.class, reason = "An ORDER BY clause is not allowed in a derived table, used for tuple in-subquery emulation")
+	public void testSubqueryGroupByAndOrderBy(SessionFactoryScope scope) {
+		executeSubquery( scope, true );
+	}
+
+	private void executeSubquery(SessionFactoryScope scope, boolean order) {
+		scope.inTransaction( session -> {
+			final HibernateCriteriaBuilder cb = session.getCriteriaBuilder();
+			final JpaCriteriaQuery<Tuple> query = cb.createTupleQuery();
+			final JpaSubQuery<Tuple> subquery = query.subquery( Tuple.class );
+			final Root<Primary> sqRoot = subquery.from( Primary.class );
+			final Join<Object, Object> secondaryJoin = sqRoot.join( "secondary" );
+			subquery.multiselect(
+					secondaryJoin.get( "entityName" ).alias( "secondary_name" ),
+					cb.sum( sqRoot.get( "amount" ) ).alias( "amount_sum" )
+			).groupBy(
+					secondaryJoin
+			);
+			if ( order ) {
+				subquery.orderBy(
+						cb.desc( secondaryJoin.get( "entityName" ) )
+				);
+			}
+			final JpaDerivedRoot<Tuple> root = query.from( subquery );
+			query.multiselect(
+					root.get( "secondary_name" ),
+					root.get( "amount_sum" )
+			);
+			final List<Tuple> resultList = session.createQuery( query ).getResultList();
+			assertThat( resultList ).hasSize( 3 );
+			assertThat( resultList.stream().map( tuple -> tuple.get( 0, String.class ) ) ).contains( "a", "b", "c" );
 		} );
 	}
 
