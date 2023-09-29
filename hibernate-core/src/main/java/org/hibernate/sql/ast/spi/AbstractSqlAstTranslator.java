@@ -79,6 +79,7 @@ import org.hibernate.query.sqm.function.MultipatternSqmFunctionDescriptor;
 import org.hibernate.query.sqm.function.SelfRenderingAggregateFunctionSqlAstExpression;
 import org.hibernate.query.sqm.function.SelfRenderingFunctionSqlAstExpression;
 import org.hibernate.query.sqm.function.SqmFunctionDescriptor;
+import org.hibernate.query.sqm.sql.internal.EntityValuedPathInterpretation;
 import org.hibernate.query.sqm.sql.internal.SqmParameterInterpretation;
 import org.hibernate.query.sqm.sql.internal.SqmPathInterpretation;
 import org.hibernate.query.sqm.tree.expression.Conversion;
@@ -7091,6 +7092,10 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 						|| subQuery.getHavingClauseRestrictions() != null ) {
 					// If we have a group by or having clause, we have to move the tuple comparison emulation to the HAVING clause
 					visitWhereClause( subQuery.getWhereClauseRestrictions() );
+					// todo: test which Dialects support this, maybe we need a dedicated flag?
+					if ( !dialect.getFunctionalDependencyAnalysisSupport().supportsTableGroups() ) {
+						addSelectionToGroupByIfNeeded( subQuery );
+					}
 					visitGroupByClause( subQuery, SelectItemReferenceStrategy.EXPRESSION );
 
 					appendSql( " having " );
@@ -7147,6 +7152,34 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 			// TODO: We could use nested queries and use row numbers to emulate this
 			throw new IllegalArgumentException( "Can't emulate IN predicate with tuples and limit/offset or set operations: " + predicate );
 		}
+	}
+
+	private void addSelectionToGroupByIfNeeded(QuerySpec subQuery) {
+		for ( Expression groupBy : subQuery.getGroupByClauseExpressions() ) {
+			if ( groupBy instanceof EntityValuedPathInterpretation<?> ) {
+				final EntityValuedPathInterpretation<?> path = (EntityValuedPathInterpretation<?>) groupBy;
+				for ( SqlSelection selection : subQuery.getSelectClause().getSqlSelections() ) {
+					final ColumnReference selectedColumn = selection.getExpression().getColumnReference();
+					if ( selectedColumn != null && entityValuedPathNeeds( path, selectedColumn ) ) {
+						//noinspection unchecked
+						( (List<Expression>) path.getSqlTuple().getExpressions() ).add( selection.getExpression() );
+					}
+				}
+			}
+		}
+	}
+
+	private boolean entityValuedPathNeeds(EntityValuedPathInterpretation<?> path, ColumnReference selectedColumn) {
+		boolean needed = false;
+		for ( ColumnReference groupByColumn : path.getColumnReferences() ) {
+			if ( groupByColumn.getQualifier().equals( selectedColumn.getQualifier() ) ) {
+				needed = true;
+				if ( groupByColumn.getColumnExpression().equals( selectedColumn.getColumnExpression() ) ) {
+					return false;
+				}
+			}
+		}
+		return needed;
 	}
 
 	protected interface SubQueryRelationalRestrictionEmulationRenderer<X extends Expression> {
