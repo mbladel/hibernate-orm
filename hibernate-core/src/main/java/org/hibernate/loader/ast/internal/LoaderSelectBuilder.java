@@ -416,7 +416,7 @@ public class LoaderSelectBuilder {
 				loadQueryInfluencers,
 				lockOptions != null ? lockOptions : LockOptions.NONE,
 				determineGraphTraversalState( loadQueryInfluencers, creationContext.getSessionFactory() ),
-				determineWhetherToForceIdSelection( numberOfKeysToLoad, restrictedParts ),
+				determineWhetherToForceIdSelection( numberOfKeysToLoad, restrictedParts, loadQueryInfluencers ),
 				jdbcParameterConsumer
 		);
 	}
@@ -444,8 +444,15 @@ public class LoaderSelectBuilder {
 		);
 	}
 
-	private static boolean determineWhetherToForceIdSelection(int numberOfKeysToLoad, List<ModelPart> restrictedParts) {
+	private static boolean determineWhetherToForceIdSelection(
+			int numberOfKeysToLoad,
+			List<ModelPart> restrictedParts,
+			LoadQueryInfluencers loadQueryInfluencers) {
 		if ( numberOfKeysToLoad > 1 ) {
+			return true;
+		}
+
+		if ( loadQueryInfluencers.getEnabledCascadingFetchProfile() != null ) {
 			return true;
 		}
 
