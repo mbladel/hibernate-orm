@@ -113,7 +113,7 @@ public class MergeWithAssociatedCollectionAndCascadeTest {
 
 	@Embeddable
 	public static class CompositePk implements Serializable {
-		@ManyToOne
+		@ManyToOne(cascade = CascadeType.ALL)
 		@JoinColumn( name = "some_entity_id", nullable = false )
 		private SomeEntity someEntity;
 

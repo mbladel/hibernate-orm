@@ -361,6 +361,7 @@ public class LoaderSelectBuilder {
 	private final EntityGraphTraversalState entityGraphTraversalState;
 
 	private int fetchDepth;
+	private boolean isCascading;
 	private RowCardinality rowCardinality = RowCardinality.SINGLE;
 
 	private LoaderSelectBuilder(
@@ -929,16 +930,19 @@ public class LoaderSelectBuilder {
 					final CascadingAction<?> cascadingAction =
 							loadQueryInfluencers.getEnabledCascadingFetchProfile().getCascadingAction();
 					if ( cascadeStyle == null || cascadeStyle.doCascade( cascadingAction ) ) {
-						if ( isABag && isInsideIdentifier( fetchablePath ) ) {
-							// We should never join collections inside the entity's identifier when cascading
+						if ( isABag && fetchDepth > 0 && !isCascading ) {
 							fetchTiming = FetchTiming.DELAYED;
 							joined = false;
 						}
 						else {
+							isCascading = true;
 							fetchTiming = FetchTiming.IMMEDIATE;
 							// In 5.x the CascadeEntityJoinWalker only join fetched the first collection fetch
 							joined = !isFetchablePluralAttributeMapping || rowCardinality == RowCardinality.SINGLE;
 						}
+					}
+					else {
+						isCascading = false;
 					}
 				}
 			}
@@ -1031,16 +1035,6 @@ public class LoaderSelectBuilder {
 				}
 			}
 		};
-	}
-
-	private static boolean isInsideIdentifier(NavigablePath fetchablePath) {
-		while ( fetchablePath != null ) {
-			if ( fetchablePath instanceof EntityIdentifierNavigablePath ) {
-				return true;
-			}
-			fetchablePath = fetchablePath.getParent();
-		}
-		return false;
 	}
 
 	private boolean shouldExplicitFetch(Integer maxFetchDepth, Fetchable fetchable, LoaderSqlAstCreationState creationState) {
