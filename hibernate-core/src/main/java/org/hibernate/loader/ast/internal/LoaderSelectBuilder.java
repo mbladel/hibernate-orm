@@ -929,9 +929,16 @@ public class LoaderSelectBuilder {
 					final CascadingAction<?> cascadingAction =
 							loadQueryInfluencers.getEnabledCascadingFetchProfile().getCascadingAction();
 					if ( cascadeStyle == null || cascadeStyle.doCascade( cascadingAction ) ) {
-						fetchTiming = FetchTiming.IMMEDIATE;
-						// In 5.x the CascadeEntityJoinWalker only join fetched the first collection fetch
-						joined = !isFetchablePluralAttributeMapping || rowCardinality == RowCardinality.SINGLE;
+						if ( isABag && isInsideIdentifier( fetchablePath ) ) {
+							// We should never join collections inside the entity's identifier when cascading
+							fetchTiming = FetchTiming.DELAYED;
+							joined = false;
+						}
+						else {
+							fetchTiming = FetchTiming.IMMEDIATE;
+							// In 5.x the CascadeEntityJoinWalker only join fetched the first collection fetch
+							joined = !isFetchablePluralAttributeMapping || rowCardinality == RowCardinality.SINGLE;
+						}
 					}
 				}
 			}
@@ -1024,6 +1031,16 @@ public class LoaderSelectBuilder {
 				}
 			}
 		};
+	}
+
+	private static boolean isInsideIdentifier(NavigablePath fetchablePath) {
+		while ( fetchablePath != null ) {
+			if ( fetchablePath instanceof EntityIdentifierNavigablePath ) {
+				return true;
+			}
+			fetchablePath = fetchablePath.getParent();
+		}
+		return false;
 	}
 
 	private boolean shouldExplicitFetch(Integer maxFetchDepth, Fetchable fetchable, LoaderSqlAstCreationState creationState) {
