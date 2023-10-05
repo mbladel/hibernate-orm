@@ -45,7 +45,7 @@ public abstract class AbstractEntityResultGraphNode extends AbstractFetchParent 
 		final EntityResultGraphNode entityResultGraphNode = (EntityResultGraphNode) fetchParent;
 		final Fetch fetch = creationState.visitIdentifierFetch( entityResultGraphNode );
 		if ( navigablePath.getParent() == null && !creationState.forceIdentifierSelection() &&
-				( !( fetch instanceof FetchParent ) || !( (FetchParent) fetch ).containsCollectionFetches() ) ) {
+				( fetch.asFetchParent() == null || !fetch.asFetchParent().containsCollectionFetches() ) ) {
 			identifierFetch = null;
 		}
 		else {
