@@ -37,6 +37,7 @@ import org.hibernate.metamodel.mapping.NonAggregatedIdentifierMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
+import org.hibernate.sql.results.graph.entity.LoadingEntityEntry;
 import org.hibernate.stat.spi.StatisticsImplementor;
 
 import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
@@ -105,10 +106,17 @@ public class DefaultLoadEventListener implements LoadEventListener {
 				event.setResult( load( event, persister, keyToLoad, loadType ) );
 			}
 			else {
-				//return a proxy if appropriate
-				Object result = event.getLockMode() == LockMode.NONE
-						? proxyOrLoad( event, persister, keyToLoad, loadType )
-						: lockAndLoad( event, persister, keyToLoad, loadType );
+				final Object result;
+				final Object loadingEntityInstance = getLoadingEntityEntryInstance( keyToLoad, session );
+				if ( loadingEntityInstance != null ) {
+					result = loadingEntityInstance;
+				}
+				else {
+					//return a proxy if appropriate
+					result = event.getLockMode() == LockMode.NONE
+							? proxyOrLoad( event, persister, keyToLoad, loadType )
+							: lockAndLoad( event, persister, keyToLoad, loadType );
+				}
 				event.setResult( result );
 			}
 		}
@@ -116,6 +124,18 @@ public class DefaultLoadEventListener implements LoadEventListener {
 			LOG.unableToLoadCommand( e );
 			throw e;
 		}
+	}
+
+	private Object getLoadingEntityEntryInstance(EntityKey keyToLoad, EventSource session) {
+		final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
+		if ( persistenceContext.hasLoadContext() ) {
+			final LoadingEntityEntry loadingEntityEntry = persistenceContext.getLoadContexts()
+					.findLoadingEntityEntry( keyToLoad );
+			if ( loadingEntityEntry != null ) {
+				return loadingEntityEntry.getEntityInstance();
+			}
+		}
+		return null;
 	}
 
 	//TODO: this method is completely unreadable, clean it up:

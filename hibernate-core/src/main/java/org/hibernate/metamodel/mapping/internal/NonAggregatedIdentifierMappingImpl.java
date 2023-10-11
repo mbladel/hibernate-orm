@@ -295,19 +295,12 @@ public class NonAggregatedIdentifierMappingImpl extends AbstractCompositeIdentif
 						);
 					}
 					if ( o == null ) {
-						final LoadingEntityEntry loadingEntityEntry = persistenceContext.getLoadContexts()
-								.findLoadingEntityEntry( entityKey );
-						if ( loadingEntityEntry != null ) {
-							o = loadingEntityEntry.getEntityInstance();
-						}
-						else {
-							o = session.internalLoad(
-									entityPersister.getEntityName(),
-									entityKey.getIdentifier(),
-									true,
-									true
-							);
-						}
+						o = session.internalLoad(
+								entityPersister.getEntityName(),
+								entityKey.getIdentifier(),
+								true,
+								true
+						);
 					}
 				}
 			}
