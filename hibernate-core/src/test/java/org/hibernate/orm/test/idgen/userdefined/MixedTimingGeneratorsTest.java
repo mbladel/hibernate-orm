@@ -20,8 +20,11 @@ import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.junit.jupiter.api.Test;
 
+import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Marco Belladelli
@@ -34,29 +37,43 @@ import jakarta.persistence.Id;
 public class MixedTimingGeneratorsTest {
 	@Test
 	public void testIdentityGeneration(SessionFactoryScope scope) {
-		scope.inTransaction( session -> {
-			session.persist( new TestEntity() );
+		scope.inTransaction( session -> session.persist( new TestEntity( "identity" ) ) );
+		scope.inSession( session -> {
+			assertThat( session.find( TestEntity.class, 1L ).getName() ).isEqualTo( "identity" );
 		} );
 	}
 
 	@Test
 	public void testAssigned(SessionFactoryScope scope) {
-		scope.inTransaction( session -> {
-			session.persist( new TestEntity( 42L ) );
+		scope.inTransaction( session -> session.persist( new TestEntity( 42L, "assigned" ) ));
+		scope.inSession( session -> {
+			assertThat( session.find( TestEntity.class, 42L ).getName() ).isEqualTo( "assigned" );
 		} );
 	}
 
+	@Entity( name = "TestEntity" )
 	public static class TestEntity {
 		@Id
 		@GeneratedValue( generator = "test" )
 		@GenericGenerator( name = "test", type = IdentityOrAssignedGenerator.class )
 		private Long id;
 
+		private String name;
+
 		public TestEntity() {
 		}
 
-		public TestEntity(Long id) {
+		public TestEntity(String name) {
+			this.name = name;
+		}
+
+		public TestEntity(Long id, String name) {
 			this.id = id;
+			this.name = name;
+		}
+
+		public String getName() {
+			return name;
 		}
 	}
 
@@ -76,7 +93,7 @@ public class MixedTimingGeneratorsTest {
 
 		@Override
 		public boolean generatedOnExecution(SharedSessionContractImplementor session, Object owner) {
-			return generate( session, owner, null, null ) != null;
+			return generate( session, owner, null, null ) == null;
 		}
 
 		@Override
