@@ -640,7 +640,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 		@Override
 		public void execute(SharedSessionContractImplementor session, Object incomingObject, Object injectionContext) {
-			if ( !subgenerator.generatedOnExecution() ) {
+			if ( !subgenerator.generatedOnExecution( session, injectionContext ) ) {
 				final Object generatedId = ( (BeforeExecutionGenerator) subgenerator)
 						.generate( session, incomingObject, null, INSERT );
 				injector.set( injectionContext, generatedId );
