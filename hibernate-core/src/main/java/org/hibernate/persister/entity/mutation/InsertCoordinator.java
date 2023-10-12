@@ -26,6 +26,7 @@ import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.AttributeMappingsList;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
+import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.sql.model.MutationOperation;
@@ -105,8 +106,10 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 		preInsertInMemoryValueGeneration( values, entity, session );
 
 		final EntityMetamodel entityMetamodel = entityPersister().getEntityMetamodel();
-		if ( entityMetamodel.isDynamicInsert() ) {
-			return doDynamicInserts( id, values, entity, session );
+		final Generator generator = entityPersister().getGenerator();
+		final boolean forceIdentifierBinding = generator.generatedOnExecution() && id != null;
+		if ( entityMetamodel.isDynamicInsert() || forceIdentifierBinding ) {
+			return doDynamicInserts( id, values, entity, session, forceIdentifierBinding );
 		}
 		else {
 			return doStaticInserts( id, values, entity, session );
@@ -273,9 +276,14 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 		}
 	}
 
-	protected Object doDynamicInserts(Object id, Object[] values, Object object, SharedSessionContractImplementor session) {
+	protected Object doDynamicInserts(
+			Object id,
+			Object[] values,
+			Object object,
+			SharedSessionContractImplementor session,
+			boolean forceIdentifierBinding) {
 		final boolean[] insertability = getPropertiesToInsert( values );
-		final MutationOperationGroup insertGroup = generateDynamicInsertSqlGroup( insertability );
+		final MutationOperationGroup insertGroup = generateDynamicInsertSqlGroup( insertability, forceIdentifierBinding );
 
 		final MutationExecutor mutationExecutor = executor( session, insertGroup, true );
 
@@ -330,28 +338,27 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 		return notNull;
 	}
 
-	protected MutationOperationGroup generateDynamicInsertSqlGroup(boolean[] insertable) {
-		assert entityPersister().getEntityMetamodel().isDynamicInsert();
+	protected MutationOperationGroup generateDynamicInsertSqlGroup(boolean[] insertable, boolean forceIdentifierBinding) {
 		final MutationGroupBuilder insertGroupBuilder = new MutationGroupBuilder( MutationType.INSERT, entityPersister() );
 		entityPersister().forEachMutableTable(
-				(tableMapping) -> insertGroupBuilder.addTableDetailsBuilder( createTableInsertBuilder( tableMapping ) )
+				(tableMapping) -> insertGroupBuilder.addTableDetailsBuilder( createTableInsertBuilder( tableMapping, forceIdentifierBinding ) )
 		);
-		applyTableInsertDetails( insertGroupBuilder, insertable );
+		applyTableInsertDetails( insertGroupBuilder, insertable, forceIdentifierBinding );
 		return createOperationGroup( null, insertGroupBuilder.buildMutationGroup() );
 	}
 
 	public MutationOperationGroup generateStaticOperationGroup() {
 		final MutationGroupBuilder insertGroupBuilder = new MutationGroupBuilder( MutationType.INSERT, entityPersister() );
 		entityPersister().forEachMutableTable(
-				(tableMapping) -> insertGroupBuilder.addTableDetailsBuilder( createTableInsertBuilder( tableMapping ) )
+				(tableMapping) -> insertGroupBuilder.addTableDetailsBuilder( createTableInsertBuilder( tableMapping, false ) )
 		);
-		applyTableInsertDetails( insertGroupBuilder, entityPersister().getPropertyInsertability() );
+		applyTableInsertDetails( insertGroupBuilder, entityPersister().getPropertyInsertability(), false );
 		return createOperationGroup( null, insertGroupBuilder.buildMutationGroup() );
 	}
 
-	private TableInsertBuilder createTableInsertBuilder(EntityTableMapping tableMapping) {
+	private TableInsertBuilder createTableInsertBuilder(EntityTableMapping tableMapping, boolean forceIdentifierBinding) {
 		final InsertGeneratedIdentifierDelegate identityDelegate = entityPersister().getIdentityInsertDelegate();
-		if ( tableMapping.isIdentifierTable() && identityDelegate != null ) {
+		if ( tableMapping.isIdentifierTable() && identityDelegate != null && !forceIdentifierBinding ) {
 			final BasicEntityIdentifierMapping mapping =
 					(BasicEntityIdentifierMapping) entityPersister().getIdentifierMapping();
 			return identityDelegate.createTableInsertBuilder( mapping, tableMapping.getInsertExpectation(), factory() );
@@ -363,7 +370,8 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 
 	private void applyTableInsertDetails(
 			MutationGroupBuilder insertGroupBuilder,
-			boolean[] attributeInclusions) {
+			boolean[] attributeInclusions,
+			boolean forceIdentifierBinding) {
 		final AttributeMappingsList attributeMappings = entityPersister().getAttributeMappings();
 
 		insertGroupBuilder.forEachTableMutationBuilder( (builder) -> {
@@ -398,7 +406,7 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 			final TableInsertBuilder tableInsertBuilder = (TableInsertBuilder) tableMutationBuilder;
 			final EntityTableMapping tableMapping = (EntityTableMapping) tableInsertBuilder.getMutatingTable().getTableMapping();
 			//noinspection StatementWithEmptyBody
-			if ( tableMapping.isIdentifierTable() && identityDelegate != null ) {
+			if ( tableMapping.isIdentifierTable() && identityDelegate != null && !forceIdentifierBinding ) {
 				// nothing to do - the builder already includes the identity handling
 			}
 			else {

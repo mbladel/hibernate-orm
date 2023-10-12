@@ -111,7 +111,6 @@ public class GeneratedValuesProcessor {
 	 * Obtain the generated values, and populate the snapshot and the fields of the entity instance.
 	 */
 	public void processGeneratedValues(Object entity, Object id, Object[] state, SharedSessionContractImplementor session) {
-		// todo marco : maybe we can re-check here, filter the attribute list and avoid running the select if not needed
 		if ( selectStatement != null ) {
 			final List<Object[]> results = executeSelect( id, session );
 			assert results.size() == 1;
@@ -138,8 +137,6 @@ public class GeneratedValuesProcessor {
 	}
 
 	private void setEntityAttributes(Object entity, Object[] state, Object[] selectionResults) {
-		// todo marco : re-check generatedOnExecution here?
-		//  bit of a waste if the select wasn't necessary ...
 		for ( int i = 0; i < generatedValuesToSelect.size(); i++ ) {
 			final AttributeMapping attribute = generatedValuesToSelect.get( i );
 			final Object generatedValue = selectionResults[i];
