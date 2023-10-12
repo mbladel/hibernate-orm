@@ -6,6 +6,8 @@
  */
 package org.hibernate.orm.test.idgen.userdefined;
 
+import java.util.Random;
+
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.BeforeExecutionGenerator;
@@ -30,46 +32,92 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Marco Belladelli
  */
 @DomainModel( annotatedClasses = {
-		MixedTimingGeneratorsTest.TestEntity.class,
+		MixedTimingGeneratorsTest.AssignedEntity.class,
+		MixedTimingGeneratorsTest.RandomEntity.class,
 } )
 @SessionFactory
 @RequiresDialectFeature( feature = DialectFeatureChecks.SupportsIdentityColumns.class )
 public class MixedTimingGeneratorsTest {
 	@Test
-	public void testIdentityGeneration(SessionFactoryScope scope) {
-		scope.inTransaction( session -> session.persist( new TestEntity( "identity" ) ) );
-		scope.inSession( session -> {
-			assertThat( session.find( TestEntity.class, 1L ).getName() ).isEqualTo( "identity" );
-		} );
+	public void testIdentityGenerationAssigned(SessionFactoryScope scope) {
+		scope.inTransaction( session -> session.persist( new AssignedEntity( "identity" ) ) );
+		scope.inSession( session -> assertThat( session.createQuery(
+				"from AssignedEntity where name = :name",
+				AssignedEntity.class
+		).setParameter( "name", "identity" ).getSingleResult().getId() ).isEqualTo( 1L ) );
+	}
+
+	@Test
+	public void testIdentityGenerationRandom(SessionFactoryScope scope) {
+		scope.inTransaction( session -> session.persist( new RandomEntity( "identity" ) ) );
+		scope.inSession( session -> assertThat( session.createQuery(
+				"from RandomEntity where name = :name",
+				RandomEntity.class
+		).setParameter( "name", "identity" ).getSingleResult().getId() ).isEqualTo( 1L ) );
 	}
 
 	@Test
 	public void testAssigned(SessionFactoryScope scope) {
-		scope.inTransaction( session -> session.persist( new TestEntity( 42L, "assigned" ) ));
-		scope.inSession( session -> {
-			assertThat( session.find( TestEntity.class, 42L ).getName() ).isEqualTo( "assigned" );
-		} );
+		scope.inTransaction( session -> session.persist( new AssignedEntity( 42L, "assigned" ) ) );
+		scope.inSession( session -> assertThat( session.createQuery(
+				"from AssignedEntity where name = :name",
+				AssignedEntity.class
+		).setParameter( "name", "assigned" ).getSingleResult().getId() ).isEqualTo( 42L ) );
 	}
 
-	@Entity( name = "TestEntity" )
-	public static class TestEntity {
+	@Test
+	public void testRandom(SessionFactoryScope scope) {
+		scope.inTransaction( session -> session.persist( new RandomEntity( "random" ) ) );
+		scope.inSession( session -> assertThat( session.createQuery(
+				"from RandomEntity where name = :name",
+				RandomEntity.class
+		).setParameter( "name", "random" ).getSingleResult().getId() ).isNotEqualTo( 1L ) );
+	}
+
+	@Entity( name = "AssignedEntity" )
+	public static class AssignedEntity {
 		@Id
-		@GeneratedValue( generator = "test" )
-		@GenericGenerator( name = "test", type = IdentityOrAssignedGenerator.class )
+		@GeneratedValue( generator = "identity_or_assigned" )
+		@GenericGenerator( name = "identity_or_assigned", type = IdentityOrAssignedGenerator.class )
 		private Long id;
 
 		private String name;
 
-		public TestEntity() {
+		public AssignedEntity() {
 		}
 
-		public TestEntity(String name) {
+		public AssignedEntity(String name) {
 			this.name = name;
 		}
 
-		public TestEntity(Long id, String name) {
+		public AssignedEntity(Long id, String name) {
 			this.id = id;
 			this.name = name;
+		}
+
+		public Long getId() {
+			return id;
+		}
+	}
+
+	@Entity( name = "RandomEntity" )
+	public static class RandomEntity {
+		@Id
+		@GeneratedValue( generator = "identity_or_random" )
+		@GenericGenerator( name = "identity_or_random", type = IdentityOrRandomGenerator.class )
+		private Long id;
+
+		private String name;
+
+		public RandomEntity() {
+		}
+
+		public RandomEntity(String name) {
+			this.name = name;
+		}
+
+		public Long getId() {
+			return id;
 		}
 
 		public String getName() {
@@ -77,9 +125,6 @@ public class MixedTimingGeneratorsTest {
 		}
 	}
 
-	/**
-	 * Identifier generator, referenceColumnsInSql is sometimes false
-	 */
 	public static class IdentityOrAssignedGenerator extends IdentityGenerator implements BeforeExecutionGenerator {
 		@Override
 		public Object generate(
@@ -94,6 +139,27 @@ public class MixedTimingGeneratorsTest {
 		@Override
 		public boolean generatedOnExecution(SharedSessionContractImplementor session, Object owner) {
 			return generate( session, owner, null, null ) == null;
+		}
+
+		@Override
+		public boolean generatedOnExecution() {
+			return true;
+		}
+	}
+
+	public static class IdentityOrRandomGenerator extends IdentityGenerator implements BeforeExecutionGenerator {
+		@Override
+		public Object generate(
+				SharedSessionContractImplementor session,
+				Object owner,
+				Object currentValue,
+				EventType eventType) {
+			return new Random().nextLong( 1_000 ) + 100;
+		}
+
+		@Override
+		public boolean generatedOnExecution(SharedSessionContractImplementor session, Object owner) {
+			return !( (RandomEntity) owner ).getName().equals( "random" );
 		}
 
 		@Override
