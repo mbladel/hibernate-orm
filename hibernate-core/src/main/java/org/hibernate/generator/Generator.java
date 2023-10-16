@@ -104,7 +104,7 @@ public interface Generator extends Serializable {
 	 * Defaults to {@link #generatedOnExecution()}, but can be overloaded allowing conditional
 	 * in-database / before execution value generation based on the current state of the owner object.
 	 * Note that a generator <b>must</b> implement both {@link BeforeExecutionGenerator} and
-	 * {@link OnExecutionGenerator} to achieve this behavior, and the {@link #hasStateDependentTiming()}
+	 * {@link OnExecutionGenerator} to achieve this behavior.
 	 * method should be overridden to return {@code true}.
 	 *
 	 * @param session The session from which the request originates.
@@ -121,11 +121,6 @@ public interface Generator extends Serializable {
 	 */
 	default boolean generatedOnExecution(SharedSessionContractImplementor session, Object owner) {
 		return generatedOnExecution();
-	}
-
-	// todo marco : javadoc (mention dynamic insert / update), better naming
-	default boolean hasStateDependentTiming() {
-		return false;
 	}
 
 	/**

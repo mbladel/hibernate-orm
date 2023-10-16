@@ -209,11 +209,6 @@ public class MixedTimingGeneratorsTest {
 		public boolean generatedOnExecution(SharedSessionContractImplementor session, Object owner) {
 			return generate( session, owner, null, null ) == null;
 		}
-
-		@Override
-		public boolean hasStateDependentTiming() {
-			return true;
-		}
 	}
 
 	public static class IdentityOrRandomGenerator extends IdentityGenerator implements BeforeExecutionGenerator {
@@ -234,11 +229,6 @@ public class MixedTimingGeneratorsTest {
 		@Override
 		public boolean generatedOnExecution(SharedSessionContractImplementor session, Object owner) {
 			return !( (RandomEntity) owner ).getName().equals( "random" );
-		}
-
-		@Override
-		public boolean hasStateDependentTiming() {
-			return true;
 		}
 	}
 
@@ -266,11 +256,6 @@ public class MixedTimingGeneratorsTest {
 		@Override
 		public boolean generatedOnExecution(SharedSessionContractImplementor session, Object owner) {
 			return !( (StringGeneratedEntity) owner ).getName().equals( "generated" );
-		}
-
-		@Override
-		public boolean hasStateDependentTiming() {
-			return true;
 		}
 
 		@Override
