@@ -99,6 +99,48 @@ public class MixedTimingGeneratorsTest {
 		).startsWith( "generated" ) );
 	}
 
+	@Test
+	public void testGeneratedUpdateInsert(SessionFactoryScope scope) {
+		// on execution generation
+		final int literalCount = scope.fromTransaction( session -> {
+			final StringGeneratedEntity entity = new StringGeneratedEntity( 3L, "literal_inserted" );
+			session.persist( entity );
+			session.flush();
+			assertThat( entity.getGeneratedProp() ).startsWith( "literal" );
+			final int count = Integer.parseInt(
+					entity.getGeneratedProp().substring( entity.getGeneratedProp().length() - 1 )
+			);
+			entity.setName( "literal_updated" );
+			return count;
+		} );
+		scope.inSession( session -> {
+			final StringGeneratedEntity entity = session.find( StringGeneratedEntity.class, 3L );
+			final String generatedProp = entity.getGeneratedProp();
+			assertThat( generatedProp ).startsWith( "literal" );
+			assertThat( Integer.parseInt( generatedProp.substring( generatedProp.length() - 1 ) ) )
+					.isGreaterThan( literalCount );
+		} );
+		// before execution generation
+		final int generatedCount = scope.fromTransaction( session -> {
+			final StringGeneratedEntity entity = new StringGeneratedEntity( 4L, "generated_inserted" );
+			session.persist( entity );
+			session.flush();
+			assertThat( entity.getGeneratedProp() ).startsWith( "generated" );
+			final int count = Integer.parseInt(
+					entity.getGeneratedProp().substring( entity.getGeneratedProp().length() - 1 )
+			);
+			entity.setName( "generated_updated" );
+			return count;
+		} );
+		scope.inSession( session -> {
+			final StringGeneratedEntity entity = session.find( StringGeneratedEntity.class, 4L );
+			final String generatedProp = entity.getGeneratedProp();
+			assertThat( generatedProp ).startsWith( "generated" );
+			assertThat( Integer.parseInt( generatedProp.substring( generatedProp.length() - 1 ) ) )
+					.isGreaterThan( generatedCount );
+		} );
+	}
+
 	@Entity( name = "AssignedEntity" )
 	public static class AssignedEntity {
 		@Id
@@ -150,9 +192,9 @@ public class MixedTimingGeneratorsTest {
 		}
 	}
 
-	@ValueGenerationType(generatedBy = LiteralOrGeneratedStringGenerator.class)
-	@Retention(RUNTIME)
-	@Target({ FIELD, METHOD })
+	@ValueGenerationType( generatedBy = LiteralOrGeneratedStringGenerator.class )
+	@Retention( RUNTIME )
+	@Target( { FIELD, METHOD } )
 	public @interface GeneratedString {
 		/**
 		 * Specifies how the timestamp is generated. By default, it is generated
@@ -182,6 +224,10 @@ public class MixedTimingGeneratorsTest {
 
 		public String getName() {
 			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
 		}
 
 		public String getGeneratedProp() {
@@ -255,12 +301,11 @@ public class MixedTimingGeneratorsTest {
 
 		@Override
 		public boolean generatedOnExecution(SharedSessionContractImplementor session, Object owner) {
-			return !( (StringGeneratedEntity) owner ).getName().equals( "generated" );
+			return !( (StringGeneratedEntity) owner ).getName().contains( "generated" );
 		}
 
 		@Override
 		public EnumSet<EventType> getEventTypes() {
-			// todo marco : updates are still not handled
 			return EventTypeSets.ALL;
 		}
 
