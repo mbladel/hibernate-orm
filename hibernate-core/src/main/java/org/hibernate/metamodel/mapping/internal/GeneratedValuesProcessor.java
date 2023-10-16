@@ -8,6 +8,7 @@ package org.hibernate.metamodel.mapping.internal;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.hibernate.Incubating;
 import org.hibernate.LockOptions;
@@ -111,11 +112,20 @@ public class GeneratedValuesProcessor {
 	 * Obtain the generated values, and populate the snapshot and the fields of the entity instance.
 	 */
 	public void processGeneratedValues(Object entity, Object id, Object[] state, SharedSessionContractImplementor session) {
-		if ( selectStatement != null ) {
+		if ( selectStatement != null && hasActualGeneratedValuesToSelect( session, entity ) ) {
 			final List<Object[]> results = executeSelect( id, session );
 			assert results.size() == 1;
 			setEntityAttributes( entity, state, results.get(0) );
 		}
+	}
+
+	private boolean hasActualGeneratedValuesToSelect(SharedSessionContractImplementor session, Object entity) {
+		for ( AttributeMapping attributeMapping : generatedValuesToSelect ) {
+			if ( attributeMapping.getGenerator().generatedOnExecution( session, entity ) ) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private List<Object[]> executeSelect(Object id, SharedSessionContractImplementor session) {

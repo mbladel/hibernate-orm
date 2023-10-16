@@ -86,12 +86,9 @@ public class MixedTimingGeneratorsTest {
 	public void testGeneratedPropInsert(SessionFactoryScope scope) {
 		// on execution generation
 		scope.inTransaction( session -> session.persist( new StringGeneratedEntity( 1L, "literal" ) ) );
-		// todo marco : assert also value setting after persist+flush (see GeneratedValuesProcessor)
 		scope.inSession( session -> assertThat(
 				session.find( StringGeneratedEntity.class, 1L ).getGeneratedProp()
 		).startsWith( "literal" ) );
-		// todo marco : GeneratedValuesProcessor can be optimized to not select back the value in this cases
-		//  (we need to call generatedOnExecution(session, owner) again though which might be expensive?
 		// before execution generation
 		scope.inTransaction( session -> session.persist( new StringGeneratedEntity( 2L, "generated" ) ) );
 		scope.inSession( session -> assertThat(
