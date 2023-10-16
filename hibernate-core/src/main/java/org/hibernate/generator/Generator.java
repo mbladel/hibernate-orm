@@ -121,6 +121,11 @@ public interface Generator extends Serializable {
 		return generatedOnExecution();
 	}
 
+	// todo marco : javadoc, better naming
+	default boolean hasStateDependentTiming() {
+		return false;
+	}
+
 	/**
 	 * The {@linkplain EventType event types} for which this generator should be called
 	 * to produce a new value.
