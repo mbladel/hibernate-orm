@@ -232,6 +232,7 @@ public class EntityMetamodel implements Serializable {
 		boolean foundPostInsertGeneratedValues = false;
 		boolean foundPostUpdateGeneratedValues = false;
 		boolean foundMixedInsertGeneratedValue = false;
+		boolean foundMixedUpdateGeneratedValue = false;
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 		int tempVersionProperty = NO_VERSION_INDX;
@@ -335,9 +336,7 @@ public class EntityMetamodel implements Serializable {
 						if ( generator.generatedOnExecution() ) {
 							foundPostInsertGeneratedValues = true;
 							if ( generator instanceof BeforeExecutionGenerator ) {
-								// support mixed-timing generators
 								foundPreInsertGeneratedValues = true;
-								foundMixedInsertGeneratedValue = true;
 							}
 						}
 						else {
@@ -347,6 +346,9 @@ public class EntityMetamodel implements Serializable {
 					if ( generator.generatesOnUpdate() ) {
 						if ( generator.generatedOnExecution() ) {
 							foundPostUpdateGeneratedValues = true;
+							if ( generator instanceof BeforeExecutionGenerator ) {
+								foundPreUpdateGeneratedValues = true;
+							}
 						}
 						else {
 							foundPreUpdateGeneratedValues = true;
@@ -432,7 +434,7 @@ public class EntityMetamodel implements Serializable {
 
 		selectBeforeUpdate = persistentClass.hasSelectBeforeUpdate();
 
-		dynamicUpdate = persistentClass.useDynamicUpdate()
+		dynamicUpdate = persistentClass.useDynamicUpdate() || foundMixedUpdateGeneratedValue
 				|| ( getBytecodeEnhancementMetadata().isEnhancedForLazyLoading()
 					&& getBytecodeEnhancementMetadata().getLazyAttributesMetadata().getFetchGroupNames().size() > 1 );
 		// todo marco : note we need to enable dynamic inserts to avoid checking all properties for generation

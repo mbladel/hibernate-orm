@@ -103,12 +103,11 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 			Object entity,
 			SharedSessionContractImplementor session) {
 		// apply any pre-insert in-memory value generation
-		preInsertInMemoryValueGeneration( values, entity, session );
+		final boolean needsDynamicInsert = preInsertInMemoryValueGeneration( values, entity, session );
 
 		final EntityMetamodel entityMetamodel = entityPersister().getEntityMetamodel();
-		final Generator generator = entityPersister().getGenerator();
-		final boolean forceIdentifierBinding = generator.generatedOnExecution() && id != null;
-		if ( entityMetamodel.isDynamicInsert() || forceIdentifierBinding ) {
+		final boolean forceIdentifierBinding = entityPersister().getGenerator().generatedOnExecution() && id != null;
+		if ( entityMetamodel.isDynamicInsert() || needsDynamicInsert || forceIdentifierBinding ) {
 			return doDynamicInserts( id, values, entity, session, forceIdentifierBinding );
 		}
 		else {
@@ -116,9 +115,10 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 		}
 	}
 
-	protected void preInsertInMemoryValueGeneration(Object[] values, Object entity, SharedSessionContractImplementor session) {
+	protected boolean preInsertInMemoryValueGeneration(Object[] values, Object entity, SharedSessionContractImplementor session) {
 		final AbstractEntityPersister persister = entityPersister();
 		final EntityMetamodel entityMetamodel = persister.getEntityMetamodel();
+		boolean foundStateDependantGenerator = false;
 		if ( entityMetamodel.hasPreInsertGeneratedValues() ) {
 			final Generator[] generators = entityMetamodel.getGenerators();
 			for ( int i = 0; i < generators.length; i++ ) {
@@ -128,9 +128,11 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 						&& generator.generatesOnInsert() ) {
 					values[i] = ( (BeforeExecutionGenerator) generator ).generate( session, entity, values[i], INSERT );
 					persister.setPropertyValue( entity, i, values[i] );
+					foundStateDependantGenerator = foundStateDependantGenerator || generator.generatedOnExecution();
 				}
 			}
 		}
+		return foundStateDependantGenerator;
 	}
 
 	protected static class InsertValuesAnalysis implements ValuesAnalysis {
@@ -391,11 +393,10 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 				final int attributeIndex = attributeIndexes[ i ];
 				final AttributeMapping attributeMapping = attributeMappings.get( attributeIndex );
 				final Generator generator = attributeMapping.getGenerator();
-				final boolean generated = isValueGenerated( generator );
 				if ( attributeInclusions[attributeIndex] ) {
 					attributeMapping.forEachInsertable( insertGroupBuilder );
 				}
-				else if ( generated ) {
+				else if ( isValueGenerated( generator ) ) {
 					if ( session != null && !generator.generatedOnExecution( session, object ) ) {
 						attributeInclusions[attributeIndex] = true;
 						attributeMapping.forEachInsertable( insertGroupBuilder );
@@ -433,7 +434,7 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 	}
 
 	private static boolean isValueGenerationInSql(Generator generator, Dialect dialect) {
-		assert generator instanceof OnExecutionGenerator;
+		assert isValueGenerated( generator );
 		return ( (OnExecutionGenerator) generator ).referenceColumnsInSql(dialect);
 	}
 
