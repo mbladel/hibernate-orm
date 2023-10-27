@@ -36,6 +36,7 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.pretty.MessageHelper;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.sql.results.LoadingLogger;
+import org.hibernate.sql.results.graph.entity.LoadingEntityEntry;
 import org.hibernate.stat.internal.StatsHelper;
 import org.hibernate.stat.spi.StatisticsImplementor;
 import org.hibernate.type.Type;
@@ -398,9 +399,24 @@ public class CacheEntityLoaderHelper {
 		subclassPersister = factory.getRuntimeMetamodels()
 				.getMappingMetamodel()
 				.getEntityDescriptor( entry.getSubclass() );
-		entity = instanceToLoad == null
-				? source.instantiate( subclassPersister, entityId )
-				: instanceToLoad;
+		if ( instanceToLoad != null ) {
+			entity = instanceToLoad;
+		}
+		else {
+			final PersistenceContext persistenceContext = source.getPersistenceContextInternal();
+			if ( persistenceContext.hasLoadContext() ) {
+				final LoadingEntityEntry entityEntry = persistenceContext.getLoadContexts().findLoadingEntityEntry( entityKey );
+				if ( entityEntry != null && entityEntry.getEntityInstance() != null ) {
+					entity = entityEntry.getEntityInstance();
+				}
+				else {
+					entity = source.instantiate( subclassPersister, entityId );
+				}
+			}
+			else {
+				entity = source.instantiate( subclassPersister, entityId );
+			}
+		}
 
 		if ( isPersistentAttributeInterceptable( entity ) ) {
 			PersistentAttributeInterceptor persistentAttributeInterceptor = asPersistentAttributeInterceptable( entity ).$$_hibernate_getInterceptor();
