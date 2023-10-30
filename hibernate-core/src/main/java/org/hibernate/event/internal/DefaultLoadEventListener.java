@@ -37,6 +37,7 @@ import org.hibernate.metamodel.mapping.NonAggregatedIdentifierMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
+import org.hibernate.sql.results.graph.entity.LoadingEntityEntry;
 import org.hibernate.stat.spi.StatisticsImplementor;
 
 import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
@@ -422,6 +423,13 @@ public class DefaultLoadEventListener implements LoadEventListener {
 			return options.isCheckDeleted() && wasDeleted( persistenceContext, existing ) ? null : existing;
 		}
 		else {
+			if ( persistenceContext.hasLoadContext() ) {
+				final LoadingEntityEntry entityEntry = persistenceContext.getLoadContexts()
+						.findLoadingEntityEntry( keyToLoad );
+				if ( entityEntry != null && entityEntry.getEntityInstance() != null ) {
+					return entityEntry.getEntityInstance();
+				}
+			}
 			if ( LOG.isTraceEnabled() ) {
 				LOG.trace( "Creating new proxy for entity" );
 			}
