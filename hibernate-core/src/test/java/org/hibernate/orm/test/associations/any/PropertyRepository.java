@@ -21,6 +21,8 @@ import org.hibernate.annotations.AnyDiscriminatorValue;
 import org.hibernate.annotations.AnyKeyJavaClass;
 import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.ManyToAny;
+import org.hibernate.annotations.SQLJoinTableRestriction;
+import org.hibernate.annotations.SQLRestriction;
 
 import static org.hibernate.annotations.CascadeType.ALL;
 
@@ -43,6 +45,7 @@ public class PropertyRepository {
             joinColumns = @JoinColumn(name = "repository_id"),
             inverseJoinColumns = @JoinColumn(name = "property_id")
    )
+    @SQLRestriction( "property_id > 0" )
     private List<Property<?>> properties = new ArrayList<>();
 
     //Getters and setters are omitted for brevity

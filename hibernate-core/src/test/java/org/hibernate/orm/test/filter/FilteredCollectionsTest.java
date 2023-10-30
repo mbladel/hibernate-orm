@@ -12,6 +12,8 @@ import java.util.List;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.FilterJoinTable;
+import org.hibernate.annotations.SQLJoinTableRestriction;
+import org.hibernate.annotations.SQLRestriction;
 
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
@@ -77,19 +79,19 @@ public class FilteredCollectionsTest {
 
 		@OneToMany
 		@JoinTable( name = "one_to_many_join_table", joinColumns = @JoinColumn( name = "owner_id" ) )
-		@Filter( name = "to_one_filter", condition = "age > 0" )
-		@FilterJoinTable( name = "child_id_filter", condition = "owner_id > 0" )
+		@SQLRestriction( "age > 0" )
+		@SQLJoinTableRestriction( "owner_id > 0" )
 		private List<ChildEntity> oneToOne = new ArrayList<>();
 
 		@ManyToMany
 		@JoinTable( name = "many_to_many_join_table", joinColumns = @JoinColumn( name = "owner_id" ) )
-		@Filter( name = "to_one_filter", condition = "age > 0" )
-		@FilterJoinTable( name = "child_id_filter", condition = "owner_id > 0" )
+		@SQLRestriction( "age > 0" )
+		@SQLJoinTableRestriction( "owner_id > 0" )
 		private List<ChildEntity> manyToMany = new ArrayList<>();
 
 		@ElementCollection
 		@CollectionTable( name = "collection_table", joinColumns = @JoinColumn( name = "owner_id" ) )
-		@Filter( name = "to_one_filter", condition = "age > 0" )
+		@SQLRestriction( "age > 0" )
 		private List<ChildEmbeddable> elementCollection = new ArrayList<>();
 	}
 
