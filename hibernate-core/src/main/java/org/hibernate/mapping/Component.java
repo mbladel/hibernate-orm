@@ -578,6 +578,8 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 		final CompositeNestedGeneratedValueGenerator.GenerationContextLocator locator =
 				new StandardGenerationContextLocator( rootClass.getEntityName() );
+
+		// todo marco : support this even for non-identifiers embeddeds?
 		final CompositeNestedGeneratedValueGenerator generator = new CompositeNestedGeneratedValueGenerator(
 				locator,
 				getType()
@@ -668,9 +670,14 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 				return ( (BeforeExecutionGenerator) subgenerator)
 						.generate( session, incomingObject, null, INSERT );
 			}
-			else {
-				throw new IdentifierGenerationException( "Identity generation isn't supported for composite ids" );
-			}
+//			else {
+//				throw new IdentifierGenerationException( "Identity generation isn't supported for composite ids" );
+//			}
+		}
+
+		@Override
+		public Generator getSubgenerator() {
+			return subgenerator;
 		}
 
 		@Override
