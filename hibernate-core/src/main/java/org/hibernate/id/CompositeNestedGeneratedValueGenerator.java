@@ -8,15 +8,26 @@ package org.hibernate.id;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Properties;
+import java.util.stream.Collectors;
 
 import org.hibernate.HibernateException;
 import org.hibernate.Internal;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.model.relational.ExportableProducer;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
+import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.EventType;
+import org.hibernate.generator.Generator;
+import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.id.factory.spi.StandardGenerator;
+import org.hibernate.service.ServiceRegistry;
+import org.hibernate.type.Type;
+
+import static org.hibernate.generator.EventTypeSets.INSERT_ONLY;
 
 /**
  * For composite identifiers, defines a number of "nested" generations that
@@ -50,7 +61,7 @@ import org.hibernate.id.factory.spi.StandardGenerator;
  */
 @Internal
 public class CompositeNestedGeneratedValueGenerator
-		implements IdentifierGenerator, StandardGenerator, IdentifierGeneratorAggregator, Serializable {
+		implements IdentifierGenerator, PostInsertIdentifierGenerator, StandardGenerator, IdentifierGeneratorAggregator, Serializable {
 	/**
 	 * Contract for declaring how to locate the context for sub-value injection.
 	 */
@@ -90,6 +101,11 @@ public class CompositeNestedGeneratedValueGenerator
 		 * @param injectionContext The context into which the generated value can be injected
 		 */
 		void execute(SharedSessionContractImplementor session, Object incomingObject, Object injectionContext);
+
+		/**
+		 * Retrieves the underlying {@link Generator}
+		 */
+		Generator getSubgenerator();
 	}
 
 	private final GenerationContextLocator generationContextLocator;
@@ -112,6 +128,46 @@ public class CompositeNestedGeneratedValueGenerator
 		}
 
 		return context;
+	}
+
+	@Override
+	public EnumSet<EventType> getEventTypes() {
+		return INSERT_ONLY;
+	}
+
+	@Override
+	public void configure(Type type, Properties parameters, ServiceRegistry serviceRegistry) {
+	}
+
+	@Override
+	public boolean referenceColumnsInSql(Dialect dialect) {
+		return getOnExecutionSubgenerators().stream()
+				.anyMatch( generator -> generator.referenceColumnsInSql( dialect ) );
+	}
+
+	@Override
+	public String[] getReferencedColumnValues(Dialect dialect) {
+		final List<OnExecutionGenerator> subgenerators = getOnExecutionSubgenerators();
+		assert !subgenerators.isEmpty();
+
+		final List<String> referencedColumnValues = new ArrayList<>( subgenerators.size() );
+		for ( OnExecutionGenerator subgenerator : subgenerators ) {
+			referencedColumnValues.addAll( List.of( subgenerator.getReferencedColumnValues( dialect ) ) );
+		}
+		return referencedColumnValues.toArray( new String[0] );
+	}
+
+	@Override
+	public boolean generatedOnExecution() {
+		return !getOnExecutionSubgenerators().isEmpty();
+	}
+
+	private List<OnExecutionGenerator> getOnExecutionSubgenerators() {
+		return generationPlans.stream()
+				.map( GenerationPlan::getSubgenerator )
+				.filter( Generator::generatedOnExecution )
+				.map( OnExecutionGenerator.class::cast )
+				.collect( Collectors.toList() );
 	}
 
 	@Override

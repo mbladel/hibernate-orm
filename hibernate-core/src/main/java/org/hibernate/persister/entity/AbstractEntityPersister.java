@@ -287,6 +287,7 @@ import org.hibernate.type.AnyType;
 import org.hibernate.type.AssociationType;
 import org.hibernate.type.BasicType;
 import org.hibernate.type.CollectionType;
+import org.hibernate.type.ComponentType;
 import org.hibernate.type.CompositeType;
 import org.hibernate.type.EntityType;
 import org.hibernate.type.Type;
@@ -897,11 +898,21 @@ public abstract class AbstractEntityPersister
 
 	private String getIdentitySelectString(Dialect dialect) {
 		try {
+			final Type identifierType = getIdentifierType();
+			final BasicType<?> identityType;
+			if ( identifierType instanceof BasicType<?> ) {
+				identityType = ( (BasicType<?>) identifierType );
+			}
+			else {
+				final ComponentType componentType = (ComponentType) identifierType;
+				// todo marco : identity is not necessarily the first column (?)
+				identityType = (BasicType<?>) componentType.getSubtypes()[0];
+			}
 			return dialect.getIdentityColumnSupport()
 					.getIdentitySelectString(
-							getTableName(0),
-							getKeyColumns(0)[0],
-							( (BasicType<?>) getIdentifierType() ).getJdbcType().getDdlTypeCode()
+							getTableName( 0 ),
+							getKeyColumns( 0 )[0],
+							identityType.getJdbcType().getDdlTypeCode()
 					);
 		}
 		catch (MappingException ex) {

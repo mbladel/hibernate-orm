@@ -652,9 +652,14 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 						.generate( session, incomingObject, null, INSERT );
 				injector.set( injectionContext, generatedId );
 			}
-			else {
-				throw new IdentifierGenerationException( "Identity generation isn't supported for composite ids" );
-			}
+//			else {
+//				throw new IdentifierGenerationException( "Identity generation isn't supported for composite ids" );
+//			}
+		}
+
+		@Override
+		public Generator getSubgenerator() {
+			return subgenerator;
 		}
 
 		@Override
