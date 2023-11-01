@@ -578,9 +578,14 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 		final CompositeNestedGeneratedValueGenerator.GenerationContextLocator locator =
 				new StandardGenerationContextLocator( rootClass.getEntityName() );
-		final CompositeNestedGeneratedValueGenerator generator = new CompositeNestedGeneratedValueGenerator( locator );
+		final CompositeNestedGeneratedValueGenerator generator = new CompositeNestedGeneratedValueGenerator(
+				locator,
+				getType()
+		);
 
-		for ( Property property : getProperties() ) {
+		final List<Property> properties = getProperties();
+		for ( int i = 0; i < properties.size(); i++ ) {
+			final Property property = properties.get( i );
 			if ( property.getValue().isSimpleValue() ) {
 				final SimpleValue value = (SimpleValue) property.getValue();
 
@@ -590,6 +595,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 					Generator subgenerator = value.createGenerator( identifierGeneratorFactory, dialect, rootClass );
 					generator.addGeneratedValuePlan( new ValueGenerationPlan(
 							subgenerator,
+							i,
 							injector( property, attributeDeclarer ) )
 					);
 				}
@@ -638,19 +644,30 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 	public static class ValueGenerationPlan implements CompositeNestedGeneratedValueGenerator.GenerationPlan {
 		private final Generator subgenerator;
+		private final int propertyIndex;
 		private final Setter injector;
 
-		public ValueGenerationPlan(Generator subgenerator, Setter injector) {
+		public ValueGenerationPlan(Generator subgenerator, int propertyIndex, Setter injector) {
 			this.subgenerator = subgenerator;
+			this.propertyIndex = propertyIndex;
 			this.injector = injector;
 		}
 
 		@Override
-		public void execute(SharedSessionContractImplementor session, Object incomingObject, Object injectionContext) {
+		public Setter getInjector() {
+			return injector;
+		}
+
+		@Override
+		public int getPropertyIndex() {
+			return propertyIndex;
+		}
+
+		@Override
+		public Object execute(SharedSessionContractImplementor session, Object incomingObject) {
 			if ( !subgenerator.generatedOnExecution( incomingObject, session ) ) {
-				final Object generatedId = ( (BeforeExecutionGenerator) subgenerator)
+				return ( (BeforeExecutionGenerator) subgenerator)
 						.generate( session, incomingObject, null, INSERT );
-				injector.set( injectionContext, generatedId );
 			}
 			else {
 				throw new IdentifierGenerationException( "Identity generation isn't supported for composite ids" );

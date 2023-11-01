@@ -8,7 +8,9 @@ package org.hibernate.id;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.hibernate.HibernateException;
 import org.hibernate.Internal;
@@ -17,6 +19,8 @@ import org.hibernate.boot.model.relational.ExportableProducer;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.id.factory.spi.StandardGenerator;
+import org.hibernate.property.access.spi.Setter;
+import org.hibernate.type.CompositeType;
 
 /**
  * For composite identifiers, defines a number of "nested" generations that
@@ -87,16 +91,21 @@ public class CompositeNestedGeneratedValueGenerator
 		 *
 		 * @param session The current session
 		 * @param incomingObject The entity for which we are generating id
-		 * @param injectionContext The context into which the generated value can be injected
 		 */
-		void execute(SharedSessionContractImplementor session, Object incomingObject, Object injectionContext);
+		Object execute(SharedSessionContractImplementor session, Object incomingObject);
+
+		Setter getInjector();
+
+		int getPropertyIndex();
 	}
 
 	private final GenerationContextLocator generationContextLocator;
+	private final CompositeType compositeType;
 	private final List<GenerationPlan> generationPlans = new ArrayList<>();
 
-	public CompositeNestedGeneratedValueGenerator(GenerationContextLocator generationContextLocator) {
+	public CompositeNestedGeneratedValueGenerator(GenerationContextLocator generationContextLocator, CompositeType compositeType) {
 		this.generationContextLocator = generationContextLocator;
+		this.compositeType = compositeType;
 	}
 
 	public void addGeneratedValuePlan(GenerationPlan plan) {
@@ -107,8 +116,25 @@ public class CompositeNestedGeneratedValueGenerator
 	public Object generate(SharedSessionContractImplementor session, Object object) throws HibernateException {
 		final Object context = generationContextLocator.locateGenerationContext( session, object );
 
+		final List<Object> generatedValues = compositeType.isMutable() ?
+				null :
+				new ArrayList<>( generationPlans.size() );
 		for ( GenerationPlan generationPlan : generationPlans ) {
-			generationPlan.execute( session, object, context );
+			final Object generatedValue = generationPlan.execute( session, object );
+			if ( generatedValues == null ) {
+				generationPlan.getInjector().set( context, generatedValue );
+			}
+			else {
+				generatedValues.add( generatedValue );
+			}
+		}
+
+		if ( generatedValues != null ) {
+			final Object[] values = compositeType.getPropertyValues( context );
+			for ( int i = 0; i < generatedValues.size(); i++ ) {
+				values[generationPlans.get( i ).getPropertyIndex()] = generatedValues.get( i );
+			}
+			return compositeType.replacePropertyValues( context, values, session );
 		}
 
 		return context;
