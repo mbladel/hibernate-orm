@@ -94,8 +94,6 @@ public class CompositeNestedGeneratedValueGenerator
 		 */
 		Object execute(SharedSessionContractImplementor session, Object incomingObject);
 
-		Setter getInjector();
-
 		int getPropertyIndex();
 	}
 
@@ -116,28 +114,16 @@ public class CompositeNestedGeneratedValueGenerator
 	public Object generate(SharedSessionContractImplementor session, Object object) throws HibernateException {
 		final Object context = generationContextLocator.locateGenerationContext( session, object );
 
-		final List<Object> generatedValues = compositeType.isMutable() ?
-				null :
-				new ArrayList<>( generationPlans.size() );
+		final List<Object> generatedValues = new ArrayList<>( generationPlans.size() );
 		for ( GenerationPlan generationPlan : generationPlans ) {
-			final Object generatedValue = generationPlan.execute( session, object );
-			if ( generatedValues == null ) {
-				generationPlan.getInjector().set( context, generatedValue );
-			}
-			else {
-				generatedValues.add( generatedValue );
-			}
+			generatedValues.add( generationPlan.execute( session, object ) );
 		}
 
-		if ( generatedValues != null ) {
-			final Object[] values = compositeType.getPropertyValues( context );
-			for ( int i = 0; i < generatedValues.size(); i++ ) {
-				values[generationPlans.get( i ).getPropertyIndex()] = generatedValues.get( i );
-			}
-			return compositeType.replacePropertyValues( context, values, session );
+		final Object[] values = compositeType.getPropertyValues( context );
+		for ( int i = 0; i < generatedValues.size(); i++ ) {
+			values[generationPlans.get( i ).getPropertyIndex()] = generatedValues.get( i );
 		}
-
-		return context;
+		return compositeType.replacePropertyValues( context, values, session );
 	}
 
 	@Override

@@ -19,6 +19,8 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DomainModel( annotatedClasses = {
 		EmbeddedIdGeneratedValueTest.SystemUser.class,
+		EmbeddedIdGeneratedValueTest.SystemUserIdClass.class,
 		EmbeddedIdGeneratedValueTest.PK.class,
 } )
 @SessionFactory
@@ -35,25 +38,52 @@ public class EmbeddedIdGeneratedValueTest {
 	@AfterAll
 	public void tearDown(SessionFactoryScope scope) {
 		scope.inTransaction( session -> session.createMutationQuery( "delete from SystemUser" ).executeUpdate() );
+		scope.inTransaction( session -> session.createMutationQuery( "delete from SystemUserIdClass" )
+				.executeUpdate() );
 	}
 
 	@Test
 	public void test(SessionFactoryScope scope) {
 		final SystemUser _systemUser = scope.fromTransaction( session -> {
 			final SystemUser systemUser = new SystemUser();
-			systemUser.setId( new PK( "mbladel" ) );
+			systemUser.setUsername( "mbladel" );
 			systemUser.setName( "Marco Belladelli" );
 			session.persist( systemUser );
 			return systemUser;
 		} );
 
 		scope.inSession( session -> {
-			final SystemUser systemUser = session.find( SystemUser.class, _systemUser.getId() );
+			final SystemUser systemUser = session.find( SystemUser.class, new PK(
+					_systemUser.getUsername(),
+					_systemUser.getRegistrationId()
+			) );
 			assertThat( systemUser.getName() ).isEqualTo( "Marco Belladelli" );
-			assertThat( systemUser.getId().getUsername() ).isEqualTo( "mbladel" );
-			assertThat( systemUser.getId().getRegistrationId() ).isNotNull();
+			assertThat( systemUser.getUsername() ).isEqualTo( "mbladel" );
+			assertThat( systemUser.getRegistrationId() ).isNotNull();
 		} );
 	}
+
+	@Test
+	public void testIdClass(SessionFactoryScope scope) {
+		final SystemUserIdClass _systemUser = scope.fromTransaction( session -> {
+			final SystemUserIdClass systemUser = new SystemUserIdClass();
+			systemUser.setUsername( "mbladel" );
+			systemUser.setName( "Marco Belladelli" );
+			session.persist( systemUser );
+			return systemUser;
+		} );
+
+		scope.inSession( session -> {
+			final SystemUserIdClass systemUser = session.find( SystemUserIdClass.class, new PK(
+					_systemUser.getUsername(),
+					_systemUser.getRegistrationId()
+			) );
+			assertThat( systemUser.getName() ).isEqualTo( "Marco Belladelli" );
+			assertThat( systemUser.getUsername() ).isEqualTo( "mbladel" );
+			assertThat( systemUser.getRegistrationId() ).isNotNull();
+		} );
+	}
+
 
 	@Entity( name = "SystemUser" )
 	public static class SystemUser {
@@ -62,12 +92,54 @@ public class EmbeddedIdGeneratedValueTest {
 
 		private String name;
 
-		public PK getId() {
-			return id;
+		public SystemUser() {
+			this.id = new PK();
 		}
 
-		public void setId(PK id) {
-			this.id = id;
+		public String getUsername() {
+			return id.getUsername();
+		}
+
+		public void setUsername(String username) {
+			this.id.setUsername( username );
+		}
+
+		public Integer getRegistrationId() {
+			return id.getRegistrationId();
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+	}
+
+
+	@Entity( name = "SystemUserIdClass" )
+	@IdClass( PK.class )
+	public static class SystemUserIdClass {
+		@Id
+		private String username;
+
+		@Id
+		@GeneratedValue
+		private Integer registrationId;
+
+		private String name;
+
+		public String getUsername() {
+			return username;
+		}
+
+		public void setUsername(String username) {
+			this.username = username;
+		}
+
+		public Integer getRegistrationId() {
+			return registrationId;
 		}
 
 		public String getName() {
@@ -89,12 +161,17 @@ public class EmbeddedIdGeneratedValueTest {
 		public PK() {
 		}
 
-		public PK(String username) {
+		public PK(String username, Integer registrationId) {
 			this.username = username;
+			this.registrationId = registrationId;
 		}
 
 		public String getUsername() {
 			return username;
+		}
+
+		public void setUsername(String username) {
+			this.username = username;
 		}
 
 		public Integer getRegistrationId() {

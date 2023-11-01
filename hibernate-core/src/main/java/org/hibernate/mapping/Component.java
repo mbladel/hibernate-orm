@@ -592,12 +592,11 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 				if ( !DEFAULT_ID_GEN_STRATEGY.equals( value.getIdentifierGeneratorStrategy() ) ) {
 					// skip any 'assigned' generators, they would have been handled by
 					// the StandardGenerationContextLocator
-					Generator subgenerator = value.createGenerator( identifierGeneratorFactory, dialect, rootClass );
-					generator.addGeneratedValuePlan( new ValueGenerationPlan(
-							subgenerator,
-							i,
-							injector( property, attributeDeclarer ) )
-					);
+					generator.addGeneratedValuePlan( new ValueGenerationPlan( value.createGenerator(
+							identifierGeneratorFactory,
+							dialect,
+							rootClass
+					), i ) );
 				}
 			}
 		}
@@ -645,17 +644,10 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	public static class ValueGenerationPlan implements CompositeNestedGeneratedValueGenerator.GenerationPlan {
 		private final Generator subgenerator;
 		private final int propertyIndex;
-		private final Setter injector;
 
-		public ValueGenerationPlan(Generator subgenerator, int propertyIndex, Setter injector) {
+		public ValueGenerationPlan(Generator subgenerator, int propertyIndex) {
 			this.subgenerator = subgenerator;
 			this.propertyIndex = propertyIndex;
-			this.injector = injector;
-		}
-
-		@Override
-		public Setter getInjector() {
-			return injector;
 		}
 
 		@Override
