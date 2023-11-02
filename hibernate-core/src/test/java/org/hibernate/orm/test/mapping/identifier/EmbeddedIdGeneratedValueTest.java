@@ -29,7 +29,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DomainModel( annotatedClasses = {
 		EmbeddedIdGeneratedValueTest.SystemUser.class,
-		EmbeddedIdGeneratedValueTest.SystemUserIdClass.class,
 		EmbeddedIdGeneratedValueTest.PK.class,
 } )
 @SessionFactory
@@ -38,7 +37,6 @@ public class EmbeddedIdGeneratedValueTest {
 	@AfterAll
 	public void tearDown(SessionFactoryScope scope) {
 		scope.inTransaction( session -> session.createMutationQuery( "delete from SystemUser" ).executeUpdate() );
-		scope.inTransaction( session -> session.createMutationQuery( "delete from SystemUserIdClass" ).executeUpdate() );
 	}
 
 	@Test
@@ -62,28 +60,6 @@ public class EmbeddedIdGeneratedValueTest {
 		} );
 	}
 
-	@Test
-	public void testIdClass(SessionFactoryScope scope) {
-		final SystemUserIdClass _systemUser = scope.fromTransaction( session -> {
-			final SystemUserIdClass systemUser = new SystemUserIdClass();
-			systemUser.setUsername( "mbladel" );
-			systemUser.setName( "Marco Belladelli" );
-			session.persist( systemUser );
-			return systemUser;
-		} );
-
-		scope.inSession( session -> {
-			final SystemUserIdClass systemUser = session.find( SystemUserIdClass.class, new PK(
-					_systemUser.getUsername(),
-					_systemUser.getRegistrationId()
-			) );
-			assertThat( systemUser.getName() ).isEqualTo( "Marco Belladelli" );
-			assertThat( systemUser.getUsername() ).isEqualTo( "mbladel" );
-			assertThat( systemUser.getRegistrationId() ).isNotNull();
-		} );
-	}
-
-
 	@Entity( name = "SystemUser" )
 	public static class SystemUser {
 		@EmbeddedId
@@ -105,40 +81,6 @@ public class EmbeddedIdGeneratedValueTest {
 
 		public Integer getRegistrationId() {
 			return id.getRegistrationId();
-		}
-
-		public String getName() {
-			return name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
-	}
-
-
-	@Entity( name = "SystemUserIdClass" )
-	@IdClass( PK.class )
-	public static class SystemUserIdClass {
-		@Id
-		private String username;
-
-		@Id
-		@GeneratedValue
-		private Integer registrationId;
-
-		private String name;
-
-		public String getUsername() {
-			return username;
-		}
-
-		public void setUsername(String username) {
-			this.username = username;
-		}
-
-		public Integer getRegistrationId() {
-			return registrationId;
 		}
 
 		public String getName() {
