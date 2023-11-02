@@ -38,8 +38,7 @@ public class EmbeddedIdGeneratedValueTest {
 	@AfterAll
 	public void tearDown(SessionFactoryScope scope) {
 		scope.inTransaction( session -> session.createMutationQuery( "delete from SystemUser" ).executeUpdate() );
-		scope.inTransaction( session -> session.createMutationQuery( "delete from SystemUserIdClass" )
-				.executeUpdate() );
+		scope.inTransaction( session -> session.createMutationQuery( "delete from SystemUserIdClass" ).executeUpdate() );
 	}
 
 	@Test
