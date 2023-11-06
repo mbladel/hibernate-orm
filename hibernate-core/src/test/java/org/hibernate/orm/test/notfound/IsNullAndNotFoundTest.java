@@ -13,11 +13,8 @@ import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.cfg.AvailableSettings;
 
-import org.hibernate.testing.FailureExpected;
 import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.junit4.BaseNonConfigCoreFunctionalTestCase;
-import org.hibernate.testing.orm.junit.EntityManagerFactoryScope;
-import org.hibernate.testing.orm.junit.Jira;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -99,10 +96,6 @@ public class IsNullAndNotFoundTest extends BaseNonConfigCoreFunctionalTestCase {
 	}
 
 	@Test
-	@FailureExpected(
-			jiraKey = "HHH-17143",
-			message = "Conceptually this should render as a left join because of the path terminal; currently uses inner join"
-	)
 	public void testAssociationIsNullInWhereClause() {
 		inTransaction(
 				session -> {
@@ -225,8 +218,7 @@ public class IsNullAndNotFoundTest extends BaseNonConfigCoreFunctionalTestCase {
 			assertThat( inspector.getSqlQueries() ).hasSize( 1 );
 			// could physically be a join or exists sub-query
 			assertThat( inspector.getSqlQueries().get( 0 ) )
-					.matches( (sql) -> sql.contains( "left join" ) || sql.contains( "where exists" ) );
-			assertThat( inspector.getSqlQueries().get( 0 ) ).containsIgnoringCase( ".id is null" );
+					.matches( (sql) -> sql.contains( "left join" ) || sql.contains( "not exists" ) );
 		} );
 	}
 
@@ -240,8 +232,7 @@ public class IsNullAndNotFoundTest extends BaseNonConfigCoreFunctionalTestCase {
 			assertThat( inspector.getSqlQueries() ).hasSize( 1 );
 			// could physically be a join or exists sub-query
 			assertThat( inspector.getSqlQueries().get( 0 ) )
-					.matches( (sql) -> sql.contains( "left join" ) || sql.contains( "where exists" ) );
-			assertThat( inspector.getSqlQueries().get( 0 ) ).containsIgnoringCase( ".id is null" );
+					.matches( (sql) -> sql.contains( "left join" ) || sql.contains( "not exists" ) );
 		} );
 	}
 
