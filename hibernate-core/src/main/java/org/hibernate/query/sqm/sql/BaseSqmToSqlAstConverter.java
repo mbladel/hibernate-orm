@@ -3659,6 +3659,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			}
 			if ( newTableGroup != null ) {
 				implicitJoinChecker.accept( newTableGroup );
+				upgradeToInnerJoinIfNeeded( newTableGroup, sqmPath, parentPath, fromClauseIndex );
 				registerPathAttributeEntityNameUsage( sqmPath, newTableGroup );
 			}
 			return newTableGroup;
@@ -3667,9 +3668,21 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			fromClauseIndex.register( sqmPath, parentTableGroup );
 		}
 
-		if ( parentPath instanceof SqmSimplePath<?>
+		upgradeToInnerJoinIfNeeded( parentTableGroup, sqmPath, parentPath, fromClauseIndex );
+
+		registerPathAttributeEntityNameUsage( sqmPath, parentTableGroup );
+
+		return parentTableGroup;
+	}
+
+	private void upgradeToInnerJoinIfNeeded(
+			TableGroup parentTableGroup,
+			SqmPath<?> sqmPath,
+			SqmPath<?> parentPath,
+			FromClauseIndex fromClauseIndex) {
+		if ( getCurrentClauseStack().getCurrent() != Clause.SELECT
+				&& parentPath instanceof SqmSimplePath<?>
 				&& CollectionPart.Nature.fromName( parentPath.getNavigablePath().getLocalName() ) == null
-				&& getCurrentClauseStack().getCurrent() != Clause.SELECT
 				&& parentPath.getParentPath() != null
 				&& parentTableGroup.getModelPart() instanceof ToOneAttributeMapping ) {
 			// we need to handle the case of an implicit path involving a to-one
@@ -3693,9 +3706,6 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				}
 			}
 		}
-		registerPathAttributeEntityNameUsage( sqmPath, parentTableGroup );
-
-		return parentTableGroup;
 	}
 
 	private void prepareForSelection(SqmPath<?> selectionPath) {
@@ -3774,10 +3784,20 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				querySpec.getFromClause().addRoot( tableGroup );
 			}
 			else {
+				final SqlAstJoinType sqlAstJoinType;
+				if ( currentClauseStack.getCurrent() != Clause.SELECT
+						&& getInferredValueMapping() == null
+						&& joinProducer instanceof ToOneAttributeMapping
+						&& ( (ToOneAttributeMapping) joinProducer ).hasNotFoundAction() ) {
+					sqlAstJoinType = SqlAstJoinType.LEFT;
+				}
+				else {
+					sqlAstJoinType = SqlAstJoinType.INNER;
+				}
 				// Check if we can reuse a table group join of the parent
 				final TableGroup compatibleTableGroup = parentTableGroup.findCompatibleJoinedGroup(
 						joinProducer,
-						SqlAstJoinType.INNER
+						sqlAstJoinType
 				);
 				if ( compatibleTableGroup == null ) {
 					final TableGroupJoin tableGroupJoin = joinProducer.createTableGroupJoin(
@@ -3785,7 +3805,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 							parentTableGroup,
 							null,
 							null,
-							null,
+							sqlAstJoinType == SqlAstJoinType.INNER ? null : sqlAstJoinType,
 							false,
 							false,
 							this

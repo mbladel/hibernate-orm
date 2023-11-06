@@ -79,6 +79,7 @@ import org.hibernate.query.sqm.function.MultipatternSqmFunctionDescriptor;
 import org.hibernate.query.sqm.function.SelfRenderingAggregateFunctionSqlAstExpression;
 import org.hibernate.query.sqm.function.SelfRenderingFunctionSqlAstExpression;
 import org.hibernate.query.sqm.function.SqmFunctionDescriptor;
+import org.hibernate.query.sqm.sql.internal.EntityValuedPathInterpretation;
 import org.hibernate.query.sqm.sql.internal.SqmParameterInterpretation;
 import org.hibernate.query.sqm.sql.internal.SqmPathInterpretation;
 import org.hibernate.query.sqm.tree.expression.Conversion;
@@ -1107,20 +1108,27 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 					querySpec.applyPredicate( tableReferenceJoin.getPredicate() );
 				}
 				for ( TableGroupJoin tableGroupJoin : root.getTableGroupJoins() ) {
-					assert tableGroupJoin.getJoinType() == SqlAstJoinType.INNER;
-					querySpec.getFromClause().addRoot( tableGroupJoin.getJoinedGroup() );
-					querySpec.applyPredicate( tableGroupJoin.getPredicate() );
+					if ( tableGroupJoin.getJoinType() == SqlAstJoinType.INNER ) {
+						querySpec.getFromClause().addRoot( tableGroupJoin.getJoinedGroup() );
+						querySpec.applyPredicate( tableGroupJoin.getPredicate() );
+					}
 				}
 				for ( TableGroupJoin tableGroupJoin : root.getNestedTableGroupJoins() ) {
-					assert tableGroupJoin.getJoinType() == SqlAstJoinType.INNER;
-					querySpec.getFromClause().addRoot( tableGroupJoin.getJoinedGroup() );
-					querySpec.applyPredicate( tableGroupJoin.getPredicate() );
+					if ( tableGroupJoin.getJoinType() == SqlAstJoinType.INNER ) {
+						querySpec.getFromClause().addRoot( tableGroupJoin.getJoinedGroup() );
+						querySpec.applyPredicate( tableGroupJoin.getPredicate() );
+					}
 				}
 			}
 			else {
 				querySpec.getFromClause().addRoot( root );
 			}
 		}
+
+		if ( querySpec.getFromClause().getRoots().isEmpty() ) {
+			return statement.getRestriction();
+		}
+
 		querySpec.applyPredicate( statement.getRestriction() );
 		return new ExistsPredicate( querySpec, false, getBooleanType() );
 	}
@@ -7460,11 +7468,58 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 					separator = " and ";
 				}
 			}
+			return;
 		}
-		else {
-			expression.accept( this );
-			appendSql( predicateValue );
+		else if ( expression instanceof EntityValuedPathInterpretation<?> ) {
+			final AbstractUpdateOrDeleteStatement statement = getCurrentOrParentUpdateOrDeleteStatement();
+			if ( statement != null ) {
+				final TableGroup tableGroup = ( (EntityValuedPathInterpretation<?>) expression ).getTableGroup();
+				final TableGroupJoin tableGroupJoin = findTableGroupJoinInStatementStack( tableGroup );
+				if ( tableGroupJoin != null && tableGroupJoin.getJoinType() != SqlAstJoinType.INNER ) {
+					if ( !nullnessPredicate.isNegated() ) {
+						appendSql( "not " );
+					}
+					appendSql( "exists(select 1 from " );
+					queryPartStack.push( new QuerySpec( true ) );
+					clauseStack.push( Clause.FROM );
+					renderFromClauseRoot( tableGroup, "" );
+					appendSql( " where " );
+					clauseStack.pop();
+					clauseStack.push( Clause.WHERE );
+					tableGroupJoin.getPredicate().accept( this );
+					clauseStack.pop();
+					queryPartStack.pop();
+					appendSql( ")" );
+					return;
+				}
+			}
 		}
+		expression.accept( this );
+		appendSql( predicateValue );
+	}
+
+	private AbstractUpdateOrDeleteStatement getCurrentOrParentUpdateOrDeleteStatement() {
+		if ( statementStack.getCurrent() instanceof AbstractUpdateOrDeleteStatement ) {
+			return (AbstractUpdateOrDeleteStatement) statementStack.getCurrent();
+		}
+		else if ( statementStack.peek( -1 ) instanceof AbstractUpdateOrDeleteStatement ) {
+			return (AbstractUpdateOrDeleteStatement) statementStack.peek( -1 );
+		}
+		return null;
+	}
+
+	private TableGroupJoin findTableGroupJoinInStatementStack(TableGroup tableGroup) {
+		return statementStack.findCurrentFirst( statement -> {
+			if ( statement instanceof AbstractUpdateOrDeleteStatement ) {
+				for ( TableGroup root : ( (AbstractUpdateOrDeleteStatement) statement ).getFromClause().getRoots() ) {
+					final TableGroupJoin tableGroupJoin = root.findTableGroupJoin( tableGroup );
+					if ( tableGroupJoin != null ) {
+						return tableGroupJoin;
+					}
+				}
+			}
+			return null;
+		} );
 	}
 
 	@Override
