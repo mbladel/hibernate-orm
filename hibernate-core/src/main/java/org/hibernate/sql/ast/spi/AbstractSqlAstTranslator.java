@@ -7474,21 +7474,26 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 			final AbstractUpdateOrDeleteStatement statement = getCurrentOrParentUpdateOrDeleteStatement();
 			if ( statement != null ) {
 				final TableGroup tableGroup = ( (EntityValuedPathInterpretation<?>) expression ).getTableGroup();
-				final TableGroupJoin tableGroupJoin = findTableGroupJoinInStatementStack( tableGroup );
+				final TableGroupJoin tableGroupJoin = findTableGroupJoin(
+						tableGroup,
+						statement.getFromClause().getRoots()
+				);
 				if ( tableGroupJoin != null && tableGroupJoin.getJoinType() != SqlAstJoinType.INNER ) {
+					final QuerySpec querySpec = new QuerySpec( false );
+					querySpec.getSelectClause().addSqlSelection(
+							new SqlSelectionImpl( new QueryLiteral<>( 1, getIntegerType() ) )
+					);
+					querySpec.getFromClause().getRoots().add( tableGroup );
+					querySpec.applyPredicate( tableGroupJoin.getPredicate() );
+					querySpec.applyPredicate( statement.getRestriction() );
+
 					if ( !nullnessPredicate.isNegated() ) {
 						appendSql( "not " );
 					}
-					appendSql( "exists(select 1 from " );
-					queryPartStack.push( new QuerySpec( true ) );
-					clauseStack.push( Clause.FROM );
-					renderFromClauseRoot( tableGroup, "" );
-					appendSql( " where " );
-					clauseStack.pop();
-					clauseStack.push( Clause.WHERE );
-					tableGroupJoin.getPredicate().accept( this );
-					clauseStack.pop();
-					queryPartStack.pop();
+					appendSql( "exists(" );
+					statementStack.push( new SelectStatement( querySpec ) );
+					visitQuerySpec( querySpec );
+					statementStack.pop();
 					appendSql( ")" );
 					return;
 				}
@@ -7508,18 +7513,14 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 		return null;
 	}
 
-	private TableGroupJoin findTableGroupJoinInStatementStack(TableGroup tableGroup) {
-		return statementStack.findCurrentFirst( statement -> {
-			if ( statement instanceof AbstractUpdateOrDeleteStatement ) {
-				for ( TableGroup root : ( (AbstractUpdateOrDeleteStatement) statement ).getFromClause().getRoots() ) {
-					final TableGroupJoin tableGroupJoin = root.findTableGroupJoin( tableGroup );
-					if ( tableGroupJoin != null ) {
-						return tableGroupJoin;
-					}
-				}
+	private TableGroupJoin findTableGroupJoin(TableGroup tableGroup, List<TableGroup> roots) {
+		for ( TableGroup root : roots ) {
+			final TableGroupJoin tableGroupJoin = root.findTableGroupJoin( tableGroup );
+			if ( tableGroupJoin != null ) {
+				return tableGroupJoin;
 			}
-			return null;
-		} );
+		}
+		return null;
 	}
 
 	@Override
