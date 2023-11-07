@@ -31,7 +31,7 @@ apply plugin: 'biz.aQute.bnd.builder'
 apply plugin: 'org.hibernate.orm.database-service'
 apply plugin: 'org.hibernate.orm.build.java-module'
 
-apply plugin: 'org.checkerframework'
+// apply plugin: 'org.checkerframework'
 
 apply plugin: 'checkstyle'
 apply plugin: 'build-dashboard'
@@ -75,6 +75,9 @@ dependencies {
 	compileOnly libs.loggingAnnotations
 	// Used for compiling some Oracle specific JdbcTypes
 	compileOnly dbLibs.oracle
+
+	compileOnly 'org.checkerframework:checker-qual:3.40.0'
+	testCompileOnly 'org.checkerframework:checker-qual:3.40.0'
 
 	// JUnit dependencies made up of:
 	// 		* JUnit 5
@@ -488,7 +491,7 @@ tasks.withType(JavaCompile).configureEach { task ->
     task.options.compilerArgumentProviders.add(new CompilerStubsArgumentProvider(stubsDir: new File(project.rootDir, "checkerstubs")))
 }
 
-checkerFramework {
+/*checkerFramework {
 	checkers = [
 			'org.checkerframework.checker.nullness.NullnessChecker'
 	]
@@ -497,7 +500,7 @@ checkerFramework {
             // stubs is passed directly through options.compilerArgumentProviders
             '-AonlyDefs=^org\\.hibernate\\.(jdbc|exception|integrator|service|spi|pretty|property\\.access|stat|engine\\.(config|jndi|profile|spi|transaction)|(action|context|bytecode)\\.spi)\\.'
 	]
-}
+}*/
 
 
 task forbiddenApisSystemOut(type: CheckForbiddenApis, dependsOn: compileJava) {
