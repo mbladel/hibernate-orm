@@ -10,6 +10,7 @@ import org.hibernate.HibernateException;
 import org.hibernate.Incubating;
 import org.hibernate.Internal;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.generator.values.GeneratedValuesImpl;
 import org.hibernate.id.insert.GetGeneratedKeysDelegate;
 import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
 import org.hibernate.id.insert.InsertReturningDelegate;
@@ -132,7 +133,7 @@ public final class IdentifierGeneratorHelper {
 		}
 
 		final List<? extends ValuedModelPart> generatedModelParts = persister.getInsertGeneratedProperties();
-		final List<Object> generatedValues = new ArrayList<>( generatedModelParts.size() );
+		final GeneratedValuesImpl generatedValues = new GeneratedValuesImpl( generatedModelParts );
 		for ( ValuedModelPart modelPart : generatedModelParts ) {
 			// todo : introduce support for embeddables through CompositeNestedGeneratedValueGenerator
 			assert modelPart instanceof BasicValuedModelPart;
@@ -144,7 +145,7 @@ public final class IdentifierGeneratorHelper {
 					basic.getSelectionExpression(),
 					persister.getFactory().getFastSessionServices().dialect
 			), wrapperOptions );
-			generatedValues.add( value );
+			generatedValues.addGeneratedValue( modelPart, value );
 
 			LOG.debugf( "Natively generated value %s (%s) : %s", basic.getSelectionExpression(), path, value );
 		}

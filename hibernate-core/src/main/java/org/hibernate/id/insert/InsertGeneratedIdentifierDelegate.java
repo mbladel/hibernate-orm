@@ -96,4 +96,7 @@ public interface InsertGeneratedIdentifierDelegate {
 	 */
 	Object performInsert(String insertSQL, SharedSessionContractImplementor session, Binder binder);
 
+	default boolean supportsRetrievingGeneratedValues() {
+		return false;
+	}
 }

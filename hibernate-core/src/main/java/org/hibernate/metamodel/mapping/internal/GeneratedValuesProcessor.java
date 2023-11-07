@@ -17,10 +17,15 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
+import org.hibernate.generator.values.GeneratedValuesImpl;
+import org.hibernate.id.PostInsertIdentityPersister;
+import org.hibernate.id.insert.BasicSelectingDelegate;
 import org.hibernate.loader.ast.internal.LoaderSelectBuilder;
 import org.hibernate.loader.ast.internal.NoCallbackExecutionContext;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
+import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.exec.internal.JdbcParameterBindingsImpl;
@@ -50,27 +55,26 @@ public class GeneratedValuesProcessor {
 	private final JdbcParametersList jdbcParameters;
 
 	private final EntityMappingType entityDescriptor;
-	private final SessionFactoryImplementor sessionFactory;
 
 	public GeneratedValuesProcessor(
 			EntityMappingType entityDescriptor,
+			List<AttributeMapping> generatedProperties,
 			EventType timing,
 			SessionFactoryImplementor sessionFactory) {
 		this.entityDescriptor = entityDescriptor;
-		this.sessionFactory = sessionFactory;
 
-		generatedValuesToSelect = getGeneratedAttributes( entityDescriptor, timing );
-		if ( generatedValuesToSelect.isEmpty() ) {
+		generatedValuesToSelect = generatedProperties;
+		if ( generatedProperties.isEmpty() || !needsSubsequentSelect( timing ) ) {
 			selectStatement = null;
 			jdbcSelect = null;
-			this.jdbcParameters = JdbcParametersList.empty();
+			jdbcParameters = null;
 		}
 		else {
-			JdbcParametersList.Builder builder = JdbcParametersList.newBuilder();
+			final JdbcParametersList.Builder builder = JdbcParametersList.newBuilder();
 
 			selectStatement = LoaderSelectBuilder.createSelect(
 					entityDescriptor,
-					generatedValuesToSelect,
+					generatedProperties,
 					entityDescriptor.getIdentifierMapping(),
 					null,
 					1,
@@ -82,8 +86,16 @@ public class GeneratedValuesProcessor {
 			jdbcSelect = sessionFactory.getJdbcServices().getJdbcEnvironment().getSqlAstTranslatorFactory()
 							.buildSelectTranslator( sessionFactory, selectStatement )
 							.translate( JdbcParameterBindings.NO_BINDINGS, QueryOptions.NONE );
-			this.jdbcParameters = builder.build();
+			jdbcParameters = builder.build();
 		}
+	}
+
+	private boolean needsSubsequentSelect(EventType timing) {
+		if ( timing == EventType.INSERT && ( (EntityMutationTarget) entityDescriptor ).getIdentityInsertDelegate() != null ) {
+			// todo marco : we should avoid this cast here, deprecate method and move it to EntityPersister ?
+			return !( (EntityMutationTarget) entityDescriptor ).getIdentityInsertDelegate().supportsRetrievingGeneratedValues();
+		}
+		return true;
 	}
 
 	/**
@@ -91,7 +103,7 @@ public class GeneratedValuesProcessor {
 	 *
 	 * @return a list of {@link AttributeMapping}s.
 	 */
-	private static List<AttributeMapping> getGeneratedAttributes(EntityMappingType entityDescriptor, EventType timing) {
+	public static List<AttributeMapping> getGeneratedAttributes(EntityMappingType entityDescriptor, EventType timing) {
 		// todo (6.0): For now, we rely on the entity metamodel as composite attributes report
 		//             GenerationTiming.NEVER even if they have attributes that would need generation
 		final Generator[] generators = entityDescriptor.getEntityPersister().getEntityMetamodel().getGenerators();
@@ -110,11 +122,21 @@ public class GeneratedValuesProcessor {
 	/**
 	 * Obtain the generated values, and populate the snapshot and the fields of the entity instance.
 	 */
-	public void processGeneratedValues(Object entity, Object id, Object[] state, SharedSessionContractImplementor session) {
-		if ( selectStatement != null && hasActualGeneratedValuesToSelect( session, entity ) ) {
-			final List<Object[]> results = executeSelect( id, session );
-			assert results.size() == 1;
-			setEntityAttributes( entity, state, results.get(0) );
+	public void processGeneratedValues(
+			Object entity,
+			Object id,
+			Object[] state,
+			GeneratedValuesImpl generatedValues,
+			SharedSessionContractImplementor session) {
+		if ( hasActualGeneratedValuesToSelect( session, entity ) ) {
+			if ( selectStatement != null ) {
+				final List<Object[]> results = executeSelect( id, session );
+				assert results.size() == 1;
+				setEntityAttributes( entity, state, results.get( 0 ) );
+			}
+			else if ( generatedValues != null ) {
+				setEntityAttributes( entity, state, generatedValues.getGeneratedValues( generatedValuesToSelect ) );
+			}
 		}
 	}
 
@@ -168,9 +190,5 @@ public class GeneratedValuesProcessor {
 
 	public EntityMappingType getEntityDescriptor() {
 		return entityDescriptor;
-	}
-
-	public SessionFactoryImplementor getSessionFactory() {
-		return sessionFactory;
 	}
 }
