@@ -104,6 +104,7 @@ import org.hibernate.generator.EventType;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.internal.VersionGeneration;
+import org.hibernate.generator.values.GeneratedValuesImpl;
 import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.id.Assigned;
 import org.hibernate.id.BulkInsertionCapableIdentifierGenerator;
@@ -2010,8 +2011,10 @@ public abstract class AbstractEntityPersister
 		return select.addRestriction( rootTableKeyColumnNames ).toStatementString();
 	}
 
-	private GeneratedValuesProcessor createGeneratedValuesProcessor(EventType timing) {
-		return new GeneratedValuesProcessor( this, timing, getFactory() );
+	private GeneratedValuesProcessor createGeneratedValuesProcessor(
+			EventType timing,
+			List<AttributeMapping> generatedProperties) {
+		return new GeneratedValuesProcessor( this, generatedProperties, timing, getFactory() );
 	}
 
 	@Override
@@ -3404,17 +3407,31 @@ public abstract class AbstractEntityPersister
 	}
 
 	private void doLateInit() {
+		final List<AttributeMapping> insertGeneratedProperties = hasInsertGeneratedProperties() ?
+				GeneratedValuesProcessor.getGeneratedAttributes( this, INSERT )
+				: null;
+		final List<AttributeMapping> updateGeneratedProperties = hasUpdateGeneratedProperties() ?
+				GeneratedValuesProcessor.getGeneratedAttributes( this, UPDATE )
+				: null;
+
 		if ( isIdentifierAssignedByInsert() ) {
 			final OnExecutionGenerator generator = (OnExecutionGenerator) getGenerator();
 			identityDelegate = generator.getGeneratedIdentifierDelegate( this );
 			identitySelectString = getIdentitySelectString( factory.getJdbcServices().getDialect() );
 		}
-		else if ( !getInsertGeneratedProperties().isEmpty() ) {
+		else if ( CollectionHelper.isNotEmpty( insertGeneratedProperties ) ) {
 			// todo marco : create a delegate only if possible
 			//  - insert returning is supported
 			//  - insert with getGeneratedKeys() API is supported
 			//  - there is a secondary unique key (@NaturalId)
 			identityDelegate = IdentifierGeneratorHelper.getGeneratedIdentifierDelegate( this );
+		}
+
+		if ( hasInsertGeneratedProperties() ) {
+			insertGeneratedValuesProcessor = createGeneratedValuesProcessor( INSERT, insertGeneratedProperties );
+		}
+		if ( hasUpdateGeneratedProperties() ) {
+			updateGeneratedValuesProcessor = createGeneratedValuesProcessor( UPDATE, updateGeneratedProperties );
 		}
 
 		tableMappings = buildTableMappings();
@@ -4674,10 +4691,20 @@ public abstract class AbstractEntityPersister
 			Object entity,
 			Object[] state,
 			SharedSessionContractImplementor session) {
+		processInsertGeneratedProperties( id, entity, state, null, session );
+	}
+
+	@Override
+	public void processInsertGeneratedProperties(
+			Object id,
+			Object entity,
+			Object[] state,
+			GeneratedValuesImpl generatedValues,
+			SharedSessionContractImplementor session) {
 		if ( insertGeneratedValuesProcessor == null ) {
 			throw new UnsupportedOperationException( "Entity has no insert-generated properties - `" + getEntityName() + "`" );
 		}
-		insertGeneratedValuesProcessor.processGeneratedValues( entity, id, state, session );
+		insertGeneratedValuesProcessor.processGeneratedValues( entity, id, state, generatedValues, session );
 	}
 
 	@Override
@@ -4694,7 +4721,7 @@ public abstract class AbstractEntityPersister
 		if ( updateGeneratedValuesProcessor == null ) {
 			throw new AssertionFailure( "Entity has no update-generated properties - `" + getEntityName() + "`" );
 		}
-		updateGeneratedValuesProcessor.processGeneratedValues( entity, id, state, session );
+		updateGeneratedValuesProcessor.processGeneratedValues( entity, id, state, null, session );
 	}
 
 	@Override
@@ -5010,12 +5037,6 @@ public abstract class AbstractEntityPersister
 					visitSubTypeAttributeMappings( builder::add );
 					assert superMappingType != null || builder.assertFetchableIndexes();
 					staticFetchableList = builder.build();
-					if ( hasInsertGeneratedProperties() ) {
-						insertGeneratedValuesProcessor = createGeneratedValuesProcessor( INSERT );
-					}
-					if ( hasUpdateGeneratedProperties() ) {
-						updateGeneratedValuesProcessor = createGeneratedValuesProcessor( UPDATE );
-					}
 					return true;
 				}
 		);

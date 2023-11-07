@@ -366,6 +366,8 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 		if ( tableMapping.isIdentifierTable() && identityDelegate != null && !forceIdentifierBinding ) {
 			final BasicEntityIdentifierMapping mapping =
 					(BasicEntityIdentifierMapping) entityPersister().getIdentifierMapping();
+			// todo marco : why do we need to pass the identifier mapping here ?
+			//  we could remove this cast and just get the identifier inside the delegate imo
 			return identityDelegate.createTableInsertBuilder( mapping, tableMapping.getInsertExpectation(), factory() );
 		}
 		else {
@@ -414,13 +416,12 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 		entityPersister().addSoftDeleteToInsertGroup( insertGroupBuilder );
 
 		// add the keys
-		final InsertGeneratedIdentifierDelegate identityDelegate = entityPersister().getIdentityInsertDelegate();
 		insertGroupBuilder.forEachTableMutationBuilder( (tableMutationBuilder) -> {
 			final TableInsertBuilder tableInsertBuilder = (TableInsertBuilder) tableMutationBuilder;
 			final EntityTableMapping tableMapping = (EntityTableMapping) tableInsertBuilder.getMutatingTable().getTableMapping();
-			//noinspection StatementWithEmptyBody
-			if ( tableMapping.isIdentifierTable() && identityDelegate != null && !forceIdentifierBinding ) {
+			if ( tableMapping.isIdentifierTable() && entityPersister().isIdentifierAssignedByInsert() && !forceIdentifierBinding ) {
 				// nothing to do - the builder already includes the identity handling
+				assert entityPersister().getIdentityInsertDelegate() != null;
 			}
 			else {
 				tableMapping.getKeyMapping().forEachKeyColumn( tableInsertBuilder::addKeyColumn );

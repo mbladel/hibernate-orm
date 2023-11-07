@@ -9,6 +9,7 @@ package org.hibernate.id.insert;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.dialect.Dialect;
@@ -17,6 +18,7 @@ import org.hibernate.engine.jdbc.spi.JdbcCoordinator;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.values.GeneratedValuesImpl;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
@@ -25,6 +27,7 @@ import org.hibernate.generator.OnExecutionGenerator;
 
 import static java.sql.Statement.NO_GENERATED_KEYS;
 import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedIdentity;
+import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
 
 /**
  * Delegate for dealing with {@code IDENTITY} columns where the dialect supports
@@ -68,7 +71,16 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 
 		final ResultSet resultSet = jdbcCoordinator.getResultSetReturn().execute( insertStatement, insertSql );
 		try {
-			return getGeneratedIdentity( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
+			final Object generatedValues = getGeneratedValues(
+					persister.getNavigableRole().getFullPath(),
+					resultSet,
+					persister,
+					session
+			);
+			if ( generatedValues instanceof GeneratedValuesImpl && persister.isIdentifierAssignedByInsert() ) {
+				return ( (GeneratedValuesImpl) generatedValues ).getGeneratedValue( persister.getIdentifierMapping() );
+			}
+			return null;
 		}
 		catch (SQLException e) {
 			throw jdbcServices.getSqlExceptionHelper().convert(
@@ -80,6 +92,11 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 		finally {
 			jdbcCoordinator.getLogicalConnection().getResourceRegistry().release( resultSet, insertStatement );
 		}
+	}
+
+	@Override
+	public boolean supportsRetrievingGeneratedValues() {
+		return true;
 	}
 
 	@Override

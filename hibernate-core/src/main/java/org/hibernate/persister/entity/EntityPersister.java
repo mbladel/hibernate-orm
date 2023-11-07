@@ -32,6 +32,7 @@ import org.hibernate.event.spi.EventSource;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.internal.VersionGeneration;
+import org.hibernate.generator.values.GeneratedValuesImpl;
 import org.hibernate.id.IdentifierGenerator;
 import org.hibernate.internal.FilterAliasGenerator;
 import org.hibernate.internal.TableGroupFilterAliasGenerator;
@@ -900,7 +901,20 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 	 */
 	void processInsertGeneratedProperties(Object id, Object entity, Object[] state, SharedSessionContractImplementor session);
 
-	List<? extends ValuedModelPart> getInsertGeneratedProperties();
+	// todo marco : deprecate the old one and make this the default ?
+	default void processInsertGeneratedProperties(
+			Object id,
+			Object entity,
+			Object[] state,
+			GeneratedValuesImpl generatedValues,
+			SharedSessionContractImplementor session) {
+		processInsertGeneratedProperties( id, entity, state, session );
+	}
+
+	// todo marco : move this to PostInsertIdentityPersister and rename the interface ?
+	default List<? extends ValuedModelPart> getInsertGeneratedProperties() {
+		return null;
+	}
 
 	/**
 	 * Perform a select to retrieve the values of any generated properties
