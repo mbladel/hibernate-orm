@@ -145,7 +145,6 @@ import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.QueryPartTableGroup;
 import org.hibernate.sql.ast.tree.from.QueryPartTableReference;
 import org.hibernate.sql.ast.tree.from.StandardTableGroup;
-import org.hibernate.sql.ast.tree.from.StandardVirtualTableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroupJoin;
 import org.hibernate.sql.ast.tree.from.TableGroupProducer;
@@ -8183,6 +8182,10 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 			visitTableUpdate( tableUpdate );
 			if ( tableUpdate.getWhereFragment() != null ) {
 				sqlBuffer.append( " and (" ).append( tableUpdate.getWhereFragment() ).append( ")" );
+			}
+
+			if ( tableUpdate.getNumberOfReturningColumns() > 0 ) {
+				visitReturningColumns( tableUpdate::getReturningColumns );
 			}
 		}
 		finally {

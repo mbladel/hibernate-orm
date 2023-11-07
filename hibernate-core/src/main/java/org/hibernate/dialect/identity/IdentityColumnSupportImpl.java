@@ -8,8 +8,9 @@ package org.hibernate.dialect.identity;
 
 import org.hibernate.MappingException;
 import org.hibernate.dialect.Dialect;
-import org.hibernate.id.PostInsertIdentityPersister;
+import org.hibernate.generator.EventType;
 import org.hibernate.id.insert.GetGeneratedKeysDelegate;
+import org.hibernate.persister.entity.EntityPersister;
 
 /**
  * @author Andrea Boriero
@@ -55,8 +56,8 @@ public class IdentityColumnSupportImpl implements IdentityColumnSupport {
 
 	@Override
 	public GetGeneratedKeysDelegate buildGetGeneratedKeysDelegate(
-			PostInsertIdentityPersister persister,
+			EntityPersister persister,
 			Dialect dialect) {
-		return new GetGeneratedKeysDelegate( persister, dialect, true );
+		return new GetGeneratedKeysDelegate( persister, dialect, true, EventType.INSERT );
 	}
 }
