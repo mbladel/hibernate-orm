@@ -71,16 +71,7 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 
 		final ResultSet resultSet = jdbcCoordinator.getResultSetReturn().execute( insertStatement, insertSql );
 		try {
-			final Object generatedValues = getGeneratedValues(
-					persister.getNavigableRole().getFullPath(),
-					resultSet,
-					persister,
-					session
-			);
-			if ( generatedValues instanceof GeneratedValuesImpl && persister.isIdentifierAssignedByInsert() ) {
-				return ( (GeneratedValuesImpl) generatedValues ).getGeneratedValue( persister.getIdentifierMapping() );
-			}
-			return null;
+			return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
 		}
 		catch (SQLException e) {
 			throw jdbcServices.getSqlExceptionHelper().convert(
