@@ -7,14 +7,22 @@
 package org.hibernate.id;
 
 import org.hibernate.HibernateException;
+import org.hibernate.Incubating;
 import org.hibernate.Internal;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.id.insert.GetGeneratedKeysDelegate;
+import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
+import org.hibernate.id.insert.InsertReturningDelegate;
+import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.StringHelper;
+import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.SqlTypedMapping;
+import org.hibernate.metamodel.mapping.ValuedModelPart;
 import org.hibernate.metamodel.model.domain.NavigableRole;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.type.descriptor.WrapperOptions;
 
 import java.io.Serializable;
@@ -25,7 +33,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+
+import static org.hibernate.generator.internal.NaturalIdHelper.getNaturalIdPropertyNames;
 
 /**
  * Factory and helper methods for {@link IdentifierGenerator} framework.
@@ -108,6 +120,67 @@ public final class IdentifierGeneratorHelper {
 			LOG.debugf( "Could not determine column index from JDBC metadata", e );
 		}
 		return 1;
+	}
+
+	public static Object getGeneratedValues(
+			String path,
+			ResultSet resultSet,
+			EntityPersister persister,
+			WrapperOptions wrapperOptions) throws SQLException {
+		if ( !resultSet.next() ) {
+			throw new HibernateException( "The database returned no natively generated values : " + path );
+		}
+
+		final List<? extends ValuedModelPart> generatedModelParts = persister.getInsertGeneratedProperties();
+		final List<Object> generatedValues = new ArrayList<>( generatedModelParts.size() );
+		for ( ValuedModelPart modelPart : generatedModelParts ) {
+			// todo : introduce support for embeddables through CompositeNestedGeneratedValueGenerator
+			assert modelPart instanceof BasicValuedModelPart;
+
+			final BasicValuedModelPart basic = (BasicValuedModelPart) modelPart;
+			final JdbcMapping jdbcMapping = basic.getJdbcMapping();
+			Object value = jdbcMapping.getJdbcValueExtractor().extract( resultSet, columnIndex(
+					resultSet,
+					basic.getSelectionExpression(),
+					persister.getFactory().getFastSessionServices().dialect
+			), wrapperOptions );
+			generatedValues.add( value );
+
+			LOG.debugf( "Natively generated value %s (%s) : %s", basic.getSelectionExpression(), path, value );
+		}
+		return generatedValues; // todo marco : use custom object here
+	}
+
+	private static int columnIndex(ResultSet resultSet, String columnName, Dialect dialect) {
+		try {
+			final ResultSetMetaData metaData = resultSet.getMetaData();
+			for ( int i = 1 ; i<=metaData.getColumnCount(); i++ ) {
+				if ( equal( columnName, metaData.getColumnName(i), dialect ) ) {
+					return i;
+				}
+			}
+		}
+		catch (SQLException e) {
+			LOG.debugf( "Could not determine column index from JDBC metadata", e );
+		}
+		throw new HibernateException( "Could not retrieve column index for column name : " + columnName );
+	}
+
+	@Incubating
+	public static InsertGeneratedIdentifierDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
+		Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
+		if ( dialect.supportsInsertReturningGeneratedKeys() ) {
+			return new GetGeneratedKeysDelegate( persister, dialect, false );
+		}
+		else if ( dialect.supportsInsertReturning() ) {
+			return new InsertReturningDelegate( persister, dialect );
+		}
+		else if ( persister.getNaturalIdentifierProperties() != null
+				&& !persister.getEntityMetamodel().isNaturalIdentifierInsertGenerated() ) {
+			// let's just hope the entity has a @NaturalId!
+			return new UniqueKeySelectingDelegate( persister, dialect, getNaturalIdPropertyNames( persister ) );
+		}
+		return null;
 	}
 
 	private static boolean equal(String keyColumnName, String alias, Dialect dialect) {
