@@ -400,7 +400,8 @@ public class GoofyPersisterClassProvider implements PersisterClassResolver {
 		}
 
 		@Override
-		public void insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session) {
+		public Object insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session) {
+			return null;
 		}
 
 		@Override
