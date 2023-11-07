@@ -7485,7 +7485,6 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 					);
 					querySpec.getFromClause().getRoots().add( tableGroup );
 					querySpec.applyPredicate( tableGroupJoin.getPredicate() );
-					querySpec.applyPredicate( statement.getRestriction() );
 
 					if ( !nullnessPredicate.isNegated() ) {
 						appendSql( "not " );
@@ -7507,8 +7506,8 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 		if ( statementStack.getCurrent() instanceof AbstractUpdateOrDeleteStatement ) {
 			return (AbstractUpdateOrDeleteStatement) statementStack.getCurrent();
 		}
-		else if ( statementStack.peek( -1 ) instanceof AbstractUpdateOrDeleteStatement ) {
-			return (AbstractUpdateOrDeleteStatement) statementStack.peek( -1 );
+		else if ( statementStack.peek( 1 ) instanceof AbstractUpdateOrDeleteStatement ) {
+			return (AbstractUpdateOrDeleteStatement) statementStack.peek( 1 );
 		}
 		return null;
 	}
