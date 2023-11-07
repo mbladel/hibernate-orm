@@ -31,6 +31,7 @@ import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 
 import static java.sql.Statement.NO_GENERATED_KEYS;
 import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedIdentity;
+import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
 
 /**
  * Specialized {@link IdentifierGeneratingInsert} which appends the database
@@ -64,7 +65,7 @@ public class SybaseJConnGetGeneratedKeysDelegate extends GetGeneratedKeysDelegat
 
 		ResultSet resultSet = jdbcCoordinator.getResultSetReturn().execute( insertStatement, insertSql );
 		try {
-			return getGeneratedIdentity( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
+			return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
 		}
 		catch (SQLException e) {
 			throw jdbcServices.getSqlExceptionHelper().convert(
