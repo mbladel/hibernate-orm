@@ -109,6 +109,7 @@ import org.hibernate.id.Assigned;
 import org.hibernate.id.BulkInsertionCapableIdentifierGenerator;
 import org.hibernate.id.ForeignGenerator;
 import org.hibernate.id.IdentifierGenerator;
+import org.hibernate.id.IdentifierGeneratorHelper;
 import org.hibernate.id.OptimizableGenerator;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.id.enhanced.Optimizer;
@@ -186,6 +187,7 @@ import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.SingularAttributeMapping;
 import org.hibernate.metamodel.mapping.SoftDeleteMapping;
 import org.hibernate.metamodel.mapping.TableDetails;
+import org.hibernate.metamodel.mapping.ValuedModelPart;
 import org.hibernate.metamodel.mapping.VirtualModelPart;
 import org.hibernate.metamodel.mapping.internal.BasicEntityIdentifierMappingImpl;
 import org.hibernate.metamodel.mapping.internal.CompoundNaturalIdMapping;
@@ -3407,6 +3409,13 @@ public abstract class AbstractEntityPersister
 			identityDelegate = generator.getGeneratedIdentifierDelegate( this );
 			identitySelectString = getIdentitySelectString( factory.getJdbcServices().getDialect() );
 		}
+		else if ( !getInsertGeneratedProperties().isEmpty() ) {
+			// todo marco : create a delegate only if possible
+			//  - insert returning is supported
+			//  - insert with getGeneratedKeys() API is supported
+			//  - there is a secondary unique key (@NaturalId)
+			identityDelegate = IdentifierGeneratorHelper.getGeneratedIdentifierDelegate( this );
+		}
 
 		tableMappings = buildTableMappings();
 		insertCoordinator = buildInsertCoordinator();
@@ -4669,6 +4678,11 @@ public abstract class AbstractEntityPersister
 			throw new UnsupportedOperationException( "Entity has no insert-generated properties - `" + getEntityName() + "`" );
 		}
 		insertGeneratedValuesProcessor.processGeneratedValues( entity, id, state, session );
+	}
+
+	@Override
+	public List<? extends ValuedModelPart> getInsertGeneratedProperties() {
+		return insertGeneratedValuesProcessor.getGeneratedValuesToSelect();
 	}
 
 	@Override
