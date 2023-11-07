@@ -18,6 +18,7 @@ import org.hibernate.event.spi.PostInsertEvent;
 import org.hibernate.event.spi.PostInsertEventListener;
 import org.hibernate.event.spi.PreInsertEvent;
 import org.hibernate.event.spi.PreInsertEventListener;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.stat.spi.StatisticsImplementor;
 
@@ -32,6 +33,7 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 	private final EntityKey delayedEntityKey;
 	private EntityKey entityKey;
 	private Object generatedId;
+	private Object rowId;
 
 	/**
 	 * Constructs an EntityIdentityInsertAction
@@ -78,14 +80,22 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 		// else inserted the same pk first, the insert would fail
 
 		if ( !isVeto() ) {
-			generatedId = persister.insert( getState(), instance, session );
+			final GeneratedValues generatedValues = persister.insertReturning( getState(), instance, session );
+			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
+			generatedId = generatedValues.getGeneratedValue( persister.getIdentifierMapping() );
+			// Process row-id values when available early by replacing the entity entry
+			if ( persister.getRowIdMapping() != null ) {
+				rowId = generatedValues.getGeneratedValue( persister.getRowIdMapping() );
+				if ( rowId != null && isDelayed ) {
+					persistenceContext.replaceEntityEntryRowId( getInstance(), rowId );
+				}
+			}
 			if ( persister.hasInsertGeneratedProperties() ) {
-				persister.processInsertGeneratedProperties( generatedId, instance, getState(), session );
+				persister.processInsertGeneratedProperties( generatedId, instance, getState(), generatedValues, session );
 			}
 			//need to do that here rather than in the save event listener to let
 			//the post insert events to have a id-filled entity when IDENTITY is used (EJB3)
 			persister.setIdentifier( instance, generatedId, session );
-			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
 			persistenceContext.registerInsertedKey( getPersister(), generatedId );
 			entityKey = session.generateEntityKey( generatedId, persister );
 			persistenceContext.checkUniqueness( entityKey, getInstance() );
@@ -210,6 +220,11 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 	@Override
 	protected EntityKey getEntityKey() {
 		return entityKey != null ? entityKey : delayedEntityKey;
+	}
+
+	@Override
+	public Object getRowId() {
+		return rowId;
 	}
 
 	protected void setEntityKey(EntityKey entityKey) {
