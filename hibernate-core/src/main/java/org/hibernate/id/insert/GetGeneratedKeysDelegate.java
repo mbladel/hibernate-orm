@@ -30,6 +30,7 @@ import org.hibernate.generator.OnExecutionGenerator;
 
 import static java.sql.Statement.RETURN_GENERATED_KEYS;
 import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedIdentity;
+import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
 
 /**
  * Delegate for dealing with {@code IDENTITY} columns using the JDBC3 method
@@ -88,6 +89,11 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	}
 
 	@Override
+	public boolean supportsRetrievingGeneratedValues() {
+		return true;
+	}
+
+	@Override
 	public Object performInsert(
 			PreparedStatementDetails insertStatementDetails,
 			JdbcValueBindings jdbcValueBindings,
@@ -109,7 +115,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 			try {
 				final ResultSet resultSet = insertStatement.getGeneratedKeys();
 				try {
-					return getGeneratedIdentity( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
+					return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
 				}
 				catch (SQLException e) {
 					throw jdbcServices.getSqlExceptionHelper().convert(
@@ -157,7 +163,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 		try {
 			final ResultSet resultSet = insertStatement.getGeneratedKeys();
 			try {
-				return getGeneratedIdentity( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
+				return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
 			}
 			catch (SQLException e) {
 				throw jdbcServices.getSqlExceptionHelper().convert(
