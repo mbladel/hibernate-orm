@@ -4709,7 +4709,18 @@ public abstract class AbstractEntityPersister
 
 	@Override
 	public List<? extends ValuedModelPart> getInsertGeneratedProperties() {
-		return insertGeneratedValuesProcessor.getGeneratedValuesToSelect();
+		final List<AttributeMapping> generated = insertGeneratedValuesProcessor != null ?
+				insertGeneratedValuesProcessor.getGeneratedValuesToSelect()
+				: Collections.emptyList();
+		if ( isIdentifierAssignedByInsert() ) {
+			final List<ValuedModelPart> result = new ArrayList<>( generated.size() + 1 );
+			result.add( identifierMapping );
+			result.addAll( generated );
+			return result;
+		}
+		else {
+			return generated;
+		}
 	}
 
 	@Override

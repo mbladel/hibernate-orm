@@ -155,8 +155,8 @@ public final class IdentifierGeneratorHelper {
 	private static int columnIndex(ResultSet resultSet, String columnName, Dialect dialect) {
 		try {
 			final ResultSetMetaData metaData = resultSet.getMetaData();
-			for ( int i = 1 ; i<=metaData.getColumnCount(); i++ ) {
-				if ( equal( columnName, metaData.getColumnName(i), dialect ) ) {
+			for ( int i = 1; i <= metaData.getColumnCount(); i++ ) {
+				if ( equal( columnName, metaData.getColumnName( i ), dialect ) ) {
 					return i;
 				}
 			}
