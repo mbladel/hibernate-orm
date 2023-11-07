@@ -18,6 +18,7 @@ import org.hibernate.event.spi.PostInsertEvent;
 import org.hibernate.event.spi.PostInsertEventListener;
 import org.hibernate.event.spi.PreInsertEvent;
 import org.hibernate.event.spi.PreInsertEventListener;
+import org.hibernate.generator.values.GeneratedValuesImpl;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.stat.spi.StatisticsImplementor;
 
@@ -78,7 +79,14 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 		// else inserted the same pk first, the insert would fail
 
 		if ( !isVeto() ) {
-			generatedId = persister.insert( getState(), instance, session );
+			final Object generatedValues = persister.insert( getState(), instance, session );
+			// todo marco : eventually this check won't be necessary
+			if ( generatedValues instanceof GeneratedValuesImpl ) {
+				generatedId = ( (GeneratedValuesImpl) generatedValues ).getGeneratedValue( persister.getIdentifierMapping() );
+			}
+			else {
+				generatedId = generatedValues;
+			}
 			if ( persister.hasInsertGeneratedProperties() ) {
 				persister.processInsertGeneratedProperties( generatedId, instance, getState(), session );
 			}

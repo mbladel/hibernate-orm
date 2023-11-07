@@ -26,6 +26,7 @@ import org.hibernate.event.spi.PostInsertEvent;
 import org.hibernate.event.spi.PostInsertEventListener;
 import org.hibernate.event.spi.PreInsertEvent;
 import org.hibernate.event.spi.PreInsertEventListener;
+import org.hibernate.generator.values.GeneratedValuesImpl;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.stat.internal.StatsHelper;
 import org.hibernate.stat.spi.StatisticsImplementor;
@@ -101,14 +102,19 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 		if ( !veto ) {
 			final EntityPersister persister = getPersister();
 			final Object instance = getInstance();
-			persister.insert( id, getState(), instance, session );
+			final Object generatedValues = persister.insert( id, getState(), instance, session );
 			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
 			final EntityEntry entry = persistenceContext.getEntry( instance );
 			if ( entry == null ) {
 				throw new AssertionFailure( "possible non-threadsafe access to session" );
 			}
 			entry.postInsert( getState() );
-			handleGeneratedProperties( entry );
+			handleGeneratedProperties(
+					entry,
+					// todo marco : remove this cast
+					//  we could just make insert return GeneratedValues maybe ?
+					generatedValues instanceof GeneratedValuesImpl ? (GeneratedValuesImpl) generatedValues : null
+			);
 			persistenceContext.registerInsertedKey( persister, getId() );
 			addCollectionsByKeyToPersistenceContext( persistenceContext, getState() );
 		}
@@ -124,11 +130,11 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 		markExecuted();
 	}
 
-	private void handleGeneratedProperties(EntityEntry entry) {
+	private void handleGeneratedProperties(EntityEntry entry, GeneratedValuesImpl generatedValues) {
 		final EntityPersister persister = getPersister();
 		if ( persister.hasInsertGeneratedProperties() ) {
 			final Object instance = getInstance();
-			persister.processInsertGeneratedProperties( getId(), instance, getState(), getSession() );
+			persister.processInsertGeneratedProperties( getId(), instance, getState(), generatedValues, getSession() );
 			if ( persister.isVersionPropertyGenerated() ) {
 				version = Versioning.getVersion( getState(), persister );
 			}

@@ -626,7 +626,8 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 	/**
 	 * Persist an instance
 	 */
-	void insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session);
+	// todo marco : can I change this ?
+	Object insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session);
 
 	/**
 	 * Persist an instance, using a natively generated identifier (optional operation)
