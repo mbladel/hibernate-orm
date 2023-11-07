@@ -500,7 +500,7 @@ public class CustomPersister implements EntityPersister {
 		throw new UnsupportedOperationException();
 	}
 
-	public void insert(
+	public Object insert(
 			Object id,
 			Object[] fields,
 			Object object,
@@ -508,6 +508,8 @@ public class CustomPersister implements EntityPersister {
 	) throws HibernateException {
 
 		INSTANCES.put(id, ( (Custom) object ).clone() );
+
+		return null;
 	}
 
 	public Serializable insert(Object[] fields, Object object, SharedSessionContractImplementor session)

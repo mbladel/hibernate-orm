@@ -2873,8 +2873,8 @@ public abstract class AbstractEntityPersister
 	}
 
 	@Override
-	public void insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session) {
-		insertCoordinator.coordinateInsert( id, fields, object, session );
+	public Object insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session) {
+		return insertCoordinator.coordinateInsert( id, fields, object, session );
 	}
 
 	protected EntityTableMapping[] getTableMappings() {
