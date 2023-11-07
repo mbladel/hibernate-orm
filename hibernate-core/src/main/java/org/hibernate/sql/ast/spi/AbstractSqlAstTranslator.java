@@ -144,6 +144,7 @@ import org.hibernate.sql.ast.tree.from.LazyTableGroup;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.QueryPartTableGroup;
 import org.hibernate.sql.ast.tree.from.QueryPartTableReference;
+import org.hibernate.sql.ast.tree.from.StandardVirtualTableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroupJoin;
 import org.hibernate.sql.ast.tree.from.TableGroupProducer;
@@ -1093,6 +1094,9 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 		querySpec.getSelectClause().addSqlSelection(
 				new SqlSelectionImpl( new QueryLiteral<>( 1, getIntegerType() ) )
 		);
+		StandardVirtualTableGroup virtualTableGroup = null;
+		TableGroup firstInnerJoinedGroup = null;
+		final List<TableGroupJoin> collectedJoins = new ArrayList<>();
 		for ( TableGroup root : statement.getFromClause().getRoots() ) {
 			if ( root.getPrimaryTableReference() == statement.getTargetTable() ) {
 				for ( TableReferenceJoin tableReferenceJoin : root.getTableReferenceJoins() ) {
@@ -1109,14 +1113,40 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 				}
 				for ( TableGroupJoin tableGroupJoin : root.getTableGroupJoins() ) {
 					if ( tableGroupJoin.getJoinType() == SqlAstJoinType.INNER ) {
-						querySpec.getFromClause().addRoot( tableGroupJoin.getJoinedGroup() );
+						final TableGroup joinedGroup = tableGroupJoin.getJoinedGroup();
+						if ( virtualTableGroup == null ) {
+							virtualTableGroup = new StandardVirtualTableGroup(
+									joinedGroup.getNavigablePath(),
+									joinedGroup.getModelPart(),
+									joinedGroup,
+									joinedGroup.isFetched()
+							);
+							firstInnerJoinedGroup = joinedGroup;
+						}
+						virtualTableGroup.addTableGroupJoin( tableGroupJoin );
 						querySpec.applyPredicate( tableGroupJoin.getPredicate() );
+					}
+					else {
+						collectedJoins.add( tableGroupJoin );
 					}
 				}
 				for ( TableGroupJoin tableGroupJoin : root.getNestedTableGroupJoins() ) {
 					if ( tableGroupJoin.getJoinType() == SqlAstJoinType.INNER ) {
-						querySpec.getFromClause().addRoot( tableGroupJoin.getJoinedGroup() );
+						final TableGroup joinedGroup = tableGroupJoin.getJoinedGroup();
+						if ( virtualTableGroup == null ) {
+							virtualTableGroup = new StandardVirtualTableGroup(
+									joinedGroup.getNavigablePath(),
+									joinedGroup.getModelPart(),
+									joinedGroup,
+									joinedGroup.isFetched()
+							);
+							firstInnerJoinedGroup = joinedGroup;
+						}
+						virtualTableGroup.addTableGroupJoin( tableGroupJoin );
 						querySpec.applyPredicate( tableGroupJoin.getPredicate() );
+					}
+					else {
+						collectedJoins.add( tableGroupJoin );
 					}
 				}
 			}
@@ -1125,7 +1155,12 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 			}
 		}
 
-		if ( querySpec.getFromClause().getRoots().isEmpty() ) {
+		if ( virtualTableGroup != null ) {
+			collectedJoins.forEach( firstInnerJoinedGroup::addTableGroupJoin );
+			querySpec.getFromClause().addRoot( virtualTableGroup );
+		}
+		else {
+			// todo marco : what if table reference joins were added ?
 			return statement.getRestriction();
 		}
 
@@ -7470,7 +7505,7 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 			}
 			return;
 		}
-		else if ( expression instanceof EntityValuedPathInterpretation<?> ) {
+		else if ( expression instanceof EntityValuedPathInterpretation<?> && 1 == 2 ) {
 			final AbstractUpdateOrDeleteStatement statement = getCurrentOrParentUpdateOrDeleteStatement();
 			if ( statement != null ) {
 				final TableGroup tableGroup = ( (EntityValuedPathInterpretation<?>) expression ).getTableGroup();
