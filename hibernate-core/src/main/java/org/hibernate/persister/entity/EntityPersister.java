@@ -41,6 +41,7 @@ import org.hibernate.loader.ast.spi.NaturalIdLoader;
 import org.hibernate.metadata.ClassMetadata;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
+import org.hibernate.metamodel.mapping.ValuedModelPart;
 import org.hibernate.metamodel.mapping.internal.InFlightEntityMappingType;
 import org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess;
 import org.hibernate.metamodel.spi.EntityRepresentationStrategy;
@@ -898,6 +899,8 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 	 * to the PersistenceContext before calling this method.
 	 */
 	void processInsertGeneratedProperties(Object id, Object entity, Object[] state, SharedSessionContractImplementor session);
+
+	List<? extends ValuedModelPart> getInsertGeneratedProperties();
 
 	/**
 	 * Perform a select to retrieve the values of any generated properties
