@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import org.hibernate.AssertionFailure;
 import org.hibernate.HibernateException;
@@ -46,7 +45,6 @@ import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.EntityVersionMapping;
-import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.TableDetails;
 import org.hibernate.metamodel.mapping.internal.BasicEntityIdentifierMappingImpl;
@@ -79,10 +77,10 @@ import org.hibernate.type.spi.TypeConfiguration;
 import org.jboss.logging.Logger;
 
 import static java.util.Collections.emptyMap;
-import static org.hibernate.internal.util.collections.ArrayHelper.indexOf;
 import static org.hibernate.internal.util.collections.ArrayHelper.to2DStringArray;
 import static org.hibernate.internal.util.collections.ArrayHelper.toIntArray;
 import static org.hibernate.internal.util.collections.ArrayHelper.toStringArray;
+import static org.hibernate.internal.util.collections.CollectionHelper.combine;
 import static org.hibernate.internal.util.collections.CollectionHelper.linkedMapOfSize;
 import static org.hibernate.internal.util.collections.CollectionHelper.mapOfSize;
 import static org.hibernate.jdbc.Expectations.appropriateExpectation;
@@ -1472,22 +1470,26 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 	}
 
 	@Override
-	public List<? extends ModelPart> getInsertGeneratedProperties() {
-		// todo marco : should we cache this value ? is used at runtime so maybe
-		final List<AttributeMapping> generated = insertGeneratedProperties != null ?
-				insertGeneratedProperties :
-				Collections.emptyList();
-		final List<ModelPart> result = new ArrayList<>( generated.size() );
-		if ( isIdentifierAssignedByInsert() ) {
-			result.add( getIdentifierMapping() );
-		}
+	protected List<? extends ModelPart> initInsertGeneratedProperties(List<AttributeMapping> generatedAttributes) {
+		// todo marco : right now we're only selecting early if all generated attributes are in the root table
 		final EntityPersister rootPersister = getRootEntityDescriptor().getEntityPersister();
-		for ( AttributeMapping attributeMapping : generated ) {
+		final int originalSize = generatedAttributes.size();
+		final List<ModelPart> generatedRootAttributes = new ArrayList<>( originalSize );
+		for ( AttributeMapping attributeMapping : generatedAttributes ) {
 			if ( rootPersister.findDeclaredAttributeMapping( attributeMapping.getAttributeName() ) != null ) {
-				result.add( attributeMapping );
+				generatedRootAttributes.add( attributeMapping );
 			}
 		}
-		return result;
+
+		final List<ModelPart> identifierList = isIdentifierAssignedByInsert() ?
+				List.of( getIdentifierMapping() ) :
+				Collections.emptyList();
+		if ( generatedRootAttributes.size() == originalSize ) {
+			return combine( identifierList, generatedRootAttributes );
+		}
+		else  {
+			return new ArrayList<>( identifierList );
+		}
 	}
 
 	@Override
