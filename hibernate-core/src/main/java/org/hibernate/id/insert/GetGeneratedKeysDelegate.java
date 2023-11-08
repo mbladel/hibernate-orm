@@ -24,6 +24,7 @@ import org.hibernate.engine.jdbc.spi.MutationStatementPreparer;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.id.PostInsertIdentityPersister;
+import org.hibernate.internal.util.StringHelper;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.ModelPart;
@@ -61,7 +62,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 			final List<? extends ModelPart> insertGeneratedProperties = persister.getInsertGeneratedProperties();
 			columnNames = insertGeneratedProperties.stream().map( prop -> {
 				assert prop instanceof SelectableMapping;
-				return ( (SelectableMapping) prop ).getSelectionExpression();
+				return StringHelper.unquote( ( (SelectableMapping) prop ).getSelectionExpression(), dialect );
 			} ).toArray( String[]::new );
 		}
 	}

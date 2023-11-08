@@ -95,7 +95,7 @@ public class GeneratedValuesProcessor {
 		// todo marco : can we make this check better?
 		final boolean hasExtraGeneratedProps = entityDescriptor instanceof JoinedSubclassEntityPersister && entityDescriptor.getInsertGeneratedProperties()
 				.size() > generatedValuesToSelect.size() + ( entityDescriptor.isIdentifierAssignedByInsert() ? 1 : 0 );
-		if ( timing == EventType.INSERT && hasExtraGeneratedProps || ( (EntityMutationTarget) entityDescriptor ).getIdentityInsertDelegate() != null ) {
+		if ( timing == EventType.INSERT && ( hasExtraGeneratedProps || ( (EntityMutationTarget) entityDescriptor ).getIdentityInsertDelegate() != null ) ) {
 			// todo marco : we should avoid this cast here, deprecate method and move it to EntityPersister ?
 			return !( (EntityMutationTarget) entityDescriptor ).getIdentityInsertDelegate()
 					.supportsRetrievingGeneratedValues();
