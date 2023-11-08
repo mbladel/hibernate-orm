@@ -428,9 +428,9 @@ public abstract class AbstractEntityPersister
 	private final FilterHelper filterHelper;
 	private volatile Set<String> affectingFetchProfileNames;
 
-	private List<AttributeMapping> insertGeneratedProperties;
+	protected List<AttributeMapping> insertGeneratedProperties;
 	private GeneratedValuesProcessor insertGeneratedValuesProcessor;
-	private List<AttributeMapping> updateGeneratedProperties;
+	protected List<AttributeMapping> updateGeneratedProperties;
 	private GeneratedValuesProcessor updateGeneratedValuesProcessor;
 
 	private InsertGeneratedIdentifierDelegate identityDelegate;
