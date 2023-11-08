@@ -9,7 +9,9 @@ package org.hibernate.id.insert;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 import org.hibernate.MappingException;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
@@ -24,6 +26,8 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
+import org.hibernate.metamodel.mapping.ModelPart;
+import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.generator.OnExecutionGenerator;
@@ -42,12 +46,24 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	private final PostInsertIdentityPersister persister;
 	private final Dialect dialect;
 	private final boolean inferredKeys;
+	private final String[] columnNames;
 
 	public GetGeneratedKeysDelegate(PostInsertIdentityPersister persister, Dialect dialect, boolean inferredKeys) {
 		super( persister );
 		this.persister = persister;
 		this.dialect = dialect;
 		this.inferredKeys = inferredKeys;
+
+		if ( inferredKeys ) {
+			columnNames = null;
+		}
+		else {
+			final List<? extends ModelPart> insertGeneratedProperties = persister.getInsertGeneratedProperties();
+			columnNames = insertGeneratedProperties.stream().map( prop -> {
+				assert prop instanceof SelectableMapping;
+				return ( (SelectableMapping) prop ).getSelectionExpression();
+			} ).toArray( String[]::new );
+		}
 	}
 
 	@Override @Deprecated
@@ -65,15 +81,17 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 		final TableInsertBuilder builder =
 				new TableInsertBuilderStandard( persister, persister.getIdentifierTableMapping(), factory );
 
-		final OnExecutionGenerator generator = (OnExecutionGenerator) persister.getGenerator();
-		if ( generator.referenceColumnsInSql( dialect ) ) {
-			final String[] columnNames = persister.getRootTableKeyColumnNames();
-			final String[] columnValues = generator.getReferencedColumnValues( dialect );
-			if ( columnValues.length != columnNames.length ) {
-				throw new MappingException("wrong number of generated columns");
-			}
-			for ( int i = 0; i < columnValues.length; i++ ) {
-				builder.addKeyColumn( columnNames[i], columnValues[i], identifierMapping.getJdbcMapping() );
+		if ( persister.isIdentifierAssignedByInsert() ) {
+			final OnExecutionGenerator generator = (OnExecutionGenerator) persister.getGenerator();
+			if ( generator.referenceColumnsInSql( dialect ) ) {
+				final String[] columnNames = persister.getRootTableKeyColumnNames();
+				final String[] columnValues = generator.getReferencedColumnValues( dialect );
+				if ( columnValues.length != columnNames.length ) {
+					throw new MappingException( "wrong number of generated columns" );
+				}
+				for ( int i = 0; i < columnValues.length; i++ ) {
+					builder.addKeyColumn( columnNames[i], columnValues[i], identifierMapping.getJdbcMapping() );
+				}
 			}
 		}
 
@@ -85,7 +103,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 		MutationStatementPreparer preparer = session.getJdbcCoordinator().getMutationStatementPreparer();
 		return inferredKeys
 				? preparer.prepareStatement( insertSql, RETURN_GENERATED_KEYS )
-				: preparer.prepareStatement( insertSql, persister.getRootTableKeyColumnNames() );
+				: preparer.prepareStatement( insertSql, columnNames );
 	}
 
 	@Override

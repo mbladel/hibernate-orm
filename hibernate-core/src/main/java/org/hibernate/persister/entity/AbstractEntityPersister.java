@@ -429,7 +429,9 @@ public abstract class AbstractEntityPersister
 	private final FilterHelper filterHelper;
 	private volatile Set<String> affectingFetchProfileNames;
 
+	private List<AttributeMapping> insertGeneratedProperties;
 	private GeneratedValuesProcessor insertGeneratedValuesProcessor;
+	private List<AttributeMapping> updateGeneratedProperties;
 	private GeneratedValuesProcessor updateGeneratedValuesProcessor;
 
 	private InsertGeneratedIdentifierDelegate identityDelegate;
@@ -2013,8 +2015,8 @@ public abstract class AbstractEntityPersister
 
 	private GeneratedValuesProcessor createGeneratedValuesProcessor(
 			EventType timing,
-			List<AttributeMapping> generatedProperties) {
-		return new GeneratedValuesProcessor( this, generatedProperties, timing, getFactory() );
+			List<AttributeMapping> generatedAttributes) {
+		return new GeneratedValuesProcessor( this, generatedAttributes, timing, getFactory() );
 	}
 
 	@Override
@@ -3407,10 +3409,10 @@ public abstract class AbstractEntityPersister
 	}
 
 	private void doLateInit() {
-		final List<AttributeMapping> insertGeneratedProperties = hasInsertGeneratedProperties() ?
+		insertGeneratedProperties = hasInsertGeneratedProperties() ?
 				GeneratedValuesProcessor.getGeneratedAttributes( this, INSERT )
 				: null;
-		final List<AttributeMapping> updateGeneratedProperties = hasUpdateGeneratedProperties() ?
+		updateGeneratedProperties = hasUpdateGeneratedProperties() ?
 				GeneratedValuesProcessor.getGeneratedAttributes( this, UPDATE )
 				: null;
 
@@ -3419,11 +3421,7 @@ public abstract class AbstractEntityPersister
 			identityDelegate = generator.getGeneratedIdentifierDelegate( this );
 			identitySelectString = getIdentitySelectString( factory.getJdbcServices().getDialect() );
 		}
-		else if ( CollectionHelper.isNotEmpty( insertGeneratedProperties ) ) {
-			// todo marco : create a delegate only if possible
-			//  - insert returning is supported
-			//  - insert with getGeneratedKeys() API is supported
-			//  - there is a secondary unique key (@NaturalId)
+		else if ( CollectionHelper.isNotEmpty( getInsertGeneratedProperties() ) ) {
 			identityDelegate = IdentifierGeneratorHelper.getGeneratedIdentifierDelegate( this );
 		}
 
@@ -4708,19 +4706,20 @@ public abstract class AbstractEntityPersister
 	}
 
 	@Override
-	public List<? extends ValuedModelPart> getInsertGeneratedProperties() {
-		final List<AttributeMapping> generated = insertGeneratedValuesProcessor != null ?
-				insertGeneratedValuesProcessor.getGeneratedValuesToSelect()
-				: Collections.emptyList();
+	public List<? extends ModelPart> getInsertGeneratedProperties() {
+		final List<AttributeMapping> generated = insertGeneratedProperties != null ?
+				insertGeneratedProperties :
+				Collections.emptyList();
+		final List<ModelPart> result;
 		if ( isIdentifierAssignedByInsert() ) {
-			final List<ValuedModelPart> result = new ArrayList<>( generated.size() + 1 );
+			result = new ArrayList<>( generated.size() + 1 );
 			result.add( identifierMapping );
 			result.addAll( generated );
-			return result;
 		}
 		else {
-			return generated;
+			result = new ArrayList<>( generated );
 		}
+		return result;
 	}
 
 	@Override

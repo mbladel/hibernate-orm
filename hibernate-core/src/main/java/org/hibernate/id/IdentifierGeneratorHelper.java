@@ -20,6 +20,8 @@ import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.metamodel.mapping.ModelPart;
+import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.SqlTypedMapping;
 import org.hibernate.metamodel.mapping.ValuedModelPart;
 import org.hibernate.metamodel.model.domain.NavigableRole;
@@ -132,24 +134,30 @@ public final class IdentifierGeneratorHelper {
 			throw new HibernateException( "The database returned no natively generated values : " + path );
 		}
 
-		final List<? extends ValuedModelPart> generatedModelParts = persister.getInsertGeneratedProperties();
+		final List<? extends ModelPart> generatedModelParts = persister.getInsertGeneratedProperties();
 		final GeneratedValuesImpl generatedValues = new GeneratedValuesImpl( generatedModelParts );
-		for ( ValuedModelPart modelPart : generatedModelParts ) {
+		for ( ModelPart modelPart : generatedModelParts ) {
 			// todo : introduce support for embeddables through CompositeNestedGeneratedValueGenerator
-			assert modelPart instanceof BasicValuedModelPart;
+			assert modelPart instanceof SelectableMapping;
 
-			final BasicValuedModelPart basic = (BasicValuedModelPart) modelPart;
-			final JdbcMapping jdbcMapping = basic.getJdbcMapping();
+			// todo marco : would be nice to avoid the cast here
+			final SelectableMapping selectable = (SelectableMapping) modelPart;
+			final JdbcMapping jdbcMapping = selectable.getJdbcMapping();
 			Object value = jdbcMapping.getJdbcValueExtractor().extract( resultSet, columnIndex(
 					resultSet,
-					basic.getSelectionExpression(),
+					selectable.getSelectionExpression(),
 					persister.getFactory().getFastSessionServices().dialect
 			), wrapperOptions );
 			generatedValues.addGeneratedValue( modelPart, value );
 
-			LOG.debugf( "Natively generated value %s (%s) : %s", basic.getSelectionExpression(), path, value );
+			LOG.debugf(
+					"Extracted natively generated value %s (%s) : %s",
+					selectable.getSelectionExpression(),
+					path,
+					value
+			);
 		}
-		return generatedValues; // todo marco : use custom object here
+		return generatedValues;
 	}
 
 	private static int columnIndex(ResultSet resultSet, String columnName, Dialect dialect) {
@@ -176,11 +184,12 @@ public final class IdentifierGeneratorHelper {
 		else if ( dialect.supportsInsertReturning() ) {
 			return new InsertReturningDelegate( persister, dialect );
 		}
-		else if ( persister.getNaturalIdentifierProperties() != null
-				&& !persister.getEntityMetamodel().isNaturalIdentifierInsertGenerated() ) {
-			// let's just hope the entity has a @NaturalId!
-			return new UniqueKeySelectingDelegate( persister, dialect, getNaturalIdPropertyNames( persister ) );
-		}
+		// todo marco : add unique key case too? would be nice if both @Id and other properties
+		//  were generated, but right now it's a simple select which just uses strings
+//		else if ( persister.getNaturalIdentifierProperties() != null
+//				&& !persister.getEntityMetamodel().isNaturalIdentifierInsertGenerated() ) {
+//			return new UniqueKeySelectingDelegate( persister, dialect, getNaturalIdPropertyNames( persister ) );
+//		}
 		return null;
 	}
 

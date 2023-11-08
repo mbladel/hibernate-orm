@@ -10,6 +10,7 @@ import java.util.Calendar;
 
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Generated;
+import org.hibernate.annotations.RowId;
 import org.hibernate.generator.EventType;
 
 import org.hibernate.testing.orm.junit.DialectFeatureChecks;
@@ -68,6 +69,7 @@ public class MarcosGeneratedValueTest {
 	}
 
 	@Entity( name = "ValuesOnly" )
+	// @RowId
 	public static class ValuesOnly {
 		@Id
 		private Integer id;
