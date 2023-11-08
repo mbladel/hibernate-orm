@@ -58,13 +58,13 @@ public class GeneratedValuesProcessor {
 
 	public GeneratedValuesProcessor(
 			EntityMappingType entityDescriptor,
-			List<AttributeMapping> generatedProperties,
+			List<AttributeMapping> generatedAttributes,
 			EventType timing,
 			SessionFactoryImplementor sessionFactory) {
 		this.entityDescriptor = entityDescriptor;
 
-		generatedValuesToSelect = generatedProperties;
-		if ( generatedProperties.isEmpty() || !needsSubsequentSelect( timing ) ) {
+		generatedValuesToSelect = generatedAttributes;
+		if ( generatedValuesToSelect.isEmpty() || !needsSubsequentSelect( timing ) ) {
 			selectStatement = null;
 			jdbcSelect = null;
 			jdbcParameters = null;
@@ -74,7 +74,7 @@ public class GeneratedValuesProcessor {
 
 			selectStatement = LoaderSelectBuilder.createSelect(
 					entityDescriptor,
-					generatedProperties,
+					generatedValuesToSelect,
 					entityDescriptor.getIdentifierMapping(),
 					null,
 					1,
@@ -135,7 +135,8 @@ public class GeneratedValuesProcessor {
 				setEntityAttributes( entity, state, results.get( 0 ) );
 			}
 			else if ( generatedValues != null ) {
-				setEntityAttributes( entity, state, generatedValues.getGeneratedValues( generatedValuesToSelect ) );
+				final List<Object> results = generatedValues.getGeneratedValues( generatedValuesToSelect );
+				setEntityAttributes( entity, state, results.toArray( new Object[0] ) );
 			}
 		}
 	}
