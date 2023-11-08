@@ -19,6 +19,7 @@ import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
+import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.SelectableMapping;
@@ -26,6 +27,8 @@ import org.hibernate.metamodel.mapping.SqlTypedMapping;
 import org.hibernate.metamodel.mapping.ValuedModelPart;
 import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.persister.entity.JoinedSubclassEntityPersister;
+import org.hibernate.sql.model.TableMapping;
 import org.hibernate.type.descriptor.WrapperOptions;
 
 import java.io.Serializable;
@@ -141,7 +144,9 @@ public final class IdentifierGeneratorHelper {
 			assert modelPart instanceof SelectableMapping;
 
 			// todo marco : would be nice to avoid the cast here
-			final SelectableMapping selectable = (SelectableMapping) modelPart;
+			final SelectableMapping selectable = (SelectableMapping) ( modelPart.isEntityIdentifierMapping() ?
+					persister.getRootEntityDescriptor().getIdentifierMapping() :
+					modelPart );
 			final JdbcMapping jdbcMapping = selectable.getJdbcMapping();
 			Object value = jdbcMapping.getJdbcValueExtractor().extract( resultSet, columnIndex(
 					resultSet,
