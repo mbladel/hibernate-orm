@@ -42,6 +42,7 @@ import org.hibernate.loader.ast.spi.NaturalIdLoader;
 import org.hibernate.metadata.ClassMetadata;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
+import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.ValuedModelPart;
 import org.hibernate.metamodel.mapping.internal.InFlightEntityMappingType;
 import org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess;
@@ -913,7 +914,7 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 	}
 
 	// todo marco : move this to PostInsertIdentityPersister and rename the interface ?
-	default List<? extends ValuedModelPart> getInsertGeneratedProperties() {
+	default List<? extends ModelPart> getInsertGeneratedProperties() {
 		return null;
 	}
 
