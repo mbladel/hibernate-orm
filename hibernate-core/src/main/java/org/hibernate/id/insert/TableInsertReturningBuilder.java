@@ -15,6 +15,8 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
+import org.hibernate.metamodel.mapping.ModelPart;
+import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.ValuedModelPart;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
@@ -40,10 +42,12 @@ public class TableInsertReturningBuilder extends AbstractTableInsertBuilder {
 
 	@Override
 	public TableInsert buildMutation() {
-		final List<? extends ValuedModelPart> insertGeneratedProperties = getMutationTarget().getInsertGeneratedProperties();
+		final List<? extends ModelPart> insertGeneratedProperties = getMutationTarget().getInsertGeneratedProperties();
 		final List<ColumnReference> generatedColumns = insertGeneratedProperties.stream().map( prop -> {
-			assert prop instanceof BasicValuedModelPart; // todo marco : handle this differently
-			return new ColumnReference( getMutatingTable(), ( (BasicValuedModelPart) prop ) );
+			assert prop instanceof SelectableMapping && !( (SelectableMapping) prop ).isFormula();
+			// todo marco : it would be nice to avoid the cast here, but I would like to keep
+			//  EntityPersister#getInsertGeneratedProperties generic so we could eventually add support for components
+			return new ColumnReference( getMutatingTable(), ( (SelectableMapping) prop ) );
 		} ).collect( Collectors.toList() );
 
 		return new TableInsertStandard(

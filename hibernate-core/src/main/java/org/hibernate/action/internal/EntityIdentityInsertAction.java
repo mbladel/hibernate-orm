@@ -81,14 +81,17 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 		if ( !isVeto() ) {
 			final Object generatedValues = persister.insert( getState(), instance, session );
 			// todo marco : eventually this check won't be necessary
+			final GeneratedValuesImpl generated;
 			if ( generatedValues instanceof GeneratedValuesImpl ) {
-				generatedId = ( (GeneratedValuesImpl) generatedValues ).getGeneratedValue( persister.getIdentifierMapping() );
+				generated = ( (GeneratedValuesImpl) generatedValues );
+				generatedId = generated.getGeneratedValue( persister.getIdentifierMapping() );
 			}
 			else {
+				generated = null;
 				generatedId = generatedValues;
 			}
 			if ( persister.hasInsertGeneratedProperties() ) {
-				persister.processInsertGeneratedProperties( generatedId, instance, getState(), session );
+				persister.processInsertGeneratedProperties( generatedId, instance, getState(), generated, session );
 			}
 			//need to do that here rather than in the save event listener to let
 			//the post insert events to have a id-filled entity when IDENTITY is used (EJB3)
