@@ -30,6 +30,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import javax.management.Attribute;
+
 import org.hibernate.AssertionFailure;
 import org.hibernate.FetchMode;
 import org.hibernate.Filter;
@@ -188,7 +190,6 @@ import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.SingularAttributeMapping;
 import org.hibernate.metamodel.mapping.SoftDeleteMapping;
 import org.hibernate.metamodel.mapping.TableDetails;
-import org.hibernate.metamodel.mapping.ValuedModelPart;
 import org.hibernate.metamodel.mapping.VirtualModelPart;
 import org.hibernate.metamodel.mapping.internal.BasicEntityIdentifierMappingImpl;
 import org.hibernate.metamodel.mapping.internal.CompoundNaturalIdMapping;
@@ -429,9 +430,9 @@ public abstract class AbstractEntityPersister
 	private final FilterHelper filterHelper;
 	private volatile Set<String> affectingFetchProfileNames;
 
-	protected List<AttributeMapping> insertGeneratedProperties;
+	protected List<? extends ModelPart> insertGeneratedProperties;
 	private GeneratedValuesProcessor insertGeneratedValuesProcessor;
-	protected List<AttributeMapping> updateGeneratedProperties;
+	protected List<ModelPart> updateGeneratedProperties;
 	private GeneratedValuesProcessor updateGeneratedValuesProcessor;
 
 	private InsertGeneratedIdentifierDelegate identityDelegate;
@@ -3409,27 +3410,30 @@ public abstract class AbstractEntityPersister
 	}
 
 	private void doLateInit() {
-		insertGeneratedProperties = hasInsertGeneratedProperties() ?
+		final List<AttributeMapping> insertGeneratedAttributes = hasInsertGeneratedProperties() ?
 				GeneratedValuesProcessor.getGeneratedAttributes( this, INSERT )
-				: null;
-		updateGeneratedProperties = hasUpdateGeneratedProperties() ?
+				: Collections.emptyList();
+		final List<AttributeMapping> updateGeneratedAttributes = hasUpdateGeneratedProperties() ?
 				GeneratedValuesProcessor.getGeneratedAttributes( this, UPDATE )
-				: null;
+				: Collections.emptyList();
+
+		insertGeneratedProperties = initInsertGeneratedProperties( insertGeneratedAttributes );
+		updateGeneratedProperties = Collections.emptyList(); // todo
 
 		if ( isIdentifierAssignedByInsert() ) {
 			final OnExecutionGenerator generator = (OnExecutionGenerator) getGenerator();
 			identityDelegate = generator.getGeneratedIdentifierDelegate( this );
 			identitySelectString = getIdentitySelectString( factory.getJdbcServices().getDialect() );
 		}
-		else if ( CollectionHelper.isNotEmpty( getInsertGeneratedProperties() ) ) {
+		else if ( CollectionHelper.isNotEmpty( insertGeneratedProperties ) ) {
 			identityDelegate = IdentifierGeneratorHelper.getGeneratedIdentifierDelegate( this );
 		}
 
 		if ( hasInsertGeneratedProperties() ) {
-			insertGeneratedValuesProcessor = createGeneratedValuesProcessor( INSERT, insertGeneratedProperties );
+			insertGeneratedValuesProcessor = createGeneratedValuesProcessor( INSERT, insertGeneratedAttributes );
 		}
 		if ( hasUpdateGeneratedProperties() ) {
-			updateGeneratedValuesProcessor = createGeneratedValuesProcessor( UPDATE, updateGeneratedProperties );
+			updateGeneratedValuesProcessor = createGeneratedValuesProcessor( UPDATE, updateGeneratedAttributes );
 		}
 
 		tableMappings = buildTableMappings();
@@ -4705,21 +4709,22 @@ public abstract class AbstractEntityPersister
 		insertGeneratedValuesProcessor.processGeneratedValues( entity, id, state, generatedValues, session );
 	}
 
-	@Override
-	public List<? extends ModelPart> getInsertGeneratedProperties() {
-		final List<AttributeMapping> generated = insertGeneratedProperties != null ?
-				insertGeneratedProperties :
-				Collections.emptyList();
+	protected List<? extends ModelPart> initInsertGeneratedProperties(List<AttributeMapping> generatedAttributes) {
 		final List<ModelPart> result;
 		if ( isIdentifierAssignedByInsert() ) {
-			result = new ArrayList<>( generated.size() + 1 );
+			result = new ArrayList<>( generatedAttributes.size() + 1 );
 			result.add( identifierMapping );
-			result.addAll( generated );
+			result.addAll( generatedAttributes );
 		}
 		else {
-			result = new ArrayList<>( generated );
+			result = new ArrayList<>( generatedAttributes );
 		}
 		return result;
+	}
+
+	@Override
+	public List<? extends ModelPart> getInsertGeneratedProperties() {
+		return insertGeneratedProperties;
 	}
 
 	@Override
