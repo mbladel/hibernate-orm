@@ -57,6 +57,6 @@ public class IdentityColumnSupportImpl implements IdentityColumnSupport {
 	public GetGeneratedKeysDelegate buildGetGeneratedKeysDelegate(
 			PostInsertIdentityPersister persister,
 			Dialect dialect) {
-		return new GetGeneratedKeysDelegate( persister, dialect, true );
+		return new GetGeneratedKeysDelegate( persister, dialect, !persister.hasInsertGeneratedProperties() );
 	}
 }
