@@ -61,14 +61,14 @@ public class ElementCollectionMapUpdateTest {
 	public void testElementCollectionUpdate(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final Company company = session.find( Company.class, 1L );
-			company.add( new MarketData( NAME, new Amount( 1d, USD ), new Amount( 1_000d, USD ) ) );
+			company.add( new MarketData( NAME, new Amount( 2d, USD ), new Amount( 2_000d, USD ) ) );
 		} );
 		scope.inTransaction( session -> {
 			final Company company = session.find( Company.class, 1L );
 			assertThat( company.getData() ).hasSize( 1 );
 			assertThat( company.getData() ).containsKey( NAME );
-			assertThat( company.getData().get( NAME ).getPrice().getValue() ).isEqualTo( 1d );
-			assertThat( company.getData().get( NAME ).getCapitalization().getValue() ).isEqualTo( 1_000d );
+			assertThat( company.getData().get( NAME ).getPrice().getValue() ).isEqualTo( 2d );
+			assertThat( company.getData().get( NAME ).getCapitalization().getValue() ).isEqualTo( 2_000d );
 		} );
 	}
 

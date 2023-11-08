@@ -6,6 +6,7 @@
  */
 package org.hibernate.persister.collection;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -28,6 +29,8 @@ import org.hibernate.metamodel.mapping.CollectionIdentifierDescriptor;
 import org.hibernate.metamodel.mapping.CollectionPart;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
+import org.hibernate.metamodel.mapping.SelectableMapping;
+import org.hibernate.metamodel.mapping.SelectableMappings;
 import org.hibernate.metamodel.mapping.SoftDeleteMapping;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.persister.collection.mutation.DeleteRowsCoordinator;
@@ -512,11 +515,19 @@ public class BasicCollectionPersister extends AbstractCollectionPersister {
 
 			 	For this reason we cannot take into consideration the `@Column(updatable = false)`
 			 */
-			attribute.getElementDescriptor().forEachInsertable( updateBuilder );
+			attribute.getElementDescriptor().forEachNonFormula( (index, selectable) -> {
+				// If the selectable is both non-updatable and non-insertable we shouldn't include it in the update
+				if ( !selectable.isInsertable() && !selectable.isUpdateable() ) {
+					return;
+				}
+
+				updateBuilder.accept( index, selectable );
+			} );
 		}
 		else {
 			attribute.getElementDescriptor().forEachUpdatable( updateBuilder );
 		}
+
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// WHERE
 
@@ -527,7 +538,19 @@ public class BasicCollectionPersister extends AbstractCollectionPersister {
 			updateBuilder.addKeyRestrictionsLeniently( attribute.getKeyDescriptor().getKeyPart() );
 
 			if ( attribute.getIndexDescriptor() != null && !indexContainsFormula ) {
-				updateBuilder.addKeyRestrictionsLeniently( attribute.getIndexDescriptor() );
+				// We add updatable columns to the where clause so that the update will get executed
+				// only if the value is different then the previous element in the indexed collection
+				attribute.getElementDescriptor().forEachUpdatable(
+						(index, selectable) -> updateBuilder.addKeyRestrictionLeniently( selectable )
+				);
+				attribute.getIndexDescriptor().forEachNonFormula( (index, selectable) -> {
+					if ( selectable.isUpdateable() && !updateBuilder.getKeyRestrictionBindings().containsColumn(
+							selectable.getSelectionExpression(),
+							selectable.getJdbcMapping()
+					) ) {
+						updateBuilder.addKeyRestrictionLeniently( selectable );
+					}
+				} );
 			}
 			else {
 				updateBuilder.addKeyRestrictions( attribute.getElementDescriptor() );
@@ -557,11 +580,14 @@ public class BasicCollectionPersister extends AbstractCollectionPersister {
 							if ( jdbcValueMapping.isFormula() ) {
 								return;
 							}
-							bindings.bindValue(
-									jdbcValue,
-									jdbcValueMapping,
-									ParameterUsage.SET
-							);
+							else if ( !jdbcValueMapping.isInsertable() && jdbcValueMapping.isUpdateable() ) {
+								// non-insertable columns that are updatable should be set to null to prevent retaining
+								// previous value in case we are replacing the value in an indexed collection
+								bindings.bindValue( null, jdbcValueMapping, ParameterUsage.SET );
+							}
+							else {
+								bindings.bindValue( jdbcValue, jdbcValueMapping, ParameterUsage.SET );
+							}
 						}
 						:
 						(valueIndex, bindings, y, jdbcValue, jdbcValueMapping) -> {
@@ -608,6 +634,23 @@ public class BasicCollectionPersister extends AbstractCollectionPersister {
 			);
 
 			if ( getAttributeMapping().getIndexDescriptor() != null && !indexContainsFormula ) {
+				// first, we bind updatable columns to match the restrictions we added
+				// see #generateUpdateRowAst
+				final Object snapshotElement = collection.getSnapshotElement( entry, entryPosition );
+				getAttributeMapping().getElementDescriptor().decompose(
+						snapshotElement,
+						0,
+						jdbcValueBindings,
+						null,
+						(valueIndex, bindings, noop, jdbcValue, jdbcValueMapping) -> {
+							if ( jdbcValueMapping.isFormula() || !jdbcValueMapping.isUpdateable() ) {
+								return;
+							}
+							bindings.bindValue( jdbcValue, jdbcValueMapping, ParameterUsage.RESTRICT );
+						},
+						session
+				);
+				// then we bind the index
 				final Object index = collection.getIndex( entry, entryPosition, getAttributeMapping().getCollectionDescriptor() );
 				final Object adjustedIndex = incrementIndexByBase( index );
 				getAttributeMapping().getIndexDescriptor().decompose(
