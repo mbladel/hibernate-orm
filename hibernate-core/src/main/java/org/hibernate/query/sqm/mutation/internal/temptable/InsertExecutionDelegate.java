@@ -22,6 +22,7 @@ import org.hibernate.engine.FetchTiming;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.values.GeneratedValuesImpl;
 import org.hibernate.id.BulkInsertionCapableIdentifierGenerator;
 import org.hibernate.id.OptimizableGenerator;
 import org.hibernate.id.PostInsertIdentityPersister;
@@ -553,7 +554,7 @@ public class InsertExecutionDelegate implements TableBasedInsertHandler.Executio
 					(BasicEntityIdentifierMapping) entityDescriptor.getIdentifierMapping();
 			final ValueBinder jdbcValueBinder = identifierMapping.getJdbcMapping().getJdbcValueBinder();
 			for ( Map.Entry<Object, Object> entry : entityTableToRootIdentity.entrySet() ) {
-				final Object rootIdentity = identifierDelegate.performInsert(
+				final Object generatedValues = identifierDelegate.performInsert(
 						finalSql,
 						session,
 						new Binder() {
@@ -567,6 +568,16 @@ public class InsertExecutionDelegate implements TableBasedInsertHandler.Executio
 							}
 						}
 				);
+
+				// todo marco : this will be unnecessary
+				final Object rootIdentity;
+				if ( generatedValues instanceof GeneratedValuesImpl ) {
+					rootIdentity = ( (GeneratedValuesImpl) generatedValues ).getGeneratedValue( identifierMapping );
+				}
+				else {
+					rootIdentity = generatedValues;
+				}
+
 				entry.setValue( rootIdentity );
 			}
 

@@ -8,12 +8,14 @@ package org.hibernate.persister.entity;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.hibernate.AssertionFailure;
 import org.hibernate.HibernateException;
@@ -39,11 +41,13 @@ import org.hibernate.mapping.Selectable;
 import org.hibernate.mapping.Subclass;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.Value;
+import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.EntityVersionMapping;
 import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.TableDetails;
 import org.hibernate.metamodel.mapping.internal.BasicEntityIdentifierMappingImpl;
 import org.hibernate.metamodel.mapping.internal.CaseStatementDiscriminatorMappingImpl;
@@ -1465,6 +1469,25 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 			return true;
 		}
 		return false;
+	}
+
+	@Override
+	public List<? extends ModelPart> getInsertGeneratedProperties() {
+		// todo marco : should we cache this value ? is used at runtime so maybe
+		final List<AttributeMapping> generated = insertGeneratedProperties != null ?
+				insertGeneratedProperties :
+				Collections.emptyList();
+		final List<ModelPart> result = new ArrayList<>( generated.size() );
+		if ( isIdentifierAssignedByInsert() ) {
+			result.add( getIdentifierMapping() );
+		}
+		final EntityPersister rootPersister = getRootEntityDescriptor().getEntityPersister();
+		for ( AttributeMapping attributeMapping : generated ) {
+			if ( rootPersister.findDeclaredAttributeMapping( attributeMapping.getAttributeName() ) != null ) {
+				result.add( attributeMapping );
+			}
+		}
+		return result;
 	}
 
 	@Override

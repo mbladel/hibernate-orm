@@ -25,6 +25,7 @@ import org.hibernate.loader.ast.internal.NoCallbackExecutionContext;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.persister.entity.JoinedSubclassEntityPersister;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
@@ -54,10 +55,10 @@ public class GeneratedValuesProcessor {
 	private final List<AttributeMapping> generatedValuesToSelect;
 	private final JdbcParametersList jdbcParameters;
 
-	private final EntityMappingType entityDescriptor;
+	private final EntityPersister entityDescriptor;
 
 	public GeneratedValuesProcessor(
-			EntityMappingType entityDescriptor,
+			EntityPersister entityDescriptor,
 			List<AttributeMapping> generatedAttributes,
 			EventType timing,
 			SessionFactoryImplementor sessionFactory) {
@@ -91,9 +92,13 @@ public class GeneratedValuesProcessor {
 	}
 
 	private boolean needsSubsequentSelect(EventType timing) {
-		if ( timing == EventType.INSERT && ( (EntityMutationTarget) entityDescriptor ).getIdentityInsertDelegate() != null ) {
+		// todo marco : can we make this check better?
+		final boolean hasExtraGeneratedProps = entityDescriptor instanceof JoinedSubclassEntityPersister && entityDescriptor.getInsertGeneratedProperties()
+				.size() > generatedValuesToSelect.size() + ( entityDescriptor.isIdentifierAssignedByInsert() ? 1 : 0 );
+		if ( timing == EventType.INSERT && hasExtraGeneratedProps || ( (EntityMutationTarget) entityDescriptor ).getIdentityInsertDelegate() != null ) {
 			// todo marco : we should avoid this cast here, deprecate method and move it to EntityPersister ?
-			return !( (EntityMutationTarget) entityDescriptor ).getIdentityInsertDelegate().supportsRetrievingGeneratedValues();
+			return !( (EntityMutationTarget) entityDescriptor ).getIdentityInsertDelegate()
+					.supportsRetrievingGeneratedValues();
 		}
 		return true;
 	}
