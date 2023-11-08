@@ -3573,10 +3573,14 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 	}
 
 	private <X> X prepareReusablePath(SqmPath<?> sqmPath, Supplier<X> supplier) {
-		return prepareReusablePath( sqmPath, fromClauseIndexStack.getCurrent(), supplier );
+		return prepareReusablePath( sqmPath, fromClauseIndexStack.getCurrent(), supplier, false );
 	}
 
-	private <X> X prepareReusablePath(SqmPath<?> sqmPath, FromClauseIndex fromClauseIndex, Supplier<X> supplier) {
+	private <X> X prepareReusablePath(
+			SqmPath<?> sqmPath,
+			FromClauseIndex fromClauseIndex,
+			Supplier<X> supplier,
+			boolean allowLeftJoins) {
 		final Consumer<TableGroup> implicitJoinChecker;
 		if ( getCurrentClauseStack().getCurrent() != Clause.SET_EXPRESSION ) {
 			implicitJoinChecker = tg -> {};
@@ -3599,7 +3603,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 							fromClauseIndex.getTableGroup( sqmPath.getLhs().getNavigablePath() ),
 							sqmPath
 						),
-						sqmPath
+						sqmPath,
+						allowLeftJoins
 				);
 				if ( createdTableGroup != null ) {
 					if ( sqmPath instanceof SqmTreatedPath<?, ?> ) {
@@ -3653,13 +3658,12 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			}
 			else {
 				newTableGroup = getActualTableGroup(
-						createTableGroup( createdParentTableGroup, parentPath ),
+						createTableGroup( createdParentTableGroup, parentPath, false ),
 						sqmPath
 				);
 			}
 			if ( newTableGroup != null ) {
 				implicitJoinChecker.accept( newTableGroup );
-				upgradeToInnerJoinIfNeeded( newTableGroup, sqmPath, parentPath, fromClauseIndex );
 				registerPathAttributeEntityNameUsage( sqmPath, newTableGroup );
 			}
 			return newTableGroup;
@@ -3731,7 +3735,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				// But only create it for paths that are not handled by #prepareReusablePath anyway
 				final TableGroup createdTableGroup = createTableGroup(
 						getActualTableGroup( fromClauseIndex.getTableGroup( path.getLhs().getNavigablePath() ), path ),
-						path
+						path,
+						false
 				);
 				if ( createdTableGroup != null ) {
 					registerEntityNameProjectionUsage( path, createdTableGroup );
@@ -3752,7 +3757,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		}
 	}
 
-	private TableGroup createTableGroup(TableGroup parentTableGroup, SqmPath<?> joinedPath) {
+	private TableGroup createTableGroup(TableGroup parentTableGroup, SqmPath<?> joinedPath, boolean allowLeftJoins) {
 		final SqmPath<?> lhsPath = joinedPath.getLhs();
 		final FromClauseIndex fromClauseIndex = getFromClauseIndex();
 		final ModelPart subPart = parentTableGroup.getModelPart().findSubPart(
@@ -3784,21 +3789,25 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				querySpec.getFromClause().addRoot( tableGroup );
 			}
 			else {
+				final TableGroup leftJoinedTableGroup;
 				final SqlAstJoinType sqlAstJoinType;
-				if ( currentClauseStack.getCurrent() != Clause.SELECT
-						&& getInferredValueMapping() == null
-						&& joinProducer instanceof ToOneAttributeMapping
+				if ( // todo marco : replace this with sane method that also considers the mappedBy="..." case
+						joinProducer instanceof ToOneAttributeMapping
 						&& ( (ToOneAttributeMapping) joinProducer ).hasNotFoundAction() ) {
+					leftJoinedTableGroup = parentTableGroup.findCompatibleJoinedGroup(
+							joinProducer,
+							SqlAstJoinType.LEFT
+					);
 					sqlAstJoinType = SqlAstJoinType.LEFT;
 				}
 				else {
+					leftJoinedTableGroup = null;
 					sqlAstJoinType = SqlAstJoinType.INNER;
 				}
-				// Check if we can reuse a table group join of the parent
-				final TableGroup compatibleTableGroup = parentTableGroup.findCompatibleJoinedGroup(
-						joinProducer,
-						sqlAstJoinType
-				);
+
+				final TableGroup compatibleTableGroup = leftJoinedTableGroup == null ?
+						parentTableGroup.findCompatibleJoinedGroup( joinProducer, SqlAstJoinType.INNER ) :
+						leftJoinedTableGroup;
 				if ( compatibleTableGroup == null ) {
 					final TableGroupJoin tableGroupJoin = joinProducer.createTableGroupJoin(
 							joinedPath.getNavigablePath(),
@@ -3825,6 +3834,11 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 					// Also register the table group under its original navigable path, which possibly contains an alias
 					// This is important, as otherwise we might create new joins in subqueries which are unnecessary
 					fromClauseIndex.registerTableGroup( tableGroup.getNavigablePath(), tableGroup );
+				}
+
+				// Upgrade the join type to inner if the context doesn't allow left joins
+				if ( sqlAstJoinType == SqlAstJoinType.LEFT && !allowLeftJoins ) {
+					parentTableGroup.findTableGroupJoin( tableGroup ).setJoinType( SqlAstJoinType.INNER );
 				}
 			}
 
@@ -7680,11 +7694,30 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 
 	@Override
 	public NullnessPredicate visitIsNullPredicate(SqmNullnessPredicate predicate) {
-		return new NullnessPredicate(
-				(Expression) visitWithInferredType( predicate.getExpression(), () -> basicType( Object.class )),
-				predicate.isNegated(),
-				getBooleanType()
-		);
+		final SqmExpression<?> sqmExpression = predicate.getExpression();
+		final Expression expression;
+		if ( sqmExpression instanceof SqmEntityValuedSimplePath<?> ) {
+			final SqmEntityValuedSimplePath<?> entityValuedPath = (SqmEntityValuedSimplePath<?>) sqmExpression;
+			inferrableTypeAccessStack.push( () -> basicType( Object.class ) );
+			expression = withTreatRestriction( prepareReusablePath(
+					entityValuedPath,
+					fromClauseIndexStack.getCurrent(),
+					() -> EntityValuedPathInterpretation.from(
+							entityValuedPath,
+							getInferredValueMapping(),
+							this
+					),
+					true
+			), entityValuedPath );
+			inferrableTypeAccessStack.pop();
+		}
+		else {
+			expression = (Expression) visitWithInferredType(
+					predicate.getExpression(),
+					() -> basicType( Object.class )
+			);
+		}
+		return new NullnessPredicate( expression, predicate.isNegated(), getBooleanType() );
 	}
 
 	@Override

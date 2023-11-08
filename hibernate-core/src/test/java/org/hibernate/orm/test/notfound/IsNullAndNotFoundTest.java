@@ -124,6 +124,33 @@ public class IsNullAndNotFoundTest extends BaseNonConfigCoreFunctionalTestCase {
 	}
 
 	@Test
+	public void testFetchedAssociationIsNullInWhereClause() {
+		inTransaction(
+				session -> {
+					inspector.clear();
+
+					// should produce an inner join to ACCOUNT_TABLE since it's explicitly selected
+					//
+					//	...
+					//	from PERSON p
+					//		join ACCOUNT_TABLE a
+					//			on p.account_id = a.id
+					//	where a.id is null
+
+					final List<Account> results = session.createQuery(
+									"select p.account from Person p where p.account is null", Account.class )
+							.getResultList();
+
+					assertThat( results ).isEmpty();
+
+					assertThat( inspector.getSqlQueries() ).hasSize( 1 );
+					assertThat( inspector.getSqlQueries().get( 0 ) ).containsIgnoringCase( "join" );
+					assertThat( inspector.getSqlQueries().get( 0 ) ).doesNotContainIgnoringCase( " left join " );
+				}
+		);
+	}
+
+	@Test
 	public void testIsNullInWhereClause3() {
 		inTransaction(
 				session -> {
