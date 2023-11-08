@@ -144,6 +144,7 @@ import org.hibernate.sql.ast.tree.from.LazyTableGroup;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.QueryPartTableGroup;
 import org.hibernate.sql.ast.tree.from.QueryPartTableReference;
+import org.hibernate.sql.ast.tree.from.StandardVirtualTableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroupJoin;
 import org.hibernate.sql.ast.tree.from.TableGroupProducer;
@@ -1089,6 +1090,15 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 	}
 
 	protected Predicate determineWhereClauseRestrictionWithJoinEmulation(AbstractUpdateOrDeleteStatement statement) {
+		if ( supportsJoinInMutationStatementSubquery() ) {
+			return determineWhereClauseRestrictionWithJoinEmulationVirtual( statement );
+		}
+		else {
+			return determineWhereClauseRestrictionWithJoinEmulationRoots( statement );
+		}
+	}
+
+	protected Predicate determineWhereClauseRestrictionWithJoinEmulationRoots(AbstractUpdateOrDeleteStatement statement) {
 		final QuerySpec querySpec = new QuerySpec( false );
 		querySpec.getSelectClause().addSqlSelection(
 				new SqlSelectionImpl( new QueryLiteral<>( 1, getIntegerType() ) )
@@ -1132,6 +1142,85 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 		querySpec.applyPredicate( statement.getRestriction() );
 		return new ExistsPredicate( querySpec, false, getBooleanType() );
 	}
+
+	protected Predicate determineWhereClauseRestrictionWithJoinEmulationVirtual(AbstractUpdateOrDeleteStatement statement) {
+		final QuerySpec querySpec = new QuerySpec( false );
+		querySpec.getSelectClause().addSqlSelection(
+				new SqlSelectionImpl( new QueryLiteral<>( 1, getIntegerType() ) )
+		);
+		StandardVirtualTableGroup virtualTableGroup = null;
+		TableGroup firstInnerJoinedGroup = null;
+		final List<TableGroupJoin> collectedNonInnerJoins = new ArrayList<>();
+		for ( TableGroup root : statement.getFromClause().getRoots() ) {
+			if ( root.getPrimaryTableReference() == statement.getTargetTable() ) {
+				for ( TableReferenceJoin tableReferenceJoin : root.getTableReferenceJoins() ) {
+					assert tableReferenceJoin.getJoinType() == SqlAstJoinType.INNER;
+					querySpec.getFromClause().addRoot(
+							new TableGroupImpl(
+									root.getNavigablePath(),
+									null,
+									tableReferenceJoin.getJoinedTableReference(),
+									root.getModelPart()
+							)
+					);
+					querySpec.applyPredicate( tableReferenceJoin.getPredicate() );
+				}
+				for ( TableGroupJoin tableGroupJoin : root.getTableGroupJoins() ) {
+					if ( tableGroupJoin.getJoinType() == SqlAstJoinType.INNER ) {
+						final TableGroup joinedGroup = tableGroupJoin.getJoinedGroup();
+						if ( virtualTableGroup == null ) {
+							virtualTableGroup = new StandardVirtualTableGroup(
+									joinedGroup.getNavigablePath(),
+									joinedGroup.getModelPart(),
+									joinedGroup,
+									joinedGroup.isFetched()
+							);
+							firstInnerJoinedGroup = joinedGroup;
+						}
+						virtualTableGroup.addTableGroupJoin( tableGroupJoin );
+						querySpec.applyPredicate( tableGroupJoin.getPredicate() );
+					}
+					else {
+						collectedNonInnerJoins.add( tableGroupJoin );
+					}
+				}
+				for ( TableGroupJoin tableGroupJoin : root.getNestedTableGroupJoins() ) {
+					if ( tableGroupJoin.getJoinType() == SqlAstJoinType.INNER ) {
+						final TableGroup joinedGroup = tableGroupJoin.getJoinedGroup();
+						if ( virtualTableGroup == null ) {
+							virtualTableGroup = new StandardVirtualTableGroup(
+									joinedGroup.getNavigablePath(),
+									joinedGroup.getModelPart(),
+									joinedGroup,
+									joinedGroup.isFetched()
+							);
+							firstInnerJoinedGroup = joinedGroup;
+						}
+						virtualTableGroup.addTableGroupJoin( tableGroupJoin );
+						querySpec.applyPredicate( tableGroupJoin.getPredicate() );
+					}
+					else {
+						collectedNonInnerJoins.add( tableGroupJoin );
+					}
+				}
+			}
+			else {
+				querySpec.getFromClause().addRoot( root );
+			}
+		}
+
+		if ( virtualTableGroup != null ) {
+			collectedNonInnerJoins.forEach( firstInnerJoinedGroup::addTableGroupJoin );
+			querySpec.getFromClause().addRoot( virtualTableGroup );
+		}
+		else {
+			return statement.getRestriction();
+		}
+
+		querySpec.applyPredicate( statement.getRestriction() );
+		return new ExistsPredicate( querySpec, false, getBooleanType() );
+	}
+
 
 	protected void renderSetClause(UpdateStatement statement, Stack<Clause> clauseStack) {
 		appendSql( " set" );
@@ -7471,7 +7560,7 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 			return;
 		}
 		else if ( expression instanceof EntityValuedPathInterpretation<?> ) {
-			final AbstractUpdateOrDeleteStatement statement = getCurrentOrParentUpdateOrDeleteStatement();
+			final AbstractUpdateOrDeleteStatement statement = getCurrentOrParentUpdateOrDeleteStatement( !supportsJoinInMutationStatementSubquery() );
 			if ( statement != null ) {
 				final TableGroup tableGroup = ( (EntityValuedPathInterpretation<?>) expression ).getTableGroup();
 				final TableGroupJoin tableGroupJoin = findTableGroupJoin(
@@ -7479,21 +7568,7 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 						statement.getFromClause().getRoots()
 				);
 				if ( tableGroupJoin != null && tableGroupJoin.getJoinType() != SqlAstJoinType.INNER ) {
-					final QuerySpec querySpec = new QuerySpec( false );
-					querySpec.getSelectClause().addSqlSelection(
-							new SqlSelectionImpl( new QueryLiteral<>( 1, getIntegerType() ) )
-					);
-					querySpec.getFromClause().getRoots().add( tableGroup );
-					querySpec.applyPredicate( tableGroupJoin.getPredicate() );
-
-					if ( !nullnessPredicate.isNegated() ) {
-						appendSql( "not " );
-					}
-					appendSql( "exists(" );
-					statementStack.push( new SelectStatement( querySpec ) );
-					visitQuerySpec( querySpec );
-					statementStack.pop();
-					appendSql( ")" );
+					emulateNullnessPredicateWithExistsSubquery( nullnessPredicate, tableGroup, tableGroupJoin );
 					return;
 				}
 			}
@@ -7502,11 +7577,33 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 		appendSql( predicateValue );
 	}
 
-	private AbstractUpdateOrDeleteStatement getCurrentOrParentUpdateOrDeleteStatement() {
+	private void emulateNullnessPredicateWithExistsSubquery(
+			NullnessPredicate nullnessPredicate,
+			TableGroup tableGroup,
+			TableGroupJoin tableGroupJoin) {
+		final QuerySpec querySpec = new QuerySpec( false );
+		querySpec.getSelectClause().addSqlSelection(
+				new SqlSelectionImpl( new QueryLiteral<>( 1, getIntegerType() ) )
+		);
+		querySpec.getFromClause().getRoots().add( tableGroup );
+		querySpec.applyPredicate( tableGroupJoin.getPredicate() );
+
+		if ( !nullnessPredicate.isNegated() ) {
+			appendSql( "not " );
+		}
+		appendSql( "exists(" );
+		statementStack.push( new SelectStatement( querySpec ) );
+		visitQuerySpec( querySpec );
+		statementStack.pop();
+		appendSql( ")" );
+	}
+
+	private AbstractUpdateOrDeleteStatement getCurrentOrParentUpdateOrDeleteStatement(boolean checkParent) {
 		if ( statementStack.getCurrent() instanceof AbstractUpdateOrDeleteStatement ) {
 			return (AbstractUpdateOrDeleteStatement) statementStack.getCurrent();
 		}
-		else if ( statementStack.depth() > 1 && statementStack.peek( 1 ) instanceof AbstractUpdateOrDeleteStatement ) {
+		else if ( checkParent && statementStack.depth() > 1
+				&& statementStack.peek( 1 ) instanceof AbstractUpdateOrDeleteStatement ) {
 			return (AbstractUpdateOrDeleteStatement) statementStack.peek( 1 );
 		}
 		return null;
@@ -7848,6 +7945,15 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 	 */
 	protected boolean supportsRowValueConstructorSyntaxInInSubQuery() {
 		return supportsRowValueConstructorSyntaxInInList();
+	}
+
+	/**
+	 * If the dialect supports using joins in mutation statement subquery
+	 * that could also use columns from the mutation target table
+	 * @return
+	 */
+	protected boolean supportsJoinInMutationStatementSubquery() {
+		return true;
 	}
 
 	/**

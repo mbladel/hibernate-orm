@@ -20,6 +20,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
@@ -250,6 +251,20 @@ public class IsNullAndNotFoundTest extends BaseNonConfigCoreFunctionalTestCase {
 	}
 
 	@Test
+	public void testDeleteAdditionalPredicate() {
+		inspector.clear();
+
+		inTransaction( (entityManager) -> {
+			entityManager.createQuery( "delete from Person p where p.account is null and p.lazyAccount.code <>'aaa'" ).executeUpdate();
+
+			assertThat( inspector.getSqlQueries() ).hasSize( 1 );
+			// could physically be a join or exists sub-query
+			assertThat( inspector.getSqlQueries().get( 0 ) )
+					.matches( (sql) -> sql.contains( "left join" ) || sql.contains( "not exists" ) );
+		} );
+	}
+
+	@Test
 	public void testHqlUpdate() {
 		inspector.clear();
 
@@ -288,6 +303,9 @@ public class IsNullAndNotFoundTest extends BaseNonConfigCoreFunctionalTestCase {
 		@OneToOne
 		@NotFound(action = NotFoundAction.IGNORE)
 		private Account account;
+
+		@OneToOne(fetch = FetchType.LAZY)
+		private Account lazyAccount;
 
 		Person() {
 		}
