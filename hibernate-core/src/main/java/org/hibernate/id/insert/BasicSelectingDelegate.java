@@ -8,16 +8,15 @@ package org.hibernate.id.insert;
 
 import org.hibernate.MappingException;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
-import org.hibernate.boot.registry.classloading.internal.ClassLoaderServiceImpl;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
-import org.hibernate.generator.OnExecutionGenerator;
 
 /**
  * Delegate for dealing with {@code IDENTITY} columns where the dialect requires an
@@ -42,7 +41,6 @@ public class BasicSelectingDelegate extends AbstractSelectingDelegate {
 
 	@Override
 	public TableInsertBuilder createTableInsertBuilder(
-			BasicEntityIdentifierMapping identifierMapping,
 			Expectation expectation,
 			SessionFactoryImplementor factory) {
 		final TableInsertBuilder builder =
@@ -50,6 +48,7 @@ public class BasicSelectingDelegate extends AbstractSelectingDelegate {
 
 		final OnExecutionGenerator generator = (OnExecutionGenerator) persister.getGenerator();
 		if ( generator.referenceColumnsInSql( dialect ) ) {
+			final BasicEntityIdentifierMapping identifierMapping = (BasicEntityIdentifierMapping) persister.getIdentifierMapping();
 			final String[] columnNames = persister.getRootTableKeyColumnNames();
 			final String[] columnValues = generator.getReferencedColumnValues( dialect );
 			if ( columnValues.length != columnNames.length ) {

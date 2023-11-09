@@ -31,6 +31,7 @@ import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.engine.transaction.internal.jta.JtaStatusHelper;
 import org.hibernate.engine.transaction.jta.platform.spi.JtaPlatform;
+import org.hibernate.generator.values.GeneratedValuesImpl;
 import org.hibernate.graph.GraphSemantic;
 import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.loader.ast.spi.CascadingFetchProfile;
@@ -110,7 +111,16 @@ public class StatelessSessionImpl extends AbstractSharedSessionContract implemen
 			persister.insert( id, state, entity, this );
 		}
 		else {
-			id = persister.insert( state, entity, this );
+			final Object generatedValues = persister.insert( state, entity, this );
+			// todo marco : eventually this check won't be necessary
+			final GeneratedValuesImpl generated;
+			if ( generatedValues instanceof GeneratedValuesImpl ) {
+				generated = ( (GeneratedValuesImpl) generatedValues );
+				id = generated.getGeneratedValue( persister.getIdentifierMapping() );
+			}
+			else {
+				id = generatedValues;
+			}
 		}
 		persister.setIdentifier( entity, id, this );
 		return id;

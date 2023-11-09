@@ -42,11 +42,19 @@ public interface InsertGeneratedIdentifierDelegate {
 	/**
 	 * Create a {@link TableInsertBuilder} with any specific identity
 	 * handling already built in.
+	 *
+	 * todo marco : should I leave this or not ?
+	 * @deprecated
 	 */
-	TableInsertBuilder createTableInsertBuilder(
+	@Deprecated( since = "7.0", forRemoval = true )
+	default TableInsertBuilder createTableInsertBuilder(
 			BasicEntityIdentifierMapping identifierMapping,
 			Expectation expectation,
-			SessionFactoryImplementor sessionFactory);
+			SessionFactoryImplementor sessionFactory) {
+		return createTableInsertBuilder( expectation, sessionFactory );
+	}
+
+	TableInsertBuilder createTableInsertBuilder(Expectation expectation, SessionFactoryImplementor sessionFactory);
 
 	PreparedStatement prepareStatement(String insertSql, SharedSessionContractImplementor session);
 
