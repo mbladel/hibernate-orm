@@ -3791,9 +3791,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			else {
 				final TableGroup leftJoinedTableGroup;
 				final SqlAstJoinType sqlAstJoinType;
-				if ( // todo marco : replace this with sane method that also considers the mappedBy="..." case
-						joinProducer instanceof ToOneAttributeMapping
-						&& ( (ToOneAttributeMapping) joinProducer ).hasNotFoundAction() ) {
+				if ( joinProducer instanceof ToOneAttributeMapping && ( (ToOneAttributeMapping) joinProducer ).hasNotFoundAction() ) {
 					leftJoinedTableGroup = parentTableGroup.findCompatibleJoinedGroup(
 							joinProducer,
 							SqlAstJoinType.LEFT
@@ -3802,19 +3800,19 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				}
 				else {
 					leftJoinedTableGroup = null;
-					sqlAstJoinType = SqlAstJoinType.INNER;
+					sqlAstJoinType = null;
 				}
 
-				final TableGroup compatibleTableGroup = leftJoinedTableGroup == null ?
-						parentTableGroup.findCompatibleJoinedGroup( joinProducer, SqlAstJoinType.INNER ) :
-						leftJoinedTableGroup;
+				final TableGroup compatibleTableGroup = leftJoinedTableGroup != null ?
+						leftJoinedTableGroup :
+						parentTableGroup.findCompatibleJoinedGroup( joinProducer, SqlAstJoinType.INNER );
 				if ( compatibleTableGroup == null ) {
 					final TableGroupJoin tableGroupJoin = joinProducer.createTableGroupJoin(
 							joinedPath.getNavigablePath(),
 							parentTableGroup,
 							null,
 							null,
-							sqlAstJoinType == SqlAstJoinType.INNER ? null : sqlAstJoinType,
+							allowLeftJoins ? sqlAstJoinType : null,
 							false,
 							false,
 							this
@@ -3834,11 +3832,10 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 					// Also register the table group under its original navigable path, which possibly contains an alias
 					// This is important, as otherwise we might create new joins in subqueries which are unnecessary
 					fromClauseIndex.registerTableGroup( tableGroup.getNavigablePath(), tableGroup );
-				}
-
-				// Upgrade the join type to inner if the context doesn't allow left joins
-				if ( sqlAstJoinType == SqlAstJoinType.LEFT && !allowLeftJoins ) {
-					parentTableGroup.findTableGroupJoin( tableGroup ).setJoinType( SqlAstJoinType.INNER );
+					// Upgrade the join type to inner if the context doesn't allow left joins
+					if ( sqlAstJoinType == SqlAstJoinType.LEFT && !allowLeftJoins && leftJoinedTableGroup != null ) {
+						parentTableGroup.findTableGroupJoin( tableGroup ).setJoinType( SqlAstJoinType.INNER );
+					}
 				}
 			}
 

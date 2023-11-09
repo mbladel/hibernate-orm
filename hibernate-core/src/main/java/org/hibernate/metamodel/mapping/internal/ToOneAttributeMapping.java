@@ -355,7 +355,7 @@ public class ToOneAttributeMapping
 				}
 			}
 			isOptional = ( (ManyToOne) bootValue ).isIgnoreNotFound();
-			isInternalLoadNullable = ( isNullable && bootValue.isForeignKeyEnabled() ) || hasNotFoundAction();
+			isInternalLoadNullable = ( isNullable && bootValue.isForeignKeyEnabled() ) || notFoundAction != null;
 		}
 		else {
 			assert bootValue instanceof OneToOne;
@@ -838,7 +838,7 @@ public class ToOneAttributeMapping
 		// 		* the FK is located there
 		// 		* the association does not force a join (`@NotFound`, nullable 1-1, ...)
 		// Otherwise we need to join to the associated entity table(s)
-		final boolean forceJoin = hasNotFoundAction()
+		final boolean forceJoin = notFoundAction != null
 				|| ( cardinality == Cardinality.ONE_TO_ONE && isNullable() );
 		this.canUseParentTableGroup = ! forceJoin
 				&& sideNature == ForeignKeyDescriptor.Nature.KEY
@@ -1628,7 +1628,7 @@ public class ToOneAttributeMapping
 
 		// Consider all associations annotated with @NotFound as EAGER
 		if ( fetchTiming == FetchTiming.IMMEDIATE
-				|| hasNotFoundAction()
+				|| notFoundAction != null
 				|| getAssociatedEntityMappingType().getSoftDeleteMapping() != null ) {
 			return buildEntityFetchSelect(
 					fetchParent,
@@ -2055,7 +2055,7 @@ public class ToOneAttributeMapping
 			canUseInnerJoin = false;
 		}
 		else if ( isNullable
-				|| hasNotFoundAction()
+				|| notFoundAction != null
 				|| softDeleteMapping != null ) {
 			canUseInnerJoin = false;
 		}
@@ -2264,7 +2264,14 @@ public class ToOneAttributeMapping
 	}
 
 	public boolean hasNotFoundAction() {
-		return notFoundAction != null;
+		if ( notFoundAction != null ) {
+			return true;
+		}
+		else if ( referencedPropertyName != null && cardinality != Cardinality.MANY_TO_ONE ) {
+			final AttributeMapping mappedByAttribute = entityMappingType.findAttributeMapping( referencedPropertyName );
+			return mappedByAttribute instanceof ToOneAttributeMapping && ( (ToOneAttributeMapping) mappedByAttribute ).hasNotFoundAction();
+		}
+		return false;
 	}
 
 	@Override

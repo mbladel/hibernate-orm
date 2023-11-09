@@ -40,6 +40,7 @@ import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.FilterJdbcParameter;
 import org.hibernate.internal.util.MathHelper;
+import org.hibernate.internal.util.MutableObject;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.internal.util.collections.Stack;
@@ -1090,135 +1091,84 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 	}
 
 	protected Predicate determineWhereClauseRestrictionWithJoinEmulation(AbstractUpdateOrDeleteStatement statement) {
+		final QuerySpec querySpec = new QuerySpec( false );
+		querySpec.getSelectClause().addSqlSelection(
+				new SqlSelectionImpl( new QueryLiteral<>( 1, getIntegerType() ) )
+		);
+
+		final MutableObject<StandardVirtualTableGroup> virtualTableGroup;
+		final List<TableGroupJoin> collectedNonInnerJoins;
 		if ( supportsJoinInMutationStatementSubquery() ) {
-			return determineWhereClauseRestrictionWithJoinEmulationVirtual( statement );
+			virtualTableGroup = new MutableObject<>();
+			collectedNonInnerJoins = new ArrayList<>();
+			emulateWhereClauseRestrictionJoins( statement, querySpec, tableGroupJoin -> {
+				if ( tableGroupJoin.getJoinType() == SqlAstJoinType.INNER ) {
+					final TableGroup joinedGroup = tableGroupJoin.getJoinedGroup();
+					if ( !virtualTableGroup.isSet() ) {
+						virtualTableGroup.set( new StandardVirtualTableGroup(
+								joinedGroup.getNavigablePath(),
+								joinedGroup.getModelPart(),
+								joinedGroup,
+								joinedGroup.isFetched()
+						) );
+					}
+					virtualTableGroup.get().addTableGroupJoin( tableGroupJoin );
+					querySpec.applyPredicate( tableGroupJoin.getPredicate() );
+				}
+				else {
+					collectedNonInnerJoins.add( tableGroupJoin );
+				}
+			} );
 		}
 		else {
-			return determineWhereClauseRestrictionWithJoinEmulationRoots( statement );
-		}
-	}
-
-	protected Predicate determineWhereClauseRestrictionWithJoinEmulationRoots(AbstractUpdateOrDeleteStatement statement) {
-		final QuerySpec querySpec = new QuerySpec( false );
-		querySpec.getSelectClause().addSqlSelection(
-				new SqlSelectionImpl( new QueryLiteral<>( 1, getIntegerType() ) )
-		);
-		for ( TableGroup root : statement.getFromClause().getRoots() ) {
-			if ( root.getPrimaryTableReference() == statement.getTargetTable() ) {
-				for ( TableReferenceJoin tableReferenceJoin : root.getTableReferenceJoins() ) {
-					assert tableReferenceJoin.getJoinType() == SqlAstJoinType.INNER;
-					querySpec.getFromClause().addRoot(
-							new TableGroupImpl(
-									root.getNavigablePath(),
-									null,
-									tableReferenceJoin.getJoinedTableReference(),
-									root.getModelPart()
-							)
-					);
-					querySpec.applyPredicate( tableReferenceJoin.getPredicate() );
+			virtualTableGroup = null;
+			collectedNonInnerJoins = null;
+			emulateWhereClauseRestrictionJoins( statement, querySpec, tableGroupJoin -> {
+				if ( tableGroupJoin.getJoinType() == SqlAstJoinType.INNER ) {
+					querySpec.getFromClause().addRoot( tableGroupJoin.getJoinedGroup() );
+					querySpec.applyPredicate( tableGroupJoin.getPredicate() );
 				}
-				for ( TableGroupJoin tableGroupJoin : root.getTableGroupJoins() ) {
-					if ( tableGroupJoin.getJoinType() == SqlAstJoinType.INNER ) {
-						querySpec.getFromClause().addRoot( tableGroupJoin.getJoinedGroup() );
-						querySpec.applyPredicate( tableGroupJoin.getPredicate() );
-					}
-				}
-				for ( TableGroupJoin tableGroupJoin : root.getNestedTableGroupJoins() ) {
-					if ( tableGroupJoin.getJoinType() == SqlAstJoinType.INNER ) {
-						querySpec.getFromClause().addRoot( tableGroupJoin.getJoinedGroup() );
-						querySpec.applyPredicate( tableGroupJoin.getPredicate() );
-					}
-				}
-			}
-			else {
-				querySpec.getFromClause().addRoot( root );
-			}
+			} );
 		}
 
-		if ( querySpec.getFromClause().getRoots().isEmpty() ) {
-			return statement.getRestriction();
-		}
-
-		querySpec.applyPredicate( statement.getRestriction() );
-		return new ExistsPredicate( querySpec, false, getBooleanType() );
-	}
-
-	protected Predicate determineWhereClauseRestrictionWithJoinEmulationVirtual(AbstractUpdateOrDeleteStatement statement) {
-		final QuerySpec querySpec = new QuerySpec( false );
-		querySpec.getSelectClause().addSqlSelection(
-				new SqlSelectionImpl( new QueryLiteral<>( 1, getIntegerType() ) )
-		);
-		StandardVirtualTableGroup virtualTableGroup = null;
-		TableGroup firstInnerJoinedGroup = null;
-		final List<TableGroupJoin> collectedNonInnerJoins = new ArrayList<>();
-		for ( TableGroup root : statement.getFromClause().getRoots() ) {
-			if ( root.getPrimaryTableReference() == statement.getTargetTable() ) {
-				for ( TableReferenceJoin tableReferenceJoin : root.getTableReferenceJoins() ) {
-					assert tableReferenceJoin.getJoinType() == SqlAstJoinType.INNER;
-					querySpec.getFromClause().addRoot(
-							new TableGroupImpl(
-									root.getNavigablePath(),
-									null,
-									tableReferenceJoin.getJoinedTableReference(),
-									root.getModelPart()
-							)
-					);
-					querySpec.applyPredicate( tableReferenceJoin.getPredicate() );
-				}
-				for ( TableGroupJoin tableGroupJoin : root.getTableGroupJoins() ) {
-					if ( tableGroupJoin.getJoinType() == SqlAstJoinType.INNER ) {
-						final TableGroup joinedGroup = tableGroupJoin.getJoinedGroup();
-						if ( virtualTableGroup == null ) {
-							virtualTableGroup = new StandardVirtualTableGroup(
-									joinedGroup.getNavigablePath(),
-									joinedGroup.getModelPart(),
-									joinedGroup,
-									joinedGroup.isFetched()
-							);
-							firstInnerJoinedGroup = joinedGroup;
-						}
-						virtualTableGroup.addTableGroupJoin( tableGroupJoin );
-						querySpec.applyPredicate( tableGroupJoin.getPredicate() );
-					}
-					else {
-						collectedNonInnerJoins.add( tableGroupJoin );
-					}
-				}
-				for ( TableGroupJoin tableGroupJoin : root.getNestedTableGroupJoins() ) {
-					if ( tableGroupJoin.getJoinType() == SqlAstJoinType.INNER ) {
-						final TableGroup joinedGroup = tableGroupJoin.getJoinedGroup();
-						if ( virtualTableGroup == null ) {
-							virtualTableGroup = new StandardVirtualTableGroup(
-									joinedGroup.getNavigablePath(),
-									joinedGroup.getModelPart(),
-									joinedGroup,
-									joinedGroup.isFetched()
-							);
-							firstInnerJoinedGroup = joinedGroup;
-						}
-						virtualTableGroup.addTableGroupJoin( tableGroupJoin );
-						querySpec.applyPredicate( tableGroupJoin.getPredicate() );
-					}
-					else {
-						collectedNonInnerJoins.add( tableGroupJoin );
-					}
-				}
-			}
-			else {
-				querySpec.getFromClause().addRoot( root );
-			}
-		}
-
-		if ( virtualTableGroup != null ) {
+		if ( virtualTableGroup != null && virtualTableGroup.isSet() ) {
+			final TableGroup firstInnerJoinedGroup = virtualTableGroup.get().getUnderlyingTableGroup();
 			collectedNonInnerJoins.forEach( firstInnerJoinedGroup::addTableGroupJoin );
-			querySpec.getFromClause().addRoot( virtualTableGroup );
+			querySpec.getFromClause().addRoot( virtualTableGroup.get() );
 		}
-		else {
+		else if ( querySpec.getFromClause().getRoots().isEmpty() ) {
 			return statement.getRestriction();
 		}
 
 		querySpec.applyPredicate( statement.getRestriction() );
 		return new ExistsPredicate( querySpec, false, getBooleanType() );
+	}
+
+	private void emulateWhereClauseRestrictionJoins(
+			AbstractUpdateOrDeleteStatement statement,
+			QuerySpec querySpec,
+			Consumer<TableGroupJoin> joinConsumer) {
+		for ( TableGroup root : statement.getFromClause().getRoots() ) {
+			if ( root.getPrimaryTableReference() == statement.getTargetTable() ) {
+				for ( TableReferenceJoin tableReferenceJoin : root.getTableReferenceJoins() ) {
+					assert tableReferenceJoin.getJoinType() == SqlAstJoinType.INNER;
+					querySpec.getFromClause().addRoot(
+							new TableGroupImpl(
+									root.getNavigablePath(),
+									null,
+									tableReferenceJoin.getJoinedTableReference(),
+									root.getModelPart()
+							)
+					);
+					querySpec.applyPredicate( tableReferenceJoin.getPredicate() );
+				}
+				root.getTableGroupJoins().forEach( joinConsumer );
+				root.getNestedTableGroupJoins().forEach( joinConsumer );
+			}
+			else {
+				querySpec.getFromClause().addRoot( root );
+			}
+		}
 	}
 
 
@@ -7950,7 +7900,6 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 	/**
 	 * If the dialect supports using joins in mutation statement subquery
 	 * that could also use columns from the mutation target table
-	 * @return
 	 */
 	protected boolean supportsJoinInMutationStatementSubquery() {
 		return true;
