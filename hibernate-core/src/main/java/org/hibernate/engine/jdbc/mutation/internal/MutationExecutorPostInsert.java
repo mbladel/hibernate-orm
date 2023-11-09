@@ -105,6 +105,8 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 				secondaryTableMutations,
 				session
 		);
+
+		prepareForNonBatchedWork( null, session );
 	}
 
 	@Override

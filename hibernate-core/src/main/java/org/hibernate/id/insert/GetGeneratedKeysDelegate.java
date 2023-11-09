@@ -11,7 +11,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Locale;
-import java.util.stream.Collectors;
 
 import org.hibernate.MappingException;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
@@ -23,6 +22,7 @@ import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.jdbc.spi.MutationStatementPreparer;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.jdbc.Expectation;
@@ -31,10 +31,9 @@ import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
-import org.hibernate.generator.OnExecutionGenerator;
 
 import static java.sql.Statement.RETURN_GENERATED_KEYS;
-import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedIdentity;
+import static org.hibernate.id.IdentifierGeneratorHelper.getActualSelectableMapping;
 import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
 
 /**
@@ -60,9 +59,10 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 		}
 		else {
 			final List<? extends ModelPart> insertGeneratedProperties = persister.getInsertGeneratedProperties();
-			columnNames = insertGeneratedProperties.stream().map( prop -> {
-				assert prop instanceof SelectableMapping;
-				return StringHelper.unquote( ( (SelectableMapping) prop ).getSelectionExpression(), dialect );
+			columnNames = insertGeneratedProperties.stream().map( modelPart -> {
+				assert modelPart instanceof SelectableMapping : "Unsupported non-selectable generated value";
+				final SelectableMapping selectableMapping = getActualSelectableMapping( modelPart, persister );
+				return StringHelper.unquote( selectableMapping.getSelectionExpression(), dialect );
 			} ).toArray( String[]::new );
 		}
 	}
@@ -76,7 +76,6 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 
 	@Override
 	public TableInsertBuilder createTableInsertBuilder(
-			BasicEntityIdentifierMapping identifierMapping,
 			Expectation expectation,
 			SessionFactoryImplementor factory) {
 		final TableInsertBuilder builder =
@@ -85,6 +84,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 		if ( persister.isIdentifierAssignedByInsert() ) {
 			final OnExecutionGenerator generator = (OnExecutionGenerator) persister.getGenerator();
 			if ( generator.referenceColumnsInSql( dialect ) ) {
+				final BasicEntityIdentifierMapping identifierMapping = (BasicEntityIdentifierMapping) persister.getIdentifierMapping();
 				final String[] columnNames = persister.getRootTableKeyColumnNames();
 				final String[] columnValues = generator.getReferencedColumnValues( dialect );
 				if ( columnValues.length != columnNames.length ) {

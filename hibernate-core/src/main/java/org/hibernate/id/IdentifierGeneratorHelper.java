@@ -140,13 +140,11 @@ public final class IdentifierGeneratorHelper {
 		final List<? extends ModelPart> generatedModelParts = persister.getInsertGeneratedProperties();
 		final GeneratedValuesImpl generatedValues = new GeneratedValuesImpl( generatedModelParts );
 		for ( ModelPart modelPart : generatedModelParts ) {
-			// todo : introduce support for embeddables through CompositeNestedGeneratedValueGenerator
-			assert modelPart instanceof SelectableMapping;
+			assert modelPart instanceof SelectableMapping : "Unsupported non-selectable generated value";
 
-			// todo marco : would be nice to avoid the cast here
-			final SelectableMapping selectable = (SelectableMapping) ( modelPart.isEntityIdentifierMapping() ?
-					persister.getRootEntityDescriptor().getIdentifierMapping() :
-					modelPart );
+			// todo marco : would be nice to avoid the cast here, but if we want to keep
+			//  the options open (for Components and/or other attribute types) we're going to need it
+			final SelectableMapping selectable = getActualSelectableMapping( modelPart, persister );
 			final JdbcMapping jdbcMapping = selectable.getJdbcMapping();
 			Object value = jdbcMapping.getJdbcValueExtractor().extract( resultSet, columnIndex(
 					resultSet,
@@ -178,6 +176,13 @@ public final class IdentifierGeneratorHelper {
 			LOG.debugf( "Could not determine column index from JDBC metadata", e );
 		}
 		throw new HibernateException( "Could not retrieve column index for column name : " + columnName );
+	}
+
+	public static SelectableMapping getActualSelectableMapping(ModelPart modelPart, EntityPersister persister) {
+		final ModelPart actualModelPart = modelPart.isEntityIdentifierMapping() ?
+				persister.getRootEntityDescriptor().getIdentifierMapping() :
+				modelPart;
+		return (SelectableMapping) actualModelPart;
 	}
 
 	@Incubating

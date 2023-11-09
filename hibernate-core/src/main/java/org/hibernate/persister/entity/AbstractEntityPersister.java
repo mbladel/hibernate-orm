@@ -30,8 +30,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import javax.management.Attribute;
-
 import org.hibernate.AssertionFailure;
 import org.hibernate.FetchMode;
 import org.hibernate.Filter;
@@ -320,6 +318,7 @@ import static org.hibernate.internal.util.collections.ArrayHelper.toIntArray;
 import static org.hibernate.internal.util.collections.ArrayHelper.toObjectArray;
 import static org.hibernate.internal.util.collections.ArrayHelper.toStringArray;
 import static org.hibernate.internal.util.collections.ArrayHelper.toTypeArray;
+import static org.hibernate.internal.util.collections.CollectionHelper.combine;
 import static org.hibernate.internal.util.collections.CollectionHelper.isNotEmpty;
 import static org.hibernate.internal.util.collections.CollectionHelper.setOfSize;
 import static org.hibernate.internal.util.collections.CollectionHelper.toSmallList;
@@ -3418,7 +3417,7 @@ public abstract class AbstractEntityPersister
 				: Collections.emptyList();
 
 		insertGeneratedProperties = initInsertGeneratedProperties( insertGeneratedAttributes );
-		updateGeneratedProperties = Collections.emptyList(); // todo
+		updateGeneratedProperties = Collections.emptyList(); // todo marco : support updates
 
 		if ( isIdentifierAssignedByInsert() ) {
 			final OnExecutionGenerator generator = (OnExecutionGenerator) getGenerator();
@@ -4710,16 +4709,26 @@ public abstract class AbstractEntityPersister
 	}
 
 	protected List<? extends ModelPart> initInsertGeneratedProperties(List<AttributeMapping> generatedAttributes) {
-		final List<ModelPart> result;
-		if ( isIdentifierAssignedByInsert() ) {
-			result = new ArrayList<>( generatedAttributes.size() + 1 );
-			result.add( identifierMapping );
-			result.addAll( generatedAttributes );
+		final int originalSize = generatedAttributes.size();
+		final List<ModelPart> generatedBasicAttributes = new ArrayList<>( originalSize );
+		for ( AttributeMapping generatedAttribute : generatedAttributes ) {
+			// todo : support non selectable mappings? Component, ToOneAttributeMapping, ...
+			// todo : support generated values on secondary table / joined inheritance?
+			if ( generatedAttribute instanceof SelectableMapping
+					&& ( (SelectableMapping) generatedAttribute ).getContainingTableExpression().equals( getSubclassTableName( 0 ) ) ) {
+				generatedBasicAttributes.add( generatedAttribute );
+			}
 		}
-		else {
-			result = new ArrayList<>( generatedAttributes );
+
+		final List<ModelPart> identifierList = isIdentifierAssignedByInsert() ?
+				List.of( getIdentifierMapping() ) :
+				Collections.emptyList();
+		if ( generatedBasicAttributes.size() == originalSize ) {
+			return combine( identifierList, generatedBasicAttributes );
 		}
-		return result;
+		else  {
+			return new ArrayList<>( identifierList );
+		}
 	}
 
 	@Override

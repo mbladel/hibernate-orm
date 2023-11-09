@@ -88,11 +88,12 @@ public class GeneratedValuesProcessor {
 	}
 
 	private boolean needsSubsequentSelect(EventType timing, List<AttributeMapping> generatedAttributes) {
-		// We need to check if we need to select more properties than what is processed by the identity delegate.
-		// This can happen for JoinedSubclassEntityPersisters that have on-execution generated values on subclasses
-		final boolean hasExtraGeneratedProps = generatedAttributes.size() > numberOfGeneratedNonIdentifierProperties( timing );
-		if ( timing == EventType.INSERT && ( hasExtraGeneratedProps || entityDescriptor.getIdentityInsertDelegate() != null ) ) {
-			return !entityDescriptor.getIdentityInsertDelegate().supportsRetrievingGeneratedValues();
+		if ( timing == EventType.INSERT ) {
+			// We need to check if we need to select more properties than what is processed by the identity delegate.
+			// This can happen for JoinedSubclassEntityPersisters that have on-execution generated values on subclasses
+			final boolean hasExtraGeneratedProps = generatedAttributes.size() > numberOfGeneratedNonIdentifierProperties( timing );
+			return hasExtraGeneratedProps || entityDescriptor.getIdentityInsertDelegate() == null
+					|| !entityDescriptor.getIdentityInsertDelegate().supportsRetrievingGeneratedValues();
 		}
 		return true;
 	}

@@ -46,6 +46,7 @@ import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.EntityVersionMapping;
 import org.hibernate.metamodel.mapping.ModelPart;
+import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.TableDetails;
 import org.hibernate.metamodel.mapping.internal.BasicEntityIdentifierMappingImpl;
 import org.hibernate.metamodel.mapping.internal.CaseStatementDiscriminatorMappingImpl;
@@ -1471,23 +1472,22 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 
 	@Override
 	protected List<? extends ModelPart> initInsertGeneratedProperties(List<AttributeMapping> generatedAttributes) {
-		// todo marco : right now we're only selecting early if all generated attributes are in the root table
-		final EntityPersister rootPersister = getRootEntityDescriptor().getEntityPersister();
 		final int originalSize = generatedAttributes.size();
-		final List<ModelPart> generatedRootAttributes = new ArrayList<>( originalSize );
-		for ( AttributeMapping attributeMapping : generatedAttributes ) {
-			if ( rootPersister.findDeclaredAttributeMapping( attributeMapping.getAttributeName() ) != null ) {
-				generatedRootAttributes.add( attributeMapping );
+		final List<ModelPart> generatedBasicAttributes = new ArrayList<>( originalSize );
+		for ( AttributeMapping generatedAttribute : generatedAttributes ) {
+			if ( generatedAttribute instanceof SelectableMapping
+					&& ( (SelectableMapping) generatedAttribute ).getContainingTableExpression().equals( getSubclassTableName( 0 ) ) ) {
+				generatedBasicAttributes.add( generatedAttribute );
 			}
 		}
 
 		final List<ModelPart> identifierList = isIdentifierAssignedByInsert() ?
 				List.of( getIdentifierMapping() ) :
 				Collections.emptyList();
-		if ( generatedRootAttributes.size() == originalSize ) {
-			return combine( identifierList, generatedRootAttributes );
+		if ( generatedBasicAttributes.size() == originalSize ) {
+			return combine( identifierList, generatedBasicAttributes );
 		}
-		else  {
+		else {
 			return new ArrayList<>( identifierList );
 		}
 	}

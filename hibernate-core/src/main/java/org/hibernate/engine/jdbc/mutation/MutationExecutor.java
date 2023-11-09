@@ -7,6 +7,7 @@
 package org.hibernate.engine.jdbc.mutation;
 
 import org.hibernate.Incubating;
+import org.hibernate.engine.jdbc.batch.spi.BatchKey;
 import org.hibernate.engine.jdbc.mutation.group.PreparedStatementDetails;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.sql.model.ValuesAnalysis;
@@ -50,4 +51,9 @@ public interface MutationExecutor {
 			SharedSessionContractImplementor session);
 
 	void release();
+
+	default void prepareForNonBatchedWork(BatchKey batchKey, SharedSessionContractImplementor session) {
+		// if there is a current batch, make sure to execute it first
+		session.getJdbcCoordinator().conditionallyExecuteBatch( batchKey );
+	}
 }
