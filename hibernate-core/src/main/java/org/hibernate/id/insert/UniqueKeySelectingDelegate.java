@@ -59,7 +59,6 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 
 	@Override
 	public TableInsertBuilder createTableInsertBuilder(
-			BasicEntityIdentifierMapping identifierMapping,
 			Expectation expectation,
 			SessionFactoryImplementor factory) {
 		return new TableInsertBuilderStandard( persister, persister.getIdentifierTableMapping(), factory );

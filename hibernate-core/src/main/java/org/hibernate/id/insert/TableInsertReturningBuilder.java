@@ -44,9 +44,7 @@ public class TableInsertReturningBuilder extends AbstractTableInsertBuilder {
 	public TableInsert buildMutation() {
 		final List<? extends ModelPart> insertGeneratedProperties = getMutationTarget().getInsertGeneratedProperties();
 		final List<ColumnReference> generatedColumns = insertGeneratedProperties.stream().map( prop -> {
-			assert prop instanceof SelectableMapping && !( (SelectableMapping) prop ).isFormula();
-			// todo marco : it would be nice to avoid the cast here, but I would like to keep
-			//  EntityPersister#getInsertGeneratedProperties generic so we could eventually add support for components
+			assert prop instanceof SelectableMapping : "Unsupported non-selectable generated value";
 			return new ColumnReference( getMutatingTable(), ( (SelectableMapping) prop ) );
 		} ).collect( Collectors.toList() );
 

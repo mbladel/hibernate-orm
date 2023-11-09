@@ -364,11 +364,7 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 	private TableInsertBuilder createTableInsertBuilder(EntityTableMapping tableMapping, boolean forceIdentifierBinding) {
 		final InsertGeneratedIdentifierDelegate identityDelegate = entityPersister().getIdentityInsertDelegate();
 		if ( tableMapping.isIdentifierTable() && identityDelegate != null && !forceIdentifierBinding ) {
-			final BasicEntityIdentifierMapping mapping =
-					(BasicEntityIdentifierMapping) entityPersister().getIdentifierMapping();
-			// todo marco : why do we need to pass the identifier mapping here ?
-			//  we could remove this cast and just get the identifier inside the delegate imo
-			return identityDelegate.createTableInsertBuilder( mapping, tableMapping.getInsertExpectation(), factory() );
+			return identityDelegate.createTableInsertBuilder( tableMapping.getInsertExpectation(), factory() );
 		}
 		else {
 			return new TableInsertBuilderStandard( entityPersister(), tableMapping, factory() );

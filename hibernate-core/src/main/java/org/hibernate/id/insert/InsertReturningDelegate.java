@@ -55,7 +55,6 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 
 	@Override
 	public TableInsertBuilder createTableInsertBuilder(
-			BasicEntityIdentifierMapping identifierMapping,
 			Expectation expectation,
 			SessionFactoryImplementor sessionFactory) {
 		return new TableInsertReturningBuilder( persister, sessionFactory );
