@@ -67,6 +67,8 @@ public class MutationExecutorPostInsertSingleTable implements MutationExecutor, 
 				this,
 				session
 		);
+
+		prepareForNonBatchedWork( null, session );
 	}
 
 	@Override
