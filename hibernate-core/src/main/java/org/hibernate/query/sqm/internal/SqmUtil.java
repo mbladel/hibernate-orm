@@ -55,6 +55,7 @@ import org.hibernate.query.sqm.tree.expression.SqmJpaCriteriaParameterWrapper;
 import org.hibernate.query.sqm.tree.expression.SqmParameter;
 import org.hibernate.query.sqm.tree.from.SqmFrom;
 import org.hibernate.query.sqm.tree.from.SqmJoin;
+import org.hibernate.query.sqm.tree.from.SqmQualifiedJoin;
 import org.hibernate.query.sqm.tree.from.SqmRoot;
 import org.hibernate.query.sqm.tree.select.SqmQueryPart;
 import org.hibernate.query.sqm.tree.select.SqmSelectStatement;
@@ -127,27 +128,62 @@ public class SqmUtil {
 		);
 	}
 
+	/**
+	 * Utility that returns {@code true} if the specified {@link SqmPath sqmPath} has to be
+	 * dereferenced using the target table mapping, and does not support fk optimization.
+	 * <p>
+	 * This is the case when the path is used in both the {@linkplain Clause#GROUP group by} clause
+	 * and a clause which {@linkplain #isClauseDependantOnGroupBy depends on it} or when the left
+	 * hand side of the path is a {@linkplain #isNonOptimizableJoin non-optimizable join}.
+	 */
 	public static boolean needsTargetTableMapping(
 			SqmPath<?> sqmPath,
 			ModelPartContainer modelPartContainer,
 			SqmToSqlAstConverter sqlAstCreationState) {
-		final Clause currentClause = sqlAstCreationState.getCurrentClauseStack().getCurrent();
-		return ( currentClause == Clause.GROUP || currentClause == Clause.SELECT || currentClause == Clause.ORDER || currentClause == Clause.HAVING )
-				&& modelPartContainer.getPartMappingType() != modelPartContainer
+		return modelPartContainer.getPartMappingType() != modelPartContainer
 				&& sqmPath.getLhs() instanceof SqmFrom<?, ?>
 				&& modelPartContainer.getPartMappingType() instanceof ManagedMappingType
-				&& ( groupByClauseContains( sqlAstCreationState.getCurrentSqmQueryPart(), sqmPath.getNavigablePath() )
+				&& ( groupByClauseContains( sqlAstCreationState, sqmPath.getNavigablePath() )
 				|| isNonOptimizableJoin( sqmPath.getLhs() ) );
 	}
 
-	private static boolean groupByClauseContains(SqmQueryPart<?> sqmQueryPart, NavigablePath path) {
-		return sqmQueryPart.isSimpleQueryPart() && sqmQueryPart.getFirstQuerySpec().groupByClauseContains( path );
+	private static boolean groupByClauseContains(SqmToSqlAstConverter sqlAstCreationState, NavigablePath path) {
+		if ( isClauseDependantOnGroupBy( sqlAstCreationState.getCurrentClauseStack().getCurrent() ) ) {
+			final SqmQueryPart<?> sqmQueryPart = sqlAstCreationState.getCurrentSqmQueryPart();
+			return sqmQueryPart.isSimpleQueryPart() && sqmQueryPart.getFirstQuerySpec().groupByClauseContains( path );
+		}
+		return false;
 	}
 
-	private static boolean isNonOptimizableJoin(SqmPath<?> sqmPath) {
+	private static boolean isClauseDependantOnGroupBy(Clause clause) {
+		switch ( clause ) {
+			case SELECT:
+			case GROUP:
+			case ORDER:
+			case HAVING:
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/**
+	 * Utility that returns {@code true} when the provided {@link SqmPath sqmPath} is
+	 * a join that cannot be dereferenced through the foreign key on the associated table,
+	 * i.e. a join that's neither {@linkplain SqmJoinType#INNER} nor {@linkplain SqmJoinType#LEFT}
+	 * or one that has an explicit on clause predicate.
+	 */
+	public static boolean isNonOptimizableJoin(SqmPath<?> sqmPath) {
 		if ( sqmPath instanceof SqmJoin<?, ?> ) {
-			final SqmJoinType sqmJoinType = ( (SqmJoin<?, ?>) sqmPath ).getSqmJoinType();
-			return sqmJoinType != SqmJoinType.INNER && sqmJoinType != SqmJoinType.LEFT;
+			final SqmJoin<?, ?> sqmJoin = (SqmJoin<?, ?>) sqmPath;
+			switch ( sqmJoin.getSqmJoinType() ) {
+				case INNER:
+				case LEFT:
+					return sqmJoin instanceof SqmQualifiedJoin<?, ?>
+							&& ( (SqmQualifiedJoin<?, ?>) sqmJoin ).getJoinPredicate() != null;
+				default:
+					return true;
+			}
 		}
 		return false;
 	}
