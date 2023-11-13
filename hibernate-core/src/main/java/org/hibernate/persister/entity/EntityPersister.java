@@ -31,6 +31,7 @@ import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.event.spi.EventSource;
 import org.hibernate.generator.BeforeExecutionGenerator;
+import org.hibernate.generator.EventType;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.internal.VersionGeneration;
 import org.hibernate.generator.values.GeneratedValuesImpl;
@@ -910,6 +911,10 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 			GeneratedValuesImpl generatedValues,
 			SharedSessionContractImplementor session) {
 		processInsertGeneratedProperties( id, entity, state, session );
+	}
+
+	default List<? extends ModelPart> getGeneratedProperties(EventType timing) {
+		return timing == EventType.INSERT ? getInsertGeneratedProperties() : getUpdateGeneratedProperties();
 	}
 
 	// todo marco : move this to PostInsertIdentityPersister and rename the interface ?
