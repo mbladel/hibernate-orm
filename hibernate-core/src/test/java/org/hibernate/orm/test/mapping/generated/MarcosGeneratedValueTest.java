@@ -52,7 +52,7 @@ public class MarcosGeneratedValueTest {
 			session.persist( entity );
 			session.flush();
 			assertThat( entity.getName() ).isEqualTo( "default" );
-			if ( ( (EntityMutationTarget) entityDescriptor ).getIdentityInsertDelegate()
+			if ( ( (EntityMutationTarget) entityDescriptor ).getInsertDelegate()
 					.supportsRetrievingRowId() && entityDescriptor.getRowIdMapping() != null ) {
 				// assert row-id was populated in entity entry
 				final PersistenceContext pc = session.getPersistenceContextInternal();

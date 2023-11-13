@@ -17,10 +17,13 @@ import org.hibernate.engine.jdbc.spi.JdbcCoordinator;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.EventType;
 import org.hibernate.generator.OnExecutionGenerator;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
+import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 
 import static java.sql.Statement.NO_GENERATED_KEYS;
 import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
@@ -36,8 +39,8 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 	private final PostInsertIdentityPersister persister;
 	private final Dialect dialect;
 
-	public InsertReturningDelegate(PostInsertIdentityPersister persister, Dialect dialect) {
-		super( persister );
+	public InsertReturningDelegate(PostInsertIdentityPersister persister, Dialect dialect, EventType timing) {
+		super( persister, timing );
 		this.persister = persister;
 		this.dialect = dialect;
 	}
@@ -50,21 +53,21 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 	}
 
 	@Override
-	public TableInsertBuilder createTableInsertBuilder(
+	public TableMutationBuilder<?> createTableMutationBuilder(
 			Expectation expectation,
 			SessionFactoryImplementor sessionFactory) {
 		return new TableInsertReturningBuilder( persister, sessionFactory );
 	}
 
 	@Override
-	protected Object executeAndExtract(
-			String insertSql,
+	protected GeneratedValues executeAndExtract(
+			String sql,
 			PreparedStatement insertStatement,
 			SharedSessionContractImplementor session) {
 		final JdbcCoordinator jdbcCoordinator = session.getJdbcCoordinator();
 		final JdbcServices jdbcServices = session.getJdbcServices();
 
-		final ResultSet resultSet = jdbcCoordinator.getResultSetReturn().execute( insertStatement, insertSql );
+		final ResultSet resultSet = jdbcCoordinator.getResultSetReturn().execute( insertStatement, sql );
 		try {
 			return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
 		}
@@ -72,7 +75,7 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 			throw jdbcServices.getSqlExceptionHelper().convert(
 					e,
 					"Unable to extract generated key(s) from generated-keys ResultSet",
-					insertSql
+					sql
 			);
 		}
 		finally {
@@ -91,12 +94,12 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 	}
 
 	@Override
-	public String prepareIdentifierGeneratingInsert(String insertSQL) {
-		return dialect.getIdentityColumnSupport().appendIdentitySelectToInsert( insertSQL );
+	public String prepareValueGeneratingMutation(String sql) {
+		return dialect.getIdentityColumnSupport().appendIdentitySelectToInsert( sql );
 	}
 
 	@Override
-	public PreparedStatement prepareStatement(String insertSql, SharedSessionContractImplementor session) {
-		return session.getJdbcCoordinator().getMutationStatementPreparer().prepareStatement( insertSql, NO_GENERATED_KEYS );
+	public PreparedStatement prepareStatement(String sql, SharedSessionContractImplementor session) {
+		return session.getJdbcCoordinator().getMutationStatementPreparer().prepareStatement( sql, NO_GENERATED_KEYS );
 	}
 }

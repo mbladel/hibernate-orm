@@ -6,33 +6,6 @@
  */
 package org.hibernate.id;
 
-import org.hibernate.HibernateException;
-import org.hibernate.Incubating;
-import org.hibernate.Internal;
-import org.hibernate.dialect.Dialect;
-import org.hibernate.generator.EventType;
-import org.hibernate.generator.values.GeneratedValuesImpl;
-import org.hibernate.id.insert.GetGeneratedKeysDelegate;
-import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
-import org.hibernate.id.insert.InsertReturningDelegate;
-import org.hibernate.id.insert.UniqueKeySelectingDelegate;
-import org.hibernate.internal.CoreLogging;
-import org.hibernate.internal.CoreMessageLogger;
-import org.hibernate.internal.util.StringHelper;
-import org.hibernate.metamodel.mapping.BasicValuedModelPart;
-import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
-import org.hibernate.metamodel.mapping.EntityRowIdMapping;
-import org.hibernate.metamodel.mapping.JdbcMapping;
-import org.hibernate.metamodel.mapping.ModelPart;
-import org.hibernate.metamodel.mapping.SelectableMapping;
-import org.hibernate.metamodel.mapping.SqlTypedMapping;
-import org.hibernate.metamodel.mapping.ValuedModelPart;
-import org.hibernate.metamodel.model.domain.NavigableRole;
-import org.hibernate.persister.entity.EntityPersister;
-import org.hibernate.persister.entity.JoinedSubclassEntityPersister;
-import org.hibernate.sql.model.TableMapping;
-import org.hibernate.type.descriptor.WrapperOptions;
-
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -44,6 +17,28 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import org.hibernate.HibernateException;
+import org.hibernate.Incubating;
+import org.hibernate.Internal;
+import org.hibernate.dialect.Dialect;
+import org.hibernate.generator.EventType;
+import org.hibernate.generator.values.GeneratedValues;
+import org.hibernate.generator.values.GeneratedValuesImpl;
+import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
+import org.hibernate.id.insert.GetGeneratedKeysDelegate;
+import org.hibernate.id.insert.InsertReturningDelegate;
+import org.hibernate.id.insert.UniqueKeySelectingDelegate;
+import org.hibernate.internal.CoreLogging;
+import org.hibernate.internal.CoreMessageLogger;
+import org.hibernate.internal.util.StringHelper;
+import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.metamodel.mapping.ModelPart;
+import org.hibernate.metamodel.mapping.SelectableMapping;
+import org.hibernate.metamodel.mapping.SqlTypedMapping;
+import org.hibernate.metamodel.model.domain.NavigableRole;
+import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.type.descriptor.WrapperOptions;
 
 import static org.hibernate.generator.internal.NaturalIdHelper.getNaturalIdPropertyNames;
 
@@ -96,7 +91,10 @@ public final class IdentifierGeneratorHelper {
 	 * @return The generated identity value
 	 * @throws SQLException       Can be thrown while accessing the result set
 	 * @throws HibernateException Indicates a problem reading back a generated identity value.
+	 *
+	 * @deprecated Use {@link #getGeneratedValues} instead
 	 */
+	@Deprecated(forRemoval = true, since = "7.0")
 	public static Object getGeneratedIdentity(
 			String path,
 			ResultSet resultSet,
@@ -130,7 +128,7 @@ public final class IdentifierGeneratorHelper {
 		return 1;
 	}
 
-	public static Object getGeneratedValues(
+	public static GeneratedValues getGeneratedValues(
 			String path,
 			ResultSet resultSet,
 			PostInsertIdentityPersister persister,
@@ -139,11 +137,11 @@ public final class IdentifierGeneratorHelper {
 			throw new HibernateException( "The database returned no natively generated values : " + path );
 		}
 
-		final InsertGeneratedIdentifierDelegate delegate = persister.getIdentityInsertDelegate();
+		final MutationGeneratedValuesDelegate delegate = persister.getInsertDelegate();
 		final List<ModelPart> generatedModelParts = delegate.supportsRetrievingGeneratedValues() ?
 				new ArrayList<>( persister.getInsertGeneratedProperties() ) :
 				new ArrayList<>( List.of( persister.getIdentifierMapping() ) );
-		if ( persister.getRowIdMapping() != null && persister.getIdentityInsertDelegate().supportsRetrievingRowId() ) {
+		if ( persister.getRowIdMapping() != null && persister.getInsertDelegate().supportsRetrievingRowId() ) {
 			generatedModelParts.add( persister.getRowIdMapping() );
 		}
 
@@ -157,7 +155,8 @@ public final class IdentifierGeneratorHelper {
 			final JdbcMapping jdbcMapping = selectable.getJdbcMapping();
 			final Object value = jdbcMapping.getJdbcValueExtractor().extract( resultSet, columnIndex(
 					resultSet,
-					selectable.getSelectionExpression(),
+					selectable,
+					modelPart.isEntityIdentifierMapping() ? 1 : null,
 					persister.getFactory().getFastSessionServices().dialect
 			), wrapperOptions );
 			generatedValues.addGeneratedValue( modelPart, value );
@@ -172,7 +171,12 @@ public final class IdentifierGeneratorHelper {
 		return generatedValues;
 	}
 
-	private static int columnIndex(ResultSet resultSet, String columnName, Dialect dialect) {
+	private static int columnIndex(
+			ResultSet resultSet,
+			SelectableMapping selectable,
+			Integer defaultIndex,
+			Dialect dialect) {
+		final String columnName = selectable.getSelectionExpression();
 		try {
 			final ResultSetMetaData metaData = resultSet.getMetaData();
 			for ( int i = 1; i <= metaData.getColumnCount(); i++ ) {
@@ -183,6 +187,10 @@ public final class IdentifierGeneratorHelper {
 		}
 		catch (SQLException e) {
 			LOG.debugf( "Could not determine column index from JDBC metadata", e );
+		}
+
+		if ( defaultIndex != null ) {
+			return defaultIndex;
 		}
 		throw new HibernateException( "Could not retrieve column index for column name : " + columnName );
 	}
@@ -195,17 +203,24 @@ public final class IdentifierGeneratorHelper {
 	}
 
 	@Incubating
-	public static InsertGeneratedIdentifierDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
+	public static MutationGeneratedValuesDelegate getGeneratedValuesDelegate(
+			PostInsertIdentityPersister persister,
+			EventType timing) {
 		Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
 		if ( dialect.supportsInsertReturningGeneratedKeys() ) {
-			return new GetGeneratedKeysDelegate( persister, dialect, false );
+			return new GetGeneratedKeysDelegate( persister, dialect, false, timing );
 		}
 		else if ( dialect.supportsInsertReturning() ) {
-			return new InsertReturningDelegate( persister, dialect );
+			return new InsertReturningDelegate( persister, dialect, timing );
 		}
 		else if ( persister.getNaturalIdentifierProperties() != null
 				&& !persister.getEntityMetamodel().isNaturalIdentifierInsertGenerated() ) {
-			return new UniqueKeySelectingDelegate( persister, dialect, getNaturalIdPropertyNames( persister ) );
+			return new UniqueKeySelectingDelegate(
+					persister,
+					dialect,
+					getNaturalIdPropertyNames( persister ),
+					timing
+			);
 		}
 		return null;
 	}
