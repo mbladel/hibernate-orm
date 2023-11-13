@@ -21,6 +21,7 @@ import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
+import org.hibernate.metamodel.mapping.EntityRowIdMapping;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.SelectableMapping;
@@ -132,13 +133,17 @@ public final class IdentifierGeneratorHelper {
 	public static Object getGeneratedValues(
 			String path,
 			ResultSet resultSet,
-			EntityPersister persister,
+			PostInsertIdentityPersister persister,
 			WrapperOptions wrapperOptions) throws SQLException {
 		if ( !resultSet.next() ) {
 			throw new HibernateException( "The database returned no natively generated values : " + path );
 		}
 
-		final List<? extends ModelPart> generatedModelParts = persister.getInsertGeneratedProperties();
+		final List<ModelPart> generatedModelParts = new ArrayList<>( persister.getInsertGeneratedProperties() );
+		if ( persister.getRowIdMapping() != null && persister.getIdentityInsertDelegate().supportsRetrievingRowId() ) {
+			generatedModelParts.add( persister.getRowIdMapping() );
+		}
+
 		final GeneratedValuesImpl generatedValues = new GeneratedValuesImpl( generatedModelParts );
 		for ( ModelPart modelPart : generatedModelParts ) {
 			assert modelPart instanceof SelectableMapping : "Unsupported non-selectable generated value";
@@ -207,15 +212,13 @@ public final class IdentifierGeneratorHelper {
 			|| alias.equalsIgnoreCase( StringHelper.unquote( keyColumnName, dialect ) );
 	}
 
-	public static String[] getGeneratedColumnNames(EntityPersister persister, Dialect dialect, EventType timing) {
-		final List<? extends ModelPart> generated = timing == EventType.INSERT ?
-				persister.getInsertGeneratedProperties() :
-				persister.getUpdateGeneratedProperties();
+	public static List<String> getGeneratedColumnNames(EntityPersister persister, Dialect dialect, EventType timing) {
+		final List<? extends ModelPart> generated = persister.getGeneratedProperties( timing );
 		return generated.stream().map( modelPart -> {
 			assert modelPart instanceof SelectableMapping : "Unsupported non-selectable generated value";
 			final SelectableMapping selectableMapping = getActualSelectableMapping( modelPart, persister );
 			return StringHelper.unquote( selectableMapping.getSelectionExpression(), dialect );
-		} ).toArray( String[]::new );
+		} ).toList();
 	}
 
 	public static IntegralDataTypeHolder getIntegralDataTypeHolder(Class<?> integralType) {

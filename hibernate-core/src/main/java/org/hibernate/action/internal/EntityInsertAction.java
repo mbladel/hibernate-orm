@@ -113,7 +113,8 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 					entry,
 					// todo marco : remove this cast
 					//  we could just make insert return GeneratedValues maybe ?
-					generatedValues instanceof GeneratedValuesImpl ? (GeneratedValuesImpl) generatedValues : null
+					generatedValues instanceof GeneratedValuesImpl ? (GeneratedValuesImpl) generatedValues : null,
+					persistenceContext
 			);
 			persistenceContext.registerInsertedKey( persister, getId() );
 			addCollectionsByKeyToPersistenceContext( persistenceContext, getState() );
@@ -130,7 +131,10 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 		markExecuted();
 	}
 
-	private void handleGeneratedProperties(EntityEntry entry, GeneratedValuesImpl generatedValues) {
+	private void handleGeneratedProperties(
+			EntityEntry entry,
+			GeneratedValuesImpl generatedValues,
+			PersistenceContext persistenceContext) {
 		final EntityPersister persister = getPersister();
 		if ( persister.hasInsertGeneratedProperties() ) {
 			final Object instance = getInstance();
@@ -143,6 +147,13 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 		else if ( persister.isVersionPropertyGenerated() ) {
 			version = Versioning.getVersion( getState(), persister );
 			entry.postInsert( version );
+		}
+		// Process row-id values when available early by replacing the entity entry
+		if ( generatedValues != null && persister.getRowIdMapping() != null ) {
+			final Object rowId = generatedValues.getGeneratedValue( persister.getRowIdMapping() );
+			if ( rowId != null ) {
+				persistenceContext.replaceEntityEntryRowId( getInstance(), rowId );
+			}
 		}
 	}
 
