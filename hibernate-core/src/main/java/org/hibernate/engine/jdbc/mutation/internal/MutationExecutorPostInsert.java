@@ -19,7 +19,7 @@ import org.hibernate.engine.jdbc.mutation.TableInclusionChecker;
 import org.hibernate.engine.jdbc.mutation.group.PreparedStatementDetails;
 import org.hibernate.engine.jdbc.mutation.group.PreparedStatementGroup;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.generator.values.GeneratedValuesImpl;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.persister.entity.mutation.EntityTableMapping;
@@ -144,8 +144,8 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 		final Object generatedValues = identityHandler.performInsert( identityInsertStatementDetails, valueBindings, modelReference, session );
 		final Object id;
 		// todo marco : this will be unnecessary
-		if ( generatedValues instanceof GeneratedValuesImpl ) {
-			id = ( (GeneratedValuesImpl) generatedValues ).getGeneratedValue( mutationTarget.getTargetPart().getIdentifierMapping() );
+		if ( generatedValues instanceof GeneratedValues ) {
+			id = ( (GeneratedValues) generatedValues ).getGeneratedValue( mutationTarget.getTargetPart().getIdentifierMapping() );
 		}
 		else {
 			id = generatedValues;

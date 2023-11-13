@@ -34,7 +34,7 @@ import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.internal.VersionGeneration;
-import org.hibernate.generator.values.GeneratedValuesImpl;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.id.IdentifierGenerator;
 import org.hibernate.internal.FilterAliasGenerator;
 import org.hibernate.internal.TableGroupFilterAliasGenerator;
@@ -908,7 +908,7 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 			Object id,
 			Object entity,
 			Object[] state,
-			GeneratedValuesImpl generatedValues,
+			GeneratedValues generatedValues,
 			SharedSessionContractImplementor session) {
 		processInsertGeneratedProperties( id, entity, state, session );
 	}

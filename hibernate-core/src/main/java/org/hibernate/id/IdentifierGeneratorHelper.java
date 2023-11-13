@@ -139,7 +139,10 @@ public final class IdentifierGeneratorHelper {
 			throw new HibernateException( "The database returned no natively generated values : " + path );
 		}
 
-		final List<ModelPart> generatedModelParts = new ArrayList<>( persister.getInsertGeneratedProperties() );
+		final InsertGeneratedIdentifierDelegate delegate = persister.getIdentityInsertDelegate();
+		final List<ModelPart> generatedModelParts = delegate.supportsRetrievingGeneratedValues() ?
+				new ArrayList<>( persister.getInsertGeneratedProperties() ) :
+				new ArrayList<>( List.of( persister.getIdentifierMapping() ) );
 		if ( persister.getRowIdMapping() != null && persister.getIdentityInsertDelegate().supportsRetrievingRowId() ) {
 			generatedModelParts.add( persister.getRowIdMapping() );
 		}

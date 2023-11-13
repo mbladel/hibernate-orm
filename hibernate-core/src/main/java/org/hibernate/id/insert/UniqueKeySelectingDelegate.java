@@ -95,12 +95,6 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 	}
 
 	@Override
-	protected Object extractGeneratedValue(ResultSet resultSet, SharedSessionContractImplementor session)
-			throws SQLException {
-		return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
-	}
-
-	@Override
 	public boolean supportsRetrievingGeneratedValues() {
 		return true;
 	}
