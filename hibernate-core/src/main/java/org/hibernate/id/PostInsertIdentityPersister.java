@@ -42,6 +42,8 @@ public interface PostInsertIdentityPersister extends EntityPersister, EntityMuta
 		return getSelectByUniqueKeyString( propertyNames[0] );
 	}
 
+	String getSelectByUniqueKeyString(String[] propertyNames, String[] columnNames);
+
 	/**
 	 * Get the database-specific SQL command to retrieve the last
 	 * generated IDENTITY value.

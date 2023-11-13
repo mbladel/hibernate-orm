@@ -7,6 +7,7 @@
 package org.hibernate.persister.entity;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -913,7 +914,7 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 
 	// todo marco : move this to PostInsertIdentityPersister and rename the interface ?
 	default List<? extends ModelPart> getInsertGeneratedProperties() {
-		return null;
+		return Collections.emptyList();
 	}
 
 	/**
@@ -927,6 +928,10 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 	 * to the PersistenceContext before calling this method.
 	 */
 	void processUpdateGeneratedProperties(Object id, Object entity, Object[] state, SharedSessionContractImplementor session);
+
+	default List<? extends ModelPart> getUpdateGeneratedProperties() {
+		return Collections.emptyList();
+	}
 
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -10,15 +10,21 @@ import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.EventType;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
-import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
+import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.type.Type;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
+
+import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedColumnNames;
+import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
 
 /**
  * Uses a unique key of the inserted entity to locate the newly inserted row.
@@ -27,29 +33,35 @@ import java.sql.SQLException;
  */
 public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 	private final PostInsertIdentityPersister persister;
-	private final Dialect dialect;
 
 	private final String[] uniqueKeyPropertyNames;
 	private final Type[] uniqueKeyTypes;
 
-	private final String idSelectString;
+	private final String selectString;
 
 	public UniqueKeySelectingDelegate(PostInsertIdentityPersister persister, Dialect dialect, String[] uniqueKeyPropertyNames) {
 		super( persister );
 
 		this.persister = persister;
-		this.dialect = dialect;
 		this.uniqueKeyPropertyNames = uniqueKeyPropertyNames;
 
-		idSelectString = persister.getSelectByUniqueKeyString( uniqueKeyPropertyNames );
 		uniqueKeyTypes = new Type[ uniqueKeyPropertyNames.length ];
-		for (int i = 0; i < uniqueKeyPropertyNames.length; i++ ) {
+		for ( int i = 0; i < uniqueKeyPropertyNames.length; i++ ) {
 			uniqueKeyTypes[i] = persister.getPropertyType( uniqueKeyPropertyNames[i] );
+		}
+
+		final List<? extends ModelPart> insertGeneratedProperties = persister.getInsertGeneratedProperties();
+		if ( !persister.isIdentifierAssignedByInsert() || insertGeneratedProperties.size() > 1 ) {
+			final String[] columnNames = getGeneratedColumnNames( persister, dialect, EventType.INSERT );
+			selectString = persister.getSelectByUniqueKeyString( uniqueKeyPropertyNames, columnNames );
+		}
+		else {
+			selectString = persister.getSelectByUniqueKeyString( uniqueKeyPropertyNames );
 		}
 	}
 
 	protected String getSelectSQL() {
-		return idSelectString;
+		return selectString;
 	}
 
 	@Override @Deprecated
@@ -71,5 +83,16 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 			uniqueKeyTypes[i].nullSafeSet( ps, persister.getPropertyValue( entity, uniqueKeyPropertyNames[i] ), index, session );
 			index += uniqueKeyTypes[i].getColumnSpan( session.getFactory() );
 		}
+	}
+
+	@Override
+	protected Object extractGeneratedValue(ResultSet resultSet, SharedSessionContractImplementor session)
+			throws SQLException {
+		return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
+	}
+
+	@Override
+	public boolean supportsRetrievingGeneratedValues() {
+		return true;
 	}
 }
