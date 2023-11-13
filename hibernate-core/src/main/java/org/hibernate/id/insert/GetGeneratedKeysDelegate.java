@@ -60,7 +60,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 			columnNames = null;
 		}
 		else {
-			columnNames = getGeneratedColumnNames( persister, dialect, EventType.INSERT );
+			columnNames = getGeneratedColumnNames( persister, dialect, EventType.INSERT ).toArray( new String[0] );
 		}
 	}
 

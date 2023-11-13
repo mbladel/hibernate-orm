@@ -104,7 +104,13 @@ public interface InsertGeneratedIdentifierDelegate {
 	 */
 	Object performInsert(String insertSQL, SharedSessionContractImplementor session, Binder binder);
 
+	// todo : jdoc
 	default boolean supportsRetrievingGeneratedValues() {
+		return false;
+	}
+
+	// todo : jdoc
+	default boolean supportsRetrievingRowId() {
 		return false;
 	}
 }

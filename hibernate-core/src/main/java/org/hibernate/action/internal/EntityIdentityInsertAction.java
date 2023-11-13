@@ -80,11 +80,19 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 
 		if ( !isVeto() ) {
 			final Object generatedValues = persister.insert( getState(), instance, session );
-			// todo marco : eventually this check won't be necessary
+			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
 			final GeneratedValuesImpl generated;
+			// todo marco : eventually this check won't be necessary
 			if ( generatedValues instanceof GeneratedValuesImpl ) {
 				generated = ( (GeneratedValuesImpl) generatedValues );
 				generatedId = generated.getGeneratedValue( persister.getIdentifierMapping() );
+				// Process row-id values when available early by replacing the entity entry
+				if ( persister.getRowIdMapping() != null ) {
+					final Object rowId = generated.getGeneratedValue( persister.getRowIdMapping() );
+					if ( rowId != null ) {
+						persistenceContext.replaceEntityEntryRowId( getInstance(), rowId );
+					}
+				}
 			}
 			else {
 				generated = null;
@@ -96,7 +104,6 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 			//need to do that here rather than in the save event listener to let
 			//the post insert events to have a id-filled entity when IDENTITY is used (EJB3)
 			persister.setIdentifier( instance, generatedId, session );
-			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
 			persistenceContext.registerInsertedKey( getPersister(), generatedId );
 			entityKey = session.generateEntityKey( generatedId, persister );
 			persistenceContext.checkUniqueness( entityKey, getInstance() );
