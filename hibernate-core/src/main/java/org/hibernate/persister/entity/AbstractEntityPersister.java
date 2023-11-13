@@ -2799,6 +2799,17 @@ public abstract class AbstractEntityPersister
 		return select.toStatementString();
 	}
 
+	@Override
+	public String getSelectByUniqueKeyString(String[] propertyNames, String[] columnNames) {
+		final SimpleSelect select = new SimpleSelect( getFactory() )
+				.setTableName( getTableName( 0 ) )
+				.addColumns( columnNames );
+		for ( final String propertyName : propertyNames ) {
+			select.addRestriction( getPropertyColumnNames( propertyName ) );
+		}
+		return select.toStatementString();
+	}
+
 	/**
 	 * Update an object
 	 */
@@ -4742,6 +4753,11 @@ public abstract class AbstractEntityPersister
 			throw new AssertionFailure( "Entity has no update-generated properties - `" + getEntityName() + "`" );
 		}
 		updateGeneratedValuesProcessor.processGeneratedValues( entity, id, state, null, session );
+	}
+
+	@Override
+	public List<? extends ModelPart> getUpdateGeneratedProperties() {
+		return updateGeneratedProperties;
 	}
 
 	@Override

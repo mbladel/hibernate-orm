@@ -22,6 +22,7 @@ import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.jdbc.spi.MutationStatementPreparer;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.EventType;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.internal.util.StringHelper;
@@ -34,6 +35,7 @@ import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 
 import static java.sql.Statement.RETURN_GENERATED_KEYS;
 import static org.hibernate.id.IdentifierGeneratorHelper.getActualSelectableMapping;
+import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedColumnNames;
 import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
 
 /**
@@ -58,12 +60,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 			columnNames = null;
 		}
 		else {
-			final List<? extends ModelPart> insertGeneratedProperties = persister.getInsertGeneratedProperties();
-			columnNames = insertGeneratedProperties.stream().map( modelPart -> {
-				assert modelPart instanceof SelectableMapping : "Unsupported non-selectable generated value";
-				final SelectableMapping selectableMapping = getActualSelectableMapping( modelPart, persister );
-				return StringHelper.unquote( selectableMapping.getSelectionExpression(), dialect );
-			} ).toArray( String[]::new );
+			columnNames = getGeneratedColumnNames( persister, dialect, EventType.INSERT );
 		}
 	}
 
