@@ -7,8 +7,10 @@
 package org.hibernate.persister.entity.mutation;
 
 import org.hibernate.Incubating;
+import org.hibernate.Remove;
 import org.hibernate.annotations.Table;
 import org.hibernate.engine.jdbc.mutation.MutationExecutor;
+import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
 import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.ModelPart;
@@ -47,6 +49,20 @@ public interface EntityMutationTarget extends MutationTarget<EntityTableMapping>
 	/**
 	 * The delegate for executing inserts against the root table for
 	 * targets defined using post-insert id generation
+	 *
+	 * @deprecated use {@link #getInsertDelegate()} instead
 	 */
-	InsertGeneratedIdentifierDelegate getIdentityInsertDelegate();
+	@Deprecated( since = "7.0", forRemoval = true )
+	@Remove
+	default InsertGeneratedIdentifierDelegate getIdentityInsertDelegate() {
+		final MutationGeneratedValuesDelegate insertDelegate = getInsertDelegate();
+		if ( insertDelegate instanceof InsertGeneratedIdentifierDelegate ) {
+			return (InsertGeneratedIdentifierDelegate) insertDelegate;
+		}
+		return null;
+	}
+
+	MutationGeneratedValuesDelegate getInsertDelegate();
+
+	MutationGeneratedValuesDelegate getUpdateDelegate();
 }

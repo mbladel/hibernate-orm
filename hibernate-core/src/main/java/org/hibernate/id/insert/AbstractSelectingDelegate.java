@@ -16,6 +16,9 @@ import org.hibernate.engine.jdbc.spi.JdbcCoordinator;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.jdbc.spi.StatementPreparer;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.EventType;
+import org.hibernate.generator.values.AbstractMutationGeneratedValuesDelegate;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.pretty.MessageHelper;
 
@@ -29,10 +32,12 @@ import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
  *
  * @author Steve Ebersole
  */
-public abstract class AbstractSelectingDelegate implements InsertGeneratedIdentifierDelegate {
+public abstract class AbstractSelectingDelegate extends AbstractMutationGeneratedValuesDelegate
+		implements InsertGeneratedIdentifierDelegate {
 	private final PostInsertIdentityPersister persister;
 
-	protected AbstractSelectingDelegate(PostInsertIdentityPersister persister) {
+	protected AbstractSelectingDelegate(PostInsertIdentityPersister persister, EventType timing) {
+		super( timing );
 		this.persister = persister;
 	}
 
@@ -50,7 +55,7 @@ public abstract class AbstractSelectingDelegate implements InsertGeneratedIdenti
 	/**
 	 * Extract the generated key value from the given result set after execution of {@link #getSelectSQL()}.
 	 */
-	protected Object extractGeneratedValue(ResultSet resultSet, SharedSessionContractImplementor session)
+	protected GeneratedValues extractGeneratedValue(ResultSet resultSet, SharedSessionContractImplementor session)
 			throws SQLException {
 		return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
 	}
@@ -61,19 +66,19 @@ public abstract class AbstractSelectingDelegate implements InsertGeneratedIdenti
 	}
 
 	@Override
-	public Object performInsert(
-			PreparedStatementDetails insertStatementDetails,
+	public GeneratedValues performMutation(
+			PreparedStatementDetails statementDetails,
 			JdbcValueBindings jdbcValueBindings,
 			Object entity,
 			SharedSessionContractImplementor session) {
 		final JdbcCoordinator jdbcCoordinator = session.getJdbcCoordinator();
 		final JdbcServices jdbcServices = session.getJdbcServices();
 
-		jdbcServices.getSqlStatementLogger().logStatement( insertStatementDetails.getSqlString() );
-		jdbcValueBindings.beforeStatement( insertStatementDetails );
+		jdbcServices.getSqlStatementLogger().logStatement( statementDetails.getSqlString() );
+		jdbcValueBindings.beforeStatement( statementDetails );
 
 		jdbcCoordinator.getResultSetReturn()
-				.executeUpdate( insertStatementDetails.resolveStatement(), insertStatementDetails.getSqlString() );
+				.executeUpdate( statementDetails.resolveStatement(), statementDetails.getSqlString() );
 
 		// the insert is complete, select the generated id...
 
@@ -108,15 +113,15 @@ public abstract class AbstractSelectingDelegate implements InsertGeneratedIdenti
 	}
 
 	@Override
-	public final Object performInsert(String insertSQL, SharedSessionContractImplementor session, Binder binder) {
+	public final Object performInsert(String sql, SharedSessionContractImplementor session, Binder binder) {
 		JdbcCoordinator jdbcCoordinator = session.getJdbcCoordinator();
 		StatementPreparer statementPreparer = jdbcCoordinator.getStatementPreparer();
 		try {
 			// prepare and execute the insert
-			PreparedStatement insert = statementPreparer.prepareStatement( insertSQL, NO_GENERATED_KEYS );
+			PreparedStatement insert = statementPreparer.prepareStatement( sql, NO_GENERATED_KEYS );
 			try {
 				binder.bindValues( insert );
-				jdbcCoordinator.getResultSetReturn().executeUpdate( insert, insertSQL );
+				jdbcCoordinator.getResultSetReturn().executeUpdate( insert, sql );
 			}
 			finally {
 				jdbcCoordinator.getLogicalConnection().getResourceRegistry().release( insert );
@@ -127,7 +132,7 @@ public abstract class AbstractSelectingDelegate implements InsertGeneratedIdenti
 			throw session.getJdbcServices().getSqlExceptionHelper().convert(
 					sqle,
 					"could not insert: " + MessageHelper.infoString( persister ),
-					insertSQL
+					sql
 			);
 		}
 

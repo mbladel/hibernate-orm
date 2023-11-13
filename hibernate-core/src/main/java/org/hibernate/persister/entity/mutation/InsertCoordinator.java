@@ -22,10 +22,9 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
-import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
+import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.AttributeMappingsList;
-import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.sql.model.MutationOperation;
@@ -36,6 +35,7 @@ import org.hibernate.sql.model.ValuesAnalysis;
 import org.hibernate.sql.model.ast.builder.MutationGroupBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
+import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 import org.hibernate.tuple.entity.EntityMetamodel;
 
 import static org.hibernate.generator.EventType.INSERT;
@@ -361,10 +361,10 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 		return createOperationGroup( null, insertGroupBuilder.buildMutationGroup() );
 	}
 
-	private TableInsertBuilder createTableInsertBuilder(EntityTableMapping tableMapping, boolean forceIdentifierBinding) {
-		final InsertGeneratedIdentifierDelegate identityDelegate = entityPersister().getIdentityInsertDelegate();
-		if ( tableMapping.isIdentifierTable() && identityDelegate != null && !forceIdentifierBinding ) {
-			return identityDelegate.createTableInsertBuilder( tableMapping.getInsertExpectation(), factory() );
+	private TableMutationBuilder<?> createTableInsertBuilder(EntityTableMapping tableMapping, boolean forceIdentifierBinding) {
+		final MutationGeneratedValuesDelegate delegate = entityPersister().getInsertDelegate();
+		if ( tableMapping.isIdentifierTable() && delegate != null && !forceIdentifierBinding ) {
+			return delegate.createTableMutationBuilder( tableMapping.getInsertExpectation(), factory() );
 		}
 		else {
 			return new TableInsertBuilderStandard( entityPersister(), tableMapping, factory() );

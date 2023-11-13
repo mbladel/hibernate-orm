@@ -7,11 +7,15 @@
 package org.hibernate.id;
 
 import org.hibernate.dialect.Dialect;
+import org.hibernate.generator.EventType;
 import org.hibernate.id.factory.spi.StandardGenerator;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.id.insert.BasicSelectingDelegate;
 import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
 import org.hibernate.id.insert.InsertReturningDelegate;
+import org.hibernate.id.insert.UniqueKeySelectingDelegate;
+
+import static org.hibernate.generator.internal.NaturalIdHelper.getNaturalIdPropertyNames;
 
 /**
  * An {@link OnExecutionGenerator} that handles {@code IDENTITY}/"autoincrement"
@@ -53,11 +57,20 @@ public class IdentityGenerator
 	public InsertGeneratedIdentifierDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
 		final Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
 		if ( persister.getFactory().getSessionFactoryOptions().isGetGeneratedKeysEnabled()
-				&& !persister.hasInsertGeneratedProperties() || dialect.supportsInsertReturningGeneratedKeys() ) {
+				&& ( !persister.hasInsertGeneratedProperties() || dialect.supportsInsertReturningGeneratedKeys() ) ) {
 			return dialect.getIdentityColumnSupport().buildGetGeneratedKeysDelegate( persister, dialect );
 		}
 		else if ( dialect.getIdentityColumnSupport().supportsInsertSelectIdentity() ) {
-			return new InsertReturningDelegate( persister, dialect );
+			return new InsertReturningDelegate( persister, dialect, EventType.INSERT );
+		}
+		else if ( persister.getNaturalIdentifierProperties() != null
+				&& !persister.getEntityMetamodel().isNaturalIdentifierInsertGenerated() ) {
+			return new UniqueKeySelectingDelegate(
+					persister,
+					dialect,
+					getNaturalIdPropertyNames( persister ),
+					EventType.INSERT
+			);
 		}
 		else {
 			return new BasicSelectingDelegate( persister, dialect );
