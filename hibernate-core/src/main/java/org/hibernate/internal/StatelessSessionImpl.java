@@ -8,7 +8,6 @@ package org.hibernate.internal;
 
 import java.util.Set;
 
-import jakarta.persistence.EntityGraph;
 import org.hibernate.CacheMode;
 import org.hibernate.FlushMode;
 import org.hibernate.HibernateException;
@@ -31,17 +30,18 @@ import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.engine.transaction.internal.jta.JtaStatusHelper;
 import org.hibernate.engine.transaction.jta.platform.spi.JtaPlatform;
-import org.hibernate.generator.values.GeneratedValuesImpl;
+import org.hibernate.generator.BeforeExecutionGenerator;
+import org.hibernate.generator.Generator;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.graph.GraphSemantic;
 import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.loader.ast.spi.CascadingFetchProfile;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.proxy.LazyInitializer;
-import org.hibernate.generator.Generator;
-import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.tuple.entity.EntityMetamodel;
 
+import jakarta.persistence.EntityGraph;
 import jakarta.transaction.SystemException;
 
 import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
@@ -113,10 +113,8 @@ public class StatelessSessionImpl extends AbstractSharedSessionContract implemen
 		else {
 			final Object generatedValues = persister.insert( state, entity, this );
 			// todo marco : eventually this check won't be necessary
-			final GeneratedValuesImpl generated;
-			if ( generatedValues instanceof GeneratedValuesImpl ) {
-				generated = ( (GeneratedValuesImpl) generatedValues );
-				id = generated.getGeneratedValue( persister.getIdentifierMapping() );
+			if ( generatedValues instanceof GeneratedValues ) {
+				id = ( (GeneratedValues) generatedValues ).getGeneratedValue( persister.getIdentifierMapping() );
 			}
 			else {
 				id = generatedValues;

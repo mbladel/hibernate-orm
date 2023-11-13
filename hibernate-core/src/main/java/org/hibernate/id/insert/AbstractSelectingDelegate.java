@@ -20,7 +20,7 @@ import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.pretty.MessageHelper;
 
 import static java.sql.Statement.NO_GENERATED_KEYS;
-import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedIdentity;
+import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
 
 /**
  * Abstract {@link InsertGeneratedIdentifierDelegate} implementation where
@@ -52,7 +52,7 @@ public abstract class AbstractSelectingDelegate implements InsertGeneratedIdenti
 	 */
 	protected Object extractGeneratedValue(ResultSet resultSet, SharedSessionContractImplementor session)
 			throws SQLException {
-		return getGeneratedIdentity( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
+		return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
 	}
 
 	@Override

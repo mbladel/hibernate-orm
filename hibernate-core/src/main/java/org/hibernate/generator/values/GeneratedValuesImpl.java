@@ -14,26 +14,30 @@ import java.util.Map;
 
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.mapping.ModelPart;
-import org.hibernate.metamodel.mapping.ValuedModelPart;
 
 /**
+ * Standard implementation for {@link GeneratedValues} using {@link IdentityHashMap}.
+ *
  * @author Marco Belladelli
  */
-public class GeneratedValuesImpl {
+public class GeneratedValuesImpl implements GeneratedValues {
 	private final Map<ModelPart, Object> generatedValuesMap;
 
 	public GeneratedValuesImpl(List<? extends ModelPart> generatedProperties) {
 		this.generatedValuesMap = new IdentityHashMap<>( generatedProperties.size() );
 	}
 
+	@Override
 	public void addGeneratedValue(ModelPart modelPart, Object value) {
 		generatedValuesMap.put( modelPart, value );
 	}
 
+	@Override
 	public Object getGeneratedValue(ModelPart modelPart) {
 		return generatedValuesMap.get( modelPart );
 	}
 
+	@Override
 	public List<Object> getGeneratedValues(List<? extends ModelPart> modelParts) {
 		if ( CollectionHelper.isEmpty( modelParts ) ) {
 			return Collections.emptyList();
