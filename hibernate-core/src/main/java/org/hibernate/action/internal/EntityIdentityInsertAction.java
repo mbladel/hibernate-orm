@@ -18,7 +18,7 @@ import org.hibernate.event.spi.PostInsertEvent;
 import org.hibernate.event.spi.PostInsertEventListener;
 import org.hibernate.event.spi.PreInsertEvent;
 import org.hibernate.event.spi.PreInsertEventListener;
-import org.hibernate.generator.values.GeneratedValuesImpl;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.stat.spi.StatisticsImplementor;
 
@@ -81,10 +81,10 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 		if ( !isVeto() ) {
 			final Object generatedValues = persister.insert( getState(), instance, session );
 			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
-			final GeneratedValuesImpl generated;
+			final GeneratedValues generated;
 			// todo marco : eventually this check won't be necessary
-			if ( generatedValues instanceof GeneratedValuesImpl ) {
-				generated = ( (GeneratedValuesImpl) generatedValues );
+			if ( generatedValues instanceof GeneratedValues ) {
+				generated = ( (GeneratedValues) generatedValues );
 				generatedId = generated.getGeneratedValue( persister.getIdentifierMapping() );
 				// Process row-id values when available early by replacing the entity entry
 				if ( persister.getRowIdMapping() != null ) {

@@ -22,7 +22,10 @@ import org.hibernate.engine.FetchTiming;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.generator.values.GeneratedValuesImpl;
+import org.hibernate.generator.BeforeExecutionGenerator;
+import org.hibernate.generator.Generator;
+import org.hibernate.generator.OnExecutionGenerator;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.id.BulkInsertionCapableIdentifierGenerator;
 import org.hibernate.id.OptimizableGenerator;
 import org.hibernate.id.PostInsertIdentityPersister;
@@ -68,17 +71,12 @@ import org.hibernate.sql.exec.internal.JdbcParameterBindingImpl;
 import org.hibernate.sql.exec.internal.JdbcParameterBindingsImpl;
 import org.hibernate.sql.exec.internal.JdbcParameterImpl;
 import org.hibernate.sql.exec.spi.ExecutionContext;
-import org.hibernate.sql.exec.spi.JdbcOperationQueryInsert;
 import org.hibernate.sql.exec.spi.JdbcOperationQueryMutation;
 import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
-import org.hibernate.sql.exec.spi.JdbcOperationQueryUpdate;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.results.graph.basic.BasicFetch;
 import org.hibernate.sql.results.internal.SqlSelectionImpl;
 import org.hibernate.sql.results.spi.ListResultsConsumer;
-import org.hibernate.generator.Generator;
-import org.hibernate.generator.OnExecutionGenerator;
-import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.type.descriptor.ValueBinder;
 
 import static org.hibernate.generator.EventType.INSERT;
@@ -571,8 +569,8 @@ public class InsertExecutionDelegate implements TableBasedInsertHandler.Executio
 
 				// todo marco : this will be unnecessary
 				final Object rootIdentity;
-				if ( generatedValues instanceof GeneratedValuesImpl ) {
-					rootIdentity = ( (GeneratedValuesImpl) generatedValues ).getGeneratedValue( identifierMapping );
+				if ( generatedValues instanceof GeneratedValues ) {
+					rootIdentity = ( (GeneratedValues) generatedValues ).getGeneratedValue( identifierMapping );
 				}
 				else {
 					rootIdentity = generatedValues;

@@ -27,7 +27,7 @@ import org.hibernate.event.spi.PostInsertEvent;
 import org.hibernate.event.spi.PostInsertEventListener;
 import org.hibernate.event.spi.PreInsertEvent;
 import org.hibernate.event.spi.PreInsertEventListener;
-import org.hibernate.generator.values.GeneratedValuesImpl;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.stat.internal.StatsHelper;
 import org.hibernate.stat.spi.StatisticsImplementor;
@@ -114,7 +114,7 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 					entry,
 					// todo marco : remove this cast
 					//  we could just make insert return GeneratedValues maybe ?
-					generatedValues instanceof GeneratedValuesImpl ? (GeneratedValuesImpl) generatedValues : null,
+					generatedValues instanceof GeneratedValues ? (GeneratedValues) generatedValues : null,
 					persistenceContext
 			);
 			persistenceContext.registerInsertedKey( persister, getId() );
@@ -134,7 +134,7 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 
 	private void handleGeneratedProperties(
 			EntityEntry entry,
-			GeneratedValuesImpl generatedValues,
+			GeneratedValues generatedValues,
 			PersistenceContext persistenceContext) {
 		final EntityPersister persister = getPersister();
 		if ( persister.hasInsertGeneratedProperties() ) {

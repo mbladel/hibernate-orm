@@ -9,7 +9,6 @@ package org.hibernate.id.insert;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
 
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.dialect.Dialect;
@@ -18,15 +17,12 @@ import org.hibernate.engine.jdbc.spi.JdbcCoordinator;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.generator.values.GeneratedValuesImpl;
+import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
-import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
-import org.hibernate.generator.OnExecutionGenerator;
 
 import static java.sql.Statement.NO_GENERATED_KEYS;
-import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedIdentity;
 import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
 
 /**

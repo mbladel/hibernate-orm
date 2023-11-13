@@ -17,7 +17,7 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
-import org.hibernate.generator.values.GeneratedValuesImpl;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.loader.ast.internal.LoaderSelectBuilder;
 import org.hibernate.loader.ast.internal.NoCallbackExecutionContext;
@@ -137,7 +137,7 @@ public class GeneratedValuesProcessor {
 			Object entity,
 			Object id,
 			Object[] state,
-			GeneratedValuesImpl generatedValues,
+			GeneratedValues generatedValues,
 			SharedSessionContractImplementor session) {
 		if ( hasActualGeneratedValuesToSelect( session, entity ) ) {
 			if ( selectStatement != null ) {
