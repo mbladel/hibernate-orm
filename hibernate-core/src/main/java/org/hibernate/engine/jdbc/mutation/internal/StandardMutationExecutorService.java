@@ -57,8 +57,6 @@ public class StandardMutationExecutorService implements MutationExecutorService 
 		final MutationType mutationType = operationGroup.getMutationType();
 		final EntityMutationOperationGroup entityMutationOperationGroup = operationGroup.asEntityMutationOperationGroup();
 
-		// todo marco : right now identity delegates always override batching
-		//  though for non-id properties perhaps we shouldn't and rely on normal select
 		if ( mutationType == MutationType.INSERT
 				&& entityMutationOperationGroup != null
 				&& entityMutationOperationGroup.getMutationTarget().getIdentityInsertDelegate() != null ) {
