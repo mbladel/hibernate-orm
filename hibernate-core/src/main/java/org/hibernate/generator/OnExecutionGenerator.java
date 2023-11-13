@@ -118,14 +118,19 @@ public interface OnExecutionGenerator extends Generator {
 	default InsertGeneratedIdentifierDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
 		Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
 		if ( dialect.supportsInsertReturningGeneratedKeys() ) {
-			return new GetGeneratedKeysDelegate( persister, dialect, false );
+			return new GetGeneratedKeysDelegate( persister, dialect, false, EventType.INSERT );
 		}
 		else if ( dialect.supportsInsertReturning() ) {
-			return new InsertReturningDelegate( persister, dialect );
+			return new InsertReturningDelegate( persister, dialect, EventType.INSERT );
 		}
 		else {
 			// let's just hope the entity has a @NaturalId!
-			return new UniqueKeySelectingDelegate( persister, dialect, getUniqueKeyPropertyNames( persister ) );
+			return new UniqueKeySelectingDelegate(
+					persister,
+					dialect,
+					getUniqueKeyPropertyNames( persister ),
+					EventType.INSERT
+			);
 		}
 	}
 

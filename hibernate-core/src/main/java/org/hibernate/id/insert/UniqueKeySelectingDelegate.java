@@ -15,8 +15,10 @@ import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.EntityRowIdMapping;
 import org.hibernate.metamodel.mapping.ModelPart;
+import org.hibernate.sql.model.ast.TableInsert;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
+import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 import org.hibernate.type.Type;
 
 import java.sql.PreparedStatement;
@@ -40,8 +42,12 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 
 	private final String selectString;
 
-	public UniqueKeySelectingDelegate(PostInsertIdentityPersister persister, Dialect dialect, String[] uniqueKeyPropertyNames) {
-		super( persister );
+	public UniqueKeySelectingDelegate(
+			PostInsertIdentityPersister persister,
+			Dialect dialect,
+			String[] uniqueKeyPropertyNames,
+			EventType timing) {
+		super( persister, timing );
 
 		this.persister = persister;
 		this.uniqueKeyPropertyNames = uniqueKeyPropertyNames;
@@ -79,7 +85,7 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 	}
 
 	@Override
-	public TableInsertBuilder createTableInsertBuilder(
+	public TableMutationBuilder<?> createTableMutationBuilder(
 			Expectation expectation,
 			SessionFactoryImplementor factory) {
 		return new TableInsertBuilderStandard( persister, persister.getIdentifierTableMapping(), factory );

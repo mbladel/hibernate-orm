@@ -10,6 +10,7 @@ import org.hibernate.MappingException;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.generator.EventType;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.internal.CoreLogging;
@@ -17,6 +18,7 @@ import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
+import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 
 /**
  * Delegate for dealing with {@code IDENTITY} columns where the dialect requires an
@@ -27,7 +29,7 @@ public class BasicSelectingDelegate extends AbstractSelectingDelegate {
 	private final Dialect dialect;
 
 	public BasicSelectingDelegate(PostInsertIdentityPersister persister, Dialect dialect) {
-		super( persister );
+		super( persister, EventType.INSERT );
 		this.persister = persister;
 		this.dialect = dialect;
 	}
@@ -40,7 +42,7 @@ public class BasicSelectingDelegate extends AbstractSelectingDelegate {
 	}
 
 	@Override
-	public TableInsertBuilder createTableInsertBuilder(
+	public TableMutationBuilder<?> createTableMutationBuilder(
 			Expectation expectation,
 			SessionFactoryImplementor factory) {
 		final TableInsertBuilder builder =

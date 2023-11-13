@@ -39,7 +39,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SessionFactory
 @RequiresDialectFeature( feature = DialectFeatureChecks.SupportsIdentityColumns.class )
 public class MarcosGeneratedValueIdentityTest {
-
 	@Test
 	public void testInsertGenerationIdentityOnly(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
@@ -72,7 +71,7 @@ public class MarcosGeneratedValueIdentityTest {
 			session.flush();
 			assertThat( entity.getId() ).isNotNull();
 			assertThat( entity.getName() ).isEqualTo( "default" );
-			if ( ( (EntityMutationTarget) entityDescriptor ).getIdentityInsertDelegate()
+			if ( ( (EntityMutationTarget) entityDescriptor ).getInsertDelegate()
 					.supportsRetrievingRowId() && entityDescriptor.getRowIdMapping() != null ) {
 				// assert row-id was populated in entity entry
 				final PersistenceContext pc = session.getPersistenceContextInternal();
