@@ -18,7 +18,7 @@ import org.hibernate.generator.EventType;
 import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.id.PostInsertIdentityPersister;
 
-import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
+import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedValues;
 
 /**
  * Specialized {@link IdentifierGeneratingInsert} which appends the database
@@ -52,7 +52,7 @@ public class SybaseJConnGetGeneratedKeysDelegate extends GetGeneratedKeysDelegat
 
 		ResultSet resultSet = jdbcCoordinator.getResultSetReturn().execute( insertStatement, sql );
 		try {
-			return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
+			return getGeneratedValues( resultSet, persister, getTiming(), session );
 		}
 		catch (SQLException e) {
 			throw jdbcServices.getSqlExceptionHelper().convert(

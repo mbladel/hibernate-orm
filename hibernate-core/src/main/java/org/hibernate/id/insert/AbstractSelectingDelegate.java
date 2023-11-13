@@ -23,7 +23,7 @@ import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.pretty.MessageHelper;
 
 import static java.sql.Statement.NO_GENERATED_KEYS;
-import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
+import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedValues;
 
 /**
  * Abstract {@link InsertGeneratedIdentifierDelegate} implementation where
@@ -57,7 +57,7 @@ public abstract class AbstractSelectingDelegate extends AbstractMutationGenerate
 	 */
 	protected GeneratedValues extractGeneratedValue(ResultSet resultSet, SharedSessionContractImplementor session)
 			throws SQLException {
-		return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
+		return getGeneratedValues( resultSet, persister, getTiming(), session );
 	}
 
 	@Override
