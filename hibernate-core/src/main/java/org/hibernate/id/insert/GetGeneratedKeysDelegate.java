@@ -32,8 +32,8 @@ import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 
 import static java.sql.Statement.RETURN_GENERATED_KEYS;
-import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedColumnNames;
-import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
+import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedColumnNames;
+import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedValues;
 
 /**
  * Delegate for dealing with {@code IDENTITY} columns using the JDBC3 method
@@ -132,7 +132,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 			try {
 				final ResultSet resultSet = insertStatement.getGeneratedKeys();
 				try {
-					return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
+					return getGeneratedValues( resultSet, persister, getTiming(), session );
 				}
 				catch (SQLException e) {
 					throw jdbcServices.getSqlExceptionHelper().convert(
@@ -180,7 +180,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 		try {
 			final ResultSet resultSet = insertStatement.getGeneratedKeys();
 			try {
-				return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
+				return getGeneratedValues( resultSet, persister, getTiming(), session );
 			}
 			catch (SQLException e) {
 				throw jdbcServices.getSqlExceptionHelper().convert(

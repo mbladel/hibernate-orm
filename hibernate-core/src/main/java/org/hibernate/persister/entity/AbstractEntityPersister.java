@@ -105,6 +105,7 @@ import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.internal.VersionGeneration;
 import org.hibernate.generator.values.GeneratedValues;
+import org.hibernate.generator.values.GeneratedValuesHelper;
 import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
 import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.id.Assigned;
@@ -3442,7 +3443,7 @@ public abstract class AbstractEntityPersister
 			identitySelectString = getIdentitySelectString( factory.getJdbcServices().getDialect() );
 		}
 		else if ( CollectionHelper.isNotEmpty( insertGeneratedProperties ) ) {
-			insertDelegate = IdentifierGeneratorHelper.getGeneratedValuesDelegate( this, INSERT );
+			insertDelegate = GeneratedValuesHelper.getGeneratedValuesDelegate( this, INSERT );
 		}
 
 		// todo marco : update delegation

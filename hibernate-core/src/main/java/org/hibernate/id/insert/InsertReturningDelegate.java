@@ -22,11 +22,10 @@ import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
-import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 
 import static java.sql.Statement.NO_GENERATED_KEYS;
-import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
+import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedValues;
 
 /**
  * Delegate for dealing with {@code IDENTITY} columns where the dialect supports
@@ -69,7 +68,7 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 
 		final ResultSet resultSet = jdbcCoordinator.getResultSetReturn().execute( insertStatement, sql );
 		try {
-			return getGeneratedValues( persister.getNavigableRole().getFullPath(), resultSet, persister, session );
+			return getGeneratedValues( resultSet, persister, getTiming(), session );
 		}
 		catch (SQLException e) {
 			throw jdbcServices.getSqlExceptionHelper().convert(

@@ -6,6 +6,10 @@
  */
 package org.hibernate.id.insert;
 
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.List;
+
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -14,20 +18,11 @@ import org.hibernate.generator.EventType;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.EntityRowIdMapping;
-import org.hibernate.metamodel.mapping.ModelPart;
-import org.hibernate.sql.model.ast.TableInsert;
-import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 import org.hibernate.type.Type;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.List;
-
-import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedColumnNames;
-import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
+import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedColumnNames;
 
 /**
  * Uses a unique key of the inserted entity to locate the newly inserted row.
