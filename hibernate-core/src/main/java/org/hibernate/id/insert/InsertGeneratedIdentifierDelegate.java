@@ -8,11 +8,13 @@ package org.hibernate.id.insert;
 
 import java.sql.PreparedStatement;
 
+import org.hibernate.Remove;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
 import org.hibernate.engine.jdbc.mutation.group.PreparedStatementDetails;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
@@ -38,12 +40,10 @@ import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
  *
  * @author Steve Ebersole
  */
-public interface InsertGeneratedIdentifierDelegate {
+public interface InsertGeneratedIdentifierDelegate extends MutationGeneratedValuesDelegate {
 	/**
 	 * Create a {@link TableInsertBuilder} with any specific identity
 	 * handling already built in.
-	 *
-	 * todo marco : should I leave this or not ?
 	 * @deprecated
 	 */
 	@Deprecated( since = "7.0", forRemoval = true )
@@ -54,8 +54,11 @@ public interface InsertGeneratedIdentifierDelegate {
 		return createTableInsertBuilder( expectation, sessionFactory );
 	}
 
-	TableInsertBuilder createTableInsertBuilder(Expectation expectation, SessionFactoryImplementor sessionFactory);
+	default TableInsertBuilder createTableInsertBuilder(Expectation expectation, SessionFactoryImplementor sessionFactory) {
+		return (TableInsertBuilder) createTableMutationBuilder( expectation, sessionFactory );
+	}
 
+	@Override
 	PreparedStatement prepareStatement(String insertSql, SharedSessionContractImplementor session);
 
 	/**
@@ -64,11 +67,13 @@ public interface InsertGeneratedIdentifierDelegate {
 	 *
 	 * @see #createTableInsertBuilder
 	 */
-	Object performInsert(
+	default Object performInsert(
 			PreparedStatementDetails insertStatementDetails,
 			JdbcValueBindings valueBindings,
 			Object entity,
-			SharedSessionContractImplementor session);
+			SharedSessionContractImplementor session) {
+		return performMutation( insertStatementDetails, valueBindings, entity, session );
+	}
 
 	/**
 	 * Build an {@linkplain org.hibernate.sql.Insert insert statement}
@@ -89,7 +94,7 @@ public interface InsertGeneratedIdentifierDelegate {
 	 * @return The processed {@code insert} statement string
 	 */
 	default String prepareIdentifierGeneratingInsert(String insertSQL) {
-		return insertSQL;
+		return prepareValueGeneratingMutation( insertSQL );
 	}
 
 	/**
@@ -103,14 +108,4 @@ public interface InsertGeneratedIdentifierDelegate {
 	 * @return The generated identifier value
 	 */
 	Object performInsert(String insertSQL, SharedSessionContractImplementor session, Binder binder);
-
-	// todo : jdoc
-	default boolean supportsRetrievingGeneratedValues() {
-		return false;
-	}
-
-	// todo : jdoc
-	default boolean supportsRetrievingRowId() {
-		return false;
-	}
 }

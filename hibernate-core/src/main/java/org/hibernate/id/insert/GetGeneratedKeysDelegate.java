@@ -9,7 +9,6 @@ package org.hibernate.id.insert;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.Locale;
 
 import org.hibernate.MappingException;
@@ -24,17 +23,15 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.OnExecutionGenerator;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.id.PostInsertIdentityPersister;
-import org.hibernate.internal.util.StringHelper;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
-import org.hibernate.metamodel.mapping.ModelPart;
-import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
+import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 
 import static java.sql.Statement.RETURN_GENERATED_KEYS;
-import static org.hibernate.id.IdentifierGeneratorHelper.getActualSelectableMapping;
 import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedColumnNames;
 import static org.hibernate.id.IdentifierGeneratorHelper.getGeneratedValues;
 
@@ -50,8 +47,12 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	private final boolean inferredKeys;
 	private final String[] columnNames;
 
-	public GetGeneratedKeysDelegate(PostInsertIdentityPersister persister, Dialect dialect, boolean inferredKeys) {
-		super( persister );
+	public GetGeneratedKeysDelegate(
+			PostInsertIdentityPersister persister,
+			Dialect dialect,
+			boolean inferredKeys,
+			EventType timing) {
+		super( persister, timing );
 		this.persister = persister;
 		this.dialect = dialect;
 		this.inferredKeys = inferredKeys;
@@ -72,7 +73,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	}
 
 	@Override
-	public TableInsertBuilder createTableInsertBuilder(
+	public TableMutationBuilder<?> createTableMutationBuilder(
 			Expectation expectation,
 			SessionFactoryImplementor factory) {
 		final TableInsertBuilder builder =
@@ -110,20 +111,20 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	}
 
 	@Override
-	public Object performInsert(
-			PreparedStatementDetails insertStatementDetails,
+	public GeneratedValues performMutation(
+			PreparedStatementDetails statementDetails,
 			JdbcValueBindings jdbcValueBindings,
 			Object entity,
 			SharedSessionContractImplementor session) {
 		final JdbcServices jdbcServices = session.getJdbcServices();
 		final JdbcCoordinator jdbcCoordinator = session.getJdbcCoordinator();
 
-		final String insertSql = insertStatementDetails.getSqlString();
+		final String insertSql = statementDetails.getSqlString();
 
 		jdbcServices.getSqlStatementLogger().logStatement( insertSql );
 
-		final PreparedStatement insertStatement = insertStatementDetails.resolveStatement();
-		jdbcValueBindings.beforeStatement( insertStatementDetails );
+		final PreparedStatement insertStatement = statementDetails.resolveStatement();
+		jdbcValueBindings.beforeStatement( statementDetails );
 
 		try {
 			jdbcCoordinator.getResultSetReturn().executeUpdate( insertStatement, insertSql );
@@ -167,14 +168,14 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	}
 
 	@Override
-	public Object executeAndExtract(
-			String insertSql,
+	public GeneratedValues executeAndExtract(
+			String sql,
 			PreparedStatement insertStatement,
 			SharedSessionContractImplementor session) {
 		final JdbcCoordinator jdbcCoordinator = session.getJdbcCoordinator();
 		final JdbcServices jdbcServices = session.getJdbcServices();
 
-		jdbcCoordinator.getResultSetReturn().executeUpdate( insertStatement, insertSql );
+		jdbcCoordinator.getResultSetReturn().executeUpdate( insertStatement, sql );
 
 		try {
 			final ResultSet resultSet = insertStatement.getGeneratedKeys();
@@ -185,7 +186,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 				throw jdbcServices.getSqlExceptionHelper().convert(
 						e,
 						"Unable to extract generated key(s) from generated-keys ResultSet",
-						insertSql
+						sql
 				);
 			}
 			finally {
@@ -198,7 +199,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 			throw jdbcServices.getSqlExceptionHelper().convert(
 					e,
 					"Unable to extract generated-keys ResultSet",
-					insertSql
+					sql
 			);
 		}
 	}
