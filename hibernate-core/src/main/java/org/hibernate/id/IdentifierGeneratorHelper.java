@@ -10,6 +10,7 @@ import org.hibernate.HibernateException;
 import org.hibernate.Incubating;
 import org.hibernate.Internal;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.generator.EventType;
 import org.hibernate.generator.values.GeneratedValuesImpl;
 import org.hibernate.id.insert.GetGeneratedKeysDelegate;
 import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
@@ -146,7 +147,7 @@ public final class IdentifierGeneratorHelper {
 			//  the options open (for Components and/or other attribute types) we're going to need it
 			final SelectableMapping selectable = getActualSelectableMapping( modelPart, persister );
 			final JdbcMapping jdbcMapping = selectable.getJdbcMapping();
-			Object value = jdbcMapping.getJdbcValueExtractor().extract( resultSet, columnIndex(
+			final Object value = jdbcMapping.getJdbcValueExtractor().extract( resultSet, columnIndex(
 					resultSet,
 					selectable.getSelectionExpression(),
 					persister.getFactory().getFastSessionServices().dialect
@@ -194,18 +195,27 @@ public final class IdentifierGeneratorHelper {
 		else if ( dialect.supportsInsertReturning() ) {
 			return new InsertReturningDelegate( persister, dialect );
 		}
-		// todo marco : add unique key case too? would be nice if both @Id and other properties
-		//  were generated, but right now it's a simple select which just uses strings
-//		else if ( persister.getNaturalIdentifierProperties() != null
-//				&& !persister.getEntityMetamodel().isNaturalIdentifierInsertGenerated() ) {
-//			return new UniqueKeySelectingDelegate( persister, dialect, getNaturalIdPropertyNames( persister ) );
-//		}
+		else if ( persister.getNaturalIdentifierProperties() != null
+				&& !persister.getEntityMetamodel().isNaturalIdentifierInsertGenerated() ) {
+			return new UniqueKeySelectingDelegate( persister, dialect, getNaturalIdPropertyNames( persister ) );
+		}
 		return null;
 	}
 
 	private static boolean equal(String keyColumnName, String alias, Dialect dialect) {
 		return alias.equalsIgnoreCase( keyColumnName )
 			|| alias.equalsIgnoreCase( StringHelper.unquote( keyColumnName, dialect ) );
+	}
+
+	public static String[] getGeneratedColumnNames(EntityPersister persister, Dialect dialect, EventType timing) {
+		final List<? extends ModelPart> generated = timing == EventType.INSERT ?
+				persister.getInsertGeneratedProperties() :
+				persister.getUpdateGeneratedProperties();
+		return generated.stream().map( modelPart -> {
+			assert modelPart instanceof SelectableMapping : "Unsupported non-selectable generated value";
+			final SelectableMapping selectableMapping = getActualSelectableMapping( modelPart, persister );
+			return StringHelper.unquote( selectableMapping.getSelectionExpression(), dialect );
+		} ).toArray( String[]::new );
 	}
 
 	public static IntegralDataTypeHolder getIntegralDataTypeHolder(Class<?> integralType) {
