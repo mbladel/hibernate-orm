@@ -8183,16 +8183,25 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 						final TableGroup actualTableGroup = joinedTableGroup instanceof PluralTableGroup ?
 								( (PluralTableGroup) joinedTableGroup ).getElementTableGroup() :
 								joinedTableGroup;
-						final MappingType entityMappingType = actualTableGroup == null
+						final MappingType mappingType = actualTableGroup == null
 								? null
 								: actualTableGroup.getModelPart().getPartMappingType();
-						if ( entityMappingType instanceof EntityMappingType ) {
+						if ( mappingType instanceof EntityMappingType ) {
+							final EntityMappingType entityMappingType = (EntityMappingType) mappingType;
 							registerEntityNameUsage(
 									actualTableGroup,
 									EntityNameUse.PROJECTION,
-									( (EntityMappingType) entityMappingType ).getEntityName(),
+									entityMappingType.getEntityName(),
 									true
 							);
+							if ( entityMappingType.getSuperMappingType() != null ) {
+								// Register a treat use since this join is of an inheritance subtype
+								registerEntityNameUsage(
+										actualTableGroup,
+										EntityNameUse.TREAT,
+										entityMappingType.getEntityName()
+								);
+							}
 						}
 					}
 					if ( fetchable instanceof PluralAttributeMapping ) {
