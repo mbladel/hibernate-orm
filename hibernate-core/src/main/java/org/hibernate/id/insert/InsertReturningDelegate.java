@@ -90,6 +90,11 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 	}
 
 	@Override
+	public boolean supportsRetrievingRowId() {
+		return true;
+	}
+
+	@Override
 	public String prepareIdentifierGeneratingInsert(String insertSQL) {
 		return dialect.getIdentityColumnSupport().appendIdentitySelectToInsert( insertSQL );
 	}

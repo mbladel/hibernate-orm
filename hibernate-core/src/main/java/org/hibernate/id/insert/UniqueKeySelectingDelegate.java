@@ -13,6 +13,7 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
+import org.hibernate.metamodel.mapping.EntityRowIdMapping;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
@@ -50,10 +51,18 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 			uniqueKeyTypes[i] = persister.getPropertyType( uniqueKeyPropertyNames[i] );
 		}
 
-		final List<? extends ModelPart> insertGeneratedProperties = persister.getInsertGeneratedProperties();
-		if ( !persister.isIdentifierAssignedByInsert() || insertGeneratedProperties.size() > 1 ) {
-			final String[] columnNames = getGeneratedColumnNames( persister, dialect, EventType.INSERT );
-			selectString = persister.getSelectByUniqueKeyString( uniqueKeyPropertyNames, columnNames );
+		final EntityRowIdMapping rowIdMapping = persister.getRowIdMapping();
+		if ( !persister.isIdentifierAssignedByInsert()
+				|| persister.getInsertGeneratedProperties().size() > 1
+				|| rowIdMapping != null ) {
+			final List<String> columnNames = getGeneratedColumnNames( persister, dialect, EventType.INSERT );
+			if ( rowIdMapping != null ) {
+				columnNames.add( rowIdMapping.getSelectionExpression() );
+			}
+			selectString = persister.getSelectByUniqueKeyString(
+					uniqueKeyPropertyNames,
+					columnNames.toArray( new String[0] )
+			);
 		}
 		else {
 			selectString = persister.getSelectByUniqueKeyString( uniqueKeyPropertyNames );
@@ -93,6 +102,11 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 
 	@Override
 	public boolean supportsRetrievingGeneratedValues() {
+		return true;
+	}
+
+	@Override
+	public boolean supportsRetrievingRowId() {
 		return true;
 	}
 }

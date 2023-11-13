@@ -15,6 +15,7 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
+import org.hibernate.metamodel.mapping.EntityRowIdMapping;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.ValuedModelPart;
@@ -47,6 +48,12 @@ public class TableInsertReturningBuilder extends AbstractTableInsertBuilder {
 			assert prop instanceof SelectableMapping : "Unsupported non-selectable generated value";
 			return new ColumnReference( getMutatingTable(), ( (SelectableMapping) prop ) );
 		} ).collect( Collectors.toList() );
+
+		// special case for rowid
+		final EntityRowIdMapping rowIdMapping = getMutationTarget().getRowIdMapping();
+		if ( rowIdMapping != null ) {
+			generatedColumns.add( new ColumnReference( getMutatingTable(), rowIdMapping ) );
+		}
 
 		return new TableInsertStandard(
 				getMutatingTable(),
