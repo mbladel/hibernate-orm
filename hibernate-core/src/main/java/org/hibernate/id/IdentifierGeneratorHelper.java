@@ -14,33 +14,18 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 import org.hibernate.HibernateException;
-import org.hibernate.Incubating;
 import org.hibernate.Internal;
 import org.hibernate.dialect.Dialect;
-import org.hibernate.generator.EventType;
-import org.hibernate.generator.values.GeneratedValues;
-import org.hibernate.generator.values.GeneratedValuesImpl;
-import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
-import org.hibernate.id.insert.GetGeneratedKeysDelegate;
-import org.hibernate.id.insert.InsertReturningDelegate;
-import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.metamodel.mapping.JdbcMapping;
-import org.hibernate.metamodel.mapping.ModelPart;
-import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.SqlTypedMapping;
 import org.hibernate.metamodel.model.domain.NavigableRole;
-import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.type.descriptor.WrapperOptions;
-
-import static org.hibernate.generator.internal.NaturalIdHelper.getNaturalIdPropertyNames;
 
 /**
  * Factory and helper methods for {@link IdentifierGenerator} framework.
@@ -92,7 +77,7 @@ public final class IdentifierGeneratorHelper {
 	 * @throws SQLException       Can be thrown while accessing the result set
 	 * @throws HibernateException Indicates a problem reading back a generated identity value.
 	 *
-	 * @deprecated Use {@link #getGeneratedValues} instead
+	 * @deprecated Use {@link org.hibernate.generator.values.GeneratedValuesHelper#getGeneratedValues} instead
 	 */
 	@Deprecated(forRemoval = true, since = "7.0")
 	public static Object getGeneratedIdentity(
@@ -128,115 +113,9 @@ public final class IdentifierGeneratorHelper {
 		return 1;
 	}
 
-	public static GeneratedValues getGeneratedValues(
-			String path,
-			ResultSet resultSet,
-			PostInsertIdentityPersister persister,
-			WrapperOptions wrapperOptions) throws SQLException {
-		if ( !resultSet.next() ) {
-			throw new HibernateException( "The database returned no natively generated values : " + path );
-		}
-
-		final MutationGeneratedValuesDelegate delegate = persister.getInsertDelegate();
-		final List<ModelPart> generatedModelParts = delegate.supportsRetrievingGeneratedValues() ?
-				new ArrayList<>( persister.getInsertGeneratedProperties() ) :
-				new ArrayList<>( List.of( persister.getIdentifierMapping() ) );
-		if ( persister.getRowIdMapping() != null && persister.getInsertDelegate().supportsRetrievingRowId() ) {
-			generatedModelParts.add( persister.getRowIdMapping() );
-		}
-
-		final GeneratedValuesImpl generatedValues = new GeneratedValuesImpl( generatedModelParts );
-		for ( ModelPart modelPart : generatedModelParts ) {
-			assert modelPart instanceof SelectableMapping : "Unsupported non-selectable generated value";
-
-			// todo marco : would be nice to avoid the cast here, but if we want to keep
-			//  the options open (for Components and/or other attribute types) we're going to need it
-			final SelectableMapping selectable = getActualSelectableMapping( modelPart, persister );
-			final JdbcMapping jdbcMapping = selectable.getJdbcMapping();
-			final Object value = jdbcMapping.getJdbcValueExtractor().extract( resultSet, columnIndex(
-					resultSet,
-					selectable,
-					modelPart.isEntityIdentifierMapping() ? 1 : null,
-					persister.getFactory().getFastSessionServices().dialect
-			), wrapperOptions );
-			generatedValues.addGeneratedValue( modelPart, value );
-
-			LOG.debugf(
-					"Extracted natively generated value %s (%s) : %s",
-					selectable.getSelectionExpression(),
-					path,
-					value
-			);
-		}
-		return generatedValues;
-	}
-
-	private static int columnIndex(
-			ResultSet resultSet,
-			SelectableMapping selectable,
-			Integer defaultIndex,
-			Dialect dialect) {
-		final String columnName = selectable.getSelectionExpression();
-		try {
-			final ResultSetMetaData metaData = resultSet.getMetaData();
-			for ( int i = 1; i <= metaData.getColumnCount(); i++ ) {
-				if ( equal( columnName, metaData.getColumnName( i ), dialect ) ) {
-					return i;
-				}
-			}
-		}
-		catch (SQLException e) {
-			LOG.debugf( "Could not determine column index from JDBC metadata", e );
-		}
-
-		if ( defaultIndex != null ) {
-			return defaultIndex;
-		}
-		throw new HibernateException( "Could not retrieve column index for column name : " + columnName );
-	}
-
-	public static SelectableMapping getActualSelectableMapping(ModelPart modelPart, EntityPersister persister) {
-		final ModelPart actualModelPart = modelPart.isEntityIdentifierMapping() ?
-				persister.getRootEntityDescriptor().getIdentifierMapping() :
-				modelPart;
-		return (SelectableMapping) actualModelPart;
-	}
-
-	@Incubating
-	public static MutationGeneratedValuesDelegate getGeneratedValuesDelegate(
-			PostInsertIdentityPersister persister,
-			EventType timing) {
-		Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
-		if ( dialect.supportsInsertReturningGeneratedKeys() ) {
-			return new GetGeneratedKeysDelegate( persister, dialect, false, timing );
-		}
-		else if ( dialect.supportsInsertReturning() ) {
-			return new InsertReturningDelegate( persister, dialect, timing );
-		}
-		else if ( persister.getNaturalIdentifierProperties() != null
-				&& !persister.getEntityMetamodel().isNaturalIdentifierInsertGenerated() ) {
-			return new UniqueKeySelectingDelegate(
-					persister,
-					dialect,
-					getNaturalIdPropertyNames( persister ),
-					timing
-			);
-		}
-		return null;
-	}
-
 	private static boolean equal(String keyColumnName, String alias, Dialect dialect) {
 		return alias.equalsIgnoreCase( keyColumnName )
-			|| alias.equalsIgnoreCase( StringHelper.unquote( keyColumnName, dialect ) );
-	}
-
-	public static List<String> getGeneratedColumnNames(EntityPersister persister, Dialect dialect, EventType timing) {
-		final List<? extends ModelPart> generated = persister.getGeneratedProperties( timing );
-		return generated.stream().map( modelPart -> {
-			assert modelPart instanceof SelectableMapping : "Unsupported non-selectable generated value";
-			final SelectableMapping selectableMapping = getActualSelectableMapping( modelPart, persister );
-			return StringHelper.unquote( selectableMapping.getSelectionExpression(), dialect );
-		} ).toList();
+				|| alias.equalsIgnoreCase( StringHelper.unquote( keyColumnName, dialect ) );
 	}
 
 	public static IntegralDataTypeHolder getIntegralDataTypeHolder(Class<?> integralType) {
