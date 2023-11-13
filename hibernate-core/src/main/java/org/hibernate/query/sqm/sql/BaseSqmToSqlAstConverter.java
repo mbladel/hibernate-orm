@@ -8194,13 +8194,9 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 									entityMappingType.getEntityName(),
 									true
 							);
-							if ( entityMappingType.getSuperMappingType() != null ) {
-								// Register a treat use since this join is of an inheritance subtype
-								registerEntityNameUsage(
-										actualTableGroup,
-										EntityNameUse.TREAT,
-										entityMappingType.getEntityName()
-								);
+							if ( traversalResult != null && traversalResult.getFetchStrategy().isJoined()
+									&& entityMappingType.getSuperMappingType() != null ) {
+								entityMappingType.applyDiscriminator( null, null, actualTableGroup, this );
 							}
 						}
 					}

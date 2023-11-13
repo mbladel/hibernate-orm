@@ -8,6 +8,8 @@ package org.hibernate.orm.test.onetoone.singletable;
 
 import java.util.List;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 import org.hibernate.dialect.SybaseDialect;
 import org.hibernate.exception.ConstraintViolationException;
 
@@ -422,6 +424,7 @@ public class SingleTableOneToOneTest {
 		private String name;
 
 		@OneToOne( mappedBy = "zoo", fetch = FetchType.EAGER )
+		@Fetch( FetchMode.JOIN )
 		private Tiger tiger;
 
 //		@OneToMany(
