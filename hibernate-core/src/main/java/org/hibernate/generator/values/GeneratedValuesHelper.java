@@ -156,7 +156,7 @@ public class GeneratedValuesHelper {
 		else if ( dialect.supportsInsertReturning() ) {
 			return new InsertReturningDelegate( persister, dialect, timing );
 		}
-		else if ( persister.getNaturalIdentifierProperties() != null
+		else if ( timing == EventType.INSERT && persister.getNaturalIdentifierProperties() != null
 				&& !persister.getEntityMetamodel().isNaturalIdentifierInsertGenerated() ) {
 			return new UniqueKeySelectingDelegate(
 					persister,
