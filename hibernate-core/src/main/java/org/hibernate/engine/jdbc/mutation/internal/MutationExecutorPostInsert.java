@@ -72,9 +72,9 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 		);
 		this.mutationOperationGroup = mutationOperationGroup;
 
-		final PreparableMutationOperation identityInsertOperation = (PreparableMutationOperation) mutationOperationGroup.getOperation( mutationTarget.getIdentifierTableName() );
+		final PreparableMutationOperation insertOperation = (PreparableMutationOperation) mutationOperationGroup.getOperation( mutationTarget.getIdentifierTableName() );
 		this.identityInsertStatementDetails = ModelMutationHelper.identityPreparation(
-				identityInsertOperation,
+				insertOperation,
 				session
 		);
 

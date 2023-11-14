@@ -90,18 +90,12 @@ public class MarcosGeneratedValueIdentityTest {
 
 		private String name;
 
-		private Calendar updateDate;
-
 		public Integer getId() {
 			return id;
 		}
 
 		public String getName() {
 			return name;
-		}
-
-		public Calendar getUpdateDate() {
-			return updateDate;
 		}
 	}
 

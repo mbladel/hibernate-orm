@@ -1472,6 +1472,7 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 
 	@Override
 	protected List<? extends ModelPart> initInsertGeneratedProperties(List<AttributeMapping> generatedAttributes) {
+		// todo marco : this override looks the same as on AbstractEntityPersister, don't think it's needed
 		final int originalSize = generatedAttributes.size();
 		final List<ModelPart> generatedBasicAttributes = new ArrayList<>( originalSize );
 		for ( AttributeMapping generatedAttribute : generatedAttributes ) {

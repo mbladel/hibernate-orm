@@ -34,6 +34,7 @@ import org.hibernate.engine.spi.LoadQueryInfluencers;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.event.spi.EventSource;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.id.IdentifierGenerator;
 import org.hibernate.id.UUIDHexGenerator;
 import org.hibernate.internal.FilterAliasGenerator;
@@ -264,10 +265,10 @@ public class CustomPersister implements EntityPersister {
 		return getPropertyValues( object );
 	}
 
-	public void processInsertGeneratedProperties(Object id, Object entity, Object[] state, SharedSessionContractImplementor session) {
+	public void processInsertGeneratedProperties(Object id, Object entity, Object[] state, GeneratedValues generatedValues, SharedSessionContractImplementor session) {
 	}
 
-	public void processUpdateGeneratedProperties(Object id, Object entity, Object[] state, SharedSessionContractImplementor session) {
+	public void processUpdateGeneratedProperties(Object id, Object entity, Object[] state, GeneratedValues generatedValues, SharedSessionContractImplementor session) {
 	}
 
 	@Override
@@ -531,7 +532,7 @@ public class CustomPersister implements EntityPersister {
 	/**
 	 * @see EntityPersister
 	 */
-	public void update(
+	public Object update(
 			Object id,
 			Object[] fields,
 			int[] dirtyFields,
@@ -545,6 +546,7 @@ public class CustomPersister implements EntityPersister {
 
 		INSTANCES.put( id, ( (Custom) object ).clone() );
 
+		return null;
 	}
 
 	private static final BasicType<String> STRING_TYPE = new BasicTypeImpl<>(

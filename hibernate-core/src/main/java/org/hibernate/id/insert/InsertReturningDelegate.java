@@ -12,7 +12,6 @@ import java.sql.SQLException;
 
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.dialect.Dialect;
-import org.hibernate.dialect.identity.IdentityColumnSupport;
 import org.hibernate.engine.jdbc.spi.JdbcCoordinator;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -28,11 +27,11 @@ import static java.sql.Statement.NO_GENERATED_KEYS;
 import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedValues;
 
 /**
- * Delegate for dealing with {@code IDENTITY} columns where the dialect supports
- * returning the generated {@code IDENTITY} value directly from the insert statement.
+ * Delegate for dealing with generated values where the dialect supports
+ * returning the generated column directly from the mutation statement.
  *
- * @see org.hibernate.id.IdentityGenerator
- * @see IdentityColumnSupport#supportsInsertSelectIdentity()
+ * @see org.hibernate.generator.OnExecutionGenerator
+ * @see org.hibernate.generator.values.MutationGeneratedValuesDelegate
  */
 public class InsertReturningDelegate extends AbstractReturningDelegate {
 	private final PostInsertIdentityPersister persister;
@@ -93,8 +92,8 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 	}
 
 	@Override
-	public String prepareValueGeneratingMutation(String sql) {
-		return dialect.getIdentityColumnSupport().appendIdentitySelectToInsert( sql );
+	public String prepareIdentifierGeneratingInsert(String insertSQL) {
+		return dialect.getIdentityColumnSupport().appendIdentitySelectToInsert( insertSQL );
 	}
 
 	@Override

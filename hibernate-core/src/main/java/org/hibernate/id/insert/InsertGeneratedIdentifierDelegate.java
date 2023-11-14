@@ -66,7 +66,10 @@ public interface InsertGeneratedIdentifierDelegate extends MutationGeneratedValu
 	 * primary key value.
 	 *
 	 * @see #createTableInsertBuilder
+	 *
+	 * @deprecated Use {@link MutationGeneratedValuesDelegate#performMutation} instead
 	 */
+	@Deprecated( forRemoval = true, since = "7.0" )
 	default Object performInsert(
 			PreparedStatementDetails insertStatementDetails,
 			JdbcValueBindings valueBindings,
@@ -94,7 +97,7 @@ public interface InsertGeneratedIdentifierDelegate extends MutationGeneratedValu
 	 * @return The processed {@code insert} statement string
 	 */
 	default String prepareIdentifierGeneratingInsert(String insertSQL) {
-		return prepareValueGeneratingMutation( insertSQL );
+		return insertSQL;
 	}
 
 	/**
