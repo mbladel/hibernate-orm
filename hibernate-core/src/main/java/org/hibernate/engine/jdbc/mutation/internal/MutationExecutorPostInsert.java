@@ -54,7 +54,7 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 	private final MutationType mutationType;
 	protected final MutationOperationGroup mutationOperationGroup;
 
-	protected final PreparedStatementDetails identityInsertStatementDetails;
+	protected final PreparedStatementDetails mutationStatementDetails;
 
 	/**
 	 * Any non-batched JDBC statements
@@ -78,7 +78,7 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 		this.mutationOperationGroup = mutationOperationGroup;
 
 		final PreparableMutationOperation mutationOperation = (PreparableMutationOperation) mutationOperationGroup.getOperation( mutationTarget.getIdentifierTableName() );
-		this.identityInsertStatementDetails = ModelMutationHelper.delegatePreparation(
+		this.mutationStatementDetails = ModelMutationHelper.delegatePreparation(
 				mutationOperation,
 				mutationType,
 				session
@@ -133,7 +133,7 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 	@Override
 	public PreparedStatementDetails getPreparedStatementDetails(String tableName) {
 		if ( mutationTarget.getIdentifierTableName().equals( tableName ) ) {
-			return identityInsertStatementDetails;
+			return mutationStatementDetails;
 		}
 
 		return secondaryTablesStatementGroup.getPreparedStatementDetails( tableName );
@@ -147,7 +147,7 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 			OperationResultChecker resultChecker,
 			SharedSessionContractImplementor session) {
 		final MutationGeneratedValuesDelegate delegate = mutationTarget.getMutationDelegate( mutationType );
-		final GeneratedValues generatedValues = delegate.performMutation( identityInsertStatementDetails, valueBindings, modelReference, session );
+		final GeneratedValues generatedValues = delegate.performMutation( mutationStatementDetails, valueBindings, modelReference, session );
 		final Object id = mutationType == MutationType.INSERT ?
 				generatedValues.getGeneratedValue( mutationTarget.getTargetPart().getIdentifierMapping() ) :
 				null;
