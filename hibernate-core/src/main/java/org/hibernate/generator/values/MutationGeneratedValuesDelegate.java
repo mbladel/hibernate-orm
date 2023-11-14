@@ -57,16 +57,6 @@ public interface MutationGeneratedValuesDelegate {
 			SharedSessionContractImplementor session);
 
 	/**
-	 * Append SQL specific to this delegate's mode of handling generated
-	 * values to the given mutation statement.
-	 *
-	 * @return The processed mutation statement string
-	 */
-	default String prepareValueGeneratingMutation(String sql) {
-		return sql;
-	}
-
-	/**
 	 * Returns the timing this generated values delegate handles.
 	 */
 	EventType getTiming();

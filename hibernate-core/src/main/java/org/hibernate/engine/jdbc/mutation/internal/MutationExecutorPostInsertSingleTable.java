@@ -23,7 +23,7 @@ import org.hibernate.sql.model.PreparableMutationOperation;
 import org.hibernate.sql.model.ValuesAnalysis;
 import org.hibernate.sql.model.jdbc.JdbcValueDescriptor;
 
-import static org.hibernate.engine.jdbc.mutation.internal.ModelMutationHelper.identityPreparation;
+import static org.hibernate.engine.jdbc.mutation.internal.ModelMutationHelper.delegatePreparation;
 import static org.hibernate.sql.model.ModelMutationLogging.MODEL_MUTATION_LOGGER;
 
 /**
@@ -44,25 +44,28 @@ import static org.hibernate.sql.model.ModelMutationLogging.MODEL_MUTATION_LOGGER
  */
 public class MutationExecutorPostInsertSingleTable implements MutationExecutor, JdbcValueBindingsImpl.JdbcValueDescriptorAccess {
 	private final EntityMutationTarget mutationTarget;
+	private final MutationType mutationType;
 	private final SharedSessionContractImplementor session;
 	private final PreparableMutationOperation operation;
-	private final PreparedStatementDetails identityInsertStatementDetails;
+	private final PreparedStatementDetails statemementDetails;
 
 	private final JdbcValueBindingsImpl valueBindings;
 
 	public MutationExecutorPostInsertSingleTable(
 			EntityMutationOperationGroup mutationOperationGroup,
+			MutationType mutationType,
 			SharedSessionContractImplementor session) {
 		this.mutationTarget = mutationOperationGroup.getMutationTarget();
+		this.mutationType = mutationType;
 		this.session = session;
 
 		assert mutationOperationGroup.getNumberOfOperations() == 1;
 
 		this.operation = (PreparableMutationOperation) mutationOperationGroup.getOperation( mutationTarget.getIdentifierTableName() );
-		this.identityInsertStatementDetails = identityPreparation( operation, session );
+		this.statemementDetails = delegatePreparation( operation, mutationType, session );
 
 		this.valueBindings = new JdbcValueBindingsImpl(
-				MutationType.INSERT,
+				mutationType,
 				mutationTarget,
 				this,
 				session
@@ -73,7 +76,7 @@ public class MutationExecutorPostInsertSingleTable implements MutationExecutor, 
 
 	@Override
 	public JdbcValueDescriptor resolveValueDescriptor(String tableName, String columnName, ParameterUsage usage) {
-		assert identityInsertStatementDetails.getMutatingTableDetails().getTableName().equals( tableName );
+		assert statemementDetails.getMutatingTableDetails().getTableName().equals( tableName );
 		return operation.findValueDescriptor( columnName, usage );
 	}
 
@@ -85,7 +88,7 @@ public class MutationExecutorPostInsertSingleTable implements MutationExecutor, 
 	@Override
 	public PreparedStatementDetails getPreparedStatementDetails(String tableName) {
 		if ( mutationTarget.getIdentifierTableName().equals( tableName ) ) {
-			return identityInsertStatementDetails;
+			return statemementDetails;
 		}
 
 		return null;
@@ -98,8 +101,8 @@ public class MutationExecutorPostInsertSingleTable implements MutationExecutor, 
 			TableInclusionChecker inclusionChecker,
 			OperationResultChecker resultChecker,
 			SharedSessionContractImplementor session) {
-		final MutationGeneratedValuesDelegate delegate = mutationTarget.getInsertDelegate();
-		final Object id = delegate.performMutation( identityInsertStatementDetails, valueBindings, modelReference, session );
+		final MutationGeneratedValuesDelegate delegate = mutationTarget.getMutationDelegate( mutationType );
+		final Object id = delegate.performMutation( statemementDetails, valueBindings, modelReference, session );
 
 		if ( MODEL_MUTATION_LOGGER.isTraceEnabled() ) {
 			MODEL_MUTATION_LOGGER.tracef(
@@ -114,7 +117,7 @@ public class MutationExecutorPostInsertSingleTable implements MutationExecutor, 
 
 	@Override
 	public void release() {
-		identityInsertStatementDetails.releaseStatement( session );
+		statemementDetails.releaseStatement( session );
 	}
 
 	@Override

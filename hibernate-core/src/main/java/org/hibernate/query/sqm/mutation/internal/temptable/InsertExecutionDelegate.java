@@ -547,11 +547,13 @@ public class InsertExecutionDelegate implements TableBasedInsertHandler.Executio
 			final OnExecutionGenerator databaseGenerator = (OnExecutionGenerator) generator;
 			final InsertGeneratedIdentifierDelegate identifierDelegate =
 					databaseGenerator.getGeneratedIdentifierDelegate( (PostInsertIdentityPersister) entityPersister );
+			// todo marco : prepareIdentifierGeneratingInsert doesn't account for non-id generated values
 			final String finalSql = identifierDelegate.prepareIdentifierGeneratingInsert( jdbcInsert.getSqlString() );
 			final BasicEntityIdentifierMapping identifierMapping =
 					(BasicEntityIdentifierMapping) entityDescriptor.getIdentifierMapping();
 			final ValueBinder jdbcValueBinder = identifierMapping.getJdbcMapping().getJdbcValueBinder();
 			for ( Map.Entry<Object, Object> entry : entityTableToRootIdentity.entrySet() ) {
+				// todo marco : performInsert(String sql, ...) doesn't account for non-id generated values
 				final Object generatedValues = identifierDelegate.performInsert(
 						finalSql,
 						session,
