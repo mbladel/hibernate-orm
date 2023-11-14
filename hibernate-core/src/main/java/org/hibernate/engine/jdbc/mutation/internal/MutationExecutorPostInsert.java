@@ -51,6 +51,7 @@ import static org.hibernate.sql.model.ModelMutationLogging.MODEL_MUTATION_LOGGER
  */
 public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBindingsImpl.JdbcValueDescriptorAccess {
 	protected final EntityMutationTarget mutationTarget;
+	private final MutationType mutationType;
 	protected final MutationOperationGroup mutationOperationGroup;
 
 	protected final PreparedStatementDetails identityInsertStatementDetails;
@@ -62,19 +63,24 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 
 	protected final JdbcValueBindingsImpl valueBindings;
 
-	public MutationExecutorPostInsert(EntityMutationOperationGroup mutationOperationGroup, SharedSessionContractImplementor session) {
+	public MutationExecutorPostInsert(
+			EntityMutationOperationGroup mutationOperationGroup,
+			MutationType mutationType,
+			SharedSessionContractImplementor session) {
 		this.mutationTarget = mutationOperationGroup.getMutationTarget();
+		this.mutationType = mutationType;
 		this.valueBindings = new JdbcValueBindingsImpl(
-				MutationType.INSERT,
+				mutationType,
 				mutationTarget,
 				this,
 				session
 		);
 		this.mutationOperationGroup = mutationOperationGroup;
 
-		final PreparableMutationOperation insertOperation = (PreparableMutationOperation) mutationOperationGroup.getOperation( mutationTarget.getIdentifierTableName() );
-		this.identityInsertStatementDetails = ModelMutationHelper.identityPreparation(
-				insertOperation,
+		final PreparableMutationOperation mutationOperation = (PreparableMutationOperation) mutationOperationGroup.getOperation( mutationTarget.getIdentifierTableName() );
+		this.identityInsertStatementDetails = ModelMutationHelper.delegatePreparation(
+				mutationOperation,
+				mutationType,
 				session
 		);
 
@@ -100,7 +106,7 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 
 
 		this.secondaryTablesStatementGroup = ModelMutationHelper.toPreparedStatementGroup(
-				MutationType.INSERT,
+				mutationType,
 				mutationTarget,
 				secondaryTableMutations,
 				session
@@ -140,9 +146,11 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 			TableInclusionChecker inclusionChecker,
 			OperationResultChecker resultChecker,
 			SharedSessionContractImplementor session) {
-		final MutationGeneratedValuesDelegate delegate = mutationTarget.getInsertDelegate();
+		final MutationGeneratedValuesDelegate delegate = mutationTarget.getMutationDelegate( mutationType );
 		final GeneratedValues generatedValues = delegate.performMutation( identityInsertStatementDetails, valueBindings, modelReference, session );
-		final Object id = generatedValues.getGeneratedValue( mutationTarget.getTargetPart().getIdentifierMapping() );
+		final Object id = mutationType == MutationType.INSERT ?
+				generatedValues.getGeneratedValue( mutationTarget.getTargetPart().getIdentifierMapping() ) :
+				null;
 
 		if ( MODEL_MUTATION_LOGGER.isTraceEnabled() ) {
 			MODEL_MUTATION_LOGGER.tracef(
@@ -153,7 +161,7 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 		}
 
 		if ( secondaryTablesStatementGroup != null ) {
-			secondaryTablesStatementGroup.forEachStatement( (tableName, statementDetails) -> executeWithId(
+			secondaryTablesStatementGroup.forEachStatement( (tableName, statementDetails) -> executeSecondaryTableStatement(
 					id,
 					tableName,
 					statementDetails,
@@ -166,7 +174,7 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 		return generatedValues;
 	}
 
-	private void executeWithId(
+	private void executeSecondaryTableStatement(
 			Object id,
 			String tableName,
 			PreparedStatementDetails statementDetails,
@@ -194,18 +202,21 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 		//noinspection resource
 		statementDetails.resolveStatement();
 
-		tableDetails.getKeyMapping().breakDownKeyJdbcValues(
-				id,
-				(jdbcValue, columnMapping) -> {
-					valueBindings.bindValue(
-							jdbcValue,
-							tableName,
-							columnMapping.getColumnName(),
-							ParameterUsage.SET
-					);
-				},
-				session
-		);
+		if ( id != null ) {
+			assert mutationType == MutationType.INSERT;
+			tableDetails.getKeyMapping().breakDownKeyJdbcValues(
+					id,
+					(jdbcValue, columnMapping) -> {
+						valueBindings.bindValue(
+								jdbcValue,
+								tableName,
+								columnMapping.getColumnName(),
+								ParameterUsage.SET
+						);
+					},
+					session
+			);
+		}
 
 		session.getJdbcServices().getSqlStatementLogger().logStatement( statementDetails.getSqlString() );
 		valueBindings.beforeStatement( statementDetails );

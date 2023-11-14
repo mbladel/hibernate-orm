@@ -102,17 +102,17 @@ public class MutationExecutorPostInsertSingleTable implements MutationExecutor, 
 			OperationResultChecker resultChecker,
 			SharedSessionContractImplementor session) {
 		final MutationGeneratedValuesDelegate delegate = mutationTarget.getMutationDelegate( mutationType );
-		final Object id = delegate.performMutation( statemementDetails, valueBindings, modelReference, session );
+		final Object generatedValues = delegate.performMutation( statemementDetails, valueBindings, modelReference, session );
 
 		if ( MODEL_MUTATION_LOGGER.isTraceEnabled() ) {
 			MODEL_MUTATION_LOGGER.tracef(
-					"Post-insert generated value : `%s` (%s)",
-					id,
+					"Post-insert generated values : `%s` (%s)",
+					generatedValues,
 					mutationTarget.getNavigableRole().getFullPath()
 			);
 		}
 
-		return id;
+		return generatedValues;
 	}
 
 	@Override

@@ -66,19 +66,18 @@ public class GeneratedValuesHelper {
 			);
 		}
 
-		final MutationGeneratedValuesDelegate delegate = persister.getInsertDelegate();
 		final List<ModelPart> generatedModelParts;
 		if ( timing == EventType.INSERT ) {
-			generatedModelParts = delegate.supportsRetrievingGeneratedValues() ?
+			generatedModelParts = persister.getInsertDelegate().supportsRetrievingGeneratedValues() ?
 					new ArrayList<>( persister.getInsertGeneratedProperties() ) :
 					new ArrayList<>( List.of( persister.getIdentifierMapping() ) );
+
+			if ( persister.getRowIdMapping() != null && persister.getInsertDelegate().supportsRetrievingRowId() ) {
+				generatedModelParts.add( persister.getRowIdMapping() );
+			}
 		}
 		else {
 			generatedModelParts = new ArrayList<>( persister.getUpdateGeneratedProperties() );
-		}
-
-		if ( persister.getRowIdMapping() != null && persister.getInsertDelegate().supportsRetrievingRowId() ) {
-			generatedModelParts.add( persister.getRowIdMapping() );
 		}
 
 		final GeneratedValuesImpl generatedValues = new GeneratedValuesImpl( generatedModelParts );

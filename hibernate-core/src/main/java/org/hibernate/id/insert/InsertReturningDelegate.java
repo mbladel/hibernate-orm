@@ -19,6 +19,7 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.values.GeneratedValues;
+import org.hibernate.generator.values.TableUpdateReturningBuilder;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
@@ -54,7 +55,12 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 	public TableMutationBuilder<?> createTableMutationBuilder(
 			Expectation expectation,
 			SessionFactoryImplementor sessionFactory) {
-		return new TableInsertReturningBuilder( persister, sessionFactory );
+		if ( getTiming() == EventType.INSERT ) {
+			return new TableInsertReturningBuilder( persister, sessionFactory );
+		}
+		else {
+			return new TableUpdateReturningBuilder<>( persister, sessionFactory );
+		}
 	}
 
 	@Override
