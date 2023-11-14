@@ -59,10 +59,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 				SingleTableOneToOneTest.BaseClass.class,
 				SingleTableOneToOneTest.SubClass2.class,
 				SingleTableOneToOneTest.SubClass1.class,
-				SingleTableOneToOneTest.Zoo.class,
-				SingleTableOneToOneTest.Animal.class,
-				SingleTableOneToOneTest.Tiger.class,
-				SingleTableOneToOneTest.Elephant.class,
 		}
 )
 @SessionFactory
@@ -81,9 +77,6 @@ public class SingleTableOneToOneTest {
 					session.createMutationQuery( "delete from SubClass1" ).executeUpdate();
 					session.createMutationQuery( "delete from Container1" ).executeUpdate();
 					session.createMutationQuery( "delete from Container2" ).executeUpdate();
-					session.createMutationQuery( "delete from Tiger" ).executeUpdate();
-					session.createMutationQuery( "delete from Elephant" ).executeUpdate();
-					session.createMutationQuery( "delete from Zoo" ).executeUpdate();
 				}
 		);
 	}
@@ -228,42 +221,6 @@ public class SingleTableOneToOneTest {
 
 	}
 
-	@Test
-	@Jira( "https://hibernate.atlassian.net/browse/HHH-17328" )
-//	@FailureExpected
-	public void testEntityGraphOnSingleTableInheritance(SessionFactoryScope scope) {
-		Long zooId = scope.fromTransaction(
-				s -> {
-					final Zoo zoo = new Zoo();
-					s.persist( zoo );
-
-					// Persisting tiger
-					final Tiger tiger = new Tiger();
-					tiger.setZoo( zoo );
-					s.persist( tiger );
-
-					// Persisting first Elephant
-//					Elephant elephant1 = new Elephant();
-//					elephant1.setZoo( zoo );
-//					s.persist( elephant1 );
-
-					return zoo.getId();
-				}
-		);
-
-		scope.inTransaction(
-				s -> {
-					final EntityGraph<?> entityGraph = s.getEntityGraph( "get-zoo-with-all-animals" );
-					final Zoo zooFetchedUsingGraph =
-							s.createQuery( "select zoo from Zoo zoo where zoo.id=:zooId", Zoo.class )
-									.setHint( "jakarta.persistence.loadgraph", entityGraph )
-									.setParameter( "zooId", zooId )
-									.getSingleResult();
-					Assertions.assertNotNull( zooFetchedUsingGraph.getTiger() );
-//					Assertions.assertEquals( 1, zooFetchedUsingGraph.getElephants().size() );
-				}
-		);
-	}
 	@Entity(name = "BaseClass")
 	@DiscriminatorColumn(name = "BASE_TYPE")
 	@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
@@ -369,97 +326,4 @@ public class SingleTableOneToOneTest {
 			this.subClass22 = subClass22;
 		}
 	}
-
-	@Entity
-	@Table(name = "ANIMAL")
-	@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
-	@DiscriminatorColumn(name = "ANIMAL_TYPE")
-	@org.hibernate.annotations.DiscriminatorOptions(force = true)
-	public static class Animal {
-		@Id
-		@GeneratedValue(generator = "ANIMAL_SEQ")
-		@SequenceGenerator(name = "ANIMAL_SEQ", sequenceName = "ANIMAL_SEQ")
-		private Long id;
-	}
-
-	@Entity(name = "Tiger")
-	@DiscriminatorValue("Tiger")
-	public static class Tiger extends Animal {
-		@OneToOne(fetch = FetchType.LAZY)
-		@JoinColumn(name = "ZOO_ID")
-		private Zoo zoo;
-
-		public void setZoo(Zoo zoo) {
-			this.zoo = zoo;
-		}
-	}
-
-	@Entity(name = "Elephant")
-	@DiscriminatorValue("Elephant")
-	public static class Elephant extends Animal {
-		@ManyToOne(fetch = FetchType.LAZY)
-		@JoinColumn(name = "ZOO_ID")
-		private Zoo zoo;
-
-		public void setZoo(Zoo zoo) {
-			this.zoo = zoo;
-		}
-	}
-
-	@Entity( name = "Zoo" )
-	@Table( name = "ZOO" )
-	@NamedEntityGraph(
-			name = "get-zoo-with-all-animals",
-			attributeNodes = {
-					@NamedAttributeNode( value = "tiger" ),
-//					@NamedAttributeNode(value = "elephants")
-			}
-	)
-	public static class Zoo {
-		@Id
-		@GeneratedValue( generator = "ZOO_SEQ" )
-		@SequenceGenerator( name = "ZOO_SEQ", sequenceName = "ZOO_SEQ" )
-		private Long id;
-
-		private String name;
-
-		@OneToOne( mappedBy = "zoo", fetch = FetchType.EAGER )
-		@Fetch( FetchMode.JOIN )
-		private Tiger tiger;
-
-//		@OneToMany(
-//				mappedBy = "zoo",
-//				cascade = {CascadeType.PERSIST, CascadeType.MERGE},
-//				orphanRemoval = true)
-//		private List<Elephant> elephants;
-
-		public String getName() {
-			return name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
-
-		public Long getId() {
-			return id;
-		}
-
-		public Tiger getTiger() {
-			return tiger;
-		}
-
-		public void setTiger(Tiger tiger) {
-			this.tiger = tiger;
-		}
-
-//		public List<Elephant> getElephants() {
-//			return elephants;
-//		}
-//
-//		public void setElephants(List<Elephant> elephants) {
-//			this.elephants = elephants;
-//		}
-	}
-
 }

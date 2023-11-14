@@ -8037,6 +8037,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 
 		boolean explicitFetch = false;
 		EntityGraphTraversalState.TraversalResult traversalResult = null;
+		org.hibernate.engine.profile.Fetch profileFetch = null;
 
 		TableGroup joinedTableGroup = null;
 
@@ -8086,8 +8087,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 							final FetchProfile enabledFetchProfile = getCreationContext()
 									.getSessionFactory()
 									.getFetchProfile( enabledFetchProfileName );
-							final org.hibernate.engine.profile.Fetch profileFetch =
-									enabledFetchProfile.getFetchByRole( fetchableRole );
+							profileFetch = enabledFetchProfile.getFetchByRole( fetchableRole );
 
 							if ( profileFetch != null ) {
 								fetchTiming = profileFetch.getTiming();
@@ -8194,8 +8194,9 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 									entityMappingType.getEntityName(),
 									true
 							);
-							if ( traversalResult != null && traversalResult.getFetchStrategy().isJoined()
-									&& entityMappingType.getSuperMappingType() != null ) {
+							if ( entityMappingType.getSuperMappingType() != null ) {
+								// A joined table group was created by an enabled entity graph or fetch profile,
+								// and it's of an inheritance subtype, so we should apply the discriminator
 								entityMappingType.applyDiscriminator( null, null, actualTableGroup, this );
 							}
 						}
