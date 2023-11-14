@@ -30,6 +30,8 @@ import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedV
 /**
  * Delegate for dealing with generated values where the dialect supports
  * returning the generated column directly from the mutation statement.
+ * <p>
+ * Supports both {@link EventType#INSERT insert} and {@link EventType#UPDATE update} statements.
  *
  * @see org.hibernate.generator.OnExecutionGenerator
  * @see org.hibernate.generator.values.MutationGeneratedValuesDelegate
