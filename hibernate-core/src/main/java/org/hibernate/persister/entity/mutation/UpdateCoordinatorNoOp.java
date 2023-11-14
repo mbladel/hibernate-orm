@@ -28,8 +28,9 @@ public class UpdateCoordinatorNoOp implements UpdateCoordinator {
 	}
 
 	@Override
-	public void coordinateUpdate(Object entity, Object id, Object rowId, Object[] values, Object oldVersion, Object[] incomingOldValues, int[] dirtyAttributeIndexes, boolean hasDirtyCollection, SharedSessionContractImplementor session) {
+	public Object coordinateUpdate(Object entity, Object id, Object rowId, Object[] values, Object oldVersion, Object[] incomingOldValues, int[] dirtyAttributeIndexes, boolean hasDirtyCollection, SharedSessionContractImplementor session) {
 		// nothing to do
+		return null;
 	}
 
 	@Override

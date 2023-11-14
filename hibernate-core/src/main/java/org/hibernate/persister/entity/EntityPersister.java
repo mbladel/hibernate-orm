@@ -643,7 +643,7 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 	/**
 	 * Update a persistent instance
 	 */
-	void update(
+	Object update(
 			Object id,
 			Object[] fields,
 			int[] dirtyFields,
@@ -900,17 +900,30 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 	 * Note, that because we update the PersistenceContext here, callers
 	 * need to take care that they have already written the initial snapshot
 	 * to the PersistenceContext before calling this method.
+	 * @deprecated Use {@link #processInsertGeneratedProperties(Object, Object, Object[], GeneratedValues, SharedSessionContractImplementor)} instead.
 	 */
-	void processInsertGeneratedProperties(Object id, Object entity, Object[] state, SharedSessionContractImplementor session);
+	@Deprecated( forRemoval = true, since = "7.0" )
+	default void processInsertGeneratedProperties(Object id, Object entity, Object[] state, SharedSessionContractImplementor session) {
+		processInsertGeneratedProperties( id, entity, state, null, session );
+	}
 
-	// todo marco : deprecate the old one and make this the default ?
+	/**
+	 * Retrieve the values of any insert generated properties through the provided
+	 * {@link GeneratedValues} or, when that's not available, by selecting them
+	 * back from the database, injecting these generated values into the
+	 * given entity as well as writing this state to the
+	 * {@link org.hibernate.engine.spi.PersistenceContext}.
+	 * <p>
+	 * Note, that because we update the PersistenceContext here, callers
+	 * need to take care that they have already written the initial snapshot
+	 * to the PersistenceContext before calling this method.
+	 */
 	default void processInsertGeneratedProperties(
 			Object id,
 			Object entity,
 			Object[] state,
 			GeneratedValues generatedValues,
 			SharedSessionContractImplementor session) {
-		processInsertGeneratedProperties( id, entity, state, session );
 	}
 
 	default List<? extends ModelPart> getGeneratedProperties(EventType timing) {
@@ -931,8 +944,30 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 	 * Note, that because we update the PersistenceContext here, callers
 	 * need to take care that they have already written the initial snapshot
 	 * to the PersistenceContext before calling this method.
+	 * @deprecated Use {@link #processUpdateGeneratedProperties(Object, Object, Object[], GeneratedValues, SharedSessionContractImplementor)} instead.
 	 */
-	void processUpdateGeneratedProperties(Object id, Object entity, Object[] state, SharedSessionContractImplementor session);
+	@Deprecated( forRemoval = true, since = "7.0" )
+	default void processUpdateGeneratedProperties(Object id, Object entity, Object[] state, SharedSessionContractImplementor session) {
+		processUpdateGeneratedProperties( id, entity, state, null, session );
+	}
+
+	/**
+	 * Retrieve the values of any update generated properties through the provided
+	 * {@link GeneratedValues} or, when that's not available, by selecting them
+	 * back from the database, injecting these generated values into the
+	 * given entity as well as writing this state to the
+	 * {@link org.hibernate.engine.spi.PersistenceContext}.
+	 * <p>
+	 * Note, that because we update the PersistenceContext here, callers
+	 * need to take care that they have already written the initial snapshot
+	 * to the PersistenceContext before calling this method.
+	 */
+	void processUpdateGeneratedProperties(
+			Object id,
+			Object entity,
+			Object[] state,
+			GeneratedValues generatedValues,
+			SharedSessionContractImplementor session);
 
 	default List<? extends ModelPart> getUpdateGeneratedProperties() {
 		return Collections.emptyList();

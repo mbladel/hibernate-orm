@@ -220,7 +220,7 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 		}
 
 		if ( id == null ) {
-			assert entityPersister().getIdentityInsertDelegate() != null;
+			assert entityPersister().getInsertDelegate() != null;
 		}
 		else {
 			for ( int position = 0; position < mutationGroup.getNumberOfOperations(); position++ ) {
@@ -416,8 +416,8 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 			final TableInsertBuilder tableInsertBuilder = (TableInsertBuilder) tableMutationBuilder;
 			final EntityTableMapping tableMapping = (EntityTableMapping) tableInsertBuilder.getMutatingTable().getTableMapping();
 			if ( tableMapping.isIdentifierTable() && entityPersister().isIdentifierAssignedByInsert() && !forceIdentifierBinding ) {
-				// nothing to do - the builder already includes the identity handling
-				assert entityPersister().getIdentityInsertDelegate() != null;
+				// nothing to do - the delegate already includes key column handling
+				assert entityPersister().getInsertDelegate() != null;
 			}
 			else {
 				tableMapping.getKeyMapping().forEachKeyColumn( tableInsertBuilder::addKeyColumn );

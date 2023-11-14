@@ -14,6 +14,7 @@ import org.hibernate.engine.jdbc.mutation.MutationExecutor;
 import org.hibernate.engine.jdbc.mutation.spi.BatchKeyAccess;
 import org.hibernate.engine.jdbc.mutation.spi.MutationExecutorService;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
 import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.sql.model.EntityMutationOperationGroup;
 import org.hibernate.sql.model.MutationOperation;
@@ -57,13 +58,12 @@ public class StandardMutationExecutorService implements MutationExecutorService 
 		final MutationType mutationType = operationGroup.getMutationType();
 		final EntityMutationOperationGroup entityMutationOperationGroup = operationGroup.asEntityMutationOperationGroup();
 
-		if ( mutationType == MutationType.INSERT
-				&& entityMutationOperationGroup != null
-				&& entityMutationOperationGroup.getMutationTarget().getIdentityInsertDelegate() != null ) {
+		if ( entityMutationOperationGroup != null
+				&& entityMutationOperationGroup.getMutationTarget().getMutationDelegate( mutationType ) != null ) {
 			if ( numberOfOperations > 1 ) {
 				return new MutationExecutorPostInsert( entityMutationOperationGroup, session );
 			}
-			return new MutationExecutorPostInsertSingleTable( entityMutationOperationGroup, session );
+			return new MutationExecutorPostInsertSingleTable( entityMutationOperationGroup, mutationType, session );
 		}
 
 		if ( numberOfOperations == 1 ) {

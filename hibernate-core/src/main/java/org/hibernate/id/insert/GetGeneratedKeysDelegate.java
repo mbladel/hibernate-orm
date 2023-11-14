@@ -30,14 +30,17 @@ import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
+import org.hibernate.sql.model.ast.builder.TableUpdateBuilderStandard;
 
 import static java.sql.Statement.RETURN_GENERATED_KEYS;
 import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedColumnNames;
 import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedValues;
 
 /**
- * Delegate for dealing with {@code IDENTITY} columns using the JDBC3 method
+ * Delegate for dealing with generated values using the JDBC3 method
  * {@link PreparedStatement#getGeneratedKeys()}.
+ * <p>
+ * Supports both {@link EventType#INSERT insert} and {@link EventType#UPDATE update} statements.
  *
  * @author Andrea Boriero
  */
@@ -61,7 +64,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 			columnNames = null;
 		}
 		else {
-			columnNames = getGeneratedColumnNames( persister, dialect, EventType.INSERT ).toArray( new String[0] );
+			columnNames = getGeneratedColumnNames( persister, dialect, getTiming() ).toArray( new String[0] );
 		}
 	}
 
@@ -76,33 +79,39 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	public TableMutationBuilder<?> createTableMutationBuilder(
 			Expectation expectation,
 			SessionFactoryImplementor factory) {
-		final TableInsertBuilder builder =
-				new TableInsertBuilderStandard( persister, persister.getIdentifierTableMapping(), factory );
-
-		if ( persister.isIdentifierAssignedByInsert() ) {
-			final OnExecutionGenerator generator = (OnExecutionGenerator) persister.getGenerator();
-			if ( generator.referenceColumnsInSql( dialect ) ) {
-				final BasicEntityIdentifierMapping identifierMapping = (BasicEntityIdentifierMapping) persister.getIdentifierMapping();
-				final String[] columnNames = persister.getRootTableKeyColumnNames();
-				final String[] columnValues = generator.getReferencedColumnValues( dialect );
-				if ( columnValues.length != columnNames.length ) {
-					throw new MappingException( "wrong number of generated columns" );
-				}
-				for ( int i = 0; i < columnValues.length; i++ ) {
-					builder.addKeyColumn( columnNames[i], columnValues[i], identifierMapping.getJdbcMapping() );
+		if ( getTiming() == EventType.INSERT ) {
+			final TableInsertBuilder builder = new TableInsertBuilderStandard(
+					persister,
+					persister.getIdentifierTableMapping(),
+					factory
+			);
+			if ( persister.isIdentifierAssignedByInsert() ) {
+				final OnExecutionGenerator generator = (OnExecutionGenerator) persister.getGenerator();
+				if ( generator.referenceColumnsInSql( dialect ) ) {
+					final BasicEntityIdentifierMapping identifierMapping = (BasicEntityIdentifierMapping) persister.getIdentifierMapping();
+					final String[] columnNames = persister.getRootTableKeyColumnNames();
+					final String[] columnValues = generator.getReferencedColumnValues( dialect );
+					if ( columnValues.length != columnNames.length ) {
+						throw new MappingException( "wrong number of generated columns" );
+					}
+					for ( int i = 0; i < columnValues.length; i++ ) {
+						builder.addKeyColumn( columnNames[i], columnValues[i], identifierMapping.getJdbcMapping() );
+					}
 				}
 			}
+			return builder;
 		}
-
-		return builder;
+		else {
+			return new TableUpdateBuilderStandard<>( persister, persister.getIdentifierTableMapping(), factory );
+		}
 	}
 
 	@Override
-	public PreparedStatement prepareStatement(String insertSql, SharedSessionContractImplementor session) {
+	public PreparedStatement prepareStatement(String sql, SharedSessionContractImplementor session) {
 		MutationStatementPreparer preparer = session.getJdbcCoordinator().getMutationStatementPreparer();
 		return inferredKeys
-				? preparer.prepareStatement( insertSql, RETURN_GENERATED_KEYS )
-				: preparer.prepareStatement( insertSql, columnNames );
+				? preparer.prepareStatement( sql, RETURN_GENERATED_KEYS )
+				: preparer.prepareStatement( sql, columnNames );
 	}
 
 	@Override
@@ -119,18 +128,18 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 		final JdbcServices jdbcServices = session.getJdbcServices();
 		final JdbcCoordinator jdbcCoordinator = session.getJdbcCoordinator();
 
-		final String insertSql = statementDetails.getSqlString();
+		final String sql = statementDetails.getSqlString();
 
-		jdbcServices.getSqlStatementLogger().logStatement( insertSql );
+		jdbcServices.getSqlStatementLogger().logStatement( sql );
 
-		final PreparedStatement insertStatement = statementDetails.resolveStatement();
+		final PreparedStatement preparedStatement = statementDetails.resolveStatement();
 		jdbcValueBindings.beforeStatement( statementDetails );
 
 		try {
-			jdbcCoordinator.getResultSetReturn().executeUpdate( insertStatement, insertSql );
+			jdbcCoordinator.getResultSetReturn().executeUpdate( preparedStatement, sql );
 
 			try {
-				final ResultSet resultSet = insertStatement.getGeneratedKeys();
+				final ResultSet resultSet = preparedStatement.getGeneratedKeys();
 				try {
 					return getGeneratedValues( resultSet, persister, getTiming(), session );
 				}
@@ -142,7 +151,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 									"Unable to extract generated key from generated-key for `%s`",
 									persister.getNavigableRole().getFullPath()
 							),
-							insertSql
+							sql
 					);
 				}
 				finally {
@@ -150,19 +159,22 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 						jdbcCoordinator
 								.getLogicalConnection()
 								.getResourceRegistry()
-								.release( resultSet, insertStatement );
+								.release( resultSet, preparedStatement );
 					}
 				}
 			}
 			finally {
-				jdbcCoordinator.getLogicalConnection().getResourceRegistry().release( insertStatement );
+				if ( statementDetails.getStatement() != null ) {
+					statementDetails.releaseStatement( session );
+				}
+				jdbcValueBindings.afterStatement( statementDetails.getMutatingTableDetails() );
 			}
 		}
 		catch (SQLException e) {
 			throw jdbcServices.getSqlExceptionHelper().convert(
 					e,
 					"Unable to extract generated-keys ResultSet",
-					insertSql
+					sql
 			);
 		}
 	}

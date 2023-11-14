@@ -10,11 +10,13 @@ import org.hibernate.Incubating;
 import org.hibernate.Remove;
 import org.hibernate.annotations.Table;
 import org.hibernate.engine.jdbc.mutation.MutationExecutor;
+import org.hibernate.generator.EventType;
 import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
 import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.sql.model.MutationTarget;
+import org.hibernate.sql.model.MutationType;
 
 /**
  * Anything that can be the target of {@linkplain MutationExecutor mutations}
@@ -65,4 +67,12 @@ public interface EntityMutationTarget extends MutationTarget<EntityTableMapping>
 	MutationGeneratedValuesDelegate getInsertDelegate();
 
 	MutationGeneratedValuesDelegate getUpdateDelegate();
+
+	default MutationGeneratedValuesDelegate getMutationDelegate(MutationType mutationType) {
+		return switch ( mutationType ) {
+			case INSERT -> getInsertDelegate();
+			case UPDATE -> getUpdateDelegate();
+			default -> null;
+		};
+	}
 }
