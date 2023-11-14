@@ -30,6 +30,7 @@ import org.hibernate.sql.exec.spi.JdbcOperationQuerySelect;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.exec.spi.JdbcParametersList;
 
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 import static org.hibernate.sql.results.spi.ListResultsConsumer.UniqueSemantic.FILTER;
 
 /**
@@ -91,11 +92,13 @@ public class GeneratedValuesProcessor {
 		if ( timing == EventType.INSERT ) {
 			// We need to check if we need to select more properties than what is processed by the identity delegate.
 			// This can happen for JoinedSubclassEntityPersisters that have on-execution generated values on subclasses
-			final boolean hasExtraGeneratedProps = generatedAttributes.size() > numberOfGeneratedNonIdentifierProperties( timing );
-			return hasExtraGeneratedProps || entityDescriptor.getIdentityInsertDelegate() == null
-					|| !entityDescriptor.getIdentityInsertDelegate().supportsRetrievingGeneratedValues();
+			return entityDescriptor.getInsertDelegate() == null
+					|| !entityDescriptor.getInsertDelegate().supportsRetrievingGeneratedValues()
+					|| generatedAttributes.size() > numberOfGeneratedNonIdentifierProperties( timing );
 		}
-		return true;
+		else {
+			return entityDescriptor.getUpdateDelegate() == null;
+		}
 	}
 
 	private int numberOfGeneratedNonIdentifierProperties(EventType timing) {
@@ -145,7 +148,8 @@ public class GeneratedValuesProcessor {
 				assert results.size() == 1;
 				setEntityAttributes( entity, state, results.get( 0 ) );
 			}
-			else if ( generatedValues != null ) {
+			else {
+				castNonNull( generatedValues );
 				final List<Object> results = generatedValues.getGeneratedValues( generatedValuesToSelect );
 				setEntityAttributes( entity, state, results.toArray( new Object[0] ) );
 			}
