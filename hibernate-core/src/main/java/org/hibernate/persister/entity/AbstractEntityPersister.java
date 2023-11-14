@@ -3449,6 +3449,7 @@ public abstract class AbstractEntityPersister
 
 		if ( CollectionHelper.isNotEmpty( updateGeneratedProperties ) ) {
 			updateDelegate = GeneratedValuesHelper.getGeneratedValuesDelegate( this, UPDATE );
+			assert updateDelegate == null || updateDelegate.supportsRetrievingGeneratedValues();
 		}
 
 		if ( hasInsertGeneratedProperties() ) {
