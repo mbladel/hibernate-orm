@@ -112,8 +112,8 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 			entry.postInsert( getState() );
 			handleGeneratedProperties(
 					entry,
-					// todo marco : remove this cast
-					//  we could just make insert return GeneratedValues maybe ?
+					// todo marco : it would be nice to remove this check / cast, but I can't create
+					//  a new method + deprecate the old one because only the return type would change
 					generatedValues instanceof GeneratedValues ? (GeneratedValues) generatedValues : null,
 					persistenceContext
 			);

@@ -35,11 +35,30 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class MarcosGeneratedValueTest {
 	@Test
 	public void testInsertGenerationValuesOnly(SessionFactoryScope scope) {
+		// todo marco : add assertions that verify no subsequent select was executed
+		//  when the dialect supports reading generated values
+
 		scope.inTransaction( session -> {
 			final ValuesOnly entity = new ValuesOnly( 1 );
 			session.persist( entity );
 			session.flush();
 			assertThat( entity.getName() ).isEqualTo( "default" );
+		} );
+	}
+
+	@Test
+	public void testUpdateGenerationValuesOnly(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final ValuesOnly entity = new ValuesOnly( 2 );
+			session.persist( entity );
+		} );
+		scope.inTransaction( session -> {
+			final ValuesOnly entity = session.find( ValuesOnly.class, 2 );
+			entity.setData( "changed" );
+		} );
+		scope.inSession( session -> {
+			final ValuesOnly entity = session.find( ValuesOnly.class, 2 );
+			assertThat( entity.getUpdateDate() ).isNotNull();
 		} );
 	}
 
@@ -75,6 +94,8 @@ public class MarcosGeneratedValueTest {
 		@ColumnDefault( "CURRENT_TIMESTAMP" )
 		private Calendar updateDate;
 
+		private String data;
+
 		public ValuesOnly() {
 		}
 
@@ -88,6 +109,10 @@ public class MarcosGeneratedValueTest {
 
 		public Calendar getUpdateDate() {
 			return updateDate;
+		}
+
+		public void setData(String data) {
+			this.data = data;
 		}
 	}
 

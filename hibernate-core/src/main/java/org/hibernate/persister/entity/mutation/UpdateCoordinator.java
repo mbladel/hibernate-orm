@@ -21,7 +21,7 @@ import org.hibernate.sql.model.MutationOperationGroup;
 public interface UpdateCoordinator {
 	MutationOperationGroup getStaticUpdateGroup();
 
-	void coordinateUpdate(
+	Object coordinateUpdate(
 			Object entity,
 			Object id,
 			Object rowId,

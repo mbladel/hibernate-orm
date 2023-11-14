@@ -21,6 +21,7 @@ import org.hibernate.engine.jdbc.spi.JdbcCoordinator;
 import org.hibernate.engine.jdbc.spi.MutationStatementPreparer;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.EventType;
 import org.hibernate.jdbc.TooManyRowsAffectedException;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.sql.model.MutationTarget;
@@ -120,15 +121,26 @@ public class ModelMutationHelper {
 		);
 	}
 
+	/**
+	 * @deprecated Use {@link #delegatePreparation} instead
+	 */
+	@Deprecated( forRemoval = true, since = "7.0" )
 	public static PreparedStatementDetails identityPreparation(
 			PreparableMutationOperation jdbcMutation,
+			SharedSessionContractImplementor session) {
+		return delegatePreparation( jdbcMutation, MutationType.INSERT, session );
+	}
+
+	public static PreparedStatementDetails delegatePreparation(
+			PreparableMutationOperation jdbcMutation,
+			MutationType mutationType,
 			SharedSessionContractImplementor session) {
 		return new PreparedStatementDetailsStandard(
 				jdbcMutation,
 				() -> {
 					final EntityMutationTarget target = (EntityMutationTarget) jdbcMutation.getMutationTarget();
 					final PreparedStatement statement = target
-							.getIdentityInsertDelegate()
+							.getMutationDelegate( mutationType )
 							.prepareStatement( jdbcMutation.getSqlString(), session );
 					session.getJdbcCoordinator().getLogicalConnection().getResourceRegistry().register( null, statement );
 					return statement;

@@ -430,8 +430,8 @@ public abstract class AbstractEntityPersister
 	private volatile Set<String> affectingFetchProfileNames;
 
 	protected List<? extends ModelPart> insertGeneratedProperties;
+	protected List<? extends ModelPart> updateGeneratedProperties;
 	private GeneratedValuesProcessor insertGeneratedValuesProcessor;
-	protected List<ModelPart> updateGeneratedProperties;
 	private GeneratedValuesProcessor updateGeneratedValuesProcessor;
 
 	private MutationGeneratedValuesDelegate insertDelegate;
@@ -2816,7 +2816,7 @@ public abstract class AbstractEntityPersister
 	 * Update an object
 	 */
 	@Override
-	public void update(
+	public Object update(
 			final Object id,
 			final Object[] values,
 			int[] dirtyAttributeIndexes,
@@ -2826,7 +2826,7 @@ public abstract class AbstractEntityPersister
 			final Object object,
 			final Object rowId,
 			final SharedSessionContractImplementor session) throws HibernateException {
-		updateCoordinator.coordinateUpdate(
+		return updateCoordinator.coordinateUpdate(
 				object,
 				id,
 				rowId,
@@ -3434,19 +3434,21 @@ public abstract class AbstractEntityPersister
 				: Collections.emptyList();
 
 		insertGeneratedProperties = initInsertGeneratedProperties( insertGeneratedAttributes );
-		updateGeneratedProperties = Collections.emptyList(); // todo marco : support updates
+		updateGeneratedProperties = initUpdateGeneratedProperties( updateGeneratedAttributes );
 
 		if ( isIdentifierAssignedByInsert() ) {
 			final OnExecutionGenerator generator = (OnExecutionGenerator) getGenerator();
 			insertDelegate = generator.getGeneratedIdentifierDelegate( this );
 			identitySelectString = getIdentitySelectString( factory.getJdbcServices().getDialect() );
 		}
+		// todo marco : create insert delegate even if we have just rowId?
 		else if ( CollectionHelper.isNotEmpty( insertGeneratedProperties ) ) {
 			insertDelegate = GeneratedValuesHelper.getGeneratedValuesDelegate( this, INSERT );
 		}
 
-		// todo marco : update delegation
-		updateDelegate = null;
+		if ( CollectionHelper.isNotEmpty( updateGeneratedProperties ) ) {
+			updateDelegate = GeneratedValuesHelper.getGeneratedValuesDelegate( this, UPDATE );
+		}
 
 		if ( hasInsertGeneratedProperties() ) {
 			insertGeneratedValuesProcessor = createGeneratedValuesProcessor( INSERT, insertGeneratedAttributes );
@@ -4708,15 +4710,6 @@ public abstract class AbstractEntityPersister
 			Object id,
 			Object entity,
 			Object[] state,
-			SharedSessionContractImplementor session) {
-		processInsertGeneratedProperties( id, entity, state, null, session );
-	}
-
-	@Override
-	public void processInsertGeneratedProperties(
-			Object id,
-			Object entity,
-			Object[] state,
 			GeneratedValues generatedValues,
 			SharedSessionContractImplementor session) {
 		if ( insertGeneratedValuesProcessor == null ) {
@@ -4758,11 +4751,32 @@ public abstract class AbstractEntityPersister
 			Object id,
 			Object entity,
 			Object[] state,
+			GeneratedValues generatedValues,
 			SharedSessionContractImplementor session) {
 		if ( updateGeneratedValuesProcessor == null ) {
 			throw new AssertionFailure( "Entity has no update-generated properties - `" + getEntityName() + "`" );
 		}
-		updateGeneratedValuesProcessor.processGeneratedValues( entity, id, state, null, session );
+		updateGeneratedValuesProcessor.processGeneratedValues( entity, id, state, generatedValues, session );
+	}
+
+	protected List<? extends ModelPart> initUpdateGeneratedProperties(List<AttributeMapping> generatedAttributes) {
+		final int originalSize = generatedAttributes.size();
+		final List<ModelPart> generatedBasicAttributes = new ArrayList<>( originalSize );
+		for ( AttributeMapping generatedAttribute : generatedAttributes ) {
+			// todo : support non selectable mappings? Component, ToOneAttributeMapping, ...
+			// todo : support generated values on secondary table / joined inheritance?
+			if ( generatedAttribute instanceof SelectableMapping
+					&& ( (SelectableMapping) generatedAttribute ).getContainingTableExpression().equals( getSubclassTableName( 0 ) ) ) {
+				generatedBasicAttributes.add( generatedAttribute );
+			}
+		}
+
+		if ( generatedBasicAttributes.size() == originalSize ) {
+			return generatedBasicAttributes;
+		}
+		else  {
+			return Collections.emptyList();
+		}
 	}
 
 	@Override
