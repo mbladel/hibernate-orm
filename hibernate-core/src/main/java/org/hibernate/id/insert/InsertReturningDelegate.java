@@ -68,12 +68,12 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 	@Override
 	protected GeneratedValues executeAndExtract(
 			String sql,
-			PreparedStatement insertStatement,
+			PreparedStatement preparedStatement,
 			SharedSessionContractImplementor session) {
 		final JdbcCoordinator jdbcCoordinator = session.getJdbcCoordinator();
 		final JdbcServices jdbcServices = session.getJdbcServices();
 
-		final ResultSet resultSet = jdbcCoordinator.getResultSetReturn().execute( insertStatement, sql );
+		final ResultSet resultSet = jdbcCoordinator.getResultSetReturn().execute( preparedStatement, sql );
 		try {
 			return getGeneratedValues( resultSet, persister, getTiming(), session );
 		}
@@ -85,7 +85,7 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 			);
 		}
 		finally {
-			jdbcCoordinator.getLogicalConnection().getResourceRegistry().release( resultSet, insertStatement );
+			jdbcCoordinator.getLogicalConnection().getResourceRegistry().release( resultSet, preparedStatement );
 		}
 	}
 

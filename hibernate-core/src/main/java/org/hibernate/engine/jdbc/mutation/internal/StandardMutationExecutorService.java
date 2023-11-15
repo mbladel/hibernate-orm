@@ -61,9 +61,9 @@ public class StandardMutationExecutorService implements MutationExecutorService 
 		if ( entityMutationOperationGroup != null
 				&& entityMutationOperationGroup.getMutationTarget().getMutationDelegate( mutationType ) != null ) {
 			if ( numberOfOperations > 1 ) {
-				return new MutationExecutorPostInsert( entityMutationOperationGroup, mutationType, session );
+				return new MutationExecutorPostInsert( entityMutationOperationGroup, session );
 			}
-			return new MutationExecutorPostInsertSingleTable( entityMutationOperationGroup, mutationType, session );
+			return new MutationExecutorPostInsertSingleTable( entityMutationOperationGroup, session );
 		}
 
 		if ( numberOfOperations == 1 ) {

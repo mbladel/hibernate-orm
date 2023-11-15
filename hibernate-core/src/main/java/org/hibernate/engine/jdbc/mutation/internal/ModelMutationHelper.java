@@ -124,23 +124,22 @@ public class ModelMutationHelper {
 	/**
 	 * @deprecated Use {@link #delegatePreparation} instead
 	 */
-	@Deprecated( forRemoval = true, since = "7.0" )
+	@Deprecated( since = "7.0" )
 	public static PreparedStatementDetails identityPreparation(
 			PreparableMutationOperation jdbcMutation,
 			SharedSessionContractImplementor session) {
-		return delegatePreparation( jdbcMutation, MutationType.INSERT, session );
+		return delegatePreparation( jdbcMutation, session );
 	}
 
 	public static PreparedStatementDetails delegatePreparation(
 			PreparableMutationOperation jdbcMutation,
-			MutationType mutationType,
 			SharedSessionContractImplementor session) {
 		return new PreparedStatementDetailsStandard(
 				jdbcMutation,
 				() -> {
 					final EntityMutationTarget target = (EntityMutationTarget) jdbcMutation.getMutationTarget();
 					final PreparedStatement statement = target
-							.getMutationDelegate( mutationType )
+							.getMutationDelegate( jdbcMutation.getMutationType() )
 							.prepareStatement( jdbcMutation.getSqlString(), session );
 					session.getJdbcCoordinator().getLogicalConnection().getResourceRegistry().register( null, statement );
 					return statement;

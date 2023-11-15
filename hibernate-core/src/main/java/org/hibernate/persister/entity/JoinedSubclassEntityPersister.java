@@ -1471,29 +1471,6 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 	}
 
 	@Override
-	protected List<? extends ModelPart> initInsertGeneratedProperties(List<AttributeMapping> generatedAttributes) {
-		// todo marco : this override looks the same as on AbstractEntityPersister, don't think it's needed
-		final int originalSize = generatedAttributes.size();
-		final List<ModelPart> generatedBasicAttributes = new ArrayList<>( originalSize );
-		for ( AttributeMapping generatedAttribute : generatedAttributes ) {
-			if ( generatedAttribute instanceof SelectableMapping
-					&& ( (SelectableMapping) generatedAttribute ).getContainingTableExpression().equals( getSubclassTableName( 0 ) ) ) {
-				generatedBasicAttributes.add( generatedAttribute );
-			}
-		}
-
-		final List<ModelPart> identifierList = isIdentifierAssignedByInsert() ?
-				List.of( getIdentifierMapping() ) :
-				Collections.emptyList();
-		if ( generatedBasicAttributes.size() == originalSize ) {
-			return combine( identifierList, generatedBasicAttributes );
-		}
-		else {
-			return new ArrayList<>( identifierList );
-		}
-	}
-
-	@Override
 	public void visitConstraintOrderedTables(ConstraintOrderedTableConsumer consumer) {
 		for ( int i = 0; i < constraintOrderedTableNames.length; i++ ) {
 			final String tableName = constraintOrderedTableNames[i];
