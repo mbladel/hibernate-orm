@@ -65,22 +65,18 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 
 	public MutationExecutorPostInsert(
 			EntityMutationOperationGroup mutationOperationGroup,
-			MutationType mutationType,
 			SharedSessionContractImplementor session) {
 		this.mutationTarget = mutationOperationGroup.getMutationTarget();
-		this.mutationType = mutationType;
+		this.mutationOperationGroup = mutationOperationGroup;
+
+		final PreparableMutationOperation mutationOperation = (PreparableMutationOperation) mutationOperationGroup.getOperation( mutationTarget.getIdentifierTableName() );
+		this.mutationStatementDetails = ModelMutationHelper.delegatePreparation( mutationOperation, session );
+		this.mutationType = mutationOperation.getMutationType();
+
 		this.valueBindings = new JdbcValueBindingsImpl(
 				mutationType,
 				mutationTarget,
 				this,
-				session
-		);
-		this.mutationOperationGroup = mutationOperationGroup;
-
-		final PreparableMutationOperation mutationOperation = (PreparableMutationOperation) mutationOperationGroup.getOperation( mutationTarget.getIdentifierTableName() );
-		this.mutationStatementDetails = ModelMutationHelper.delegatePreparation(
-				mutationOperation,
-				mutationType,
 				session
 		);
 
@@ -203,7 +199,6 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 		statementDetails.resolveStatement();
 
 		if ( id != null ) {
-			assert mutationType == MutationType.INSERT;
 			tableDetails.getKeyMapping().breakDownKeyJdbcValues(
 					id,
 					(jdbcValue, columnMapping) -> {

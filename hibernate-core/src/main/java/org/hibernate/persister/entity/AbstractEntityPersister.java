@@ -3442,15 +3442,11 @@ public abstract class AbstractEntityPersister
 			insertDelegate = generator.getGeneratedIdentifierDelegate( this );
 			identitySelectString = getIdentitySelectString( factory.getJdbcServices().getDialect() );
 		}
-		// todo marco : create insert delegate even if we have just rowId?
-		else if ( CollectionHelper.isNotEmpty( insertGeneratedProperties ) ) {
+		else {
 			insertDelegate = GeneratedValuesHelper.getGeneratedValuesDelegate( this, INSERT );
 		}
 
-		if ( CollectionHelper.isNotEmpty( updateGeneratedProperties ) ) {
-			updateDelegate = GeneratedValuesHelper.getGeneratedValuesDelegate( this, UPDATE );
-			assert updateDelegate == null || updateDelegate.supportsRetrievingGeneratedValues();
-		}
+		updateDelegate = GeneratedValuesHelper.getGeneratedValuesDelegate( this, UPDATE );
 
 		if ( hasInsertGeneratedProperties() ) {
 			insertGeneratedValuesProcessor = createGeneratedValuesProcessor( INSERT, insertGeneratedAttributes );
@@ -4728,8 +4724,8 @@ public abstract class AbstractEntityPersister
 		final List<ModelPart> generatedBasicAttributes = new ArrayList<>( originalSize );
 		for ( AttributeMapping generatedAttribute : generatedAttributes ) {
 			// todo : support non selectable mappings? Component, ToOneAttributeMapping, ...
-			// todo : support generated values on secondary table / joined inheritance?
 			if ( generatedAttribute instanceof SelectableMapping
+					// todo : support generated values on secondary tables / joined inheritance subclasses?
 					&& ( (SelectableMapping) generatedAttribute ).getContainingTableExpression().equals( getSubclassTableName( 0 ) ) ) {
 				generatedBasicAttributes.add( generatedAttribute );
 			}
@@ -4738,11 +4734,11 @@ public abstract class AbstractEntityPersister
 		final List<ModelPart> identifierList = isIdentifierAssignedByInsert() ?
 				List.of( getIdentifierMapping() ) :
 				Collections.emptyList();
-		if ( generatedBasicAttributes.size() == originalSize ) {
-			return combine( identifierList, generatedBasicAttributes );
+		if ( originalSize > 0 && generatedBasicAttributes.size() == originalSize ) {
+			return Collections.unmodifiableList( combine( identifierList, generatedBasicAttributes ) );
 		}
 		else  {
-			return new ArrayList<>( identifierList );
+			return identifierList;
 		}
 	}
 
@@ -4768,8 +4764,6 @@ public abstract class AbstractEntityPersister
 		final int originalSize = generatedAttributes.size();
 		final List<ModelPart> generatedBasicAttributes = new ArrayList<>( originalSize );
 		for ( AttributeMapping generatedAttribute : generatedAttributes ) {
-			// todo : support non selectable mappings? Component, ToOneAttributeMapping, ...
-			// todo : support generated values on secondary table / joined inheritance?
 			if ( generatedAttribute instanceof SelectableMapping
 					&& ( (SelectableMapping) generatedAttribute ).getContainingTableExpression().equals( getSubclassTableName( 0 ) ) ) {
 				generatedBasicAttributes.add( generatedAttribute );
@@ -4777,7 +4771,7 @@ public abstract class AbstractEntityPersister
 		}
 
 		if ( generatedBasicAttributes.size() == originalSize ) {
-			return generatedBasicAttributes;
+			return Collections.unmodifiableList( generatedBasicAttributes );
 		}
 		else  {
 			return Collections.emptyList();

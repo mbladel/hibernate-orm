@@ -44,7 +44,6 @@ import static org.hibernate.sql.model.ModelMutationLogging.MODEL_MUTATION_LOGGER
  */
 public class MutationExecutorPostInsertSingleTable implements MutationExecutor, JdbcValueBindingsImpl.JdbcValueDescriptorAccess {
 	private final EntityMutationTarget mutationTarget;
-	private final MutationType mutationType;
 	private final SharedSessionContractImplementor session;
 	private final PreparableMutationOperation operation;
 	private final PreparedStatementDetails statemementDetails;
@@ -53,19 +52,17 @@ public class MutationExecutorPostInsertSingleTable implements MutationExecutor, 
 
 	public MutationExecutorPostInsertSingleTable(
 			EntityMutationOperationGroup mutationOperationGroup,
-			MutationType mutationType,
 			SharedSessionContractImplementor session) {
 		this.mutationTarget = mutationOperationGroup.getMutationTarget();
-		this.mutationType = mutationType;
 		this.session = session;
 
 		assert mutationOperationGroup.getNumberOfOperations() == 1;
 
 		this.operation = (PreparableMutationOperation) mutationOperationGroup.getOperation( mutationTarget.getIdentifierTableName() );
-		this.statemementDetails = delegatePreparation( operation, mutationType, session );
+		this.statemementDetails = delegatePreparation( operation, session );
 
 		this.valueBindings = new JdbcValueBindingsImpl(
-				mutationType,
+				operation.getMutationType(),
 				mutationTarget,
 				this,
 				session
@@ -101,7 +98,7 @@ public class MutationExecutorPostInsertSingleTable implements MutationExecutor, 
 			TableInclusionChecker inclusionChecker,
 			OperationResultChecker resultChecker,
 			SharedSessionContractImplementor session) {
-		final MutationGeneratedValuesDelegate delegate = mutationTarget.getMutationDelegate( mutationType );
+		final MutationGeneratedValuesDelegate delegate = mutationTarget.getMutationDelegate( operation.getMutationType() );
 		final Object generatedValues = delegate.performMutation( statemementDetails, valueBindings, modelReference, session );
 
 		if ( MODEL_MUTATION_LOGGER.isTraceEnabled() ) {

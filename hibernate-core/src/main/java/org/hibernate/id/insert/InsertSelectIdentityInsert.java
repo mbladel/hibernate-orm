@@ -18,6 +18,7 @@ import org.hibernate.generator.OnExecutionGenerator;
  * 
  * @author Steve Ebersole
  */
+@Deprecated( since = "7.0" ) // todo marco : correct ?
 public class InsertSelectIdentityInsert extends IdentifierGeneratingInsert {
 	protected String identityColumnName;
 
@@ -41,6 +42,7 @@ public class InsertSelectIdentityInsert extends IdentifierGeneratingInsert {
 		return super.addGeneratedColumns( columnNames, generator );
 	}
 
+	// todo marco : deprecate appendIdentitySelectToInsert() too ?
 	public String toStatementString() {
 		return getDialect().getIdentityColumnSupport()
 				.appendIdentitySelectToInsert( identityColumnName, super.toStatementString() );
