@@ -45,12 +45,12 @@ public class SybaseJConnGetGeneratedKeysDelegate extends GetGeneratedKeysDelegat
 	@Override
 	public GeneratedValues executeAndExtract(
 			String sql,
-			PreparedStatement insertStatement,
+			PreparedStatement preparedStatement,
 			SharedSessionContractImplementor session) {
 		JdbcCoordinator jdbcCoordinator = session.getJdbcCoordinator();
 		final JdbcServices jdbcServices = session.getJdbcServices();
 
-		ResultSet resultSet = jdbcCoordinator.getResultSetReturn().execute( insertStatement, sql );
+		ResultSet resultSet = jdbcCoordinator.getResultSetReturn().execute( preparedStatement, sql );
 		try {
 			return getGeneratedValues( resultSet, persister, getTiming(), session );
 		}
@@ -62,8 +62,13 @@ public class SybaseJConnGetGeneratedKeysDelegate extends GetGeneratedKeysDelegat
 			);
 		}
 		finally {
-			jdbcCoordinator.getLogicalConnection().getResourceRegistry().release( resultSet, insertStatement );
+			jdbcCoordinator.getLogicalConnection().getResourceRegistry().release( resultSet, preparedStatement );
 			jdbcCoordinator.afterStatementExecution();
 		}
+	}
+
+	@Override
+	public boolean supportsRetrievingGeneratedValues() {
+		return false;
 	}
 }

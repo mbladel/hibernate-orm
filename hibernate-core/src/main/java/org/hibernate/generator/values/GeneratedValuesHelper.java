@@ -24,6 +24,7 @@ import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.StringHelper;
+import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.SelectableMapping;
@@ -149,7 +150,21 @@ public class GeneratedValuesHelper {
 	public static MutationGeneratedValuesDelegate getGeneratedValuesDelegate(
 			PostInsertIdentityPersister persister,
 			EventType timing) {
+		final boolean hasGeneratedProperties = !persister.getGeneratedProperties( timing ).isEmpty();
+		final boolean hasRowId = timing == EventType.INSERT && persister.getRowIdMapping() != null;
 		final Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
+
+		if ( hasRowId && dialect.supportsInsertReturning() ) {
+			// Special case for RowId on INSERT, since GetGeneratedKeysDelegate doesn't support it
+			// make InsertReturningDelegate the preferred method if the dialect supports it
+			return new InsertReturningDelegate( persister, dialect, timing );
+		}
+
+		if ( !hasGeneratedProperties ) {
+			return null;
+		}
+
+
 		if ( dialect.supportsInsertReturningGeneratedKeys() ) {
 			return new GetGeneratedKeysDelegate( persister, dialect, false, timing );
 		}

@@ -44,17 +44,13 @@ public interface InsertGeneratedIdentifierDelegate extends MutationGeneratedValu
 	/**
 	 * Create a {@link TableInsertBuilder} with any specific identity
 	 * handling already built in.
-	 * @deprecated
+	 * @deprecated Use {@link MutationGeneratedValuesDelegate#createTableMutationBuilder} instead.
 	 */
-	@Deprecated( since = "7.0", forRemoval = true )
+	@Deprecated( since = "7.0" )
 	default TableInsertBuilder createTableInsertBuilder(
 			BasicEntityIdentifierMapping identifierMapping,
 			Expectation expectation,
 			SessionFactoryImplementor sessionFactory) {
-		return createTableInsertBuilder( expectation, sessionFactory );
-	}
-
-	default TableInsertBuilder createTableInsertBuilder(Expectation expectation, SessionFactoryImplementor sessionFactory) {
 		return (TableInsertBuilder) createTableMutationBuilder( expectation, sessionFactory );
 	}
 
@@ -69,7 +65,7 @@ public interface InsertGeneratedIdentifierDelegate extends MutationGeneratedValu
 	 *
 	 * @deprecated Use {@link MutationGeneratedValuesDelegate#performMutation} instead
 	 */
-	@Deprecated( forRemoval = true, since = "7.0" )
+	@Deprecated( since = "7.0" )
 	default Object performInsert(
 			PreparedStatementDetails insertStatementDetails,
 			JdbcValueBindings valueBindings,

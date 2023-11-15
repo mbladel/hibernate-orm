@@ -75,7 +75,7 @@ public abstract class AbstractReturningDelegate extends AbstractMutationGenerate
 
 	protected abstract GeneratedValues executeAndExtract(
 			String sql,
-			PreparedStatement insertStatement,
+			PreparedStatement preparedStatement,
 			SharedSessionContractImplementor session);
 
 	protected void releaseStatement(PreparedStatement preparedStatement, SharedSessionContractImplementor session) {

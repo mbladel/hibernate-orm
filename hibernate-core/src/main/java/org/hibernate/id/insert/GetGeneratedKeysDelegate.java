@@ -47,7 +47,6 @@ import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedV
 public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	private final PostInsertIdentityPersister persister;
 	private final Dialect dialect;
-	private final boolean inferredKeys;
 	private final String[] columnNames;
 
 	public GetGeneratedKeysDelegate(
@@ -58,7 +57,6 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 		super( persister, timing );
 		this.persister = persister;
 		this.dialect = dialect;
-		this.inferredKeys = inferredKeys;
 
 		if ( inferredKeys ) {
 			columnNames = null;
@@ -109,14 +107,14 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	@Override
 	public PreparedStatement prepareStatement(String sql, SharedSessionContractImplementor session) {
 		MutationStatementPreparer preparer = session.getJdbcCoordinator().getMutationStatementPreparer();
-		return inferredKeys
+		return columnNames == null
 				? preparer.prepareStatement( sql, RETURN_GENERATED_KEYS )
 				: preparer.prepareStatement( sql, columnNames );
 	}
 
 	@Override
 	public boolean supportsRetrievingGeneratedValues() {
-		return true;
+		return columnNames != null;
 	}
 
 	@Override
@@ -182,15 +180,15 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	@Override
 	public GeneratedValues executeAndExtract(
 			String sql,
-			PreparedStatement insertStatement,
+			PreparedStatement preparedStatement,
 			SharedSessionContractImplementor session) {
 		final JdbcCoordinator jdbcCoordinator = session.getJdbcCoordinator();
 		final JdbcServices jdbcServices = session.getJdbcServices();
 
-		jdbcCoordinator.getResultSetReturn().executeUpdate( insertStatement, sql );
+		jdbcCoordinator.getResultSetReturn().executeUpdate( preparedStatement, sql );
 
 		try {
-			final ResultSet resultSet = insertStatement.getGeneratedKeys();
+			final ResultSet resultSet = preparedStatement.getGeneratedKeys();
 			try {
 				return getGeneratedValues( resultSet, persister, getTiming(), session );
 			}
@@ -203,7 +201,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 			}
 			finally {
 				if ( resultSet != null ) {
-					jdbcCoordinator.getLogicalConnection().getResourceRegistry().release( resultSet, insertStatement );
+					jdbcCoordinator.getLogicalConnection().getResourceRegistry().release( resultSet, preparedStatement );
 				}
 			}
 		}

@@ -18,6 +18,7 @@ import org.hibernate.generator.EventType;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.values.GeneratedValues;
+import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.loader.ast.internal.LoaderSelectBuilder;
 import org.hibernate.loader.ast.internal.NoCallbackExecutionContext;
@@ -37,9 +38,12 @@ import static org.hibernate.sql.results.spi.ListResultsConsumer.UniqueSemantic.F
  * Responsible for retrieving {@linkplain OnExecutionGenerator database-generated}
  * attribute values after an {@code insert} or {@code update} statement is executed.
  * <p>
- * Note that this class has responsibility for regular attributes of the entity. The
- * primary key / id attribute is handled separately, being the responsibility of an
- * instance of {@link org.hibernate.id.insert.InsertGeneratedIdentifierDelegate}.
+ * The values might have been retrieved early by an instance of {@link MutationGeneratedValuesDelegate},
+ * which case the {@link GeneratedValues generatedValues} parameter of {@link #processGeneratedValues}
+ * will already contain the values we need and this processor handles only the
+ * {@link #setEntityAttributes setting of entity attributes}.
+ * <p>
+ * Note that the primary key / id attribute is always handled my the delegate.
  *
  * @see OnExecutionGenerator
  *
@@ -90,10 +94,10 @@ public class GeneratedValuesProcessor {
 
 	private boolean needsSubsequentSelect(EventType timing, List<AttributeMapping> generatedAttributes) {
 		if ( timing == EventType.INSERT ) {
-			// We need to check if we need to select more properties than what is processed by the identity delegate.
-			// This can happen for JoinedSubclassEntityPersisters that have on-execution generated values on subclasses
 			return entityDescriptor.getInsertDelegate() == null
 					|| !entityDescriptor.getInsertDelegate().supportsRetrievingGeneratedValues()
+					// Check if we need to select more properties than what is processed by the identity delegate.
+					// This can happen for on-execution generated values on non-identifier tables
 					|| generatedAttributes.size() > numberOfGeneratedNonIdentifierProperties( timing );
 		}
 		else {
