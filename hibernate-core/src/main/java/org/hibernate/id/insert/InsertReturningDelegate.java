@@ -96,7 +96,7 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 
 	@Override
 	public boolean supportsRetrievingRowId() {
-		return true;
+		return dialect.supportsInsertReturningRowId();
 	}
 
 	@Override

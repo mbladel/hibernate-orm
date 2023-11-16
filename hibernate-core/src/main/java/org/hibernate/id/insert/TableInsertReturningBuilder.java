@@ -42,9 +42,9 @@ public class TableInsertReturningBuilder extends AbstractTableInsertBuilder {
 			return new ColumnReference( getMutatingTable(), ( (SelectableMapping) prop ) );
 		} ).collect( Collectors.toList() );
 
-		// special case for rowid
+		// special case for rowid when the dialect supports it
 		final EntityRowIdMapping rowIdMapping = getMutationTarget().getRowIdMapping();
-		if ( rowIdMapping != null ) {
+		if ( rowIdMapping != null && getJdbcServices().getDialect().supportsInsertReturningRowId() ) {
 			generatedColumns.add( new ColumnReference( getMutatingTable(), rowIdMapping ) );
 		}
 
