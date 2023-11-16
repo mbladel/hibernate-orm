@@ -13,6 +13,7 @@ import java.sql.Statement;
 
 import org.hibernate.engine.jdbc.dialect.spi.BasicSQLExceptionConverter;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
+import org.hibernate.internal.util.config.ConfigurationHelper;
 
 /**
  * A list of relational database systems for which Hibernate can resolve a {@link Dialect}.
@@ -207,7 +208,7 @@ public enum Database {
 	POSTGRESQL {
 		@Override
 		public Dialect createDialect(DialectResolutionInfo info) {
-			final String version = getVersion( info.getDatabaseMetadata() );
+			final String version = getVersion( info );
 			if ( version.startsWith( "Cockroach" ) ) {
 				return new CockroachDialect( info );
 			}
@@ -221,7 +222,8 @@ public enum Database {
 		public String getDriverClassName(String jdbcUrl) {
 			return "org.postgresql.Driver";
 		}
-		private String getVersion(DatabaseMetaData databaseMetaData) {
+		private String getVersion(DialectResolutionInfo info) {
+			final DatabaseMetaData databaseMetaData = info.getDatabaseMetadata();
 			if ( databaseMetaData != null ) {
 				try ( Statement statement = databaseMetaData.getConnection().createStatement() ) {
 					final ResultSet rs = statement.executeQuery( "select version()" );
@@ -234,7 +236,8 @@ public enum Database {
 				}
 			}
 
-			return "";
+			// default to the dialect-specific configuration setting
+			return ConfigurationHelper.getString( CockroachDialect.VERSION_STRING, info.getConfigurationValues() );
 		}
 	},
 

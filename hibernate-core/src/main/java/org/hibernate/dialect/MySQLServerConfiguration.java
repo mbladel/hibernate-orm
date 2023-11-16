@@ -21,18 +21,14 @@ public class MySQLServerConfiguration {
 	 * Fallback setting when a connection to the database is not available at boot time.
 	 * Specifies the bytes per character to use based on the database's configured
 	 * <a href="https://dev.mysql.com/doc/refman/8.0/en/charset-charsets.html">charset</a>.
-	 *
-	 * @settingDefault {@code false}
 	 */
-	private static final String BYTES_PER_CHARACTER = "hibernate.dialect.mysql.bytes_per_character";
+	public static final String BYTES_PER_CHARACTER = "hibernate.dialect.mysql.bytes_per_character";
 
 	/**
 	 * Fallback setting when a connection to the database is not available at boot time.
 	 * Specifies whether the {@code NO_BACKSLASH_ESCAPES} sql mode is enabled.
-	 *
-	 * @settingDefault {@code false}
 	 */
-	private static final String NO_BACKSLASH_ESCAPES = "hibernate.dialect.mysql.no_backslash_escapes";
+	public static final String NO_BACKSLASH_ESCAPES = "hibernate.dialect.mysql.no_backslash_escapes";
 
 	public MySQLServerConfiguration(int bytesPerCharacter, boolean noBackslashEscapesEnabled) {
 		this.bytesPerCharacter = bytesPerCharacter;
@@ -64,7 +60,7 @@ public class MySQLServerConfiguration {
 						case "utf32":
 						case "utf8mb4":
 						case "gb18030":
-							break;
+							bytesPerCharacter = 4;
 						case "utf8":
 						case "utf8mb3":
 						case "eucjpms":

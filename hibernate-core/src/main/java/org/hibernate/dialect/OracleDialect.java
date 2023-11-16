@@ -163,16 +163,12 @@ public class OracleDialect extends Dialect {
 	/**
 	 * Fallback setting when a connection to the database is not available at boot time.
 	 * Specifies whether this database is running on an Autonomous Database Cloud Service.
-	 *
-	 * @settingDefault {@code false}
 	 */
 	public static final String IS_AUTONOMOUS_DATABASE = "hibernate.dialect.oracle.is_autonomous";
 
 	/**
 	 * Fallback setting when a connection to the database is not available at boot time.
 	 * Specifies whether this database's {@code MAX_STRING_SIZE} is set to {@code EXTENDED}.
-	 *
-	 * @settingDefault {@code false}
 	 */
 	public static final String EXTENDED_STRING_SIZE = "hibernate.dialect.oracle.extended_string_size";
 
@@ -223,7 +219,7 @@ public class OracleDialect extends Dialect {
 			}
 		}
 		// default to the dialect-specific configuration setting
-		return ConfigurationHelper.getBoolean( IS_AUTONOMOUS_DATABASE, info.getConfigurationValues(), false );
+		return ConfigurationHelper.getBoolean( EXTENDED_STRING_SIZE, info.getConfigurationValues(), false );
 	}
 
 	protected static boolean isAutonomous(DialectResolutionInfo info) {
@@ -238,11 +234,15 @@ public class OracleDialect extends Dialect {
 			}
 		}
 		// default to the dialect-specific configuration setting
-		return ConfigurationHelper.getBoolean( EXTENDED_STRING_SIZE, info.getConfigurationValues(), false );
+		return ConfigurationHelper.getBoolean( IS_AUTONOMOUS_DATABASE, info.getConfigurationValues(), false );
 	}
 
 	public boolean isAutonomous() {
 		return autonomous;
+	}
+
+	public boolean isExtended() {
+		return extended;
 	}
 
 	@Override

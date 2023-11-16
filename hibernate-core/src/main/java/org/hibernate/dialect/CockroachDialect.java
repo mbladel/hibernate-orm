@@ -129,10 +129,10 @@ public class CockroachDialect extends Dialect {
 	protected static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make( 22, 2 );
 
 	/**
-	 * Specifies a custom CockroachDB version string when it's not possible to retrieve it
-	 * at boot time. The expected format of the version string is: {@code "v22.2.0"}.
-	 *
-	 * @settingDefault {@code false}
+	 * Fallback setting when a connection to the database is not available at boot time.
+	 * Specifies a custom CockroachDB version string. The expected format of the string is
+	 * the one returned from the {@code version()} function, e.g.:
+	 * {@code "CockroachDB CCL v23.1.8 (x86_64-pc-linux-gnu, built 2023/08/04 18:11:44, go1.19.10)"}
 	 */
 	public static final String VERSION_STRING = "hibernate.dialect.cockroach.version_string";
 

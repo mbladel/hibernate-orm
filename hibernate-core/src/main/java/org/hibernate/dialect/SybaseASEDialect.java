@@ -64,10 +64,8 @@ public class SybaseASEDialect extends SybaseDialect {
 	/**
 	 * Fallback setting when a connection to the database is not available at boot time.
 	 * Specifies whether this database's {@code ansinull} setting is enabled.
-	 *
-	 * @settingDefault {@code false}
 	 */
-	private static final String IS_ANSI_NULL = "hibernate.dialect.sybase.extended_string_size";
+	public static final String IS_ANSI_NULL = "hibernate.dialect.sybase_ase.extended_string_size";
 
 	private final SizeStrategy sizeStrategy = new SizeStrategyImpl() {
 		@Override
