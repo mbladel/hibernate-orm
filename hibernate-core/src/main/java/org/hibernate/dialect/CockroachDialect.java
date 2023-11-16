@@ -47,6 +47,7 @@ import org.hibernate.exception.spi.TemplatedViolatedConstraintNameExtractor;
 import org.hibernate.exception.spi.ViolatedConstraintNameExtractor;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.JdbcExceptionHelper;
+import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.query.SemanticException;
 import org.hibernate.query.sqm.IntervalType;
 import org.hibernate.query.sqm.TemporalUnit;
@@ -127,6 +128,14 @@ public class CockroachDialect extends Dialect {
 
 	protected static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make( 22, 2 );
 
+	/**
+	 * Specifies a custom CockroachDB version string when it's not possible to retrieve it
+	 * at boot time. The expected format of the version string is: {@code "v22.2.0"}.
+	 *
+	 * @settingDefault {@code false}
+	 */
+	public static final String VERSION_STRING = "hibernate.dialect.cockroach.version_string";
+
 	protected final PostgreSQLDriverKind driverKind;
 
 	public CockroachDialect() {
@@ -148,10 +157,10 @@ public class CockroachDialect extends Dialect {
 		this.driverKind = driverKind;
 	}
 
-	protected static DatabaseVersion fetchDataBaseVersion( DialectResolutionInfo info ) {
+	protected static DatabaseVersion fetchDataBaseVersion(DialectResolutionInfo info) {
 		String versionString = null;
 		if ( info.getDatabaseMetadata() != null ) {
-			try (java.sql.Statement s = info.getDatabaseMetadata().getConnection().createStatement() ) {
+			try (java.sql.Statement s = info.getDatabaseMetadata().getConnection().createStatement()) {
 				final ResultSet rs = s.executeQuery( "SELECT version()" );
 				if ( rs.next() ) {
 					versionString = rs.getString( 1 );
@@ -160,6 +169,10 @@ public class CockroachDialect extends Dialect {
 			catch (SQLException ex) {
 				// Ignore
 			}
+		}
+		if ( versionString == null ) {
+			// default to the dialect-specific configuration setting
+			versionString = ConfigurationHelper.getString( VERSION_STRING, info.getConfigurationValues() );
 		}
 		return parseVersion( versionString );
 	}

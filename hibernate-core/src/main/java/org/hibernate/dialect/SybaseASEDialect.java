@@ -26,6 +26,7 @@ import org.hibernate.exception.spi.SQLExceptionConversionDelegate;
 import org.hibernate.exception.spi.TemplatedViolatedConstraintNameExtractor;
 import org.hibernate.exception.spi.ViolatedConstraintNameExtractor;
 import org.hibernate.internal.util.JdbcExceptionHelper;
+import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.query.sqm.IntervalType;
 import org.hibernate.query.sqm.TemporalUnit;
 import org.hibernate.service.ServiceRegistry;
@@ -60,6 +61,14 @@ public class SybaseASEDialect extends SybaseDialect {
 
 	private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make( 16, 0 );
 
+	/**
+	 * Fallback setting when a connection to the database is not available at boot time.
+	 * Specifies whether this database's {@code ansinull} setting is enabled.
+	 *
+	 * @settingDefault {@code false}
+	 */
+	private static final String IS_ANSI_NULL = "hibernate.dialect.sybase.extended_string_size";
+
 	private final SizeStrategy sizeStrategy = new SizeStrategyImpl() {
 		@Override
 		public Size resolveSize(
@@ -92,7 +101,7 @@ public class SybaseASEDialect extends SybaseDialect {
 
 	public SybaseASEDialect(DialectResolutionInfo info) {
 		super(info);
-		ansiNull = isAnsiNull( info.getDatabaseMetadata() );
+		ansiNull = isAnsiNull( info );
 	}
 
 	@Override
@@ -163,7 +172,8 @@ public class SybaseASEDialect extends SybaseDialect {
 		return 16_384;
 	}
 
-	private static boolean isAnsiNull(DatabaseMetaData databaseMetaData) {
+	private static boolean isAnsiNull(DialectResolutionInfo info) {
+		final DatabaseMetaData databaseMetaData = info.getDatabaseMetadata();
 		if ( databaseMetaData != null ) {
 			try (java.sql.Statement s = databaseMetaData.getConnection().createStatement() ) {
 				final ResultSet rs = s.executeQuery( "SELECT @@options" );
@@ -177,7 +187,8 @@ public class SybaseASEDialect extends SybaseDialect {
 				// Ignore
 			}
 		}
-		return false;
+		// default to the dialect-specific configuration setting
+		return ConfigurationHelper.getBoolean( IS_ANSI_NULL, info.getConfigurationValues(), false );
 	}
 
 	@Override

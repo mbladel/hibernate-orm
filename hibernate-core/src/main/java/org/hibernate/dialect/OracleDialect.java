@@ -48,6 +48,7 @@ import org.hibernate.exception.spi.SQLExceptionConversionDelegate;
 import org.hibernate.exception.spi.TemplatedViolatedConstraintNameExtractor;
 import org.hibernate.exception.spi.ViolatedConstraintNameExtractor;
 import org.hibernate.internal.util.JdbcExceptionHelper;
+import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
@@ -159,6 +160,22 @@ public class OracleDialect extends Dialect {
 
 	public static final String PREFER_LONG_RAW = "hibernate.dialect.oracle.prefer_long_raw";
 
+	/**
+	 * Fallback setting when a connection to the database is not available at boot time.
+	 * Specifies whether this database is running on an Autonomous Database Cloud Service.
+	 *
+	 * @settingDefault {@code false}
+	 */
+	public static final String IS_AUTONOMOUS_DATABASE = "hibernate.dialect.oracle.is_autonomous";
+
+	/**
+	 * Fallback setting when a connection to the database is not available at boot time.
+	 * Specifies whether this database's {@code MAX_STRING_SIZE} is set to {@code EXTENDED}.
+	 *
+	 * @settingDefault {@code false}
+	 */
+	public static final String EXTENDED_STRING_SIZE = "hibernate.dialect.oracle.extended_string_size";
+
 	private static final String yqmSelect =
 		"(trunc(%2$s, 'MONTH') + numtoyminterval(%1$s, 'MONTH') + (least(extract(day from %2$s), extract(day from last_day(trunc(%2$s, 'MONTH') + numtoyminterval(%1$s, 'MONTH')))) - 1))";
 
@@ -188,11 +205,12 @@ public class OracleDialect extends Dialect {
 
 	public OracleDialect(DialectResolutionInfo info) {
 		super(info);
-		autonomous = isAutonomous( info.getDatabaseMetadata() );
-		extended = isExtended( info.getDatabaseMetadata() );
+		autonomous = isAutonomous( info );
+		extended = isExtended( info );
 	}
 
-	protected static boolean isExtended(DatabaseMetaData databaseMetaData) {
+	protected static boolean isExtended(DialectResolutionInfo info) {
+		final DatabaseMetaData databaseMetaData = info.getDatabaseMetadata();
 		if ( databaseMetaData != null ) {
 			try ( java.sql.Statement statement = databaseMetaData.getConnection().createStatement() ) {
 				statement.execute( "select cast('string' as varchar2(32000)) from dual" );
@@ -204,10 +222,12 @@ public class OracleDialect extends Dialect {
 				// Ignore
 			}
 		}
-		return false;
+		// default to the dialect-specific configuration setting
+		return ConfigurationHelper.getBoolean( IS_AUTONOMOUS_DATABASE, info.getConfigurationValues(), false );
 	}
 
-	protected static boolean isAutonomous(DatabaseMetaData databaseMetaData) {
+	protected static boolean isAutonomous(DialectResolutionInfo info) {
+		final DatabaseMetaData databaseMetaData = info.getDatabaseMetadata();
 		if ( databaseMetaData != null ) {
 			try ( java.sql.Statement statement = databaseMetaData.getConnection().createStatement() ) {
 				return statement.executeQuery( "select 1 from dual where sys_context('USERENV','CLOUD_SERVICE') in ('OLTP','DWCS','JSON')" )
@@ -217,7 +237,8 @@ public class OracleDialect extends Dialect {
 				// Ignore
 			}
 		}
-		return false;
+		// default to the dialect-specific configuration setting
+		return ConfigurationHelper.getBoolean( EXTENDED_STRING_SIZE, info.getConfigurationValues(), false );
 	}
 
 	public boolean isAutonomous() {
