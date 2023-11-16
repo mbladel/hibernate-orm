@@ -56,7 +56,7 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 		if ( !persister.isIdentifierAssignedByInsert()
 				|| persister.getInsertGeneratedProperties().size() > 1
 				|| rowIdMapping != null ) {
-			final List<String> columnNames = getGeneratedColumnNames( persister, dialect, timing );
+			final List<String> columnNames = getGeneratedColumnNames( persister, dialect, timing, false );
 			if ( rowIdMapping != null ) {
 				columnNames.add( rowIdMapping.getSelectionExpression() );
 			}
