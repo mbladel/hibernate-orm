@@ -154,7 +154,7 @@ public class GeneratedValuesHelper {
 		final boolean hasRowId = timing == EventType.INSERT && persister.getRowIdMapping() != null;
 		final Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
 
-		if ( hasRowId && dialect.supportsInsertReturning() ) {
+		if ( hasRowId && dialect.supportsInsertReturning() && dialect.supportsInsertReturningRowId() ) {
 			// Special case for RowId on INSERT, since GetGeneratedKeysDelegate doesn't support it
 			// make InsertReturningDelegate the preferred method if the dialect supports it
 			return new InsertReturningDelegate( persister, dialect, timing );

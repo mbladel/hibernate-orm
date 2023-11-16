@@ -4052,6 +4052,19 @@ public abstract class Dialect implements ConversionContext, TypeContributor, Fun
 	}
 
 	/**
+	 * Does this dialect supports returning the {@link org.hibernate.annotations.RowId} column
+	 *  after execution of an {@code insert} statement, using native SQL syntax?
+	 *
+	 *
+	 * @return {@code true} is the dialect supports returning the rowid column
+	 *
+	 * @see #supportsInsertReturning()
+	 */
+	public boolean supportsInsertReturningRowId() {
+		return supportsInsertReturning();
+	}
+
+	/**
 	 * Does this dialect fully support returning arbitrary generated column values
 	 * after execution of an {@code insert} statement, using the JDBC method
 	 * {@link Connection#prepareStatement(String, String[])}.
