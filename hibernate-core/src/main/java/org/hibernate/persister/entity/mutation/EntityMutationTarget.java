@@ -10,8 +10,7 @@ import org.hibernate.Incubating;
 import org.hibernate.Remove;
 import org.hibernate.annotations.Table;
 import org.hibernate.engine.jdbc.mutation.MutationExecutor;
-import org.hibernate.generator.EventType;
-import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.ModelPart;
@@ -57,18 +56,18 @@ public interface EntityMutationTarget extends MutationTarget<EntityTableMapping>
 	@Deprecated( since = "7.0", forRemoval = true )
 	@Remove
 	default InsertGeneratedIdentifierDelegate getIdentityInsertDelegate() {
-		final MutationGeneratedValuesDelegate insertDelegate = getInsertDelegate();
+		final GeneratedValuesMutationDelegate insertDelegate = getInsertDelegate();
 		if ( insertDelegate instanceof InsertGeneratedIdentifierDelegate ) {
 			return (InsertGeneratedIdentifierDelegate) insertDelegate;
 		}
 		return null;
 	}
 
-	MutationGeneratedValuesDelegate getInsertDelegate();
+	GeneratedValuesMutationDelegate getInsertDelegate();
 
-	MutationGeneratedValuesDelegate getUpdateDelegate();
+	GeneratedValuesMutationDelegate getUpdateDelegate();
 
-	default MutationGeneratedValuesDelegate getMutationDelegate(MutationType mutationType) {
+	default GeneratedValuesMutationDelegate getMutationDelegate(MutationType mutationType) {
 		return switch ( mutationType ) {
 			case INSERT -> getInsertDelegate();
 			case UPDATE -> getUpdateDelegate();

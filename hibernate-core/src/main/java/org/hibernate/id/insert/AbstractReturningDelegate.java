@@ -14,7 +14,7 @@ import org.hibernate.engine.jdbc.mutation.group.PreparedStatementDetails;
 import org.hibernate.engine.jdbc.spi.JdbcCoordinator;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
-import org.hibernate.generator.values.AbstractMutationGeneratedValuesDelegate;
+import org.hibernate.generator.values.AbstractGeneratedValuesMutationDelegate;
 import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.pretty.MessageHelper;
@@ -27,7 +27,7 @@ import org.hibernate.pretty.MessageHelper;
  *
  * @author Steve Ebersole
  */
-public abstract class AbstractReturningDelegate extends AbstractMutationGeneratedValuesDelegate
+public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesMutationDelegate
 		implements InsertGeneratedIdentifierDelegate {
 	private final PostInsertIdentityPersister persister;
 

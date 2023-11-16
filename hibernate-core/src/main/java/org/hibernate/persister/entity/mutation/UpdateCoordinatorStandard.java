@@ -29,7 +29,7 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
-import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.collections.CollectionHelper;
@@ -44,11 +44,8 @@ import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.MutationOperationGroup;
 import org.hibernate.sql.model.MutationType;
 import org.hibernate.sql.model.ast.MutatingTableReference;
-import org.hibernate.sql.model.ast.TableUpdate;
 import org.hibernate.sql.model.ast.builder.AbstractTableUpdateBuilder;
 import org.hibernate.sql.model.ast.builder.MutationGroupBuilder;
-import org.hibernate.sql.model.ast.builder.RestrictedTableMutationBuilder;
-import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 import org.hibernate.sql.model.ast.builder.TableUpdateBuilder;
 import org.hibernate.sql.model.ast.builder.TableUpdateBuilderSkipped;
@@ -1071,7 +1068,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 	}
 
 	private TableMutationBuilder<?> createTableUpdateBuilder(EntityTableMapping tableMapping) {
-		final MutationGeneratedValuesDelegate delegate = tableMapping.isIdentifierTable() ?
+		final GeneratedValuesMutationDelegate delegate = tableMapping.isIdentifierTable() ?
 				entityPersister().getUpdateDelegate() :
 				null;
 		if ( delegate != null ) {

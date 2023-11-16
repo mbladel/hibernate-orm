@@ -8,18 +8,12 @@ package org.hibernate.generator.values;
 
 import java.sql.PreparedStatement;
 
-import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
 import org.hibernate.engine.jdbc.mutation.group.PreparedStatementDetails;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
-import org.hibernate.id.insert.Binder;
-import org.hibernate.id.insert.IdentifierGeneratingInsert;
 import org.hibernate.jdbc.Expectation;
-import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
-import org.hibernate.sql.model.ast.TableMutation;
-import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 
 /**
@@ -40,7 +34,7 @@ import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
  *
  * @author Marco Belladelli
  */
-public interface MutationGeneratedValuesDelegate {
+public interface GeneratedValuesMutationDelegate {
 	TableMutationBuilder<?> createTableMutationBuilder(Expectation expectation, SessionFactoryImplementor sessionFactory);
 
 	PreparedStatement prepareStatement(String sql, SharedSessionContractImplementor session);

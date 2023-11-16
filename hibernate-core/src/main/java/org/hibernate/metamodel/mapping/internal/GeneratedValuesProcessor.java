@@ -18,7 +18,7 @@ import org.hibernate.generator.EventType;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.values.GeneratedValues;
-import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.loader.ast.internal.LoaderSelectBuilder;
 import org.hibernate.loader.ast.internal.NoCallbackExecutionContext;
@@ -38,7 +38,7 @@ import static org.hibernate.sql.results.spi.ListResultsConsumer.UniqueSemantic.F
  * Responsible for retrieving {@linkplain OnExecutionGenerator database-generated}
  * attribute values after an {@code insert} or {@code update} statement is executed.
  * <p>
- * The values might have been retrieved early by an instance of {@link MutationGeneratedValuesDelegate},
+ * The values might have been retrieved early by an instance of {@link GeneratedValuesMutationDelegate},
  * which case the {@link GeneratedValues generatedValues} parameter of {@link #processGeneratedValues}
  * will already contain the values we need and this processor handles only the
  * {@link #setEntityAttributes setting of entity attributes}.

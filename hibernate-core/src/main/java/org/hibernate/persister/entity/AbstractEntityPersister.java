@@ -106,13 +106,12 @@ import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.internal.VersionGeneration;
 import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.generator.values.GeneratedValuesHelper;
-import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.id.Assigned;
 import org.hibernate.id.BulkInsertionCapableIdentifierGenerator;
 import org.hibernate.id.ForeignGenerator;
 import org.hibernate.id.IdentifierGenerator;
-import org.hibernate.id.IdentifierGeneratorHelper;
 import org.hibernate.id.OptimizableGenerator;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.id.enhanced.Optimizer;
@@ -435,8 +434,8 @@ public abstract class AbstractEntityPersister
 	private GeneratedValuesProcessor insertGeneratedValuesProcessor;
 	private GeneratedValuesProcessor updateGeneratedValuesProcessor;
 
-	private MutationGeneratedValuesDelegate insertDelegate;
-	private MutationGeneratedValuesDelegate updateDelegate;
+	private GeneratedValuesMutationDelegate insertDelegate;
+	private GeneratedValuesMutationDelegate updateDelegate;
 	private String identitySelectString;
 
 	private boolean[] tableHasColumns;
@@ -2879,12 +2878,12 @@ public abstract class AbstractEntityPersister
 	}
 
 	@Override
-	public MutationGeneratedValuesDelegate getInsertDelegate() {
+	public GeneratedValuesMutationDelegate getInsertDelegate() {
 		return insertDelegate;
 	}
 
 	@Override
-	public MutationGeneratedValuesDelegate getUpdateDelegate() {
+	public GeneratedValuesMutationDelegate getUpdateDelegate() {
 		return updateDelegate;
 	}
 

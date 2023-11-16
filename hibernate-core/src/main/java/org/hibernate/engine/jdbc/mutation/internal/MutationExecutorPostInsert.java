@@ -20,7 +20,7 @@ import org.hibernate.engine.jdbc.mutation.group.PreparedStatementDetails;
 import org.hibernate.engine.jdbc.mutation.group.PreparedStatementGroup;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.values.GeneratedValues;
-import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.persister.entity.mutation.EntityTableMapping;
 import org.hibernate.sql.model.EntityMutationOperationGroup;
@@ -142,7 +142,7 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 			TableInclusionChecker inclusionChecker,
 			OperationResultChecker resultChecker,
 			SharedSessionContractImplementor session) {
-		final MutationGeneratedValuesDelegate delegate = mutationTarget.getMutationDelegate( mutationType );
+		final GeneratedValuesMutationDelegate delegate = mutationTarget.getMutationDelegate( mutationType );
 		final GeneratedValues generatedValues = delegate.performMutation( mutationStatementDetails, valueBindings, modelReference, session );
 		final Object id = mutationType == MutationType.INSERT ?
 				generatedValues.getGeneratedValue( mutationTarget.getTargetPart().getIdentifierMapping() ) :

@@ -17,7 +17,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.generator.EventType;
-import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.sql.model.MutationType;
@@ -43,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class GeneratedValueMutationDelegateTest {
 	@Test
 	public void testInsertGenerationValuesOnly(SessionFactoryScope scope) {
-		final MutationGeneratedValuesDelegate delegate = getDelegate( scope, ValuesOnly.class, MutationType.INSERT );
+		final GeneratedValuesMutationDelegate delegate = getDelegate( scope, ValuesOnly.class, MutationType.INSERT );
 		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
 		inspector.clear();
 
@@ -67,7 +67,7 @@ public class GeneratedValueMutationDelegateTest {
 
 	@Test
 	public void testUpdateGenerationValuesOnly(SessionFactoryScope scope) {
-		final MutationGeneratedValuesDelegate delegate = getDelegate( scope, ValuesOnly.class, MutationType.UPDATE );
+		final GeneratedValuesMutationDelegate delegate = getDelegate( scope, ValuesOnly.class, MutationType.UPDATE );
 		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
 		scope.inTransaction( session -> {
 			final ValuesOnly entity = new ValuesOnly( 2 );
@@ -93,7 +93,7 @@ public class GeneratedValueMutationDelegateTest {
 
 	@Test
 	public void testGeneratedValuesAndRowId(SessionFactoryScope scope) {
-		final MutationGeneratedValuesDelegate delegate = getDelegate(
+		final GeneratedValuesMutationDelegate delegate = getDelegate(
 				scope,
 				ValuesAndRowId.class,
 				MutationType.INSERT
@@ -135,7 +135,7 @@ public class GeneratedValueMutationDelegateTest {
 
 	@Test
 	public void testInsertGenerationValuesAndNaturalId(SessionFactoryScope scope) {
-		final MutationGeneratedValuesDelegate delegate = getDelegate(
+		final GeneratedValuesMutationDelegate delegate = getDelegate(
 				scope,
 				ValuesAndNaturalId.class,
 				MutationType.INSERT
@@ -162,7 +162,7 @@ public class GeneratedValueMutationDelegateTest {
 		} );
 	}
 
-	private static MutationGeneratedValuesDelegate getDelegate(
+	private static GeneratedValuesMutationDelegate getDelegate(
 			SessionFactoryScope scope,
 			Class<?> entityClass,
 			MutationType mutationType) {
