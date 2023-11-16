@@ -26,9 +26,6 @@ import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
  * <li>building the SQL mutation statement, and
  * <li>retrieving the generated values using JDBC.
  * </ul>
- * <p>
- * The implementation should be written to handle any instance of
- * {@link org.hibernate.generator.OnExecutionGenerator}.
  *
  * @see org.hibernate.generator.OnExecutionGenerator
  *
@@ -55,13 +52,18 @@ public interface GeneratedValuesMutationDelegate {
 	 */
 	EventType getTiming();
 
-	// todo : jdoc
-	default boolean supportsRetrievingGeneratedValues() {
+	/**
+	 * Returns {@code true} when this delegate supports retrieving arbitrary generated values,
+	 * or {@code false} when it only supports identifiers.
+	 */
+	default boolean supportsArbitraryValues() {
 		return false;
 	}
 
-	// todo : jdoc
-	default boolean supportsRetrievingRowId() {
+	/**
+	 * Returns {@code true} when this delegate supports retrieving the {@link org.hibernate.annotations.RowId} value.
+	 */
+	default boolean supportsRowId() {
 		return false;
 	}
 }

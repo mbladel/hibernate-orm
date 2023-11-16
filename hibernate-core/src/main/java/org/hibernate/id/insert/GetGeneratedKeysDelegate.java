@@ -118,7 +118,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	}
 
 	@Override
-	public boolean supportsRetrievingGeneratedValues() {
+	public boolean supportsArbitraryValues() {
 		return columnNames != null;
 	}
 

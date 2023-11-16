@@ -86,7 +86,7 @@ public class GeneratedValueMutationDelegateIdentityTest {
 
 			inspector.assertIsInsert( 0 );
 			inspector.assertExecutedCount(
-					delegate != null && delegate.supportsRetrievingGeneratedValues() ? 1 : 2
+					delegate != null && delegate.supportsArbitraryValues() ? 1 : 2
 			);
 		} );
 	}
@@ -118,7 +118,7 @@ public class GeneratedValueMutationDelegateIdentityTest {
 			inspector.assertIsSelect( 0 );
 			inspector.assertIsUpdate( 1 );
 			inspector.assertExecutedCount(
-					delegate != null && delegate.supportsRetrievingGeneratedValues() ? 2 : 3
+					delegate != null && delegate.supportsArbitraryValues() ? 2 : 3
 			);
 		} );
 	}
@@ -143,10 +143,10 @@ public class GeneratedValueMutationDelegateIdentityTest {
 
 			inspector.assertIsInsert( 0 );
 			inspector.assertExecutedCount(
-					delegate != null && delegate.supportsRetrievingGeneratedValues() ? 1 : 2
+					delegate != null && delegate.supportsArbitraryValues() ? 1 : 2
 			);
 
-			final boolean shouldHaveRowId = delegate != null && delegate.supportsRetrievingRowId();
+			final boolean shouldHaveRowId = delegate != null && delegate.supportsRowId();
 			if ( shouldHaveRowId ) {
 				// assert row-id was populated in entity entry
 				final PersistenceContext pc = session.getPersistenceContextInternal();
@@ -166,7 +166,7 @@ public class GeneratedValueMutationDelegateIdentityTest {
 			inspector.assertNumberOfOccurrenceInQueryNoSpace( 0, "id_column", shouldHaveRowId ? 0 : 1 );
 		} );
 		scope.inSession( session -> assertThat( session.find(
-				GeneratedValueMutationDelegateTest.ValuesAndRowId.class,
+				IdentityAndValuesAndRowId.class,
 				1
 		).getUpdateDate() ).isNotNull() );
 	}
@@ -192,14 +192,14 @@ public class GeneratedValueMutationDelegateIdentityTest {
 			inspector.assertIsInsert( 0 );
 			final boolean isUniqueKeyDelegate = delegate instanceof UniqueKeySelectingDelegate;
 			inspector.assertExecutedCount(
-					delegate == null || !delegate.supportsRetrievingGeneratedValues() || isUniqueKeyDelegate ? 2 : 1
+					delegate == null || !delegate.supportsArbitraryValues() || isUniqueKeyDelegate ? 2 : 1
 			);
 			if ( isUniqueKeyDelegate ) {
 				inspector.assertNumberOfOccurrenceInQueryNoSpace( 1, "data", 1 );
 				inspector.assertNumberOfOccurrenceInQueryNoSpace( 1, "id_column", 0 );
 			}
 
-			final boolean shouldHaveRowId = delegate != null && delegate.supportsRetrievingRowId();
+			final boolean shouldHaveRowId = delegate != null && delegate.supportsRowId();
 			if ( shouldHaveRowId ) {
 				// assert row-id was populated in entity entry
 				final PersistenceContext pc = session.getPersistenceContextInternal();
@@ -208,6 +208,7 @@ public class GeneratedValueMutationDelegateIdentityTest {
 			}
 		} );
 	}
+
 	private static GeneratedValuesMutationDelegate getDelegate(
 			SessionFactoryScope scope,
 			Class<?> entityClass,
@@ -272,6 +273,7 @@ public class GeneratedValueMutationDelegateIdentityTest {
 	@SuppressWarnings( "unused" )
 	public static class IdentityAndValuesAndRowId {
 		@Id
+		@Column( name = "id_column" )
 		@GeneratedValue( strategy = GenerationType.IDENTITY )
 		private Integer id;
 

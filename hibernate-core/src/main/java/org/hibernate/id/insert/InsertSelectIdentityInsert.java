@@ -17,6 +17,9 @@ import org.hibernate.generator.OnExecutionGenerator;
  * to the end of the insert statement.
  * 
  * @author Steve Ebersole
+ *
+ * @deprecated This is not used anymore in any of the
+ * {@link org.hibernate.generator.values.GeneratedValuesMutationDelegate} implementations.
  */
 @Deprecated( since = "7.0" ) // todo marco : correct ?
 public class InsertSelectIdentityInsert extends IdentifierGeneratingInsert {
