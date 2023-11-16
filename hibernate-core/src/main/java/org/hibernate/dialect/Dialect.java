@@ -4072,6 +4072,17 @@ public abstract class Dialect implements ConversionContext, TypeContributor, Fun
 	public boolean supportsInsertReturningGeneratedKeys() {
 		return false;
 	}
+
+	/**
+	 * Does this dialect require unquoting identifiers when passing them to the
+	 * {@link Connection#prepareStatement(String, String[])} JDBC method.
+	 *
+	 * @see Dialect#supportsInsertReturningGeneratedKeys()
+	 */
+	public boolean unquoteGetGeneratedKeys() {
+		return false;
+	}
+
 	/**
 	 * Does this dialect support the given {@code FETCH} clause type.
 	 *

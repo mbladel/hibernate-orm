@@ -388,7 +388,7 @@ public class DB2SqlAstTranslator<T extends JdbcOperation> extends AbstractSqlAst
 				appendSql( returningColumns.get( i ).getColumnExpression() );
 			}
 
-			appendSql( " from new table ( " ); // 'from final table' does not seem to play well with triggers
+			appendSql( " from new table (" ); // 'from final table' does not seem to play well with triggers
 			super.visitStandardTableInsert( tableInsert );
 			appendSql( ")" );
 		}
@@ -410,7 +410,7 @@ public class DB2SqlAstTranslator<T extends JdbcOperation> extends AbstractSqlAst
 				appendSql( returningColumns.get( i ).getColumnExpression() );
 			}
 
-			appendSql( " from final table ( " );
+			appendSql( " from final table (" );
 			super.visitStandardTableUpdate( tableUpdate );
 			appendSql( ")" );
 		}

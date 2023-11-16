@@ -57,7 +57,8 @@ public class IdentityGenerator
 	@Override
 	public InsertGeneratedIdentifierDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
 		final Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
-		if ( !persister.getInsertGeneratedProperties().isEmpty() ) {
+		if ( persister.getInsertGeneratedProperties().size() > 1 ) {
+			// If we have more generated attributes other than the identity
 			// try to use generic delegates if the dialects supports them
 			if ( dialect.supportsInsertReturningGeneratedKeys() ) {
 				return new GetGeneratedKeysDelegate( persister, dialect, false, EventType.INSERT );
@@ -67,7 +68,7 @@ public class IdentityGenerator
 			}
 		}
 
-		// fall back to IdentityColumnSupport methods (which only handle identifiers)
+		// Fall back to IdentityColumnSupport methods (which only handle identifiers)
 		if ( persister.getFactory().getSessionFactoryOptions().isGetGeneratedKeysEnabled() ) {
 			return dialect.getIdentityColumnSupport().buildGetGeneratedKeysDelegate( persister, dialect );
 		}
