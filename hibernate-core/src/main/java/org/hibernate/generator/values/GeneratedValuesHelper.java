@@ -24,18 +24,16 @@ import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.StringHelper;
-import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.SelectableMapping;
-import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.type.descriptor.WrapperOptions;
 
 import static org.hibernate.generator.internal.NaturalIdHelper.getNaturalIdPropertyNames;
 
 /**
- * Factory and helper methods for {@link MutationGeneratedValuesDelegate} framework.
+ * Factory and helper methods for {@link GeneratedValuesMutationDelegate} framework.
  *
  * @author Marco Belladelli
  */
@@ -140,14 +138,14 @@ public class GeneratedValuesHelper {
 	}
 
 	/**
-	 * Creates the {@link MutationGeneratedValuesDelegate delegate} used to retrieve
+	 * Creates the {@link GeneratedValuesMutationDelegate delegate} used to retrieve
 	 * {@linkplain org.hibernate.generator.OnExecutionGenerator database generated values} on
 	 * mutation execution through e.g. {@link Dialect#supportsInsertReturning() insert ... returning}
 	 * syntax or the JDBC {@link Dialect#supportsInsertReturningGeneratedKeys() getGeneratedKeys()} API.
 	 * <p>
 	 * If the current {@link Dialect} doesn't support any of the available delegates this method returns {@code null}.
 	 */
-	public static MutationGeneratedValuesDelegate getGeneratedValuesDelegate(
+	public static GeneratedValuesMutationDelegate getGeneratedValuesDelegate(
 			PostInsertIdentityPersister persister,
 			EventType timing) {
 		final boolean hasGeneratedProperties = !persister.getGeneratedProperties( timing ).isEmpty();

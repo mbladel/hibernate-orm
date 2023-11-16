@@ -11,10 +11,10 @@ import org.hibernate.generator.EventType;
 /**
  * @author Marco Belladelli
  */
-public abstract class AbstractMutationGeneratedValuesDelegate implements MutationGeneratedValuesDelegate {
+public abstract class AbstractGeneratedValuesMutationDelegate implements GeneratedValuesMutationDelegate {
 	private final EventType timing;
 
-	public AbstractMutationGeneratedValuesDelegate(EventType timing) {
+	public AbstractGeneratedValuesMutationDelegate(EventType timing) {
 		this.timing = timing;
 	}
 

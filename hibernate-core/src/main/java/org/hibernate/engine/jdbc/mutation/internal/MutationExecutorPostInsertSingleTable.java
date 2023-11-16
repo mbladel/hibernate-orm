@@ -15,10 +15,9 @@ import org.hibernate.engine.jdbc.mutation.ParameterUsage;
 import org.hibernate.engine.jdbc.mutation.TableInclusionChecker;
 import org.hibernate.engine.jdbc.mutation.group.PreparedStatementDetails;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.sql.model.EntityMutationOperationGroup;
-import org.hibernate.sql.model.MutationType;
 import org.hibernate.sql.model.PreparableMutationOperation;
 import org.hibernate.sql.model.ValuesAnalysis;
 import org.hibernate.sql.model.jdbc.JdbcValueDescriptor;
@@ -98,7 +97,7 @@ public class MutationExecutorPostInsertSingleTable implements MutationExecutor, 
 			TableInclusionChecker inclusionChecker,
 			OperationResultChecker resultChecker,
 			SharedSessionContractImplementor session) {
-		final MutationGeneratedValuesDelegate delegate = mutationTarget.getMutationDelegate( operation.getMutationType() );
+		final GeneratedValuesMutationDelegate delegate = mutationTarget.getMutationDelegate( operation.getMutationType() );
 		final Object generatedValues = delegate.performMutation( statemementDetails, valueBindings, modelReference, session );
 
 		if ( MODEL_MUTATION_LOGGER.isTraceEnabled() ) {

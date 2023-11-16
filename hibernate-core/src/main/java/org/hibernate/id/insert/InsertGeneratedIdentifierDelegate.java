@@ -8,13 +8,12 @@ package org.hibernate.id.insert;
 
 import java.sql.PreparedStatement;
 
-import org.hibernate.Remove;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
 import org.hibernate.engine.jdbc.mutation.group.PreparedStatementDetails;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
@@ -40,11 +39,11 @@ import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
  *
  * @author Steve Ebersole
  */
-public interface InsertGeneratedIdentifierDelegate extends MutationGeneratedValuesDelegate {
+public interface InsertGeneratedIdentifierDelegate extends GeneratedValuesMutationDelegate {
 	/**
 	 * Create a {@link TableInsertBuilder} with any specific identity
 	 * handling already built in.
-	 * @deprecated Use {@link MutationGeneratedValuesDelegate#createTableMutationBuilder} instead.
+	 * @deprecated Use {@link GeneratedValuesMutationDelegate#createTableMutationBuilder} instead.
 	 */
 	@Deprecated( since = "7.0" )
 	default TableInsertBuilder createTableInsertBuilder(
@@ -63,7 +62,7 @@ public interface InsertGeneratedIdentifierDelegate extends MutationGeneratedValu
 	 *
 	 * @see #createTableInsertBuilder
 	 *
-	 * @deprecated Use {@link MutationGeneratedValuesDelegate#performMutation} instead
+	 * @deprecated Use {@link GeneratedValuesMutationDelegate#performMutation} instead
 	 */
 	@Deprecated( since = "7.0" )
 	default Object performInsert(

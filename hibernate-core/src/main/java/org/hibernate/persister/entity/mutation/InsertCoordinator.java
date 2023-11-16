@@ -22,7 +22,7 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
-import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.AttributeMappingsList;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
@@ -362,7 +362,7 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 	}
 
 	private TableMutationBuilder<?> createTableInsertBuilder(EntityTableMapping tableMapping, boolean forceIdentifierBinding) {
-		final MutationGeneratedValuesDelegate delegate = entityPersister().getInsertDelegate();
+		final GeneratedValuesMutationDelegate delegate = entityPersister().getInsertDelegate();
 		if ( tableMapping.isIdentifierTable() && delegate != null && !forceIdentifierBinding ) {
 			return delegate.createTableMutationBuilder( tableMapping.getInsertExpectation(), factory() );
 		}

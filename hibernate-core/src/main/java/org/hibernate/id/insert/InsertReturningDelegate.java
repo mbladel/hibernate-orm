@@ -19,6 +19,7 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.values.GeneratedValues;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.generator.values.TableUpdateReturningBuilder;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
@@ -34,7 +35,7 @@ import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedV
  * Supports both {@link EventType#INSERT insert} and {@link EventType#UPDATE update} statements.
  *
  * @see org.hibernate.generator.OnExecutionGenerator
- * @see org.hibernate.generator.values.MutationGeneratedValuesDelegate
+ * @see GeneratedValuesMutationDelegate
  */
 public class InsertReturningDelegate extends AbstractReturningDelegate {
 	private final PostInsertIdentityPersister persister;
