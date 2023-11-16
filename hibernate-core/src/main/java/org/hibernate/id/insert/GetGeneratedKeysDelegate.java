@@ -62,7 +62,12 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 			columnNames = null;
 		}
 		else {
-			columnNames = getGeneratedColumnNames( persister, dialect, getTiming() ).toArray( new String[0] );
+			columnNames = getGeneratedColumnNames(
+					persister,
+					dialect,
+					getTiming(),
+					dialect.unquoteGetGeneratedKeys()
+			).toArray( new String[0] );
 		}
 	}
 

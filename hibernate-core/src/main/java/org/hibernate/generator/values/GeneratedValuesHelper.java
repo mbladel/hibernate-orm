@@ -187,12 +187,17 @@ public class GeneratedValuesHelper {
 	 * Returns a list of strings containing the {@linkplain SelectableMapping#getSelectionExpression() column names}
 	 * of the generated properties of the provided {@link EntityPersister persister}.
 	 */
-	public static List<String> getGeneratedColumnNames(EntityPersister persister, Dialect dialect, EventType timing) {
+	public static List<String> getGeneratedColumnNames(
+			EntityPersister persister,
+			Dialect dialect,
+			EventType timing,
+			boolean unquote) {
 		final List<? extends ModelPart> generated = persister.getGeneratedProperties( timing );
 		return generated.stream().map( modelPart -> {
 			assert modelPart instanceof SelectableMapping : "Unsupported non-selectable generated value";
 			final SelectableMapping selectableMapping = getActualSelectableMapping( modelPart, persister );
-			return StringHelper.unquote( selectableMapping.getSelectionExpression(), dialect );
+			final String selectionExpression = selectableMapping.getSelectionExpression();
+			return unquote ? StringHelper.unquote( selectionExpression, dialect ) : selectionExpression;
 		} ).toList();
 	}
 

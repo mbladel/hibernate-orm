@@ -830,6 +830,11 @@ public class H2Dialect extends Dialect {
 	}
 
 	@Override
+	public boolean unquoteGetGeneratedKeys() {
+		return true;
+	}
+
+	@Override
 	public int registerResultSetOutParameter(CallableStatement statement, int position) throws SQLException {
 		return position;
 	}
