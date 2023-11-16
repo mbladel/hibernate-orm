@@ -9,6 +9,7 @@ package org.hibernate.persister.entity.mutation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Supplier;
 
 import org.hibernate.AssertionFailure;
 import org.hibernate.HibernateException;
@@ -177,8 +178,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 			SharedSessionContractImplementor session) {
 		final EntityVersionMapping versionMapping = entityPersister().getVersionMapping();
 		if ( versionMapping != null ) {
-			// todo marco : are update-generated values handled here too?
-			final boolean isForcedVersionIncrement = handlePotentialImplicitForcedVersionIncrement(
+			final Supplier<Object> generatedValuesAccess = handlePotentialImplicitForcedVersionIncrement(
 					entity,
 					id,
 					values,
@@ -187,8 +187,8 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 					session,
 					versionMapping
 			);
-			if ( isForcedVersionIncrement ) {
-				return null;
+			if ( generatedValuesAccess != null ) {
+				return generatedValuesAccess.get();
 			}
 		}
 
@@ -398,7 +398,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 		}
 	}
 
-	protected boolean handlePotentialImplicitForcedVersionIncrement(
+	protected Supplier<Object> handlePotentialImplicitForcedVersionIncrement(
 			Object entity,
 			Object id,
 			Object[] values,
@@ -440,11 +440,11 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 		if ( isSimpleVersionUpdate ) {
 			// we have just the version being updated - use the special handling
 			assert newVersion != null;
-			doVersionUpdate( entity, id, newVersion, oldVersion, session );
-			return true;
+			final Object generatedValues = doVersionUpdate( entity, id, newVersion, oldVersion, session );
+			return () -> generatedValues;
 		}
 		else {
-			return false;
+			return null;
 		}
 	}
 
@@ -469,16 +469,16 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 				: entityPersister().getPropertyUpdateability();
 	}
 
-	protected void doVersionUpdate(
+	protected Object doVersionUpdate(
 			Object entity,
 			Object id,
 			Object version,
 			Object oldVersion,
 			SharedSessionContractImplementor session) {
-		doVersionUpdate( entity, id, version, oldVersion, true, session );
+		return doVersionUpdate( entity, id, version, oldVersion, true, session );
 	}
 
-	protected void doVersionUpdate(
+	protected Object doVersionUpdate(
 			Object entity,
 			Object id,
 			Object version,
@@ -524,7 +524,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 		);
 
 		try {
-			mutationExecutor.execute(
+			return mutationExecutor.execute(
 					entity,
 					null,
 					(tableMapping) -> tableMapping.getTableName().equals( entityPersister().getIdentifierTableName() ),

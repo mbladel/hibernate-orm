@@ -95,7 +95,7 @@ public class GeneratedValuesProcessor {
 	private boolean needsSubsequentSelect(EventType timing, List<AttributeMapping> generatedAttributes) {
 		if ( timing == EventType.INSERT ) {
 			return entityDescriptor.getInsertDelegate() == null
-					|| !entityDescriptor.getInsertDelegate().supportsRetrievingGeneratedValues()
+					|| !entityDescriptor.getInsertDelegate().supportsArbitraryValues()
 					// Check if we need to select more properties than what is processed by the identity delegate.
 					// This can happen for on-execution generated values on non-identifier tables
 					|| generatedAttributes.size() > numberOfGeneratedNonIdentifierProperties( timing );

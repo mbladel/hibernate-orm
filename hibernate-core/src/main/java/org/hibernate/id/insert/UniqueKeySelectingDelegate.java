@@ -96,12 +96,12 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 	}
 
 	@Override
-	public boolean supportsRetrievingGeneratedValues() {
+	public boolean supportsArbitraryValues() {
 		return true;
 	}
 
 	@Override
-	public boolean supportsRetrievingRowId() {
+	public boolean supportsRowId() {
 		return true;
 	}
 }

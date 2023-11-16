@@ -68,7 +68,7 @@ public class SybaseJConnGetGeneratedKeysDelegate extends GetGeneratedKeysDelegat
 	}
 
 	@Override
-	public boolean supportsRetrievingGeneratedValues() {
+	public boolean supportsArbitraryValues() {
 		return false;
 	}
 }

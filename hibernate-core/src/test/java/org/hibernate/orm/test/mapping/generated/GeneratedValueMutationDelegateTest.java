@@ -60,7 +60,7 @@ public class GeneratedValueMutationDelegateTest {
 
 			inspector.assertIsInsert( 0 );
 			inspector.assertExecutedCount(
-					delegate != null && delegate.supportsRetrievingGeneratedValues() ? 1 : 2
+					delegate != null && delegate.supportsArbitraryValues() ? 1 : 2
 			);
 		} );
 	}
@@ -86,7 +86,7 @@ public class GeneratedValueMutationDelegateTest {
 			inspector.assertIsSelect( 0 );
 			inspector.assertIsUpdate( 1 );
 			inspector.assertExecutedCount(
-					delegate != null && delegate.supportsRetrievingGeneratedValues() ? 2 : 3
+					delegate != null && delegate.supportsArbitraryValues() ? 2 : 3
 			);
 		} );
 	}
@@ -108,10 +108,10 @@ public class GeneratedValueMutationDelegateTest {
 
 			inspector.assertIsInsert( 0 );
 			inspector.assertExecutedCount(
-					delegate != null && delegate.supportsRetrievingGeneratedValues() ? 1 : 2
+					delegate != null && delegate.supportsArbitraryValues() ? 1 : 2
 			);
 
-			final boolean shouldHaveRowId = delegate != null && delegate.supportsRetrievingRowId();
+			final boolean shouldHaveRowId = delegate != null && delegate.supportsRowId();
 			if ( shouldHaveRowId ) {
 				// assert row-id was populated in entity entry
 				final PersistenceContext pc = session.getPersistenceContextInternal();
