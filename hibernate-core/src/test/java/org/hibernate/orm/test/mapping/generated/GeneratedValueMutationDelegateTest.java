@@ -10,12 +10,17 @@ import java.util.Calendar;
 
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Generated;
+import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.RowId;
+import org.hibernate.annotations.SourceType;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.values.MutationGeneratedValuesDelegate;
+import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
+import org.hibernate.sql.model.MutationType;
 
 import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -30,15 +35,15 @@ import jakarta.persistence.Id;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DomainModel( annotatedClasses = {
-		MarcosGeneratedValueTest.ValuesOnly.class,
-		MarcosGeneratedValueTest.ValuesAndRowId.class,
+		GeneratedValueMutationDelegateTest.ValuesOnly.class,
+		GeneratedValueMutationDelegateTest.ValuesAndRowId.class,
+		GeneratedValueMutationDelegateTest.ValuesAndNaturalId.class,
 } )
-@SessionFactory(useCollectingStatementInspector = true)
-public class MarcosGeneratedValueTest {
+@SessionFactory( useCollectingStatementInspector = true )
+public class GeneratedValueMutationDelegateTest {
 	@Test
 	public void testInsertGenerationValuesOnly(SessionFactoryScope scope) {
-		final EntityMutationTarget entityDescriptor = (EntityMutationTarget) scope.getSessionFactory()
-				.getMappingMetamodel().findEntityDescriptor( ValuesOnly.class );
+		final MutationGeneratedValuesDelegate delegate = getDelegate( scope, ValuesOnly.class, MutationType.INSERT );
 		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
 		inspector.clear();
 
@@ -46,27 +51,23 @@ public class MarcosGeneratedValueTest {
 		//  - joined inheritance
 		//  - secondary table???
 
-		// todo marco : add test for unique key delegate (values, rowid and identity should be supported)
-
 		scope.inTransaction( session -> {
 			final ValuesOnly entity = new ValuesOnly( 1 );
 			session.persist( entity );
 			session.flush();
 
-			assertThat( entity.getName() ).isEqualTo( "default" );
+			assertThat( entity.getName() ).isEqualTo( "default_name" );
 
 			inspector.assertIsInsert( 0 );
-			final MutationGeneratedValuesDelegate insertDelegate = entityDescriptor.getInsertDelegate();
 			inspector.assertExecutedCount(
-					insertDelegate != null && insertDelegate.supportsRetrievingGeneratedValues() ? 1 : 2
+					delegate != null && delegate.supportsRetrievingGeneratedValues() ? 1 : 2
 			);
 		} );
 	}
 
 	@Test
 	public void testUpdateGenerationValuesOnly(SessionFactoryScope scope) {
-		final EntityMutationTarget entityDescriptor = (EntityMutationTarget) scope.getSessionFactory()
-				.getMappingMetamodel().findEntityDescriptor( ValuesOnly.class );
+		final MutationGeneratedValuesDelegate delegate = getDelegate( scope, ValuesOnly.class, MutationType.UPDATE );
 		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
 		scope.inTransaction( session -> {
 			final ValuesOnly entity = new ValuesOnly( 2 );
@@ -84,32 +85,33 @@ public class MarcosGeneratedValueTest {
 
 			inspector.assertIsSelect( 0 );
 			inspector.assertIsUpdate( 1 );
-			final MutationGeneratedValuesDelegate updateDelegate = entityDescriptor.getUpdateDelegate();
 			inspector.assertExecutedCount(
-					updateDelegate != null && updateDelegate.supportsRetrievingGeneratedValues() ? 2 : 3
+					delegate != null && delegate.supportsRetrievingGeneratedValues() ? 2 : 3
 			);
 		} );
 	}
 
 	@Test
 	public void testGeneratedValuesAndRowId(SessionFactoryScope scope) {
-		final EntityMutationTarget entityDescriptor = (EntityMutationTarget) scope.getSessionFactory()
-				.getMappingMetamodel().findEntityDescriptor( ValuesAndRowId.class );
+		final MutationGeneratedValuesDelegate delegate = getDelegate(
+				scope,
+				ValuesAndRowId.class,
+				MutationType.INSERT
+		);
 		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
 		scope.inTransaction( session -> {
 			final ValuesAndRowId entity = new ValuesAndRowId( 1 );
 			session.persist( entity );
 			session.flush();
 
-			assertThat( entity.getName() ).isEqualTo( "default" );
+			assertThat( entity.getName() ).isEqualTo( "default_name" );
 
 			inspector.assertIsInsert( 0 );
-			final MutationGeneratedValuesDelegate insertDelegate = entityDescriptor.getInsertDelegate();
 			inspector.assertExecutedCount(
-					insertDelegate != null && insertDelegate.supportsRetrievingGeneratedValues() ? 1 : 2
+					delegate != null && delegate.supportsRetrievingGeneratedValues() ? 1 : 2
 			);
 
-			final boolean shouldHaveRowId = insertDelegate != null && insertDelegate.supportsRetrievingRowId();
+			final boolean shouldHaveRowId = delegate != null && delegate.supportsRetrievingRowId();
 			if ( shouldHaveRowId ) {
 				// assert row-id was populated in entity entry
 				final PersistenceContext pc = session.getPersistenceContextInternal();
@@ -123,9 +125,50 @@ public class MarcosGeneratedValueTest {
 			entity.setData( "changed" );
 			session.flush();
 
+			assertThat( entity.getUpdateDate() ).isNotNull();
+
 			inspector.assertIsUpdate( 0 );
 			inspector.assertNumberOfOccurrenceInQueryNoSpace( 0, "id_column", shouldHaveRowId ? 0 : 1 );
 		} );
+		scope.inSession( session -> assertThat( session.find( ValuesAndRowId.class, 1 ).getUpdateDate() ).isNotNull() );
+	}
+
+	@Test
+	public void testInsertGenerationValuesAndNaturalId(SessionFactoryScope scope) {
+		final MutationGeneratedValuesDelegate delegate = getDelegate(
+				scope,
+				ValuesAndNaturalId.class,
+				MutationType.INSERT
+		);
+		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
+		inspector.clear();
+
+		scope.inTransaction( session -> {
+			final ValuesAndNaturalId entity = new ValuesAndNaturalId( 1, "natural_1" );
+			session.persist( entity );
+			session.flush();
+
+			assertThat( entity.getName() ).isEqualTo( "default_name" );
+
+			inspector.assertIsInsert( 0 );
+			final boolean isUniqueKeyDelegate = delegate instanceof UniqueKeySelectingDelegate;
+			inspector.assertExecutedCount(
+					delegate == null || isUniqueKeyDelegate ? 2 : 1
+			);
+			if ( isUniqueKeyDelegate ) {
+				inspector.assertNumberOfOccurrenceInQueryNoSpace( 1, "data", 1 );
+				inspector.assertNumberOfOccurrenceInQueryNoSpace( 1, "id_column", 0 );
+			}
+		} );
+	}
+
+	private static MutationGeneratedValuesDelegate getDelegate(
+			SessionFactoryScope scope,
+			Class<?> entityClass,
+			MutationType mutationType) {
+		final EntityMutationTarget entityDescriptor = (EntityMutationTarget) scope.getSessionFactory()
+				.getMappingMetamodel().findEntityDescriptor( entityClass );
+		return entityDescriptor.getMutationDelegate( mutationType );
 	}
 
 	@Entity( name = "ValuesOnly" )
@@ -135,11 +178,10 @@ public class MarcosGeneratedValueTest {
 		private Integer id;
 
 		@Generated( event = EventType.INSERT )
-		@ColumnDefault( "'default'" )
+		@ColumnDefault( "'default_name'" )
 		private String name;
 
-		@Generated( event = EventType.UPDATE )
-		@ColumnDefault( "CURRENT_TIMESTAMP" )
+		@UpdateTimestamp( source = SourceType.DB )
 		private Calendar updateDate;
 
 		@SuppressWarnings( "FieldCanBeLocal" )
@@ -174,11 +216,10 @@ public class MarcosGeneratedValueTest {
 		private Integer id;
 
 		@Generated( event = EventType.INSERT )
-		@ColumnDefault( "'default'" )
+		@ColumnDefault( "'default_name'" )
 		private String name;
 
-		@Generated( event = EventType.UPDATE )
-		@ColumnDefault( "CURRENT_TIMESTAMP" )
+		@UpdateTimestamp( source = SourceType.DB )
 		private Calendar updateDate;
 
 		@SuppressWarnings( "FieldCanBeLocal" )
@@ -201,6 +242,33 @@ public class MarcosGeneratedValueTest {
 
 		public void setData(String data) {
 			this.data = data;
+		}
+	}
+
+	@Entity( name = "ValuesAndNaturalId" )
+	@SuppressWarnings( "unused" )
+	public static class ValuesAndNaturalId {
+		@Id
+		@Column( name = "id_column" )
+		private Integer id;
+
+		@Generated( event = EventType.INSERT )
+		@ColumnDefault( "'default_name'" )
+		private String name;
+
+		@NaturalId
+		private String data;
+
+		public ValuesAndNaturalId() {
+		}
+
+		private ValuesAndNaturalId(Integer id, String data) {
+			this.id = id;
+			this.data = data;
+		}
+
+		public String getName() {
+			return name;
 		}
 	}
 }
