@@ -21,7 +21,7 @@ import org.hibernate.generator.OnExecutionGenerator;
  * @deprecated This is not used anymore in any of the
  * {@link org.hibernate.generator.values.GeneratedValuesMutationDelegate} implementations.
  */
-@Deprecated( since = "7.0" ) // todo marco : correct ?
+@Deprecated( since = "7.0" )
 public class InsertSelectIdentityInsert extends IdentifierGeneratingInsert {
 	protected String identityColumnName;
 
@@ -45,7 +45,6 @@ public class InsertSelectIdentityInsert extends IdentifierGeneratingInsert {
 		return super.addGeneratedColumns( columnNames, generator );
 	}
 
-	// todo marco : deprecate appendIdentitySelectToInsert() too ?
 	public String toStatementString() {
 		return getDialect().getIdentityColumnSupport()
 				.appendIdentitySelectToInsert( identityColumnName, super.toStatementString() );

@@ -4,9 +4,9 @@
  * License: GNU Lesser General Public License (LGPL), version 2.1 or later
  * See the lgpl.txt file in the root directory or http://www.gnu.org/licenses/lgpl-2.1.html
  */
-package org.hibernate.orm.test.mapping.generated;
+package org.hibernate.orm.test.mapping.generated.delegate;
 
-import java.util.Calendar;
+import java.util.Date;
 
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Generated;
@@ -35,21 +35,17 @@ import jakarta.persistence.Id;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DomainModel( annotatedClasses = {
-		GeneratedValueMutationDelegateTest.ValuesOnly.class,
-		GeneratedValueMutationDelegateTest.ValuesAndRowId.class,
-		GeneratedValueMutationDelegateTest.ValuesAndNaturalId.class,
+		MutationDelegateTest.ValuesOnly.class,
+		MutationDelegateTest.ValuesAndRowId.class,
+		MutationDelegateTest.ValuesAndNaturalId.class,
 } )
 @SessionFactory( useCollectingStatementInspector = true )
-public class GeneratedValueMutationDelegateTest {
+public class MutationDelegateTest {
 	@Test
-	public void testInsertGenerationValuesOnly(SessionFactoryScope scope) {
+	public void testInsertGeneratedValues(SessionFactoryScope scope) {
 		final GeneratedValuesMutationDelegate delegate = getDelegate( scope, ValuesOnly.class, MutationType.INSERT );
 		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
 		inspector.clear();
-
-		// todo marco : add tests for multi-table situations ?
-		//  - joined inheritance
-		//  - secondary table???
 
 		scope.inTransaction( session -> {
 			final ValuesOnly entity = new ValuesOnly( 1 );
@@ -66,7 +62,7 @@ public class GeneratedValueMutationDelegateTest {
 	}
 
 	@Test
-	public void testUpdateGenerationValuesOnly(SessionFactoryScope scope) {
+	public void testUpdateGeneratedValues(SessionFactoryScope scope) {
 		final GeneratedValuesMutationDelegate delegate = getDelegate( scope, ValuesOnly.class, MutationType.UPDATE );
 		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
 		scope.inTransaction( session -> {
@@ -99,6 +95,8 @@ public class GeneratedValueMutationDelegateTest {
 				MutationType.INSERT
 		);
 		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
+		inspector.clear();
+
 		scope.inTransaction( session -> {
 			final ValuesAndRowId entity = new ValuesAndRowId( 1 );
 			session.persist( entity );
@@ -134,7 +132,7 @@ public class GeneratedValueMutationDelegateTest {
 	}
 
 	@Test
-	public void testInsertGenerationValuesAndNaturalId(SessionFactoryScope scope) {
+	public void testInsertGeneratedValuesAndNaturalId(SessionFactoryScope scope) {
 		final GeneratedValuesMutationDelegate delegate = getDelegate(
 				scope,
 				ValuesAndNaturalId.class,
@@ -182,7 +180,7 @@ public class GeneratedValueMutationDelegateTest {
 		private String name;
 
 		@UpdateTimestamp( source = SourceType.DB )
-		private Calendar updateDate;
+		private Date updateDate;
 
 		@SuppressWarnings( "FieldCanBeLocal" )
 		private String data;
@@ -198,7 +196,7 @@ public class GeneratedValueMutationDelegateTest {
 			return name;
 		}
 
-		public Calendar getUpdateDate() {
+		public Date getUpdateDate() {
 			return updateDate;
 		}
 
@@ -220,7 +218,7 @@ public class GeneratedValueMutationDelegateTest {
 		private String name;
 
 		@UpdateTimestamp( source = SourceType.DB )
-		private Calendar updateDate;
+		private Date updateDate;
 
 		@SuppressWarnings( "FieldCanBeLocal" )
 		private String data;
@@ -236,7 +234,7 @@ public class GeneratedValueMutationDelegateTest {
 			return name;
 		}
 
-		public Calendar getUpdateDate() {
+		public Date getUpdateDate() {
 			return updateDate;
 		}
 
