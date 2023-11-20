@@ -4,9 +4,9 @@
  * License: GNU Lesser General Public License (LGPL), version 2.1 or later
  * See the lgpl.txt file in the root directory or http://www.gnu.org/licenses/lgpl-2.1.html
  */
-package org.hibernate.orm.test.mapping.generated;
+package org.hibernate.orm.test.mapping.generated.delegate;
 
-import java.util.Calendar;
+import java.util.Date;
 
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Generated;
@@ -39,16 +39,16 @@ import jakarta.persistence.Id;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DomainModel( annotatedClasses = {
-		GeneratedValueMutationDelegateIdentityTest.IdentityOnly.class,
-		GeneratedValueMutationDelegateIdentityTest.IdentityAndValues.class,
-		GeneratedValueMutationDelegateIdentityTest.IdentityAndValuesAndRowId.class,
-		GeneratedValueMutationDelegateIdentityTest.IdentityAndValuesAndRowIdAndNaturalId.class,
+		MutationDelegateIdentityTest.IdentityOnly.class,
+		MutationDelegateIdentityTest.IdentityAndValues.class,
+		MutationDelegateIdentityTest.IdentityAndValuesAndRowId.class,
+		MutationDelegateIdentityTest.IdentityAndValuesAndRowIdAndNaturalId.class,
 } )
 @SessionFactory( useCollectingStatementInspector = true )
 @RequiresDialectFeature( feature = DialectFeatureChecks.SupportsIdentityColumns.class )
-public class GeneratedValueMutationDelegateIdentityTest {
+public class MutationDelegateIdentityTest {
 	@Test
-	public void testInsertGenerationIdentityOnly(SessionFactoryScope scope) {
+	public void testInsertGeneratedIdentityOnly(SessionFactoryScope scope) {
 		final GeneratedValuesMutationDelegate delegate = getDelegate( scope, IdentityOnly.class, MutationType.INSERT );
 		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
 		inspector.clear();
@@ -67,7 +67,7 @@ public class GeneratedValueMutationDelegateIdentityTest {
 	}
 
 	@Test
-	public void testInsertGenerationValuesAndIdentity(SessionFactoryScope scope) {
+	public void testInsertGeneratedValuesAndIdentity(SessionFactoryScope scope) {
 		final GeneratedValuesMutationDelegate delegate = getDelegate(
 				scope,
 				IdentityAndValues.class,
@@ -92,7 +92,7 @@ public class GeneratedValueMutationDelegateIdentityTest {
 	}
 
 	@Test
-	public void testUpdateGenerationAndIdentity(SessionFactoryScope scope) {
+	public void testUpdateGeneratedValuesAndIdentity(SessionFactoryScope scope) {
 		final GeneratedValuesMutationDelegate delegate = getDelegate(
 				scope,
 				IdentityAndValues.class,
@@ -124,7 +124,7 @@ public class GeneratedValueMutationDelegateIdentityTest {
 	}
 
 	@Test
-	public void testInsertGenerationValuesAndIdentityAndRowId(SessionFactoryScope scope) {
+	public void testInsertGeneratedValuesAndIdentityAndRowId(SessionFactoryScope scope) {
 		final GeneratedValuesMutationDelegate delegate = getDelegate(
 				scope,
 				IdentityAndValuesAndRowId.class,
@@ -172,7 +172,7 @@ public class GeneratedValueMutationDelegateIdentityTest {
 	}
 
 	@Test
-	public void testInsertGenerationValuesAndIdentityAndRowIdAndNaturalId(SessionFactoryScope scope) {
+	public void testInsertGeneratedValuesAndIdentityAndRowIdAndNaturalId(SessionFactoryScope scope) {
 		final GeneratedValuesMutationDelegate delegate = getDelegate(
 				scope,
 				IdentityAndValuesAndRowIdAndNaturalId.class,
@@ -247,7 +247,7 @@ public class GeneratedValueMutationDelegateIdentityTest {
 		private String name;
 
 		@UpdateTimestamp( source = SourceType.DB )
-		private Calendar updateDate;
+		private Date updateDate;
 
 		private String data;
 
@@ -259,7 +259,7 @@ public class GeneratedValueMutationDelegateIdentityTest {
 			return name;
 		}
 
-		public Calendar getUpdateDate() {
+		public Date getUpdateDate() {
 			return updateDate;
 		}
 
@@ -282,7 +282,7 @@ public class GeneratedValueMutationDelegateIdentityTest {
 		private String name;
 
 		@UpdateTimestamp( source = SourceType.DB )
-		private Calendar updateDate;
+		private Date updateDate;
 
 		private String data;
 
@@ -294,7 +294,7 @@ public class GeneratedValueMutationDelegateIdentityTest {
 			return name;
 		}
 
-		public Calendar getUpdateDate() {
+		public Date getUpdateDate() {
 			return updateDate;
 		}
 

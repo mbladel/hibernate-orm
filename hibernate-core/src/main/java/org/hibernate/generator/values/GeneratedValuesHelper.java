@@ -81,10 +81,6 @@ public class GeneratedValuesHelper {
 
 		final GeneratedValuesImpl generatedValues = new GeneratedValuesImpl( generatedModelParts );
 		for ( ModelPart modelPart : generatedModelParts ) {
-			assert modelPart instanceof SelectableMapping : "Unsupported non-selectable generated value";
-
-			// todo marco : would be nice to avoid the cast here, but if we want to keep
-			//  the options open (for Components and/or other attribute types) we're going to need it
 			final SelectableMapping selectable = getActualSelectableMapping( modelPart, persister );
 			final JdbcMapping jdbcMapping = selectable.getJdbcMapping();
 			final Object value = jdbcMapping.getJdbcValueExtractor().extract( resultSet, columnIndex(
@@ -131,6 +127,9 @@ public class GeneratedValuesHelper {
 	}
 
 	public static SelectableMapping getActualSelectableMapping(ModelPart modelPart, EntityPersister persister) {
+		// todo marco : would be nice to avoid the cast here, but if we want to keep
+		//  the options open (for Components and/or other attribute types) we're going to need it
+		assert modelPart instanceof SelectableMapping : "Unsupported non-selectable generated value";
 		final ModelPart actualModelPart = modelPart.isEntityIdentifierMapping() ?
 				persister.getRootEntityDescriptor().getIdentifierMapping() :
 				modelPart;
@@ -192,7 +191,6 @@ public class GeneratedValuesHelper {
 			boolean unquote) {
 		final List<? extends ModelPart> generated = persister.getGeneratedProperties( timing );
 		return generated.stream().map( modelPart -> {
-			assert modelPart instanceof SelectableMapping : "Unsupported non-selectable generated value";
 			final SelectableMapping selectableMapping = getActualSelectableMapping( modelPart, persister );
 			final String selectionExpression = selectableMapping.getSelectionExpression();
 			return unquote ? StringHelper.unquote( selectionExpression, dialect ) : selectionExpression;
