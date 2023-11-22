@@ -14,6 +14,7 @@ import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.RowId;
 import org.hibernate.annotations.SourceType;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.generator.EventType;
@@ -26,8 +27,10 @@ import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DialectFeatureChecks;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.RequiresDialectFeature;
+import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.hibernate.testing.orm.junit.Setting;
 import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.Column;
@@ -38,6 +41,12 @@ import jakarta.persistence.Id;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Tests {@link GeneratedValuesMutationDelegate efficient generated values retrieval}
+ * when {@link GenerationType#IDENTITY identity} generated identifiers are involved.
+ *
+ * @author Marco Belladelli
+ */
 @DomainModel( annotatedClasses = {
 		MutationDelegateIdentityTest.IdentityOnly.class,
 		MutationDelegateIdentityTest.IdentityAndValues.class,
@@ -46,6 +55,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 } )
 @SessionFactory( useCollectingStatementInspector = true )
 @RequiresDialectFeature( feature = DialectFeatureChecks.SupportsIdentityColumns.class )
+// Batch size is only enabled to make sure it's ignored when using mutation delegates
+@ServiceRegistry( settings = @Setting( name = AvailableSettings.STATEMENT_BATCH_SIZE, value = "5" ) )
 public class MutationDelegateIdentityTest {
 	@Test
 	public void testInsertGeneratedIdentityOnly(SessionFactoryScope scope) {

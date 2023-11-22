@@ -55,8 +55,8 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 	public InsertCoordinator(AbstractEntityPersister entityPersister, SessionFactoryImplementor factory) {
 		super( entityPersister, factory );
 
-		if ( entityPersister.hasInsertGeneratedProperties() ) {
-			// disable batching in case of insert generated properties
+		if ( entityPersister.isIdentifierAssignedByInsert() || entityPersister.hasInsertGeneratedProperties() ) {
+			// disable batching in case of insert generated identifier or properties
 			batchKey = null;
 		}
 		else {
