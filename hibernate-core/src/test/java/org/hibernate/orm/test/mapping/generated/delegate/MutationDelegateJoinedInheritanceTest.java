@@ -34,6 +34,9 @@ import jakarta.persistence.InheritanceType;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
+ * Tests {@link GeneratedValuesMutationDelegate efficient generated values retrieval}
+ * with {@link InheritanceType#JOINED} inheritance structures.
+ *
  * @author Marco Belladelli
  */
 @DomainModel( annotatedClasses = {

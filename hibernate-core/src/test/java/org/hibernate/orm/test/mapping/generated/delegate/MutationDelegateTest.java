@@ -14,6 +14,7 @@ import org.hibernate.annotations.NaturalId;
 import org.hibernate.annotations.RowId;
 import org.hibernate.annotations.SourceType;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.generator.EventType;
@@ -24,8 +25,10 @@ import org.hibernate.sql.model.MutationType;
 
 import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.hibernate.testing.orm.junit.Setting;
 import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.Column;
@@ -34,12 +37,19 @@ import jakarta.persistence.Id;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Generic tests regarding {@link GeneratedValuesMutationDelegate efficient generated values retrieval}.
+ *
+ * @author Marco Belladelli
+ */
 @DomainModel( annotatedClasses = {
 		MutationDelegateTest.ValuesOnly.class,
 		MutationDelegateTest.ValuesAndRowId.class,
 		MutationDelegateTest.ValuesAndNaturalId.class,
 } )
 @SessionFactory( useCollectingStatementInspector = true )
+// Batch size is only enabled to make sure it's ignored when using mutation delegates
+@ServiceRegistry( settings = @Setting( name = AvailableSettings.STATEMENT_BATCH_SIZE, value = "5" ) )
 public class MutationDelegateTest {
 	@Test
 	public void testInsertGeneratedValues(SessionFactoryScope scope) {

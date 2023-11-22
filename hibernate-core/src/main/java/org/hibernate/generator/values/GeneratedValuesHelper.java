@@ -67,9 +67,11 @@ public class GeneratedValuesHelper {
 
 		final List<ModelPart> generatedModelParts;
 		if ( timing == EventType.INSERT ) {
-			generatedModelParts = persister.getInsertDelegate().supportsArbitraryValues() ?
-					new ArrayList<>( persister.getInsertGeneratedProperties() ) :
-					new ArrayList<>( List.of( persister.getIdentifierMapping() ) );
+			generatedModelParts = new ArrayList<>(
+					persister.getInsertDelegate().supportsArbitraryValues() ?
+							persister.getInsertGeneratedProperties() :
+							List.of( persister.getIdentifierMapping() )
+			);
 
 			if ( persister.getRowIdMapping() != null && persister.getInsertDelegate().supportsRowId() ) {
 				generatedModelParts.add( persister.getRowIdMapping() );

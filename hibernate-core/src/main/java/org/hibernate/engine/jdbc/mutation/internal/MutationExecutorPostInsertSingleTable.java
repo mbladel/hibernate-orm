@@ -22,7 +22,7 @@ import org.hibernate.sql.model.PreparableMutationOperation;
 import org.hibernate.sql.model.ValuesAnalysis;
 import org.hibernate.sql.model.jdbc.JdbcValueDescriptor;
 
-import static org.hibernate.engine.jdbc.mutation.internal.ModelMutationHelper.delegatePreparation;
+import static org.hibernate.engine.jdbc.mutation.internal.ModelMutationHelper.standardPreparation;
 import static org.hibernate.sql.model.ModelMutationLogging.MODEL_MUTATION_LOGGER;
 
 /**
@@ -40,7 +40,10 @@ import static org.hibernate.sql.model.ModelMutationLogging.MODEL_MUTATION_LOGGER
  * 	 			MutationExecutorPostInsertSingleTable variants
  *
  * @author Steve Ebersole
+ *
+ * @deprecated This was consolidated into {@link MutationExecutorSingleNonBatched}.
  */
+@Deprecated( since = "7.0", forRemoval = true )
 public class MutationExecutorPostInsertSingleTable implements MutationExecutor, JdbcValueBindingsImpl.JdbcValueDescriptorAccess {
 	private final EntityMutationTarget mutationTarget;
 	private final SharedSessionContractImplementor session;
@@ -58,7 +61,7 @@ public class MutationExecutorPostInsertSingleTable implements MutationExecutor, 
 		assert mutationOperationGroup.getNumberOfOperations() == 1;
 
 		this.operation = (PreparableMutationOperation) mutationOperationGroup.getOperation( mutationTarget.getIdentifierTableName() );
-		this.statemementDetails = delegatePreparation( operation, session );
+		this.statemementDetails = standardPreparation( operation, mutationTarget.getMutationDelegate( operation.getMutationType() ) , session );
 
 		this.valueBindings = new JdbcValueBindingsImpl(
 				operation.getMutationType(),
