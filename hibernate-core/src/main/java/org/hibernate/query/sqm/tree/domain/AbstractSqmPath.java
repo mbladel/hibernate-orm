@@ -174,6 +174,12 @@ public abstract class AbstractSqmPath<T> extends AbstractSqmExpression<T> implem
 	}
 
 	@Override
+	public SqmExpressible<T> getExpressible() {
+		//noinspection unchecked
+		return (SqmExpressible<T>) getResolvedModel();
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
 	public SqmExpression<Class<? extends T>> type() {
 		final SqmPathSource<T> referencedPathSource = getReferencedPathSource();
