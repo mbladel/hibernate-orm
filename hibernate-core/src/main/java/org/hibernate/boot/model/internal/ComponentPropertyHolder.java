@@ -301,7 +301,7 @@ public class ComponentPropertyHolder extends AbstractPropertyHolder {
 				 */
 				final CollectionPropertyHolder collectionPropertyHolder = getParentCollectionPropertyHolder();
 				if ( collectionPropertyHolder.getCollectionBinding().isIndexed() ) {
-					BinderHelper.checkConsistentColumnMutability( property, columns );
+					BinderHelper.checkConsistentColumnMutability( property.getName(), columns );
 				}
 			}
 		}

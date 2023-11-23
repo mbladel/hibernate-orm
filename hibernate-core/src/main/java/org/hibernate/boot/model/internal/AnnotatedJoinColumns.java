@@ -208,6 +208,7 @@ public class AnnotatedJoinColumns extends AnnotatedColumns {
 			for ( JoinColumn joinColumn : joinColumns ) {
 				AnnotatedJoinColumn.buildExplicitJoinTableJoinColumn( parent, propertyHolder, inferredData, joinColumn );
 			}
+			BinderHelper.checkConsistentColumnMutability( inferredData.getPropertyName(), parent );
 		}
 		return parent;
 	}

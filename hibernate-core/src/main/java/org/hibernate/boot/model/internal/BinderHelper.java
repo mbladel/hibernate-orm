@@ -1163,12 +1163,12 @@ public class BinderHelper {
 	}
 
 	public static void checkConsistentColumnMutability(
-			Property property,
+			String propertyName,
 			AnnotatedColumns columns) {
 		for ( AnnotatedColumn column : columns.getColumns() ) {
 			if ( column.isInsertable() != column.isUpdatable() ) {
 				throw new AnnotationException(
-						"Column '" + column.getName() + "' on property '" + property.getName()
+						"Column '" + column.getName() + "' on property '" + propertyName
 								+ "' should be defined with the same insertable and updatable flags"
 				);
 			}
