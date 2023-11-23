@@ -277,8 +277,43 @@ public class ComponentPropertyHolder extends AbstractPropertyHolder {
 					);
 				}
 			}
+			if ( isWithinElementCollection ) {
+				/*
+					Given an indexed element collection, e.g. :
+
+					class MyEntity {
+						@OrderColumn
+						@ElementCollection
+						private List<MyEmbeddable> myEmbeddables;
+					}
+
+					@Embeddable
+					class MyEmbeddable {
+						@Column(insertable = false, updatable = false)
+						private String embeddedProperty;
+					}
+
+					We cannot understand if a collection update is due to a change in the value
+					of embeddedProperty or because a new element has been added to the list in
+					an existing position (update) shifting the old value (insert).
+
+					For this reason, column insertability and updatability should always match.
+				 */
+				final CollectionPropertyHolder collectionPropertyHolder = getParentCollectionPropertyHolder();
+				if ( collectionPropertyHolder.getCollectionBinding().isIndexed() ) {
+					BinderHelper.checkConsistentColumnMutability( property, columns );
+				}
+			}
 		}
 		addProperty( property, declaringClass );
+	}
+
+	private CollectionPropertyHolder getParentCollectionPropertyHolder() {
+		AbstractPropertyHolder collectionPropertyHolder = parent;
+		while ( !( collectionPropertyHolder instanceof CollectionPropertyHolder ) ) {
+			collectionPropertyHolder = collectionPropertyHolder.parent;
+		}
+		return (CollectionPropertyHolder) collectionPropertyHolder;
 	}
 
 	@Override

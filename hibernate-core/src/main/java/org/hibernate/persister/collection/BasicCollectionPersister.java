@@ -491,32 +491,8 @@ public class BasicCollectionPersister extends AbstractCollectionPersister {
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// SET
 
-		if ( hasIndex() ) {
-			/*
-				Given :
+		attribute.getElementDescriptor().forEachUpdatable( updateBuilder );
 
-				class MyEntity {
-					@ElementCollection(fetch = FetchType.LAZY)
-					@OrderColumn
-					private List<MyEmbeddable> myEmbeddables;
-				}
-
-				@Embeddable
-				public static class MyEmbeddable {
-					@Column(updatable = false)
-					private String embeddedProperty;
-				}
-
-			 	we cannot understand if the update is due to a change in the value embeddedProperty or because a
-			 	new element has been added to the list in an existing position (update) shifting the old value (insert).
-
-			 	For this reason we cannot take into consideration the `@Column(updatable = false)`
-			 */
-			attribute.getElementDescriptor().forEachNonFormula( updateBuilder );
-		}
-		else {
-			attribute.getElementDescriptor().forEachUpdatable( updateBuilder );
-		}
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// WHERE
 

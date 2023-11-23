@@ -1161,4 +1161,17 @@ public class BinderHelper {
 		}
 		return null;
 	}
+
+	public static void checkConsistentColumnMutability(
+			Property property,
+			AnnotatedColumns columns) {
+		for ( AnnotatedColumn column : columns.getColumns() ) {
+			if ( column.isInsertable() != column.isUpdatable() ) {
+				throw new AnnotationException(
+						"Column '" + column.getName() + "' on property '" + property.getName()
+								+ "' should be defined with the same insertable and updatable flags"
+				);
+			}
+		}
+	}
 }
