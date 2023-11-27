@@ -79,27 +79,18 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 		// else inserted the same pk first, the insert would fail
 
 		if ( !isVeto() ) {
-			final Object generatedValues = persister.insert( getState(), instance, session );
+			final GeneratedValues generatedValues = persister.insert( getState(), instance, session );
 			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
-			final GeneratedValues generated;
-			// todo marco : eventually this check won't be necessary
-			if ( generatedValues instanceof GeneratedValues ) {
-				generated = ( (GeneratedValues) generatedValues );
-				generatedId = generated.getGeneratedValue( persister.getIdentifierMapping() );
-				// Process row-id values when available early by replacing the entity entry
-				if ( persister.getRowIdMapping() != null ) {
-					final Object rowId = generated.getGeneratedValue( persister.getRowIdMapping() );
-					if ( rowId != null ) {
-						persistenceContext.replaceEntityEntryRowId( getInstance(), rowId );
-					}
+			generatedId = generatedValues.getGeneratedValue( persister.getIdentifierMapping() );
+			// Process row-id values when available early by replacing the entity entry
+			if ( persister.getRowIdMapping() != null ) {
+				final Object rowId = generatedValues.getGeneratedValue( persister.getRowIdMapping() );
+				if ( rowId != null ) {
+					persistenceContext.replaceEntityEntryRowId( getInstance(), rowId );
 				}
 			}
-			else {
-				generated = null;
-				generatedId = generatedValues;
-			}
 			if ( persister.hasInsertGeneratedProperties() ) {
-				persister.processInsertGeneratedProperties( generatedId, instance, getState(), generated, session );
+				persister.processInsertGeneratedProperties( generatedId, instance, getState(), generatedValues, session );
 			}
 			//need to do that here rather than in the save event listener to let
 			//the post insert events to have a id-filled entity when IDENTITY is used (EJB3)

@@ -553,7 +553,7 @@ public class InsertExecutionDelegate implements TableBasedInsertHandler.Executio
 			final ValueBinder jdbcValueBinder = identifierMapping.getJdbcMapping().getJdbcValueBinder();
 			for ( Map.Entry<Object, Object> entry : entityTableToRootIdentity.entrySet() ) {
 				// todo marco : performInsert(String sql, ...) doesn't account for non-id generated values
-				final Object generatedValues = identifierDelegate.performInsert(
+				final GeneratedValues generatedValues = identifierDelegate.performInsert(
 						finalSql,
 						session,
 						new Binder() {
@@ -567,16 +567,7 @@ public class InsertExecutionDelegate implements TableBasedInsertHandler.Executio
 							}
 						}
 				);
-
-				// todo marco : this will be unnecessary
-				final Object rootIdentity;
-				if ( generatedValues instanceof GeneratedValues ) {
-					rootIdentity = ( (GeneratedValues) generatedValues ).getGeneratedValue( identifierMapping );
-				}
-				else {
-					rootIdentity = generatedValues;
-				}
-
+				final Object rootIdentity = generatedValues.getGeneratedValue( identifierMapping );
 				entry.setValue( rootIdentity );
 			}
 

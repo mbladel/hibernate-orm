@@ -8,6 +8,7 @@ package org.hibernate.engine.jdbc.mutation.internal;
 
 import java.sql.SQLException;
 
+import org.hibernate.engine.jdbc.batch.spi.BatchKey;
 import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
 import org.hibernate.engine.jdbc.mutation.MutationExecutor;
 import org.hibernate.engine.jdbc.mutation.OperationResultChecker;
@@ -15,6 +16,7 @@ import org.hibernate.engine.jdbc.mutation.ParameterUsage;
 import org.hibernate.engine.jdbc.mutation.TableInclusionChecker;
 import org.hibernate.engine.jdbc.mutation.group.PreparedStatementDetails;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.persister.entity.mutation.EntityTableMapping;
 import org.hibernate.sql.model.TableMapping;
 import org.hibernate.sql.model.ValuesAnalysis;
@@ -35,13 +37,13 @@ public abstract class AbstractMutationExecutor implements MutationExecutor {
 	 * </ol>
 	 */
 	@Override
-	public final Object execute(
+	public final GeneratedValues execute(
 			Object modelReference,
 			ValuesAnalysis valuesAnalysis,
 			TableInclusionChecker inclusionChecker,
 			OperationResultChecker resultChecker,
 			SharedSessionContractImplementor session) {
-		final Object generatedValues = performNonBatchedOperations(
+		final GeneratedValues generatedValues = performNonBatchedOperations(
 				modelReference,
 				valuesAnalysis,
 				inclusionChecker,
@@ -53,7 +55,7 @@ public abstract class AbstractMutationExecutor implements MutationExecutor {
 		return generatedValues;
 	}
 
-	protected Object performNonBatchedOperations(
+	protected GeneratedValues performNonBatchedOperations(
 			Object modelReference,
 			ValuesAnalysis valuesAnalysis,
 			TableInclusionChecker inclusionChecker,
@@ -144,5 +146,10 @@ public abstract class AbstractMutationExecutor implements MutationExecutor {
 			}
 			valueBindings.afterStatement( tableDetails );
 		}
+	}
+
+	protected void prepareForNonBatchedWork(BatchKey batchKey, SharedSessionContractImplementor session) {
+		// if there is a current batch, make sure to execute it first
+		session.getJdbcCoordinator().conditionallyExecuteBatch( batchKey );
 	}
 }

@@ -102,20 +102,14 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 		if ( !veto ) {
 			final EntityPersister persister = getPersister();
 			final Object instance = getInstance();
-			final Object generatedValues = persister.insert( id, getState(), instance, session );
+			final GeneratedValues generatedValues = persister.insert( id, getState(), instance, session );
 			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
 			final EntityEntry entry = persistenceContext.getEntry( instance );
 			if ( entry == null ) {
 				throw new AssertionFailure( "possible non-threadsafe access to session" );
 			}
 			entry.postInsert( getState() );
-			handleGeneratedProperties(
-					entry,
-					// todo marco : it would be nice to remove this check / cast, but I can't create
-					//  a new method + deprecate the old one because only the return type would change
-					generatedValues instanceof GeneratedValues ? (GeneratedValues) generatedValues : null,
-					persistenceContext
-			);
+			handleGeneratedProperties( entry, generatedValues, persistenceContext );
 			persistenceContext.registerInsertedKey( persister, getId() );
 			addCollectionsByKeyToPersistenceContext( persistenceContext, getState() );
 		}

@@ -115,8 +115,6 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 				secondaryTableMutations,
 				session
 		);
-
-		prepareForNonBatchedWork( null, session );
 	}
 
 	@Override
@@ -144,7 +142,7 @@ public class MutationExecutorPostInsert implements MutationExecutor, JdbcValueBi
 	}
 
 	@Override
-	public Object execute(
+	public GeneratedValues execute(
 			Object modelReference,
 			ValuesAnalysis valuesAnalysis,
 			TableInclusionChecker inclusionChecker,

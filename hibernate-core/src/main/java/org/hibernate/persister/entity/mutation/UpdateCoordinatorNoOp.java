@@ -6,6 +6,7 @@
  */
 package org.hibernate.persister.entity.mutation;
 
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.sql.model.internal.MutationOperationGroupFactory;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.persister.entity.AbstractEntityPersister;
@@ -28,7 +29,7 @@ public class UpdateCoordinatorNoOp implements UpdateCoordinator {
 	}
 
 	@Override
-	public Object coordinateUpdate(Object entity, Object id, Object rowId, Object[] values, Object oldVersion, Object[] incomingOldValues, int[] dirtyAttributeIndexes, boolean hasDirtyCollection, SharedSessionContractImplementor session) {
+	public GeneratedValues coordinateUpdate(Object entity, Object id, Object rowId, Object[] values, Object oldVersion, Object[] incomingOldValues, int[] dirtyAttributeIndexes, boolean hasDirtyCollection, SharedSessionContractImplementor session) {
 		// nothing to do
 		return null;
 	}

@@ -213,7 +213,7 @@ public class MutationExecutorStandard extends AbstractMutationExecutor implement
 	}
 
 	@Override
-	protected Object performNonBatchedOperations(
+	protected GeneratedValues performNonBatchedOperations(
 			Object modelReference,
 			ValuesAnalysis valuesAnalysis,
 			TableInclusionChecker inclusionChecker,

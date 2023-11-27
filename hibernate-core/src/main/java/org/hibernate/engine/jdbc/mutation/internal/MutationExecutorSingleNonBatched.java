@@ -9,6 +9,7 @@ package org.hibernate.engine.jdbc.mutation.internal;
 import org.hibernate.engine.jdbc.mutation.OperationResultChecker;
 import org.hibernate.engine.jdbc.mutation.TableInclusionChecker;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.sql.model.PreparableMutationOperation;
 import org.hibernate.sql.model.ValuesAnalysis;
@@ -36,7 +37,7 @@ public class MutationExecutorSingleNonBatched extends AbstractSingleMutationExec
 	}
 
 	@Override
-	protected Object performNonBatchedOperations(
+	protected GeneratedValues performNonBatchedOperations(
 			Object modelReference,
 			ValuesAnalysis valuesAnalysis,
 			TableInclusionChecker inclusionChecker,
