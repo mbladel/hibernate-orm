@@ -82,7 +82,7 @@ public class BasicValuedPathInterpretation<T> extends AbstractSqmPathInterpretat
 		}
 
 		final BasicValuedModelPart mapping;
-		if ( needsTargetTableMapping( sqmPath, modelPartContainer, sqlAstCreationState ) ) {
+		if ( needsTargetTableMapping( sqmPath, modelPartContainer ) ) {
 			// We have to make sure we render the column of the target table
 			mapping = (BasicValuedModelPart) ( (ManagedMappingType) modelPartContainer.getPartMappingType() ).findSubPart(
 					sqmPath.getReferencedPathSource().getPathName(),

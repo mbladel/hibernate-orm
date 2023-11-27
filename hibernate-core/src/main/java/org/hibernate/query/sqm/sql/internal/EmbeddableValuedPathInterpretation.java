@@ -66,7 +66,7 @@ public class EmbeddableValuedPathInterpretation<T> extends AbstractSqmPathInterp
 
 		final ModelPartContainer modelPartContainer = tableGroup.getModelPart();
 		final EmbeddableValuedModelPart mapping;
-		if ( needsTargetTableMapping( sqmPath, modelPartContainer, sqlAstCreationState ) ) {
+		if ( needsTargetTableMapping( sqmPath, modelPartContainer ) ) {
 			// We have to make sure we render the column of the target table
 			mapping = (EmbeddableValuedModelPart) ( (ManagedMappingType) modelPartContainer.getPartMappingType() ).findSubPart(
 					sqmPath.getReferencedPathSource().getPathName(),

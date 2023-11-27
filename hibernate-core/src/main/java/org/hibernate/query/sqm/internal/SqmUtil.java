@@ -132,19 +132,17 @@ public class SqmUtil {
 	 * Utility that returns {@code true} if the specified {@link SqmPath sqmPath} has to be
 	 * dereferenced using the target table mapping, and does not support fk optimization.
 	 * <p>
-	 * This is the case when the path is used in both the {@linkplain Clause#GROUP group by} clause
-	 * and a clause which {@linkplain #isClauseDependantOnGroupBy depends on it} or when the left
-	 * hand side of the path is a {@linkplain #isNonOptimizableJoin non-optimizable join}.
+	 * This is the case when the path's lhs is an explicit join.
 	 */
-	public static boolean needsTargetTableMapping(
-			SqmPath<?> sqmPath,
-			ModelPartContainer modelPartContainer,
-			SqmToSqlAstConverter sqlAstCreationState) {
+	public static boolean needsTargetTableMapping(SqmPath<?> sqmPath, ModelPartContainer modelPartContainer) {
 		return modelPartContainer.getPartMappingType() != modelPartContainer
 				&& sqmPath.getLhs() instanceof SqmFrom<?, ?>
-				&& modelPartContainer.getPartMappingType() instanceof ManagedMappingType
-				&& ( groupByClauseContains( sqlAstCreationState, sqmPath.getNavigablePath() )
-				|| isNonOptimizableJoin( sqmPath.getLhs() ) );
+				&& modelPartContainer.getPartMappingType() instanceof ManagedMappingType;
+//		return modelPartContainer.getPartMappingType() != modelPartContainer
+//				&& sqmPath.getLhs() instanceof SqmFrom<?, ?>
+//				&& modelPartContainer.getPartMappingType() instanceof ManagedMappingType
+//				&& ( groupByClauseContains( sqlAstCreationState, sqmPath.getNavigablePath() )
+//				|| isFkOptimizationAllowed( sqmPath.getLhs() ) );
 	}
 
 	private static boolean groupByClauseContains(SqmToSqlAstConverter sqlAstCreationState, NavigablePath path) {
@@ -168,21 +166,21 @@ public class SqmUtil {
 	}
 
 	/**
-	 * Utility that returns {@code true} when the provided {@link SqmPath sqmPath} is
+	 * Utility that returns {@code false} when the provided {@link SqmPath sqmPath} is
 	 * a join that cannot be dereferenced through the foreign key on the associated table,
 	 * i.e. a join that's neither {@linkplain SqmJoinType#INNER} nor {@linkplain SqmJoinType#LEFT}
 	 * or one that has an explicit on clause predicate.
 	 */
-	public static boolean isNonOptimizableJoin(SqmPath<?> sqmPath) {
+	public static boolean isFkOptimizationAllowed(SqmPath<?> sqmPath) {
 		if ( sqmPath instanceof SqmJoin<?, ?> ) {
 			final SqmJoin<?, ?> sqmJoin = (SqmJoin<?, ?>) sqmPath;
 			switch ( sqmJoin.getSqmJoinType() ) {
 				case INNER:
 				case LEFT:
-					return sqmJoin instanceof SqmQualifiedJoin<?, ?>
-							&& ( (SqmQualifiedJoin<?, ?>) sqmJoin ).getJoinPredicate() != null;
+					return !( sqmJoin instanceof SqmQualifiedJoin<?, ?>)
+							|| ( (SqmQualifiedJoin<?, ?>) sqmJoin ).getJoinPredicate() == null;
 				default:
-					return true;
+					return false;
 			}
 		}
 		return false;
