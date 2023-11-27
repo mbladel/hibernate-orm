@@ -13,6 +13,7 @@ import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
 import org.hibernate.engine.jdbc.mutation.group.PreparedStatementDetails;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
@@ -105,5 +106,5 @@ public interface InsertGeneratedIdentifierDelegate extends GeneratedValuesMutati
 	 * 
 	 * @return The generated identifier value
 	 */
-	Object performInsert(String insertSQL, SharedSessionContractImplementor session, Binder binder);
+	GeneratedValues performInsert(String insertSQL, SharedSessionContractImplementor session, Binder binder);
 }

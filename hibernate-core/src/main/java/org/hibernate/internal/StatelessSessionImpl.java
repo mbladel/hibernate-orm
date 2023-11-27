@@ -111,14 +111,8 @@ public class StatelessSessionImpl extends AbstractSharedSessionContract implemen
 			persister.insert( id, state, entity, this );
 		}
 		else {
-			final Object generatedValues = persister.insert( state, entity, this );
-			// todo marco : eventually this check won't be necessary
-			if ( generatedValues instanceof GeneratedValues ) {
-				id = ( (GeneratedValues) generatedValues ).getGeneratedValue( persister.getIdentifierMapping() );
-			}
-			else {
-				id = generatedValues;
-			}
+			final GeneratedValues generatedValues = persister.insert( state, entity, this );
+			id = generatedValues.getGeneratedValue( persister.getIdentifierMapping() );
 		}
 		persister.setIdentifier( entity, id, this );
 		return id;

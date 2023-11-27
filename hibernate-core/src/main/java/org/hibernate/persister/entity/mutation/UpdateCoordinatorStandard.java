@@ -30,6 +30,7 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
@@ -166,7 +167,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 	}
 
 	@Override
-	public Object coordinateUpdate(
+	public GeneratedValues coordinateUpdate(
 			Object entity,
 			Object id,
 			Object rowId,
@@ -178,7 +179,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 			SharedSessionContractImplementor session) {
 		final EntityVersionMapping versionMapping = entityPersister().getVersionMapping();
 		if ( versionMapping != null ) {
-			final Supplier<Object> generatedValuesAccess = handlePotentialImplicitForcedVersionIncrement(
+			final Supplier<GeneratedValues> generatedValuesAccess = handlePotentialImplicitForcedVersionIncrement(
 					entity,
 					id,
 					values,
@@ -257,7 +258,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 		);
 	}
 
-	protected Object performUpdate(
+	protected GeneratedValues performUpdate(
 			Object entity,
 			Object id,
 			Object rowId,
@@ -398,7 +399,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 		}
 	}
 
-	protected Supplier<Object> handlePotentialImplicitForcedVersionIncrement(
+	protected Supplier<GeneratedValues> handlePotentialImplicitForcedVersionIncrement(
 			Object entity,
 			Object id,
 			Object[] values,
@@ -440,7 +441,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 		if ( isSimpleVersionUpdate ) {
 			// we have just the version being updated - use the special handling
 			assert newVersion != null;
-			final Object generatedValues = doVersionUpdate( entity, id, newVersion, oldVersion, session );
+			final GeneratedValues generatedValues = doVersionUpdate( entity, id, newVersion, oldVersion, session );
 			return () -> generatedValues;
 		}
 		else {
@@ -469,7 +470,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 				: entityPersister().getPropertyUpdateability();
 	}
 
-	protected Object doVersionUpdate(
+	protected GeneratedValues doVersionUpdate(
 			Object entity,
 			Object id,
 			Object version,
@@ -478,7 +479,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 		return doVersionUpdate( entity, id, version, oldVersion, true, session );
 	}
 
-	protected Object doVersionUpdate(
+	protected GeneratedValues doVersionUpdate(
 			Object entity,
 			Object id,
 			Object version,
@@ -752,7 +753,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 		);
 	}
 
-	protected Object doStaticUpdate(
+	protected GeneratedValues doStaticUpdate(
 			Object entity,
 			Object id,
 			Object rowId,
@@ -928,7 +929,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 		}
 	}
 
-	protected Object doDynamicUpdate(
+	protected GeneratedValues doDynamicUpdate(
 			Object entity,
 			Object id,
 			Object rowId,

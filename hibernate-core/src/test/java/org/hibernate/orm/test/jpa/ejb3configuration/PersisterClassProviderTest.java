@@ -443,12 +443,12 @@ public class PersisterClassProviderTest {
 		}
 
 		@Override
-		public Object insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session) {
+		public GeneratedValues insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session) {
 			return null;
 		}
 
 		@Override
-		public Serializable insert(Object[] fields, Object object, SharedSessionContractImplementor session) {
+		public GeneratedValues insert(Object[] fields, Object object, SharedSessionContractImplementor session) {
 			return null;
 		}
 
@@ -457,7 +457,7 @@ public class PersisterClassProviderTest {
 		}
 
 		@Override
-		public Object update(Object id, Object[] fields, int[] dirtyFields, boolean hasDirtyCollection, Object[] oldFields, Object oldVersion, Object object, Object rowId, SharedSessionContractImplementor session) {
+		public GeneratedValues update(Object id, Object[] fields, int[] dirtyFields, boolean hasDirtyCollection, Object[] oldFields, Object oldVersion, Object object, Object rowId, SharedSessionContractImplementor session) {
 			return null;
 		}
 

@@ -627,14 +627,12 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 	/**
 	 * Persist an instance
 	 */
-	// todo marco : how can I change this ? If we change only return value we
-	//  can't create new method and deprecate the old one, so just modify this?
-	Object insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session);
+	GeneratedValues insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session);
 
 	/**
 	 * Persist an instance, using a natively generated identifier (optional operation)
 	 */
-	Object insert(Object[] fields, Object object, SharedSessionContractImplementor session);
+	GeneratedValues insert(Object[] fields, Object object, SharedSessionContractImplementor session);
 
 	/**
 	 * Delete a persistent instance
@@ -644,7 +642,7 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 	/**
 	 * Update a persistent instance
 	 */
-	Object update(
+	GeneratedValues update(
 			Object id,
 			Object[] fields,
 			int[] dirtyFields,

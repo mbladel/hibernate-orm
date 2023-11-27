@@ -166,7 +166,7 @@ public class EntityUpdateAction extends EntityAction {
 			final Object instance = getInstance();
 			final Object previousVersion = getPreviousVersion();
 			final Object ck = lockCacheItem( previousVersion );
-			final Object generatedValues = persister.update(
+			final GeneratedValues generatedValues = persister.update(
 					id,
 					state,
 					dirtyFields,
@@ -181,12 +181,7 @@ public class EntityUpdateAction extends EntityAction {
 			if ( entry == null ) {
 				throw new AssertionFailure( "possible non thread safe access to session" );
 			}
-			handleGeneratedProperties(
-					entry,
-					generatedValues instanceof GeneratedValues ?
-							(GeneratedValues) generatedValues :
-							null
-			);
+			handleGeneratedProperties( entry, generatedValues );
 			handleDeleted( entry );
 			updateCacheItem( previousVersion, ck, entry );
 			handleNaturalIdResolutions( persister, session, id );

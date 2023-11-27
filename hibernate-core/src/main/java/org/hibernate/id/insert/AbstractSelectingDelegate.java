@@ -113,7 +113,7 @@ public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesM
 	}
 
 	@Override
-	public final Object performInsert(String sql, SharedSessionContractImplementor session, Binder binder) {
+	public final GeneratedValues performInsert(String sql, SharedSessionContractImplementor session, Binder binder) {
 		JdbcCoordinator jdbcCoordinator = session.getJdbcCoordinator();
 		StatementPreparer statementPreparer = jdbcCoordinator.getStatementPreparer();
 		try {

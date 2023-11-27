@@ -48,7 +48,7 @@ public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesM
 	}
 
 	@Override
-	public final Object performInsert(String sql, SharedSessionContractImplementor session, Binder binder) {
+	public final GeneratedValues performInsert(String sql, SharedSessionContractImplementor session, Binder binder) {
 		try {
 			// prepare and execute the insert
 			PreparedStatement insert = prepareStatement( sql, session );

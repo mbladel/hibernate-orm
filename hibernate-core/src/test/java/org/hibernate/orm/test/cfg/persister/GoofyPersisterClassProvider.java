@@ -401,12 +401,12 @@ public class GoofyPersisterClassProvider implements PersisterClassResolver {
 		}
 
 		@Override
-		public Object insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session) {
+		public GeneratedValues insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session) {
 			return null;
 		}
 
 		@Override
-		public Serializable insert(Object[] fields, Object object, SharedSessionContractImplementor session) {
+		public GeneratedValues insert(Object[] fields, Object object, SharedSessionContractImplementor session) {
 			return null;
 		}
 
@@ -415,7 +415,7 @@ public class GoofyPersisterClassProvider implements PersisterClassResolver {
 		}
 
 		@Override
-		public Object update(
+		public GeneratedValues update(
 				Object id,
 				Object[] fields,
 				int[] dirtyFields,

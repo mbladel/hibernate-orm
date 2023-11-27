@@ -22,6 +22,7 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
+import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.AttributeMappingsList;
@@ -96,7 +97,7 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 	 *
 	 * @return The id
 	 */
-	public Object coordinateInsert(
+	public GeneratedValues coordinateInsert(
 			Object id,
 			Object[] values,
 			Object entity,
@@ -154,7 +155,7 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 		}
 	}
 
-	protected Object doStaticInserts(Object id, Object[] values, Object object, SharedSessionContractImplementor session) {
+	protected GeneratedValues doStaticInserts(Object id, Object[] values, Object object, SharedSessionContractImplementor session) {
 		final InsertValuesAnalysis insertValuesAnalysis = new InsertValuesAnalysis( entityPersister(), values );
 
 		final TableInclusionChecker tableInclusionChecker = getTableInclusionChecker( insertValuesAnalysis );
@@ -277,7 +278,7 @@ public class InsertCoordinator extends AbstractMutationCoordinator {
 		}
 	}
 
-	protected Object doDynamicInserts(
+	protected GeneratedValues doDynamicInserts(
 			Object id,
 			Object[] values,
 			Object object,
