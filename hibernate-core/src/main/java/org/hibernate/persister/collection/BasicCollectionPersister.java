@@ -80,6 +80,7 @@ public class BasicCollectionPersister extends AbstractCollectionPersister {
 	private final UpdateRowsCoordinator updateCoordinator;
 	private final DeleteRowsCoordinator deleteRowsCoordinator;
 	private final RemoveCoordinator removeCoordinator;
+	private final boolean keyIsUpdateable;
 
 	public boolean isCascadeDeleteEnabled() {
 		return false;
@@ -98,6 +99,10 @@ public class BasicCollectionPersister extends AbstractCollectionPersister {
 			CollectionDataAccess cacheAccessStrategy,
 			RuntimeModelCreationContext creationContext) throws MappingException, CacheException {
 		super( collectionBinding, cacheAccessStrategy, creationContext );
+		// The collection is considered read-only when its key (join column) or its value
+		// (inverse join column or value for element collections) is non-updatable
+		keyIsUpdateable = collectionBinding.getKey().isUpdateable()
+				&& collectionBinding.getElement().hasAnyUpdatableColumns();
 
 		this.rowMutationOperations = buildRowMutationOperations();
 
@@ -153,6 +158,15 @@ public class BasicCollectionPersister extends AbstractCollectionPersister {
 		// nothing to do
 	}
 
+	@Override
+	protected boolean isRowDeleteEnabled() {
+		return keyIsUpdateable;
+	}
+
+	@Override
+	protected boolean isRowInsertEnabled() {
+		return keyIsUpdateable;
+	}
 
 	private UpdateRowsCoordinator buildUpdateRowCoordinator() {
 		final boolean performUpdates = getCollectionSemantics().getCollectionClassification().isRowUpdatePossible()
