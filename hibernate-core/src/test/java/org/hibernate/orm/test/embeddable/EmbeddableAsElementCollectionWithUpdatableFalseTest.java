@@ -8,6 +8,7 @@ import org.hibernate.testing.orm.junit.JiraKey;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.Column;
@@ -26,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 })
 @SessionFactory
 @JiraKey("HHH-16573")
+@Disabled("We now consider collections with no updatable/insertable columns as read-only")
 public class EmbeddableAsElementCollectionWithUpdatableFalseTest {
 
 	@AfterEach
