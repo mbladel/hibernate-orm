@@ -12,7 +12,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 import org.hibernate.HibernateException;
 import org.hibernate.Internal;
@@ -32,38 +32,28 @@ import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.persister.entity.EntityPersister;
-import org.hibernate.query.results.DomainResultCreationStateImpl;
-import org.hibernate.query.results.ResultBuilder;
-import org.hibernate.query.results.ResultSetMapping;
-import org.hibernate.query.results.ResultSetMappingImpl;
 import org.hibernate.query.results.TableGroupImpl;
-import org.hibernate.query.results.complete.CompleteResultBuilderBasicModelPart;
-import org.hibernate.query.results.dynamic.DynamicFetchBuilderLegacy;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.spi.NavigablePath;
-import org.hibernate.sql.ast.spi.SqlSelection;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.TableGroup;
-import org.hibernate.sql.ast.tree.from.TableReference;
 import org.hibernate.sql.exec.internal.BaseExecutionContext;
 import org.hibernate.sql.exec.spi.ExecutionContext;
-import org.hibernate.sql.results.graph.DomainResultCreationState;
-import org.hibernate.sql.results.graph.basic.BasicResult;
 import org.hibernate.sql.results.internal.ResultsHelper;
 import org.hibernate.sql.results.internal.RowProcessingStateStandardImpl;
+import org.hibernate.sql.results.internal.RowTransformerArrayImpl;
 import org.hibernate.sql.results.internal.RowTransformerStandardImpl;
 import org.hibernate.sql.results.jdbc.internal.DirectResultSetAccess;
 import org.hibernate.sql.results.jdbc.internal.JdbcValuesResultSetImpl;
 import org.hibernate.sql.results.jdbc.internal.JdbcValuesSourceProcessingStateStandardImpl;
 import org.hibernate.sql.results.jdbc.spi.JdbcValues;
-import org.hibernate.sql.results.jdbc.spi.JdbcValuesMetadata;
+import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesSourceProcessingOptions;
 import org.hibernate.sql.results.spi.ListResultsConsumer;
 import org.hibernate.sql.results.spi.RowReader;
 import org.hibernate.type.descriptor.WrapperOptions;
 
 import static org.hibernate.generator.internal.NaturalIdHelper.getNaturalIdPropertyNames;
-import static org.hibernate.query.results.ResultsHelper.impl;
 
 /**
  * Factory and helper methods for {@link GeneratedValuesMutationDelegate} framework.
@@ -92,14 +82,10 @@ public class GeneratedValuesHelper {
 			PostInsertIdentityPersister persister,
 			EventType timing,
 			WrapperOptions wrapperOptions) throws SQLException {
-		if ( !resultSet.next() ) {
-			throw new HibernateException(
-					"The database returned no natively generated values : " + persister.getNavigableRole().getFullPath()
-			);
-		}
-
+		final GeneratedValuesMutationDelegate delegate;
 		final List<ModelPart> generatedModelParts;
 		if ( timing == EventType.INSERT ) {
+			delegate = persister.getInsertDelegate();
 			generatedModelParts = new ArrayList<>(
 					persister.getInsertDelegate().supportsArbitraryValues() ?
 							persister.getInsertGeneratedProperties() :
@@ -111,94 +97,77 @@ public class GeneratedValuesHelper {
 			}
 		}
 		else {
+			delegate = persister.getUpdateDelegate();
 			generatedModelParts = new ArrayList<>( persister.getUpdateGeneratedProperties() );
 		}
 
 		final GeneratedValuesImpl generatedValues = new GeneratedValuesImpl( generatedModelParts );
-
-		try {
-			final Object[] results = readGeneratedValues(
-					generatedModelParts,
-					persister.getEntityPersister(),
-					resultSet,
-					wrapperOptions.getSession()
-			);
-			for ( int i = 0; i < results.length; i++ ) {
-				generatedValues.addGeneratedValue( generatedModelParts.get( i ), results[i] );
-			}
-		}
-		catch (Exception e) {
-			throw new RuntimeException( e );
-
-			// todo marco : meaningful error
+		final Object[] results = readGeneratedValues(
+				resultSet,
+				persister,
+				delegate.getGeneratedValuesMappingProducer(),
+				wrapperOptions.getSession()
+		);
+		for ( int i = 0; i < results.length; i++ ) {
+			generatedValues.addGeneratedValue( generatedModelParts.get( i ), results[i] );
 		}
 
-//		for ( ModelPart modelPart : generatedModelParts ) {
-//			final SelectableMapping selectable = getActualSelectableMapping( modelPart, persister );
-//
-//			// See native query -> Entity result case
-//			// 1. DomainResultCreationState custom impl
-//			// 2. create domain results, going through all modelParts and resolveSqlExpressions
-//
-//			// org.hibernate.query.results.complete.CompleteFetchBuilderBasicPart.buildFetch
-//
-//			final JdbcMapping jdbcMapping = selectable.getJdbcMapping();
-//			// todo marco : the results should be in the exact same index as we passed the columns originally
-//			final Object value = jdbcMapping.getJdbcValueExtractor().extract( resultSet, columnIndex(
-//					resultSet,
-//					selectable,
-//					modelPart.isEntityIdentifierMapping() ? 1 : null,
-//					persister.getFactory().getFastSessionServices().dialect
-//			), wrapperOptions );
-//			generatedValues.addGeneratedValue( modelPart, value );
-//
-//			LOG.debugf(
-//					"Extracted natively generated value (%s) : %s",
-//					selectable.getSelectionExpression(),
-//					value
-//			);
-//		}
 		return generatedValues;
 	}
 
-	private static Object[] readGeneratedValues(
-			List<? extends ModelPart> generatedValues,
+	public static JdbcValuesMappingProducer createMappingProducer(
 			EntityPersister entityPersister,
-			ResultSet resultSet,
-			SharedSessionContractImplementor session) throws Exception {
-		final ExecutionContext executionContext = new BaseExecutionContext( session );
-
-		final DirectResultSetAccess directResultSetAccess = new DirectResultSetAccess(
-				session,
-				(PreparedStatement) resultSet.getStatement(),
-				resultSet
-		);
-
-		final ResultSetMapping resultSetMapping = new ResultSetMappingImpl( null );
-
-		// This doesn't need to be the entity name
+			EventType timing,
+			Consumer<String> columnNameConsumer) {
+		// This is just a mock table group needed to correctly resolve expressions
 		final NavigablePath parentNavigablePath = new NavigablePath( entityPersister.getEntityName() );
 		final TableGroup tableGroup = new TableGroupImpl(
 				parentNavigablePath,
 				null,
-				new NamedTableReference( "temp", "temp" ),
+				new NamedTableReference( "t", "t" ),
 				entityPersister
 		);
-
-		for ( int i = 0; i < generatedValues.size(); i++ ) {
-			final ModelPart modelPart = generatedValues.get( i );
-			if ( modelPart instanceof BasicValuedModelPart basicValue ) {
-				final GeneratedValueResultBuilder resultBuilder = new GeneratedValueResultBuilder(
-						parentNavigablePath.append( basicValue.getSelectableName() ),
-						basicValue,
+		// Create the mapping producer and add all result builders to it
+		final List<? extends ModelPart> generatedProperties = entityPersister.getGeneratedProperties( timing );
+		final GeneratedValuesMappingProducer mappingProducer = new GeneratedValuesMappingProducer();
+		for ( int i = 0; i < generatedProperties.size(); i++ ) {
+			final ModelPart modelPart = generatedProperties.get( i );
+			if ( modelPart instanceof BasicValuedModelPart basicModelPart ) {
+				final GeneratedValueBasicResultBuilder resultBuilder = new GeneratedValueBasicResultBuilder(
+						parentNavigablePath.append( basicModelPart.getSelectableName() ),
+						basicModelPart,
 						tableGroup,
-						i
+						i // We know the order of generated values is consistent
 				);
-				resultSetMapping.addResultBuilder( resultBuilder );
+				mappingProducer.addResultBuilder( resultBuilder );
+				if ( columnNameConsumer != null ) {
+					columnNameConsumer.accept( basicModelPart.getSelectionExpression() );
+				}
 			}
 			else {
-				assert false : "We expect only BasicValuedModelParts to be generated values!";
+				throw new UnsupportedOperationException( "Unsupported generated ModelPart: " + modelPart.getPartName() );
 			}
+		}
+		return mappingProducer;
+	}
+
+	private static Object[] readGeneratedValues(
+			ResultSet resultSet,
+			EntityPersister persister,
+			JdbcValuesMappingProducer mappingProducer,
+			SharedSessionContractImplementor session) {
+		final ExecutionContext executionContext = new BaseExecutionContext( session );
+
+		final DirectResultSetAccess directResultSetAccess;
+		try {
+			directResultSetAccess = new DirectResultSetAccess(
+					session,
+					(PreparedStatement) resultSet.getStatement(),
+					resultSet
+			);
+		}
+		catch (SQLException e) {
+			throw new HibernateException( "Could not retrieve statement from generated values result set", e );
 		}
 
 		final JdbcValues jdbcValues = new JdbcValuesResultSetImpl(
@@ -206,7 +175,7 @@ public class GeneratedValuesHelper {
 				null,
 				null,
 				QueryOptions.NONE,
-				resultSetMapping.resolve(
+				mappingProducer.resolve(
 						directResultSetAccess,
 						session.getLoadQueryInfluencers(),
 						session.getSessionFactory()
@@ -215,9 +184,6 @@ public class GeneratedValuesHelper {
 				executionContext
 		);
 
-		/*
-		 * Processing options effectively are only used for entity loading.  Here we don't need these values.
-		 */
 		final JdbcValuesSourceProcessingOptions processingOptions = new JdbcValuesSourceProcessingOptions() {
 			@Override
 			public Object getEffectiveOptionalObject() {
@@ -248,7 +214,7 @@ public class GeneratedValuesHelper {
 		final RowReader<Object[]> rowReader = ResultsHelper.createRowReader(
 				executionContext,
 				LockOptions.NONE,
-				RowTransformerStandardImpl.instance(),
+				RowTransformerArrayImpl.instance(),
 				Object[].class,
 				jdbcValues
 		);
@@ -260,7 +226,7 @@ public class GeneratedValuesHelper {
 				jdbcValues
 		);
 
-		final List<Object[]> result = ListResultsConsumer.<Object[]>instance( ListResultsConsumer.UniqueSemantic.NONE ).consume(
+		final List<Object[]> results = ListResultsConsumer.<Object[]>instance( ListResultsConsumer.UniqueSemantic.NONE ).consume(
 				jdbcValues,
 				session,
 				processingOptions,
@@ -269,71 +235,13 @@ public class GeneratedValuesHelper {
 				rowReader
 		);
 
-		return result.get( 0 );
-	}
-
-	public static class GeneratedValueResultBuilder implements ResultBuilder {
-		private final NavigablePath navigablePath;
-		private final BasicValuedModelPart modelPart;
-		private final int valuesArrayPosition;
-		private final TableGroup tableGroup;
-
-		public GeneratedValueResultBuilder(
-				NavigablePath navigablePath,
-				BasicValuedModelPart modelPart,
-				TableGroup tableGroup,
-				int valuesArrayPosition) {
-			this.navigablePath = navigablePath;
-			this.modelPart = modelPart;
-			this.valuesArrayPosition = valuesArrayPosition;
-			this.tableGroup = tableGroup;
-		}
-
-		@Override
-		public Class<?> getJavaType() {
-			return modelPart.getExpressibleJavaType().getJavaTypeClass();
-		}
-		@Override
-		public ResultBuilder cacheKeyInstance() {
-			return this;
-		}
-
-		@Override
-		public BasicResult<?> buildResult(
-				JdbcValuesMetadata jdbcResultsMetadata,
-				int resultPosition,
-				BiFunction<String, String, DynamicFetchBuilderLegacy> legacyFetchResolver,
-				DomainResultCreationState domainResultCreationState) {
-			final DomainResultCreationStateImpl creationStateImpl = impl( domainResultCreationState );
-
-			final TableGroup tableGroup = creationStateImpl.getFromClauseAccess().resolveTableGroup(
-					navigablePath.getParent(),
-					(p) -> this.tableGroup
-			);
-			final TableReference tableReference = tableGroup.resolveTableReference(
-					navigablePath,
-					modelPart,
-					modelPart.getContainingTableExpression()
-			);
-
-			final SqlSelection sqlSelection = creationStateImpl.resolveSqlSelection(
-					org.hibernate.query.results.ResultsHelper.resolveSqlExpression(
-							creationStateImpl,
-							tableReference,
-							modelPart,
-							valuesArrayPosition
-					),
-					modelPart.getJdbcMapping().getJdbcJavaType(),
-					null,
-					creationStateImpl.getSessionFactory().getTypeConfiguration()
-			);
-
-			return new BasicResult<>(
-					sqlSelection.getValuesArrayPosition(),
-					null,
-					modelPart.getJdbcMapping()
+		if ( results.isEmpty() ) {
+			throw new HibernateException(
+					"The database returned no natively generated values : " + persister.getNavigableRole().getFullPath()
 			);
 		}
+
+		return results.get( 0 );
 	}
 
 	private static int columnIndex(
@@ -425,6 +333,8 @@ public class GeneratedValuesHelper {
 			Dialect dialect,
 			EventType timing,
 			boolean unquote) {
+		// todo marco : we already iterate through the model parts when creating the ResultSetMapping
+		//  so maybe move this there?
 		final List<? extends ModelPart> generated = persister.getGeneratedProperties( timing );
 		return generated.stream().map( modelPart -> {
 			final SelectableMapping selectableMapping = getActualSelectableMapping( modelPart, persister );

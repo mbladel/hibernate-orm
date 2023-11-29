@@ -16,12 +16,17 @@ import org.hibernate.sql.model.ast.AbstractTableInsert;
 import org.hibernate.sql.model.ast.ColumnValueBinding;
 import org.hibernate.sql.model.ast.ColumnValueParameter;
 import org.hibernate.sql.model.ast.MutatingTableReference;
+import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 /**
  * @author Steve Ebersole
  */
 public class TableInsertStandard extends AbstractTableInsert {
 	private final List<ColumnReference> returningColumns;
+
+	// todo marco : create this in the mutation delegates
+	//  actually, put this in delegates
+	// private final JdbcValuesMappingProducer returningValuesProducer;
 
 	public TableInsertStandard(
 			MutatingTableReference mutatingTable,

@@ -8,6 +8,7 @@ package org.hibernate.id.insert;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
@@ -20,9 +21,10 @@ import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.EntityRowIdMapping;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
+import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 import org.hibernate.type.Type;
 
-import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedColumnNames;
+import static org.hibernate.generator.values.GeneratedValuesHelper.createMappingProducer;
 
 /**
  * Uses a unique key of the inserted entity to locate the newly inserted row.
@@ -36,6 +38,7 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 	private final Type[] uniqueKeyTypes;
 
 	private final String selectString;
+	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	public UniqueKeySelectingDelegate(
 			PostInsertIdentityPersister persister,
@@ -56,7 +59,8 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 		if ( !persister.isIdentifierAssignedByInsert()
 				|| persister.getInsertGeneratedProperties().size() > 1
 				|| rowIdMapping != null ) {
-			final List<String> columnNames = getGeneratedColumnNames( persister, dialect, timing, false );
+			final List<String> columnNames = new ArrayList<>();
+			this.jdbcValuesMappingProducer = createMappingProducer( persister, timing, columnNames::add );
 			if ( rowIdMapping != null ) {
 				columnNames.add( rowIdMapping.getSelectionExpression() );
 			}
@@ -67,6 +71,7 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 		}
 		else {
 			selectString = persister.getSelectByUniqueKeyString( uniqueKeyPropertyNames );
+			this.jdbcValuesMappingProducer = createMappingProducer( persister, timing, null );
 		}
 	}
 
@@ -103,5 +108,10 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 	@Override
 	public boolean supportsRowId() {
 		return true;
+	}
+
+	@Override
+	public JdbcValuesMappingProducer getGeneratedValuesMappingProducer() {
+		return jdbcValuesMappingProducer;
 	}
 }

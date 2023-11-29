@@ -9,6 +9,8 @@ package org.hibernate.id.insert;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import org.hibernate.MappingException;
@@ -31,10 +33,12 @@ import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 import org.hibernate.sql.model.ast.builder.TableUpdateBuilderStandard;
+import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 import static java.sql.Statement.RETURN_GENERATED_KEYS;
-import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedColumnNames;
+import static org.hibernate.generator.values.GeneratedValuesHelper.createMappingProducer;
 import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedValues;
+import static org.hibernate.internal.util.StringHelper.unquote;
 
 /**
  * Delegate for dealing with generated values using the JDBC3 method
@@ -48,6 +52,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	private final PostInsertIdentityPersister persister;
 	private final Dialect dialect;
 	private final String[] columnNames;
+	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	public GetGeneratedKeysDelegate(
 			PostInsertIdentityPersister persister,
@@ -59,15 +64,18 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 		this.dialect = dialect;
 
 		if ( inferredKeys ) {
+			this.jdbcValuesMappingProducer = createMappingProducer( persister, timing, null );
 			columnNames = null;
 		}
 		else {
-			columnNames = getGeneratedColumnNames(
+			final List<String> columnNamesList = new ArrayList<>();
+			final boolean unquote = dialect.unquoteGetGeneratedKeys();
+			this.jdbcValuesMappingProducer = createMappingProducer(
 					persister,
-					dialect,
-					getTiming(),
-					dialect.unquoteGetGeneratedKeys()
-			).toArray( new String[0] );
+					timing,
+					columnName -> columnNamesList.add( unquote ? unquote( columnName, dialect ) : columnName )
+			);
+			columnNames = columnNamesList.toArray( new String[0] );
 		}
 	}
 
@@ -120,6 +128,11 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	@Override
 	public boolean supportsArbitraryValues() {
 		return columnNames != null;
+	}
+
+	@Override
+	public JdbcValuesMappingProducer getGeneratedValuesMappingProducer() {
+		return jdbcValuesMappingProducer;
 	}
 
 	@Override

@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.id.PostInsertIdentityPersister;
+import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.metamodel.mapping.EntityRowIdMapping;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.SelectableMapping;
@@ -38,8 +39,8 @@ public class TableInsertReturningBuilder extends AbstractTableInsertBuilder {
 	public TableInsert buildMutation() {
 		final List<? extends ModelPart> insertGeneratedProperties = getMutationTarget().getInsertGeneratedProperties();
 		final List<ColumnReference> generatedColumns = insertGeneratedProperties.stream().map( prop -> {
-			assert prop instanceof SelectableMapping : "Unsupported non-selectable generated value";
-			return new ColumnReference( getMutatingTable(), ( (SelectableMapping) prop ) );
+			assert prop instanceof BasicValuedModelPart : "Unsupported non-basic generated value";
+			return new ColumnReference( getMutatingTable(), ( (BasicValuedModelPart) prop ) );
 		} ).collect( Collectors.toList() );
 
 		// special case for rowid when the dialect supports it

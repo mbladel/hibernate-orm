@@ -19,6 +19,9 @@ import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
+import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
+
+import static org.hibernate.generator.values.GeneratedValuesHelper.createMappingProducer;
 
 /**
  * Delegate for dealing with {@code IDENTITY} columns where the dialect requires an
@@ -27,11 +30,13 @@ import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 public class BasicSelectingDelegate extends AbstractSelectingDelegate {
 	private final PostInsertIdentityPersister persister;
 	private final Dialect dialect;
+	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	public BasicSelectingDelegate(PostInsertIdentityPersister persister, Dialect dialect) {
 		super( persister, EventType.INSERT );
 		this.persister = persister;
 		this.dialect = dialect;
+		this.jdbcValuesMappingProducer = createMappingProducer( persister, EventType.INSERT, null );
 	}
 
 	@Override @Deprecated
@@ -70,5 +75,10 @@ public class BasicSelectingDelegate extends AbstractSelectingDelegate {
 			throw CoreLogging.messageLogger( BasicSelectingDelegate.class ).nullIdentitySelectString();
 		}
 		return persister.getIdentitySelectString();
+	}
+
+	@Override
+	public JdbcValuesMappingProducer getGeneratedValuesMappingProducer() {
+		return jdbcValuesMappingProducer;
 	}
 }

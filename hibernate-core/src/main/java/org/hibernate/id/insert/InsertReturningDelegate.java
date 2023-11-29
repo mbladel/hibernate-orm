@@ -24,8 +24,10 @@ import org.hibernate.generator.values.TableUpdateReturningBuilder;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
+import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 import static java.sql.Statement.NO_GENERATED_KEYS;
+import static org.hibernate.generator.values.GeneratedValuesHelper.createMappingProducer;
 import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedValues;
 
 /**
@@ -40,11 +42,14 @@ import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedV
 public class InsertReturningDelegate extends AbstractReturningDelegate {
 	private final PostInsertIdentityPersister persister;
 	private final Dialect dialect;
+	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	public InsertReturningDelegate(PostInsertIdentityPersister persister, Dialect dialect, EventType timing) {
 		super( persister, timing );
 		this.persister = persister;
 		this.dialect = dialect;
+		// todo marco : collect column names here?
+		this.jdbcValuesMappingProducer = createMappingProducer( persister, timing, null );
 	}
 
 	@Override @Deprecated
@@ -98,6 +103,11 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 	@Override
 	public boolean supportsRowId() {
 		return dialect.supportsInsertReturningRowId();
+	}
+
+	@Override
+	public JdbcValuesMappingProducer getGeneratedValuesMappingProducer() {
+		return jdbcValuesMappingProducer;
 	}
 
 	@Override

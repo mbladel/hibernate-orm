@@ -79,7 +79,7 @@ public final class IdentifierGeneratorHelper {
 	 *
 	 * @deprecated Use {@link org.hibernate.generator.values.GeneratedValuesHelper#getGeneratedValues} instead
 	 */
-	@Deprecated(since = "7.0")
+	@Deprecated( since = "7.0", forRemoval = true )
 	public static Object getGeneratedIdentity(
 			String path,
 			ResultSet resultSet,
