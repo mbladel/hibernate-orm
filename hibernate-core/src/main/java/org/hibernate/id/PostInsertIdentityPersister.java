@@ -42,6 +42,7 @@ public interface PostInsertIdentityPersister extends EntityPersister, EntityMuta
 		return getSelectByUniqueKeyString( propertyNames[0] );
 	}
 
+	// todo marco : move this to EntityPersister + use EntityPersister all over instead of PostInsertIdentityPersister
 	String getSelectByUniqueKeyString(String[] propertyNames, String[] columnNames);
 
 	/**

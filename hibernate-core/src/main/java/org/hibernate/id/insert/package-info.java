@@ -8,8 +8,6 @@
 /**
  * Contains a framework of strategies for retrieving database-generated ids.
  *
- * todo marco : move this into another package (generic, not just id-related ?)
- *
  * @see org.hibernate.id.insert.InsertGeneratedIdentifierDelegate
  */
 package org.hibernate.id.insert;

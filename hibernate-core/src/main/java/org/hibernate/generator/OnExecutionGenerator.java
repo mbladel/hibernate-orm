@@ -8,6 +8,7 @@ package org.hibernate.generator;
 
 import org.hibernate.Incubating;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.id.insert.GetGeneratedKeysDelegate;
 import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
@@ -115,7 +116,7 @@ public interface OnExecutionGenerator extends Generator {
 	 * identity columns is the reason why this layer-breaking method exists.
 	 */
 	@Incubating
-	default InsertGeneratedIdentifierDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
+	default GeneratedValuesMutationDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
 		Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
 		if ( dialect.supportsInsertReturningGeneratedKeys() ) {
 			return new GetGeneratedKeysDelegate( persister, dialect, false, EventType.INSERT );

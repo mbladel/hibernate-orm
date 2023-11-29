@@ -39,7 +39,10 @@ import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
  * @see org.hibernate.generator.OnExecutionGenerator
  *
  * @author Steve Ebersole
+ *
+ * @deprecated Use {@link GeneratedValuesMutationDelegate} instead.
  */
+@Deprecated( forRemoval = true, since = "7.0" )
 public interface InsertGeneratedIdentifierDelegate extends GeneratedValuesMutationDelegate {
 	/**
 	 * Create a {@link TableInsertBuilder} with any specific identity
