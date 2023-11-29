@@ -409,12 +409,11 @@ public abstract class SimpleValue implements KeyValue {
 			generator = customIdGeneratorCreator.createGenerator(
 					new IdGeneratorCreationContext( identifierGeneratorFactory, null, null, rootClass )
 			);
-			return generator;
 		}
 		else {
 			generator = createLegacyIdentifierGenerator(this, identifierGeneratorFactory, dialect, null, null, rootClass );
-			return generator;
 		}
+		return generator;
 	}
 
 	public boolean isUpdateable() {

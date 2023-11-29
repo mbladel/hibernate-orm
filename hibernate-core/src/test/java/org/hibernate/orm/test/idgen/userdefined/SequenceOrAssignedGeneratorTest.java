@@ -8,19 +8,12 @@ package org.hibernate.orm.test.idgen.userdefined;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-import java.lang.reflect.Member;
-import java.util.Properties;
 
 import org.hibernate.HibernateException;
-import org.hibernate.MappingException;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.IdGeneratorType;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.generator.AnnotationBasedGenerator;
-import org.hibernate.generator.GeneratorCreationContext;
 import org.hibernate.id.enhanced.SequenceStyleGenerator;
-import org.hibernate.service.ServiceRegistry;
-import org.hibernate.type.Type;
 
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
@@ -29,8 +22,8 @@ import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Version;
 
 import static java.lang.annotation.ElementType.FIELD;
 import static java.lang.annotation.ElementType.METHOD;
@@ -60,18 +53,16 @@ public class SequenceOrAssignedGeneratorTest {
 		String name();
 	}
 
-	@Entity
+	@Entity( name = "MyEntity" )
 	@GenericGenerator( type = SequenceOrAssignedGenerator.class, name = MyEntity.SEQUENCE )
 	public static class MyEntity {
 		protected static final String SEQUENCE = "SEQ_MyEntity";
 
 		@Id
-//		@GeneratedValue( generator = SEQUENCE )
-		@GeneratedValue( strategy = GenerationType.SEQUENCE )
-//		@SequenceOrAssigned( name = SEQUENCE )
+		@GeneratedValue( generator = SEQUENCE )
 		private Long id;
 
-		//	@Version
+		@Version
 		private Long version;
 
 		private String name;
@@ -93,42 +84,7 @@ public class SequenceOrAssignedGeneratorTest {
 		}
 	}
 
-	public static class SequenceOrAssignedGenerator extends SequenceStyleGenerator
-			implements AnnotationBasedGenerator<SequenceOrAssigned> {
-//		@Override
-//		protected DatabaseStructure buildSequenceStructure(
-//				Type type, Properties params, JdbcEnvironment jdbcEnvironment,
-//				QualifiedName sequenceName, int initialValue, int incrementSize) {
-//			final String contributor = determineContributor( params );
-//			final Class<?> numberType = getNumberType( type );
-//			return new SequenceStructure( jdbcEnvironment, contributor, sequenceName, initialValue, incrementSize, numberType );
-//		}
-
-//		@Override
-//		protected DatabaseStructure buildTableStructure(Type type, Properties params, JdbcEnvironment jdbcEnvironment,
-//														QualifiedName sequenceName, int initialValue, int incrementSize) {
-//			Identifier valueColumnName = determineValueColumnName( params, jdbcEnvironment );
-//			String contributor = determineContributor( params );
-//			Class<?> numberType = getNumberType( type );
-//			return new TableStructure( jdbcEnvironment, contributor, sequenceName, valueColumnName, initialValue, incrementSize,
-//									   numberType );
-//		}
-
-//		private String determineContributor(Properties params) {
-//			final String contributor = params.getProperty( IdentifierGenerator.CONTRIBUTOR_NAME );
-//			return contributor == null ? "orm" : contributor;
-//		}
-
-//		private Class<?> getNumberType(Type type) {
-//			if ( type instanceof BasicType<?> ) {
-//				BasicType<?> basicType = (BasicType<?>) type;
-//				JdbcType jdbcType = basicType.getJdbcType();
-//				int jdbcTypeCode = jdbcType.getJdbcTypeCode();
-//				return JdbcTypeJavaClassMappings.INSTANCE.determineJavaClassForJdbcTypeCode( jdbcTypeCode );
-//			}
-//			return type.getReturnedClass();
-//		}
-
+	public static class SequenceOrAssignedGenerator extends SequenceStyleGenerator {
 		@Override
 		public Object generate(SharedSessionContractImplementor session, Object owner) throws HibernateException {
 			if ( owner instanceof MyEntity ) {
@@ -142,17 +98,9 @@ public class SequenceOrAssignedGeneratorTest {
 			return super.generate( session, owner );
 		}
 
-		@Override
-		public void configure(Type type, Properties parameters, ServiceRegistry serviceRegistry)
-				throws MappingException {
-			super.configure( type, parameters, serviceRegistry );
-		}
-
-		@Override
-		public void initialize(SequenceOrAssigned annotation, Member member, GeneratorCreationContext context) {
-			// todo marco : what do here ?
-			annotation.name();
-		}
+//		@Override
+//		public boolean allowUnsaved() {
+//			return true;
+//		}
 	}
-
 }

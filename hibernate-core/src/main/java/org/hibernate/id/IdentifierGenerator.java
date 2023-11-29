@@ -166,4 +166,12 @@ public interface IdentifierGenerator extends BeforeExecutionGenerator, Exportabl
 	default boolean supportsJdbcBatchInserts() {
 		return true;
 	}
+
+	/**
+	 * @since 6.5
+	 * @return
+	 */
+	default boolean allowAssigned() {
+		return generatedOnExecution();
+	}
 }
