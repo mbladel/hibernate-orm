@@ -85,6 +85,11 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 	}
 
 	@Override
+	protected Object getRowId() {
+		return null;
+	}
+
+	@Override
 	protected EntityKey getEntityKey() {
 		return getSession().generateEntityKey( getId(), getPersister() );
 	}

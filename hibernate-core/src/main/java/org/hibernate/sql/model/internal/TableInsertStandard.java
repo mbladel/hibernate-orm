@@ -16,6 +16,7 @@ import org.hibernate.sql.model.ast.AbstractTableInsert;
 import org.hibernate.sql.model.ast.ColumnValueBinding;
 import org.hibernate.sql.model.ast.ColumnValueParameter;
 import org.hibernate.sql.model.ast.MutatingTableReference;
+import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 /**
  * @author Steve Ebersole

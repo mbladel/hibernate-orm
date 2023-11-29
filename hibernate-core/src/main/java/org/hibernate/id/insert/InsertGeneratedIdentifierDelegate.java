@@ -39,7 +39,10 @@ import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
  * @see org.hibernate.generator.OnExecutionGenerator
  *
  * @author Steve Ebersole
+ *
+ * @deprecated Use {@link GeneratedValuesMutationDelegate} instead.
  */
+@Deprecated( forRemoval = true, since = "7.0" )
 public interface InsertGeneratedIdentifierDelegate extends GeneratedValuesMutationDelegate {
 	/**
 	 * Create a {@link TableInsertBuilder} with any specific identity
@@ -73,18 +76,6 @@ public interface InsertGeneratedIdentifierDelegate extends GeneratedValuesMutati
 			SharedSessionContractImplementor session) {
 		return performMutation( insertStatementDetails, valueBindings, entity, session );
 	}
-
-	/**
-	 * Build an {@linkplain org.hibernate.sql.Insert insert statement}
-	 * specific to the delegate's mode of handling generated key values.
-	 *
-	 * @param context A context to help generate SQL strings
-	 * @return An {@link IdentifierGeneratingInsert}
-	 *
-	 * @deprecated this is no longer called
-	 */
-	@Deprecated(since = "6.2")
-	IdentifierGeneratingInsert prepareIdentifierGeneratingInsert(SqlStringGenerationContext context);
 
 	/**
 	 * Append SQL specific to this delegate's mode of handling generated

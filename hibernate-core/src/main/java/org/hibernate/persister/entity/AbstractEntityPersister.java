@@ -3426,6 +3426,8 @@ public abstract class AbstractEntityPersister
 	}
 
 	private void doLateInit() {
+		tableMappings = buildTableMappings();
+
 		final List<AttributeMapping> insertGeneratedAttributes = hasInsertGeneratedProperties() ?
 				GeneratedValuesProcessor.getGeneratedAttributes( this, INSERT )
 				: Collections.emptyList();
@@ -3454,7 +3456,6 @@ public abstract class AbstractEntityPersister
 			updateGeneratedValuesProcessor = createGeneratedValuesProcessor( UPDATE, updateGeneratedAttributes );
 		}
 
-		tableMappings = buildTableMappings();
 		insertCoordinator = buildInsertCoordinator();
 		updateCoordinator = buildUpdateCoordinator();
 		deleteCoordinator = buildDeleteCoordinator();
@@ -4722,10 +4723,9 @@ public abstract class AbstractEntityPersister
 		final int originalSize = generatedAttributes.size();
 		final List<ModelPart> generatedBasicAttributes = new ArrayList<>( originalSize );
 		for ( AttributeMapping generatedAttribute : generatedAttributes ) {
-			// todo : support non selectable mappings? Component, ToOneAttributeMapping, ...
-			if ( generatedAttribute instanceof SelectableMapping
-					// todo : support generated values on secondary tables / joined inheritance subclasses?
-					&& ( (SelectableMapping) generatedAttribute ).getContainingTableExpression().equals( getSubclassTableName( 0 ) ) ) {
+			// todo (7.0) : support non selectable mappings? Component, ToOneAttributeMapping, ...
+			if ( generatedAttribute instanceof BasicValuedModelPart
+					&& generatedAttribute.getContainingTableExpression().equals( getSubclassTableName( 0 ) ) ) {
 				generatedBasicAttributes.add( generatedAttribute );
 			}
 		}

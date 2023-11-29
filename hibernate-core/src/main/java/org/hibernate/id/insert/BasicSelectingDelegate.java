@@ -7,7 +7,6 @@
 package org.hibernate.id.insert;
 
 import org.hibernate.MappingException;
-import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.generator.EventType;
@@ -19,26 +18,22 @@ import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
+import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 /**
  * Delegate for dealing with {@code IDENTITY} columns where the dialect requires an
  * additional command execution to retrieve the generated {@code IDENTITY} value
  */
 public class BasicSelectingDelegate extends AbstractSelectingDelegate {
-	private final PostInsertIdentityPersister persister;
+	final private PostInsertIdentityPersister persister;
 	private final Dialect dialect;
+	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	public BasicSelectingDelegate(PostInsertIdentityPersister persister, Dialect dialect) {
 		super( persister, EventType.INSERT );
 		this.persister = persister;
 		this.dialect = dialect;
-	}
-
-	@Override @Deprecated
-	public IdentifierGeneratingInsert prepareIdentifierGeneratingInsert(SqlStringGenerationContext context) {
-		IdentifierGeneratingInsert insert = new IdentifierGeneratingInsert( persister.getFactory() );
-		insert.addGeneratedColumns( persister.getRootTableKeyColumnNames(), (OnExecutionGenerator) persister.getGenerator() );
-		return insert;
+		this.jdbcValuesMappingProducer = getMappingProducer( null );
 	}
 
 	@Override
@@ -70,5 +65,10 @@ public class BasicSelectingDelegate extends AbstractSelectingDelegate {
 			throw CoreLogging.messageLogger( BasicSelectingDelegate.class ).nullIdentitySelectString();
 		}
 		return persister.getIdentitySelectString();
+	}
+
+	@Override
+	public JdbcValuesMappingProducer getGeneratedValuesMappingProducer() {
+		return jdbcValuesMappingProducer;
 	}
 }

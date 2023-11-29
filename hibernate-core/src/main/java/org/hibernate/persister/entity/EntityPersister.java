@@ -47,6 +47,7 @@ import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.internal.InFlightEntityMappingType;
 import org.hibernate.metamodel.spi.EntityRepresentationStrategy;
+import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.persister.walking.spi.AttributeSource;
 import org.hibernate.query.sqm.mutation.spi.SqmMultiTableInsertStrategy;
 import org.hibernate.query.sqm.mutation.spi.SqmMultiTableMutationStrategy;
@@ -107,7 +108,7 @@ import org.hibernate.type.descriptor.java.VersionJavaType;
  * @see org.hibernate.persister.spi.PersisterFactory
  * @see org.hibernate.persister.spi.PersisterClassResolver
  */
-public interface EntityPersister extends EntityMappingType, RootTableGroupProducer, AttributeSource {
+public interface EntityPersister extends EntityMappingType, EntityMutationTarget, RootTableGroupProducer, AttributeSource {
 
 	/**
 	 * Finish the initialization of this object.
@@ -929,7 +930,6 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 		return timing == EventType.INSERT ? getInsertGeneratedProperties() : getUpdateGeneratedProperties();
 	}
 
-	// todo marco : move this to PostInsertIdentityPersister and rename / move the interface ?
 	default List<? extends ModelPart> getInsertGeneratedProperties() {
 		return Collections.emptyList();
 	}
@@ -1183,4 +1183,40 @@ public interface EntityPersister extends EntityMappingType, RootTableGroupProduc
 	 */
 	@Incubating
 	Iterable<UniqueKeyEntry> uniqueKeyEntries();
+
+	/**
+	 * Get a SQL select string that performs a select based on a unique
+	 * key determined by the given property name.
+	 *
+	 * @param propertyName The name of the property which maps to the
+	 *           column(s) to use in the select statement restriction.
+	 * @return The SQL select string
+	 */
+	String getSelectByUniqueKeyString(String propertyName);
+
+	/**
+	 * Get a SQL select string that performs a select based on a unique
+	 * key determined by the given property names.
+	 *
+	 * @param propertyNames The names of the properties which maps to the
+	 *               column(s) to use in the select statement restriction.
+	 * @return The SQL select string
+	 */
+	default String getSelectByUniqueKeyString(String[] propertyNames) {
+		// default impl only for backward compatibility
+		if ( propertyNames.length > 1 ) {
+			throw new IllegalArgumentException( "support for multiple properties not implemented" );
+		}
+		return getSelectByUniqueKeyString( propertyNames[0] );
+	}
+
+	String getSelectByUniqueKeyString(String[] propertyNames, String[] columnNames);
+
+
+	/**
+	 * The names of the primary key columns in the root table.
+	 *
+	 * @return The primary key column names.
+	 */
+	String[] getRootTableKeyColumnNames();
 }

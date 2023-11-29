@@ -10,20 +10,19 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.spi.JdbcCoordinator;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
-import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.generator.values.TableUpdateReturningBuilder;
-import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
+import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 import static java.sql.Statement.NO_GENERATED_KEYS;
 import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedValues;
@@ -38,20 +37,13 @@ import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedV
  * @see GeneratedValuesMutationDelegate
  */
 public class InsertReturningDelegate extends AbstractReturningDelegate {
-	private final PostInsertIdentityPersister persister;
 	private final Dialect dialect;
+	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
-	public InsertReturningDelegate(PostInsertIdentityPersister persister, Dialect dialect, EventType timing) {
+	public InsertReturningDelegate(EntityPersister persister, Dialect dialect, EventType timing) {
 		super( persister, timing );
-		this.persister = persister;
 		this.dialect = dialect;
-	}
-
-	@Override @Deprecated
-	public IdentifierGeneratingInsert prepareIdentifierGeneratingInsert(SqlStringGenerationContext context) {
-		InsertSelectIdentityInsert insert = new InsertSelectIdentityInsert( persister.getFactory() );
-		insert.addGeneratedColumns( persister.getRootTableKeyColumnNames(), (OnExecutionGenerator) persister.getGenerator() );
-		return insert;
+		this.jdbcValuesMappingProducer = getMappingProducer( null );
 	}
 
 	@Override
@@ -98,6 +90,11 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 	@Override
 	public boolean supportsRowId() {
 		return dialect.supportsInsertReturningRowId();
+	}
+
+	@Override
+	public JdbcValuesMappingProducer getGeneratedValuesMappingProducer() {
+		return jdbcValuesMappingProducer;
 	}
 
 	@Override

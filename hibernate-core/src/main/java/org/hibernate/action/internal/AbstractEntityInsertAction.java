@@ -146,6 +146,10 @@ public abstract class AbstractEntityInsertAction extends EntityAction {
 		);
 		if ( isEarlyInsert() ) {
 			addCollectionsByKeyToPersistenceContext( persistenceContextInternal, getState() );
+			final Object rowId = getRowId();
+			if ( rowId != null ) {
+				persistenceContextInternal.replaceEntityEntryRowId( getInstance(), rowId );
+			}
 		}
 	}
 
@@ -229,6 +233,8 @@ public abstract class AbstractEntityInsertAction extends EntityAction {
 	 * @return the {@link EntityKey}.
 	 */
 	protected abstract EntityKey getEntityKey();
+
+	protected abstract Object getRowId();
 
 	@Override
 	public void afterDeserialize(EventSource session) {

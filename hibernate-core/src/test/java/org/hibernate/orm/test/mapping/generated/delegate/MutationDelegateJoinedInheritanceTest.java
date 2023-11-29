@@ -14,7 +14,7 @@ import org.hibernate.annotations.SourceType;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
-import org.hibernate.persister.entity.mutation.EntityMutationTarget;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.model.MutationType;
 
 import org.hibernate.testing.jdbc.SQLStatementInspector;
@@ -161,10 +161,11 @@ public class MutationDelegateJoinedInheritanceTest {
 
 	private static GeneratedValuesMutationDelegate getDelegate(
 			SessionFactoryScope scope,
-			Class<?> entityClass,
+			@SuppressWarnings( "SameParameterValue" ) Class<?> entityClass,
 			MutationType mutationType) {
-		final EntityMutationTarget entityDescriptor = (EntityMutationTarget) scope.getSessionFactory()
-				.getMappingMetamodel().findEntityDescriptor( entityClass );
+		final EntityPersister entityDescriptor = scope.getSessionFactory()
+				.getMappingMetamodel()
+				.findEntityDescriptor( entityClass );
 		return entityDescriptor.getMutationDelegate( mutationType );
 	}
 

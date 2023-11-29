@@ -8,6 +8,7 @@ package org.hibernate.generator;
 
 import org.hibernate.Incubating;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.id.insert.GetGeneratedKeysDelegate;
 import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
@@ -16,6 +17,7 @@ import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 import org.hibernate.persister.entity.EntityPersister;
 
 import static org.hibernate.generator.internal.NaturalIdHelper.getNaturalIdPropertyNames;
+import static org.hibernate.generator.values.GeneratedValuesHelper.noCustomSql;
 
 /**
  * A generator which produces a new value by actually going ahead and writing a row to the
@@ -115,12 +117,12 @@ public interface OnExecutionGenerator extends Generator {
 	 * identity columns is the reason why this layer-breaking method exists.
 	 */
 	@Incubating
-	default InsertGeneratedIdentifierDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
+	default GeneratedValuesMutationDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
 		Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
 		if ( dialect.supportsInsertReturningGeneratedKeys() ) {
 			return new GetGeneratedKeysDelegate( persister, dialect, false, EventType.INSERT );
 		}
-		else if ( dialect.supportsInsertReturning() ) {
+		else if ( dialect.supportsInsertReturning() && noCustomSql( persister, EventType.INSERT ) ) {
 			return new InsertReturningDelegate( persister, dialect, EventType.INSERT );
 		}
 		else {

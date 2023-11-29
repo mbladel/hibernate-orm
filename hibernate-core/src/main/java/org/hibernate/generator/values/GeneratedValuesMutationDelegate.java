@@ -15,6 +15,7 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
+import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 /**
  * Each implementation defines a strategy for retrieving values
@@ -46,6 +47,8 @@ public interface GeneratedValuesMutationDelegate {
 			JdbcValueBindings valueBindings,
 			Object entity,
 			SharedSessionContractImplementor session);
+
+	JdbcValuesMappingProducer getGeneratedValuesMappingProducer();
 
 	/**
 	 * Returns the timing this generated values delegate handles.

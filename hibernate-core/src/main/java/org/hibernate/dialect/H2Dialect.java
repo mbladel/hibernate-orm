@@ -830,7 +830,6 @@ public class H2Dialect extends Dialect {
 
 	@Override
 	public boolean supportsInsertReturningGeneratedKeys() {
-		// todo marco : from testing looks like this works
 		return true;
 	}
 
