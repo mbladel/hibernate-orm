@@ -26,6 +26,7 @@ import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.values.GeneratedValues;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.id.BulkInsertionCapableIdentifierGenerator;
 import org.hibernate.id.OptimizableGenerator;
 import org.hibernate.id.PostInsertIdentityPersister;
@@ -41,6 +42,7 @@ import org.hibernate.metamodel.mapping.MappingModelExpressible;
 import org.hibernate.metamodel.mapping.ModelPartContainer;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.query.SemanticException;
 import org.hibernate.query.SortDirection;
 import org.hibernate.query.results.TableGroupImpl;
@@ -544,15 +546,15 @@ public class InsertExecutionDelegate implements TableBasedInsertHandler.Executio
 				.translate( null, executionContext.getQueryOptions() );
 
 		if ( generator.generatedOnExecution() ) {
-			final OnExecutionGenerator databaseGenerator = (OnExecutionGenerator) generator;
-			final InsertGeneratedIdentifierDelegate identifierDelegate =
-					databaseGenerator.getGeneratedIdentifierDelegate( (PostInsertIdentityPersister) entityPersister );
+			final GeneratedValuesMutationDelegate insertDelegate = ( (EntityMutationTarget) entityDescriptor.getEntityPersister() ).getInsertDelegate();
+			// todo 7.0 : InsertGeneratedIdentifierDelegate will be removed once we're going to handle
+			//  generated values within the jdbc insert operaetion itself
+			final InsertGeneratedIdentifierDelegate identifierDelegate = (InsertGeneratedIdentifierDelegate) insertDelegate;
 			final String finalSql = identifierDelegate.prepareIdentifierGeneratingInsert( jdbcInsert.getSqlString() );
 			final BasicEntityIdentifierMapping identifierMapping =
 					(BasicEntityIdentifierMapping) entityDescriptor.getIdentifierMapping();
 			final ValueBinder jdbcValueBinder = identifierMapping.getJdbcMapping().getJdbcValueBinder();
 			for ( Map.Entry<Object, Object> entry : entityTableToRootIdentity.entrySet() ) {
-				// todo marco : performInsert(String sql, ...) doesn't account for non-id generated values
 				final GeneratedValues generatedValues = identifierDelegate.performInsert(
 						finalSql,
 						session,

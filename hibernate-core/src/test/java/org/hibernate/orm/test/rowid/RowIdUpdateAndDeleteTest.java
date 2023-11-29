@@ -8,6 +8,11 @@ package org.hibernate.orm.test.rowid;
 
 import org.hibernate.annotations.RowId;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
+import org.hibernate.orm.test.mapping.generated.delegate.MutationDelegateTest;
+import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.persister.entity.mutation.EntityMutationTarget;
+import org.hibernate.sql.model.MutationType;
 
 import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -67,8 +72,8 @@ public class RowIdUpdateAndDeleteTest {
 			simpleEntity.setStatus( "new_status" );
 			inspector.clear();
 		} );
-		// the update should have used the primary key, as the row-id value is not available
-		checkUpdateQuery( inspector, true );
+		// the update should have used the primary key when the row-id value is not available
+		checkUpdateQuery( inspector, scope, true );
 		scope.inTransaction( session -> assertThat(
 				session.find( SimpleEntity.class, 3L ).getStatus()
 		).isEqualTo( "new_status" ) );
@@ -85,8 +90,8 @@ public class RowIdUpdateAndDeleteTest {
 			session.remove( simpleEntity );
 			inspector.clear();
 		} );
-		// the update should have used the primary key, as the row-id value is not available
-		checkUpdateQuery( inspector, true );
+		// the update should have used the primary key when the row-id value is not available
+		checkUpdateQuery( inspector, scope, true );
 		scope.inTransaction( session -> assertThat( session.find( SimpleEntity.class, 13L ) ).isNull() );
 	}
 
@@ -107,8 +112,8 @@ public class RowIdUpdateAndDeleteTest {
 			parent.getChild().setStatus( "new_status" );
 			inspector.clear();
 		} );
-		// the update should have used the primary key, as the row-id value is not available
-		checkUpdateQuery( inspector, true );
+		// the update should have used the primary key when the row-id value is not available
+		checkUpdateQuery( inspector, scope, true );
 		scope.inTransaction( session -> assertThat(
 				session.find( SimpleEntity.class, 4L ).getStatus()
 		).isEqualTo( "new_status" ) );
@@ -122,8 +127,7 @@ public class RowIdUpdateAndDeleteTest {
 			simpleEntity.setStatus( "new_status" );
 			inspector.clear();
 		} );
-		final Dialect dialect = scope.getSessionFactory().getJdbcServices().getDialect();
-		checkUpdateQuery( inspector, dialect.rowId( "" ) == null );
+		checkUpdateQuery( inspector, scope, false );
 		scope.inTransaction( session -> assertThat(
 				session.find( SimpleEntity.class, 1L ).getStatus()
 		).isEqualTo( "new_status" ) );
@@ -137,8 +141,7 @@ public class RowIdUpdateAndDeleteTest {
 			session.remove( simpleEntity );
 			inspector.clear();
 		} );
-		final Dialect dialect = scope.getSessionFactory().getJdbcServices().getDialect();
-		checkUpdateQuery( inspector, dialect.rowId( "" ) == null );
+		checkUpdateQuery( inspector, scope, false );
 		scope.inTransaction( session -> assertThat( session.find( SimpleEntity.class, 11L ) ).isNull() );
 	}
 
@@ -150,14 +153,30 @@ public class RowIdUpdateAndDeleteTest {
 			parent.getChild().setStatus( "new_status" );
 			inspector.clear();
 		} );
-		final Dialect dialect = scope.getSessionFactory().getJdbcServices().getDialect();
-		checkUpdateQuery( inspector, dialect.rowId( "" ) == null );
+		checkUpdateQuery( inspector, scope, false );
 		scope.inTransaction( session -> assertThat(
 				session.find( SimpleEntity.class, 2L ).getStatus()
 		).isEqualTo( "new_status" ) );
 	}
 
-	private void checkUpdateQuery(SQLStatementInspector inspector, boolean shouldUsePrimaryKey) {
+	private void checkUpdateQuery(SQLStatementInspector inspector, SessionFactoryScope scope, boolean sameTransaction) {
+		final Dialect dialect = scope.getSessionFactory().getJdbcServices().getDialect();
+		final boolean shouldUsePrimaryKey;
+		if ( dialect.rowId( "" ) == null ) {
+			shouldUsePrimaryKey = true;
+		}
+		else {
+			if ( sameTransaction ) {
+				final EntityPersister persister = scope.getSessionFactory()
+						.getMappingMetamodel()
+						.findEntityDescriptor( SimpleEntity.class );
+				final GeneratedValuesMutationDelegate delegate = persister.getMutationDelegate( MutationType.INSERT );
+				shouldUsePrimaryKey = delegate == null || !delegate.supportsRowId();
+			}
+			else {
+				shouldUsePrimaryKey = false;
+			}
+		}
 		inspector.assertNumberOfOccurrenceInQueryNoSpace( 0, "primary_key", shouldUsePrimaryKey ? 1 : 0 );
 	}
 

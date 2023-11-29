@@ -6,20 +6,43 @@
  */
 package org.hibernate.generator.values;
 
+import java.util.function.Consumer;
+
 import org.hibernate.generator.EventType;
+import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
+
+import static org.hibernate.generator.values.GeneratedValuesHelper.createMappingProducer;
 
 /**
  * @author Marco Belladelli
  */
 public abstract class AbstractGeneratedValuesMutationDelegate implements GeneratedValuesMutationDelegate {
+	protected final EntityPersister persister;
 	private final EventType timing;
 
-	public AbstractGeneratedValuesMutationDelegate(EventType timing) {
+	public AbstractGeneratedValuesMutationDelegate(EntityPersister persister, EventType timing) {
+		this.persister = persister;
 		this.timing = timing;
 	}
 
 	@Override
 	public EventType getTiming() {
 		return timing;
+	}
+
+	protected JdbcValuesMappingProducer getMappingProducer(Consumer<String> columnNameConsumer) {
+		return getMappingProducer( columnNameConsumer, true );
+	}
+
+	protected JdbcValuesMappingProducer getMappingProducer(Consumer<String> columnNameConsumer, boolean useIndex) {
+		return createMappingProducer(
+				persister,
+				timing,
+				supportsArbitraryValues(),
+				supportsRowId(),
+				useIndex,
+				columnNameConsumer
+		);
 	}
 }

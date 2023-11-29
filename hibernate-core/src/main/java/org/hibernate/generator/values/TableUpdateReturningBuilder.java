@@ -9,8 +9,9 @@ package org.hibernate.generator.values;
 import java.util.List;
 
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.id.PostInsertIdentityPersister;
+import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.metamodel.mapping.SelectableMapping;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.MutationTarget;
@@ -29,15 +30,15 @@ public class TableUpdateReturningBuilder<O extends MutationOperation> extends Ab
 	}
 
 	@Override
-	protected PostInsertIdentityPersister getMutationTarget() {
-		return (PostInsertIdentityPersister) super.getMutationTarget();
+	protected EntityPersister getMutationTarget() {
+		return (EntityPersister) super.getMutationTarget();
 	}
 
 	@Override @SuppressWarnings("unchecked")
 	public RestrictedTableMutation<O> buildMutation() {
 		final List<ColumnReference> generatedColumns = getMutationTarget().getUpdateGeneratedProperties()
 				.stream().map( prop -> {
-					assert prop instanceof SelectableMapping : "Unsupported non-selectable generated value";
+					assert prop instanceof BasicValuedModelPart : "Unsupported non-basic generated value";
 					return new ColumnReference( getMutatingTable(), ( (SelectableMapping) prop ) );
 				} ).toList();
 

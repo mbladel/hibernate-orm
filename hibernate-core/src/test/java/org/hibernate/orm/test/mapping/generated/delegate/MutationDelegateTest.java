@@ -20,7 +20,7 @@ import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.id.insert.UniqueKeySelectingDelegate;
-import org.hibernate.persister.entity.mutation.EntityMutationTarget;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.model.MutationType;
 
 import org.hibernate.testing.jdbc.SQLStatementInspector;
@@ -119,7 +119,8 @@ public class MutationDelegateTest {
 					delegate != null && delegate.supportsArbitraryValues() ? 1 : 2
 			);
 
-			final boolean shouldHaveRowId = delegate != null && delegate.supportsRowId();
+			final boolean shouldHaveRowId = delegate != null && delegate.supportsRowId()
+					&& scope.getSessionFactory().getJdbcServices().getDialect().rowId( "" ) != null;
 			if ( shouldHaveRowId ) {
 				// assert row-id was populated in entity entry
 				final PersistenceContext pc = session.getPersistenceContextInternal();
@@ -174,8 +175,9 @@ public class MutationDelegateTest {
 			SessionFactoryScope scope,
 			Class<?> entityClass,
 			MutationType mutationType) {
-		final EntityMutationTarget entityDescriptor = (EntityMutationTarget) scope.getSessionFactory()
-				.getMappingMetamodel().findEntityDescriptor( entityClass );
+		final EntityPersister entityDescriptor = scope.getSessionFactory()
+				.getMappingMetamodel()
+				.findEntityDescriptor( entityClass );
 		return entityDescriptor.getMutationDelegate( mutationType );
 	}
 

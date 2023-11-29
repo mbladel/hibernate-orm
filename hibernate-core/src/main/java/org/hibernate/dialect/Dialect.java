@@ -4042,7 +4042,6 @@ public abstract class Dialect implements ConversionContext, TypeContributor, Fun
 	 *         {@code false} if {@code InsertReturningDelegate} does not work, or only
 	 *         works for specialized identity/"autoincrement" columns
 	 *
-	 * @see org.hibernate.generator.OnExecutionGenerator#getGeneratedIdentifierDelegate
 	 * @see org.hibernate.id.insert.InsertReturningDelegate
 	 *
 	 * @since 6.2
@@ -4053,14 +4052,28 @@ public abstract class Dialect implements ConversionContext, TypeContributor, Fun
 
 	/**
 	 * Does this dialect supports returning the {@link org.hibernate.annotations.RowId} column
-	 *  after execution of an {@code insert} statement, using native SQL syntax?
-	 *
+	 * after execution of an {@code insert} statement, using native SQL syntax?
 	 *
 	 * @return {@code true} is the dialect supports returning the rowid column
 	 *
 	 * @see #supportsInsertReturning()
+	 * @since 7.0
 	 */
 	public boolean supportsInsertReturningRowId() {
+		return supportsInsertReturning();
+	}
+
+	/**
+	 * Does this dialect fully support returning arbitrary generated column values
+	 * after execution of an {@code update} statement, using native SQL syntax?
+	 * <p>
+	 * Defaults to the value of {@link #supportsInsertReturning()} but can be overridden
+	 * to explicitly disable this for updates.
+	 *
+	 * @see #supportsInsertReturning()
+	 * @since 7.0
+	 */
+	public boolean supportsUpdateReturning() {
 		return supportsInsertReturning();
 	}
 

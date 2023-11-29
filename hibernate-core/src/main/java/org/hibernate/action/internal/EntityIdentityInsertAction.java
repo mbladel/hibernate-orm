@@ -8,9 +8,11 @@ package org.hibernate.action.internal;
 
 import org.hibernate.AssertionFailure;
 import org.hibernate.HibernateException;
+import org.hibernate.LockMode;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.engine.spi.Status;
 import org.hibernate.event.service.spi.EventListenerGroup;
 import org.hibernate.event.spi.EventSource;
 import org.hibernate.event.spi.PostCommitInsertEventListener;
@@ -21,6 +23,8 @@ import org.hibernate.event.spi.PreInsertEventListener;
 import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.stat.spi.StatisticsImplementor;
+
+import static org.hibernate.engine.internal.Versioning.getVersion;
 
 /**
  * The action for performing entity insertions when entity is using IDENTITY column identifier generation
@@ -33,6 +37,7 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 	private final EntityKey delayedEntityKey;
 	private EntityKey entityKey;
 	private Object generatedId;
+	private Object rowId;
 
 	/**
 	 * Constructs an EntityIdentityInsertAction
@@ -84,8 +89,8 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 			generatedId = generatedValues.getGeneratedValue( persister.getIdentifierMapping() );
 			// Process row-id values when available early by replacing the entity entry
 			if ( persister.getRowIdMapping() != null ) {
-				final Object rowId = generatedValues.getGeneratedValue( persister.getRowIdMapping() );
-				if ( rowId != null ) {
+				rowId = generatedValues.getGeneratedValue( persister.getRowIdMapping() );
+				if ( rowId != null && isDelayed ) {
 					persistenceContext.replaceEntityEntryRowId( getInstance(), rowId );
 				}
 			}
@@ -219,6 +224,11 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 	@Override
 	protected EntityKey getEntityKey() {
 		return entityKey != null ? entityKey : delayedEntityKey;
+	}
+
+	@Override
+	public Object getRowId() {
+		return rowId;
 	}
 
 	protected void setEntityKey(EntityKey entityKey) {

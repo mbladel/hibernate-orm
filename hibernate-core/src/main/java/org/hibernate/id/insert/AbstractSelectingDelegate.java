@@ -19,14 +19,14 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.values.AbstractGeneratedValuesMutationDelegate;
 import org.hibernate.generator.values.GeneratedValues;
-import org.hibernate.id.PostInsertIdentityPersister;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.pretty.MessageHelper;
 
 import static java.sql.Statement.NO_GENERATED_KEYS;
 import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedValues;
 
 /**
- * Abstract {@link InsertGeneratedIdentifierDelegate} implementation where
+ * Abstract {@link org.hibernate.generator.values.GeneratedValuesMutationDelegate} implementation where
  * the underlying strategy requires a subsequent {@code select} after the
  * {@code insert} to determine the generated identifier.
  *
@@ -34,11 +34,8 @@ import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedV
  */
 public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesMutationDelegate
 		implements InsertGeneratedIdentifierDelegate {
-	private final PostInsertIdentityPersister persister;
-
-	protected AbstractSelectingDelegate(PostInsertIdentityPersister persister, EventType timing) {
-		super( timing );
-		this.persister = persister;
+	protected AbstractSelectingDelegate(EntityPersister persister, EventType timing) {
+		super( persister, timing );
 	}
 
 	/**

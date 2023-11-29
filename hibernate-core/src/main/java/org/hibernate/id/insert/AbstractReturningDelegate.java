@@ -16,11 +16,11 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.values.AbstractGeneratedValuesMutationDelegate;
 import org.hibernate.generator.values.GeneratedValues;
-import org.hibernate.id.PostInsertIdentityPersister;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.pretty.MessageHelper;
 
 /**
- * Abstract {@link InsertGeneratedIdentifierDelegate} implementation where
+ * Abstract {@link org.hibernate.generator.values.GeneratedValuesMutationDelegate} implementation where
  * the underlying strategy causes the generated identifier to be returned as
  * an effect of performing the insert statement.  Thus, there is no need for
  * an additional sql statement to determine the generated identifier.
@@ -29,11 +29,9 @@ import org.hibernate.pretty.MessageHelper;
  */
 public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesMutationDelegate
 		implements InsertGeneratedIdentifierDelegate {
-	private final PostInsertIdentityPersister persister;
 
-	public AbstractReturningDelegate(PostInsertIdentityPersister persister, EventType timing) {
-		super( timing );
-		this.persister = persister;
+	public AbstractReturningDelegate(EntityPersister persister, EventType timing) {
+		super( persister, timing );
 	}
 
 	@Override
@@ -67,10 +65,6 @@ public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesM
 					sql
 			);
 		}
-	}
-
-	protected PostInsertIdentityPersister getPersister() {
-		return persister;
 	}
 
 	protected abstract GeneratedValues executeAndExtract(
