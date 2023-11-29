@@ -8,11 +8,11 @@ package org.hibernate.id;
 
 import org.hibernate.dialect.Dialect;
 import org.hibernate.generator.EventType;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.id.factory.spi.StandardGenerator;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.id.insert.BasicSelectingDelegate;
 import org.hibernate.id.insert.GetGeneratedKeysDelegate;
-import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
 import org.hibernate.id.insert.InsertReturningDelegate;
 import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 
@@ -26,16 +26,11 @@ import static org.hibernate.generator.internal.NaturalIdHelper.getNaturalIdPrope
  * provided by the {@linkplain Dialect#getIdentityColumnSupport() dialect}.
  * <p>
  * The actual work involved in retrieving the primary key value is the job of a
- * {@link org.hibernate.id.insert.InsertGeneratedIdentifierDelegate}, either:
- * <ul>
- * <li>a {@link org.hibernate.id.insert.GetGeneratedKeysDelegate},
- * <li>an {@link org.hibernate.id.insert.InsertReturningDelegate}, or a
- * <li>a {@link org.hibernate.id.insert.BasicSelectingDelegate}.
- * </ul>
+ * {@link org.hibernate.generator.values.GeneratedValuesMutationDelegate}.
  *
  * @see jakarta.persistence.GenerationType#IDENTITY
  * @see org.hibernate.dialect.identity.IdentityColumnSupport
- * @see org.hibernate.id.insert.InsertGeneratedIdentifierDelegate
+ * @see org.hibernate.generator.values.GeneratedValuesMutationDelegate
  *
  * @author Christoph Sturm
  *
@@ -55,7 +50,7 @@ public class IdentityGenerator
 	}
 
 	@Override
-	public InsertGeneratedIdentifierDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
+	public GeneratedValuesMutationDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
 		final Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
 		if ( persister.getInsertGeneratedProperties().size() > 1 ) {
 			// If we have more generated attributes other than the identity

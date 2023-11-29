@@ -40,22 +40,20 @@ import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedV
  * @see GeneratedValuesMutationDelegate
  */
 public class InsertReturningDelegate extends AbstractReturningDelegate {
-	private final PostInsertIdentityPersister persister;
 	private final Dialect dialect;
 	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	public InsertReturningDelegate(PostInsertIdentityPersister persister, Dialect dialect, EventType timing) {
 		super( persister, timing );
-		this.persister = persister;
 		this.dialect = dialect;
 		// todo marco : collect column names here?
-		this.jdbcValuesMappingProducer = createMappingProducer( persister, timing, null );
+		this.jdbcValuesMappingProducer = getMappingProducer( null );
 	}
 
 	@Override @Deprecated
 	public IdentifierGeneratingInsert prepareIdentifierGeneratingInsert(SqlStringGenerationContext context) {
-		InsertSelectIdentityInsert insert = new InsertSelectIdentityInsert( persister.getFactory() );
-		insert.addGeneratedColumns( persister.getRootTableKeyColumnNames(), (OnExecutionGenerator) persister.getGenerator() );
+		InsertSelectIdentityInsert insert = new InsertSelectIdentityInsert( getPersister().getFactory() );
+		insert.addGeneratedColumns( getPersister().getRootTableKeyColumnNames(), (OnExecutionGenerator) getPersister().getGenerator() );
 		return insert;
 	}
 
@@ -64,10 +62,10 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 			Expectation expectation,
 			SessionFactoryImplementor sessionFactory) {
 		if ( getTiming() == EventType.INSERT ) {
-			return new TableInsertReturningBuilder( persister, sessionFactory );
+			return new TableInsertReturningBuilder( getPersister(), sessionFactory );
 		}
 		else {
-			return new TableUpdateReturningBuilder<>( persister, sessionFactory );
+			return new TableUpdateReturningBuilder<>( getPersister(), sessionFactory );
 		}
 	}
 
@@ -81,7 +79,7 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 
 		final ResultSet resultSet = jdbcCoordinator.getResultSetReturn().execute( preparedStatement, sql );
 		try {
-			return getGeneratedValues( resultSet, persister, getTiming(), session );
+			return getGeneratedValues( resultSet, getPersister(), getTiming(), session );
 		}
 		catch (SQLException e) {
 			throw jdbcServices.getSqlExceptionHelper().convert(

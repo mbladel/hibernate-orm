@@ -11,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -28,6 +29,7 @@ import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.StringHelper;
+import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.SelectableMapping;
@@ -39,10 +41,10 @@ import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.exec.internal.BaseExecutionContext;
 import org.hibernate.sql.exec.spi.ExecutionContext;
+import org.hibernate.sql.model.MutationType;
 import org.hibernate.sql.results.internal.ResultsHelper;
 import org.hibernate.sql.results.internal.RowProcessingStateStandardImpl;
 import org.hibernate.sql.results.internal.RowTransformerArrayImpl;
-import org.hibernate.sql.results.internal.RowTransformerStandardImpl;
 import org.hibernate.sql.results.jdbc.internal.DirectResultSetAccess;
 import org.hibernate.sql.results.jdbc.internal.JdbcValuesResultSetImpl;
 import org.hibernate.sql.results.jdbc.internal.JdbcValuesSourceProcessingStateStandardImpl;
@@ -82,26 +84,17 @@ public class GeneratedValuesHelper {
 			PostInsertIdentityPersister persister,
 			EventType timing,
 			WrapperOptions wrapperOptions) throws SQLException {
-		final GeneratedValuesMutationDelegate delegate;
-		final List<ModelPart> generatedModelParts;
-		if ( timing == EventType.INSERT ) {
-			delegate = persister.getInsertDelegate();
-			generatedModelParts = new ArrayList<>(
-					persister.getInsertDelegate().supportsArbitraryValues() ?
-							persister.getInsertGeneratedProperties() :
-							List.of( persister.getIdentifierMapping() )
-			);
+		final GeneratedValuesMutationDelegate delegate = persister.getMutationDelegate(
+				timing == EventType.INSERT ? MutationType.INSERT : MutationType.UPDATE
+		);
+		final List<? extends ModelPart> generatedProperties = getActualGeneratedModelParts(
+				persister,
+				timing,
+				delegate.supportsArbitraryValues(),
+				delegate.supportsRowId()
+		);
 
-			if ( persister.getRowIdMapping() != null && persister.getInsertDelegate().supportsRowId() ) {
-				generatedModelParts.add( persister.getRowIdMapping() );
-			}
-		}
-		else {
-			delegate = persister.getUpdateDelegate();
-			generatedModelParts = new ArrayList<>( persister.getUpdateGeneratedProperties() );
-		}
-
-		final GeneratedValuesImpl generatedValues = new GeneratedValuesImpl( generatedModelParts );
+		final GeneratedValuesImpl generatedValues = new GeneratedValuesImpl( generatedProperties );
 		final Object[] results = readGeneratedValues(
 				resultSet,
 				persister,
@@ -109,26 +102,34 @@ public class GeneratedValuesHelper {
 				wrapperOptions.getSession()
 		);
 		for ( int i = 0; i < results.length; i++ ) {
-			generatedValues.addGeneratedValue( generatedModelParts.get( i ), results[i] );
+			generatedValues.addGeneratedValue( generatedProperties.get( i ), results[i] );
 		}
 
 		return generatedValues;
 	}
 
 	public static JdbcValuesMappingProducer createMappingProducer(
-			EntityPersister entityPersister,
+			EntityPersister persister,
 			EventType timing,
+			boolean supportsArbitraryValues,
+			boolean supportsRowId,
 			Consumer<String> columnNameConsumer) {
 		// This is just a mock table group needed to correctly resolve expressions
-		final NavigablePath parentNavigablePath = new NavigablePath( entityPersister.getEntityName() );
+		final NavigablePath parentNavigablePath = new NavigablePath( persister.getEntityName() );
 		final TableGroup tableGroup = new TableGroupImpl(
 				parentNavigablePath,
 				null,
 				new NamedTableReference( "t", "t" ),
-				entityPersister
+				persister
 		);
 		// Create the mapping producer and add all result builders to it
-		final List<? extends ModelPart> generatedProperties = entityPersister.getGeneratedProperties( timing );
+		final List<? extends ModelPart> generatedProperties = getActualGeneratedModelParts(
+				// todo marco : remove this cast
+				(PostInsertIdentityPersister) persister,
+				timing,
+				supportsArbitraryValues,
+				supportsRowId
+		);
 		final GeneratedValuesMappingProducer mappingProducer = new GeneratedValuesMappingProducer();
 		for ( int i = 0; i < generatedProperties.size(); i++ ) {
 			final ModelPart modelPart = generatedProperties.get( i );
@@ -149,6 +150,30 @@ public class GeneratedValuesHelper {
 			}
 		}
 		return mappingProducer;
+	}
+
+	// todo marco : this is ugly, shouldn't we check this before ?
+	private static List<? extends ModelPart> getActualGeneratedModelParts(
+			PostInsertIdentityPersister persister,
+			EventType timing,
+			boolean supportsArbitraryValues,
+			boolean supportsRowId) {
+		if ( timing == EventType.INSERT ) {
+			final List<? extends ModelPart> generatedProperties = supportsArbitraryValues ?
+					persister.getInsertGeneratedProperties() :
+					List.of( persister.getIdentifierMapping() );
+			if ( persister.getRowIdMapping() != null && supportsRowId ) {
+				final List<ModelPart> newList = new ArrayList<>( generatedProperties );
+				newList.add( persister.getRowIdMapping() );
+				return Collections.unmodifiableList( newList );
+			}
+			else {
+				return generatedProperties;
+			}
+		}
+		else {
+			return persister.getUpdateGeneratedProperties();
+		}
 	}
 
 	private static Object[] readGeneratedValues(
@@ -226,14 +251,15 @@ public class GeneratedValuesHelper {
 				jdbcValues
 		);
 
-		final List<Object[]> results = ListResultsConsumer.<Object[]>instance( ListResultsConsumer.UniqueSemantic.NONE ).consume(
-				jdbcValues,
-				session,
-				processingOptions,
-				valuesProcessingState,
-				rowProcessingState,
-				rowReader
-		);
+		final List<Object[]> results = ListResultsConsumer.<Object[]>instance( ListResultsConsumer.UniqueSemantic.NONE )
+				.consume(
+						jdbcValues,
+						session,
+						processingOptions,
+						valuesProcessingState,
+						rowProcessingState,
+						rowReader
+				);
 
 		if ( results.isEmpty() ) {
 			throw new HibernateException(
