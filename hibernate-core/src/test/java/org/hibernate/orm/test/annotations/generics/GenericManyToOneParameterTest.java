@@ -30,6 +30,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 		GenericManyToOneParameterTest.UserSiteImpl.class,
 		GenericManyToOneParameterTest.BarImpl.class,
 		GenericManyToOneParameterTest.BarBarImpl.class,
+		GenericManyToOneParameterTest.BarBarBarImpl.class,
+		GenericManyToOneParameterTest.AnotherBarImpl.class,
 } )
 @SessionFactory
 public class GenericManyToOneParameterTest {
@@ -60,7 +62,7 @@ public class GenericManyToOneParameterTest {
 		scope.inTransaction( session -> {
 			final UserSiteImpl site = session.find( UserSiteImpl.class, 1L );
 			final BarImpl result = session.createQuery(
-					"select b from BarImpl b join b.site s where s = ?1",
+					"select b from BarBarBarImpl b join b.site s where s = ?1",
 					BarImpl.class
 			).setParameter( 1, site ).getSingleResult();
 			assertThat( result.getSite() ).isNotNull();
@@ -131,8 +133,34 @@ public class GenericManyToOneParameterTest {
 		S getSite();
 	}
 
+	@Entity(name="BarBarBarImpl")
+	public static class BarBarBarImpl {
+		@Id
+		private Long id;
+
+		public Long getId() {
+			return id;
+		}
+
+		public void setId(final Long id) {
+			this.id = id;
+		}
+	}
+
+	@Entity(name="AnotherBarImpl")
+	public static class AnotherBarImpl extends BarBarBarImpl implements SitedBar<UserSiteImpl> {
+		@ManyToOne( fetch = FetchType.LAZY, targetEntity = SiteImpl.class )
+		@JoinColumn( name = "another_bar_id" )
+		private UserSiteImpl site;
+
+		@Override
+		public UserSiteImpl getSite() {
+			return site;
+		}
+	}
+
 	@MappedSuperclass
-	public static abstract class BarBarImpl<T extends Site> implements SitedBar<T> {
+	public static class BarBarImpl<T extends Site> extends BarBarBarImpl implements SitedBar<T> {
 		@ManyToOne( fetch = FetchType.LAZY, targetEntity = SiteImpl.class )
 		@JoinColumn( name = "BAR_ID" )
 		private T site;
@@ -150,15 +178,5 @@ public class GenericManyToOneParameterTest {
 
 	@Entity( name = "BarImpl" )
 	public static class BarImpl extends BarBarImpl<UserSite> implements Bar {
-		@Id
-		private Long id;
-
-		public Long getId() {
-			return id;
-		}
-
-		public void setId(final Long id) {
-			this.id = id;
-		}
 	}
 }
