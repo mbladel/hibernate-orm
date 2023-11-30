@@ -36,9 +36,11 @@ import org.hibernate.metamodel.MappingMetamodel;
 import org.hibernate.metamodel.RepresentationMode;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.MappingModelHelper;
+import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.model.domain.internal.AttributeContainer;
 import org.hibernate.metamodel.model.domain.internal.DomainModelHelper;
 import org.hibernate.metamodel.model.domain.spi.JpaMetamodelImplementor;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.SemanticException;
 import org.hibernate.type.descriptor.java.JavaType;
 
@@ -205,18 +207,42 @@ public abstract class AbstractManagedType<J>
 		if ( attribute1 == attribute2 ) {
 			return true;
 		}
+
 		final MappingMetamodel runtimeMetamodels = jpaMetamodel().getMappingMetamodel();
-		final EntityMappingType entity1 = runtimeMetamodels.getEntityDescriptor(
-				attribute1.getDeclaringType().getTypeName()
+		final ModelPart modelPart1 = getAttributeModelPart(
+				attribute1,
+				attribute1.getDeclaringType(),
+				runtimeMetamodels
 		);
-		final EntityMappingType entity2 = runtimeMetamodels.getEntityDescriptor(
-				attribute2.getDeclaringType().getTypeName()
+		final ModelPart modelPart2 = getAttributeModelPart(
+				attribute2,
+				attribute2.getDeclaringType(),
+				runtimeMetamodels
 		);
 
-		return entity1 != null && entity2 != null && MappingModelHelper.isCompatibleModelPart(
-				entity1.findSubPart( attribute1.getName() ),
-				entity2.findSubPart( attribute2.getName() )
+		return modelPart1 != null && modelPart2 != null && MappingModelHelper.isCompatibleModelPart(
+				modelPart1,
+				modelPart2
 		);
+	}
+
+	private ModelPart getAttributeModelPart(
+			PersistentAttribute<?, ?> attribute,
+			ManagedDomainType<?> declaringType,
+			MappingMetamodel mappingMetamodel) {
+		if ( declaringType instanceof EntityDomainType<?> ) {
+			final EntityMappingType entity = mappingMetamodel.getEntityDescriptor( declaringType.getTypeName() );
+			return entity == null ? null : entity.findSubPart( attribute.getName() );
+		}
+		else {
+			for ( ManagedDomainType<?> subType : declaringType.getSubTypes() ) {
+				final ModelPart modelPart = getAttributeModelPart( attribute, subType, mappingMetamodel );
+				if ( modelPart != null ) {
+					return modelPart;
+				}
+			}
+			return null;
+		}
 	}
 
 	@Override

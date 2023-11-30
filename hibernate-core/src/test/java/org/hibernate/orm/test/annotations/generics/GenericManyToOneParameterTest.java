@@ -149,7 +149,7 @@ public class GenericManyToOneParameterTest {
 
 	@Entity(name="AnotherBarImpl")
 	public static class AnotherBarImpl extends BarBarBarImpl implements SitedBar<UserSiteImpl> {
-		@ManyToOne( fetch = FetchType.LAZY, targetEntity = SiteImpl.class )
+		@ManyToOne( fetch = FetchType.LAZY )
 		@JoinColumn( name = "another_bar_id" )
 		private UserSiteImpl site;
 
