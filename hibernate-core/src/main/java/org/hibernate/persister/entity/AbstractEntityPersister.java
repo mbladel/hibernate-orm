@@ -3426,6 +3426,8 @@ public abstract class AbstractEntityPersister
 	}
 
 	private void doLateInit() {
+		tableMappings = buildTableMappings();
+
 		final List<AttributeMapping> insertGeneratedAttributes = hasInsertGeneratedProperties() ?
 				GeneratedValuesProcessor.getGeneratedAttributes( this, INSERT )
 				: Collections.emptyList();
@@ -3454,7 +3456,6 @@ public abstract class AbstractEntityPersister
 			updateGeneratedValuesProcessor = createGeneratedValuesProcessor( UPDATE, updateGeneratedAttributes );
 		}
 
-		tableMappings = buildTableMappings();
 		insertCoordinator = buildInsertCoordinator();
 		updateCoordinator = buildUpdateCoordinator();
 		deleteCoordinator = buildDeleteCoordinator();

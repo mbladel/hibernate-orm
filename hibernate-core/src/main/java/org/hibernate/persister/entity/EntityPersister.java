@@ -930,7 +930,6 @@ public interface EntityPersister extends EntityMappingType, EntityMutationTarget
 		return timing == EventType.INSERT ? getInsertGeneratedProperties() : getUpdateGeneratedProperties();
 	}
 
-	// todo marco : move this to PostInsertIdentityPersister and rename / move the interface ?
 	default List<? extends ModelPart> getInsertGeneratedProperties() {
 		return Collections.emptyList();
 	}

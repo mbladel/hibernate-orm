@@ -17,6 +17,7 @@ import org.hibernate.id.insert.InsertReturningDelegate;
 import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 
 import static org.hibernate.generator.internal.NaturalIdHelper.getNaturalIdPropertyNames;
+import static org.hibernate.generator.values.GeneratedValuesHelper.noCustomSql;
 
 /**
  * An {@link OnExecutionGenerator} that handles {@code IDENTITY}/"autoincrement"
@@ -58,7 +59,7 @@ public class IdentityGenerator
 			if ( dialect.supportsInsertReturningGeneratedKeys() ) {
 				return new GetGeneratedKeysDelegate( persister, dialect, false, EventType.INSERT );
 			}
-			else if ( dialect.supportsInsertReturning() ) {
+			else if ( dialect.supportsInsertReturning() && noCustomSql( persister, EventType.INSERT ) ) {
 				return new InsertReturningDelegate( persister, dialect, EventType.INSERT );
 			}
 		}
@@ -67,7 +68,8 @@ public class IdentityGenerator
 		if ( persister.getFactory().getSessionFactoryOptions().isGetGeneratedKeysEnabled() ) {
 			return dialect.getIdentityColumnSupport().buildGetGeneratedKeysDelegate( persister, dialect );
 		}
-		else if ( dialect.getIdentityColumnSupport().supportsInsertSelectIdentity() ) {
+		else if ( dialect.getIdentityColumnSupport().supportsInsertSelectIdentity()
+				&& noCustomSql( persister, EventType.INSERT ) ) {
 			return new InsertReturningDelegate( persister, dialect, EventType.INSERT );
 		}
 		else if ( persister.getNaturalIdentifierProperties() != null

@@ -17,6 +17,7 @@ import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 import org.hibernate.persister.entity.EntityPersister;
 
 import static org.hibernate.generator.internal.NaturalIdHelper.getNaturalIdPropertyNames;
+import static org.hibernate.generator.values.GeneratedValuesHelper.noCustomSql;
 
 /**
  * A generator which produces a new value by actually going ahead and writing a row to the
@@ -121,7 +122,7 @@ public interface OnExecutionGenerator extends Generator {
 		if ( dialect.supportsInsertReturningGeneratedKeys() ) {
 			return new GetGeneratedKeysDelegate( persister, dialect, false, EventType.INSERT );
 		}
-		else if ( dialect.supportsInsertReturning() ) {
+		else if ( dialect.supportsInsertReturning() && noCustomSql( persister, EventType.INSERT ) ) {
 			return new InsertReturningDelegate( persister, dialect, EventType.INSERT );
 		}
 		else {

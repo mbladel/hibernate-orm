@@ -24,10 +24,6 @@ import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 public class TableInsertStandard extends AbstractTableInsert {
 	private final List<ColumnReference> returningColumns;
 
-	// todo marco : create this in the mutation delegates
-	//  actually, put this in delegates
-	// private final JdbcValuesMappingProducer returningValuesProducer;
-
 	public TableInsertStandard(
 			MutatingTableReference mutatingTable,
 			MutationTarget<?> mutationTarget,

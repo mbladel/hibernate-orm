@@ -29,6 +29,8 @@ import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.persister.entity.mutation.EntityTableMapping;
+import org.hibernate.pretty.MessageHelper;
 import org.hibernate.query.results.TableGroupImpl;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.spi.NavigablePath;
@@ -37,6 +39,7 @@ import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.exec.internal.BaseExecutionContext;
 import org.hibernate.sql.exec.spi.ExecutionContext;
 import org.hibernate.sql.model.MutationType;
+import org.hibernate.sql.model.TableMapping;
 import org.hibernate.sql.results.internal.ResultsHelper;
 import org.hibernate.sql.results.internal.RowProcessingStateStandardImpl;
 import org.hibernate.sql.results.internal.RowTransformerArrayImpl;
@@ -96,6 +99,15 @@ public class GeneratedValuesHelper {
 				delegate.getGeneratedValuesMappingProducer(),
 				wrapperOptions.getSession()
 		);
+
+		if ( LOG.isDebugEnabled() ) {
+			LOG.debugf(
+					"Extracted generated values %s: %s",
+					MessageHelper.infoString( persister ),
+					results
+			);
+		}
+
 		for ( int i = 0; i < results.length; i++ ) {
 			generatedValues.addGeneratedValue( generatedProperties.get( i ), results[i] );
 		}
@@ -309,7 +321,8 @@ public class GeneratedValuesHelper {
 		final boolean hasRowId = timing == EventType.INSERT && persister.getRowIdMapping() != null;
 		final Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
 
-		if ( hasRowId && dialect.supportsInsertReturning() && dialect.supportsInsertReturningRowId() ) {
+		if ( hasRowId && dialect.supportsInsertReturning() && dialect.supportsInsertReturningRowId()
+				&& noCustomSql( persister, timing ) ) {
 			// Special case for RowId on INSERT, since GetGeneratedKeysDelegate doesn't support it
 			// make InsertReturningDelegate the preferred method if the dialect supports it
 			return new InsertReturningDelegate( persister, dialect, timing );
@@ -319,11 +332,10 @@ public class GeneratedValuesHelper {
 			return null;
 		}
 
-
 		if ( dialect.supportsInsertReturningGeneratedKeys() ) {
 			return new GetGeneratedKeysDelegate( persister, dialect, false, timing );
 		}
-		else if ( dialect.supportsInsertReturning() ) {
+		else if ( dialect.supportsInsertReturning() && noCustomSql( persister, timing ) ) {
 			return new InsertReturningDelegate( persister, dialect, timing );
 		}
 		else if ( timing == EventType.INSERT && persister.getNaturalIdentifierProperties() != null
@@ -336,5 +348,13 @@ public class GeneratedValuesHelper {
 			);
 		}
 		return null;
+	}
+
+	public static boolean noCustomSql(EntityPersister persister, EventType timing) {
+		final EntityTableMapping identifierTable = persister.getIdentifierTableMapping();
+		final TableMapping.MutationDetails mutationDetails = timing == EventType.INSERT ?
+				identifierTable.getInsertDetails() :
+				identifierTable.getUpdateDetails();
+		return mutationDetails.getCustomSql() == null;
 	}
 }
