@@ -12,9 +12,12 @@ import org.hibernate.graph.spi.SubGraphImplementor;
 import org.hibernate.metamodel.MappingMetamodel;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.MappingModelHelper;
+import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
+import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.JpaMetamodel;
 import org.hibernate.metamodel.model.domain.ManagedDomainType;
+import org.hibernate.metamodel.model.domain.MappedSuperclassDomainType;
 import org.hibernate.metamodel.model.domain.PersistentAttribute;
 import org.hibernate.metamodel.model.domain.spi.JpaMetamodelImplementor;
 
@@ -58,23 +61,42 @@ public class DomainModelHelper {
 			PersistentAttribute<?, ?> attribute1,
 			PersistentAttribute<?, ?> attribute2,
 			JpaMetamodelImplementor jpaMetamodel) {
-		if ( attribute1 == attribute2 ) {
-			return true;
-		}
-		final MappingMetamodel mappingMetamodel = jpaMetamodel.getMappingMetamodel();
-		final EntityMappingType entity1 = mappingMetamodel.getEntityDescriptor(
-				attribute1.getDeclaringType().getTypeName()
+		final MappingMetamodel runtimeMetamodels = jpaMetamodel.getMappingMetamodel();
+		final ModelPart modelPart1 = getEntityAttributeModelPart(
+				attribute1,
+				attribute1.getDeclaringType(),
+				runtimeMetamodels
 		);
-		final EntityMappingType entity2 = mappingMetamodel.getEntityDescriptor(
-				attribute2.getDeclaringType().getTypeName()
+		final ModelPart modelPart2 = getEntityAttributeModelPart(
+				attribute2,
+				attribute2.getDeclaringType(),
+				runtimeMetamodels
 		);
 
-		return entity1 != null && entity2 != null && MappingModelHelper.isCompatibleModelPart(
-				entity1.findSubPart( attribute1.getName() ),
-				entity2.findSubPart( attribute2.getName() )
+		return modelPart1 != null && modelPart2 != null && MappingModelHelper.isCompatibleModelPart(
+				modelPart1,
+				modelPart2
 		);
 	}
 
+	private static ModelPart getEntityAttributeModelPart(
+			PersistentAttribute<?, ?> attribute,
+			ManagedDomainType<?> domainType,
+			MappingMetamodel mappingMetamodel) {
+		if ( domainType instanceof EntityDomainType<?> ) {
+			final EntityMappingType entity = mappingMetamodel.getEntityDescriptor( domainType.getTypeName() );
+			return entity.findSubPart( attribute.getName() );
+		}
+		else {
+			for ( ManagedDomainType<?> subType : domainType.getSubTypes() ) {
+				final ModelPart modelPart = getEntityAttributeModelPart( attribute, subType, mappingMetamodel );
+				if ( modelPart != null ) {
+					return modelPart;
+				}
+			}
+			return null;
+		}
+	}
 	public static <J, S> ManagedDomainType<S> findSubType(ManagedDomainType<J> type, Class<S> subtype) {
 		if ( type.getBindableJavaType() == subtype ) {
 			@SuppressWarnings("unchecked")
