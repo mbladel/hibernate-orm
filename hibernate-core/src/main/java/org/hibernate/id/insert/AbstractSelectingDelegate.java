@@ -19,7 +19,7 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.values.AbstractGeneratedValuesMutationDelegate;
 import org.hibernate.generator.values.GeneratedValues;
-import org.hibernate.id.PostInsertIdentityPersister;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.pretty.MessageHelper;
 
 import static java.sql.Statement.NO_GENERATED_KEYS;
@@ -34,7 +34,7 @@ import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedV
  */
 public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesMutationDelegate
 		implements InsertGeneratedIdentifierDelegate {
-	protected AbstractSelectingDelegate(PostInsertIdentityPersister persister, EventType timing) {
+	protected AbstractSelectingDelegate(EntityPersister persister, EventType timing) {
 		super( persister, timing );
 	}
 
@@ -54,7 +54,7 @@ public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesM
 	 */
 	private GeneratedValues extractGeneratedValues(ResultSet resultSet, SharedSessionContractImplementor session)
 			throws SQLException {
-		return getGeneratedValues( resultSet, getPersister(), getTiming(), session );
+		return getGeneratedValues( resultSet, persister, getTiming(), session );
 	}
 
 	@Override
@@ -128,7 +128,7 @@ public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesM
 		catch (SQLException sqle) {
 			throw session.getJdbcServices().getSqlExceptionHelper().convert(
 					sqle,
-					"could not insert: " + MessageHelper.infoString( getPersister() ),
+					"could not insert: " + MessageHelper.infoString( persister ),
 					sql
 			);
 		}
@@ -157,7 +157,7 @@ public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesM
 		catch (SQLException sqle) {
 			throw session.getJdbcServices().getSqlExceptionHelper().convert(
 					sqle,
-					"could not retrieve generated id after insert: " + MessageHelper.infoString( getPersister() ),
+					"could not retrieve generated id after insert: " + MessageHelper.infoString( persister ),
 					selectSQL
 			);
 		}

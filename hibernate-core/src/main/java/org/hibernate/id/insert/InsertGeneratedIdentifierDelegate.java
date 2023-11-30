@@ -78,18 +78,6 @@ public interface InsertGeneratedIdentifierDelegate extends GeneratedValuesMutati
 	}
 
 	/**
-	 * Build an {@linkplain org.hibernate.sql.Insert insert statement}
-	 * specific to the delegate's mode of handling generated key values.
-	 *
-	 * @param context A context to help generate SQL strings
-	 * @return An {@link IdentifierGeneratingInsert}
-	 *
-	 * @deprecated this is no longer called
-	 */
-	@Deprecated(since = "6.2")
-	IdentifierGeneratingInsert prepareIdentifierGeneratingInsert(SqlStringGenerationContext context);
-
-	/**
 	 * Append SQL specific to this delegate's mode of handling generated
 	 * primary key values to the given {@code insert} statement.
 	 *

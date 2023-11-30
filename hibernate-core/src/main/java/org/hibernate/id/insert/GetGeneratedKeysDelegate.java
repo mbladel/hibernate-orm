@@ -26,9 +26,9 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.values.GeneratedValues;
-import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
@@ -36,7 +36,6 @@ import org.hibernate.sql.model.ast.builder.TableUpdateBuilderStandard;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 import static java.sql.Statement.RETURN_GENERATED_KEYS;
-import static org.hibernate.generator.values.GeneratedValuesHelper.createMappingProducer;
 import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedValues;
 import static org.hibernate.internal.util.StringHelper.unquote;
 
@@ -55,7 +54,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	public GetGeneratedKeysDelegate(
-			PostInsertIdentityPersister persister,
+			EntityPersister persister,
 			Dialect dialect,
 			boolean inferredKeys,
 			EventType timing) {
@@ -77,28 +76,21 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 		}
 	}
 
-	@Override @Deprecated
-	public IdentifierGeneratingInsert prepareIdentifierGeneratingInsert(SqlStringGenerationContext context) {
-		IdentifierGeneratingInsert insert = new IdentifierGeneratingInsert( getPersister().getFactory() );
-		insert.addGeneratedColumns( getPersister().getRootTableKeyColumnNames(), (OnExecutionGenerator) getPersister().getGenerator() );
-		return insert;
-	}
-
 	@Override
 	public TableMutationBuilder<?> createTableMutationBuilder(
 			Expectation expectation,
 			SessionFactoryImplementor factory) {
 		if ( getTiming() == EventType.INSERT ) {
 			final TableInsertBuilder builder = new TableInsertBuilderStandard(
-					getPersister(),
-					getPersister().getIdentifierTableMapping(),
+					persister,
+					persister.getIdentifierTableMapping(),
 					factory
 			);
-			if ( getPersister().isIdentifierAssignedByInsert() ) {
-				final OnExecutionGenerator generator = (OnExecutionGenerator) getPersister().getGenerator();
+			if ( persister.isIdentifierAssignedByInsert() ) {
+				final OnExecutionGenerator generator = (OnExecutionGenerator) persister.getGenerator();
 				if ( generator.referenceColumnsInSql( dialect ) ) {
-					final BasicEntityIdentifierMapping identifierMapping = (BasicEntityIdentifierMapping) getPersister().getIdentifierMapping();
-					final String[] columnNames = getPersister().getRootTableKeyColumnNames();
+					final BasicEntityIdentifierMapping identifierMapping = (BasicEntityIdentifierMapping) persister.getIdentifierMapping();
+					final String[] columnNames = persister.getRootTableKeyColumnNames();
 					final String[] columnValues = generator.getReferencedColumnValues( dialect );
 					if ( columnValues.length != columnNames.length ) {
 						throw new MappingException( "wrong number of generated columns" );
@@ -111,7 +103,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 			return builder;
 		}
 		else {
-			return new TableUpdateBuilderStandard<>( getPersister(), getPersister().getIdentifierTableMapping(), factory );
+			return new TableUpdateBuilderStandard<>( persister, persister.getIdentifierTableMapping(), factory );
 		}
 	}
 
@@ -155,7 +147,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 			try {
 				final ResultSet resultSet = preparedStatement.getGeneratedKeys();
 				try {
-					return getGeneratedValues( resultSet, getPersister(), getTiming(), session );
+					return getGeneratedValues( resultSet, persister, getTiming(), session );
 				}
 				catch (SQLException e) {
 					throw jdbcServices.getSqlExceptionHelper().convert(
@@ -163,7 +155,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 							() -> String.format(
 									Locale.ROOT,
 									"Unable to extract generated key from generated-key for `%s`",
-									getPersister().getNavigableRole().getFullPath()
+									persister.getNavigableRole().getFullPath()
 							),
 							sql
 					);
@@ -206,7 +198,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 		try {
 			final ResultSet resultSet = preparedStatement.getGeneratedKeys();
 			try {
-				return getGeneratedValues( resultSet, getPersister(), getTiming(), session );
+				return getGeneratedValues( resultSet, persister, getTiming(), session );
 			}
 			catch (SQLException e) {
 				throw jdbcServices.getSqlExceptionHelper().convert(

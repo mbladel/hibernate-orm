@@ -8,7 +8,6 @@ package org.hibernate.generator.values;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,17 +21,13 @@ import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
 import org.hibernate.id.IdentifierGeneratorHelper;
-import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.id.insert.GetGeneratedKeysDelegate;
 import org.hibernate.id.insert.InsertReturningDelegate;
 import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
-import org.hibernate.internal.util.StringHelper;
-import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.metamodel.mapping.ModelPart;
-import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.results.TableGroupImpl;
 import org.hibernate.query.spi.QueryOptions;
@@ -67,7 +62,7 @@ public class GeneratedValuesHelper {
 	private static final CoreMessageLogger LOG = CoreLogging.messageLogger( IdentifierGeneratorHelper.class );
 
 	/**
-	 * Reads the {@link PostInsertIdentityPersister#getGeneratedProperties(EventType)}  generated values}
+	 * Reads the {@link EntityPersister#getGeneratedProperties(EventType) generated values}
 	 * for the specified {@link ResultSet}.
 	 *
 	 * @param resultSet The result set from which to extract the generated values
@@ -81,7 +76,7 @@ public class GeneratedValuesHelper {
 	 */
 	public static GeneratedValues getGeneratedValues(
 			ResultSet resultSet,
-			PostInsertIdentityPersister persister,
+			EntityPersister persister,
 			EventType timing,
 			WrapperOptions wrapperOptions) throws SQLException {
 		final GeneratedValuesMutationDelegate delegate = persister.getMutationDelegate(
@@ -108,75 +103,17 @@ public class GeneratedValuesHelper {
 		return generatedValues;
 	}
 
-	public static JdbcValuesMappingProducer createMappingProducer(
-			EntityPersister persister,
-			EventType timing,
-			boolean supportsArbitraryValues,
-			boolean supportsRowId,
-			boolean useIndex,
-			Consumer<String> columnNameConsumer) {
-		// This is just a mock table group needed to correctly resolve expressions
-		final NavigablePath parentNavigablePath = new NavigablePath( persister.getEntityName() );
-		final TableGroup tableGroup = new TableGroupImpl(
-				parentNavigablePath,
-				null,
-				new NamedTableReference( "t", "t" ),
-				persister
-		);
-		// Create the mapping producer and add all result builders to it
-		final List<? extends ModelPart> generatedProperties = getActualGeneratedModelParts(
-				// todo marco : remove this cast
-				(PostInsertIdentityPersister) persister,
-				timing,
-				supportsArbitraryValues,
-				supportsRowId
-		);
-		final GeneratedValuesMappingProducer mappingProducer = new GeneratedValuesMappingProducer();
-		for ( int i = 0; i < generatedProperties.size(); i++ ) {
-			final ModelPart modelPart = generatedProperties.get( i );
-			if ( modelPart instanceof BasicValuedModelPart basicModelPart ) {
-				final GeneratedValueBasicResultBuilder resultBuilder = new GeneratedValueBasicResultBuilder(
-						parentNavigablePath.append( basicModelPart.getSelectableName() ),
-						basicModelPart,
-						tableGroup,
-						useIndex ? i : null
-				);
-				mappingProducer.addResultBuilder( resultBuilder );
-				if ( columnNameConsumer != null ) {
-					columnNameConsumer.accept( basicModelPart.getSelectionExpression() );
-				}
-			}
-			else {
-				throw new UnsupportedOperationException( "Unsupported generated ModelPart: " + modelPart.getPartName() );
-			}
-		}
-		return mappingProducer;
-	}
-
-	// todo marco : this is ugly, shouldn't we check this before ?
-	private static List<? extends ModelPart> getActualGeneratedModelParts(
-			PostInsertIdentityPersister persister,
-			EventType timing,
-			boolean supportsArbitraryValues,
-			boolean supportsRowId) {
-		if ( timing == EventType.INSERT ) {
-			final List<? extends ModelPart> generatedProperties = supportsArbitraryValues ?
-					persister.getInsertGeneratedProperties() :
-					List.of( persister.getIdentifierMapping() );
-			if ( persister.getRowIdMapping() != null && supportsRowId ) {
-				final List<ModelPart> newList = new ArrayList<>( generatedProperties );
-				newList.add( persister.getRowIdMapping() );
-				return Collections.unmodifiableList( newList );
-			}
-			else {
-				return generatedProperties;
-			}
-		}
-		else {
-			return persister.getUpdateGeneratedProperties();
-		}
-	}
-
+	/**
+	 * Utility method that reads the generated values from the specified {@link ResultSet}
+	 * using the {@link JdbcValuesMappingProducer} provided in input.
+	 *
+	 * @param resultSet the result set containing the generated values
+	 * @param persister the current entity persister
+	 * @param mappingProducer the mapping producer to use when reading generated values
+	 * @param session the current session
+	 *
+	 * @return an object array containing the generated values, order is consistent with the generated model parts list
+	 */
 	private static Object[] readGeneratedValues(
 			ResultSet resultSet,
 			EntityPersister persister,
@@ -271,40 +208,90 @@ public class GeneratedValuesHelper {
 		return results.get( 0 );
 	}
 
-	private static int columnIndex(
-			ResultSet resultSet,
-			SelectableMapping selectable,
-			Integer defaultIndex,
-			Dialect dialect) {
-		final String columnName = selectable.getSelectionExpression();
-		try {
-			final ResultSetMetaData metaData = resultSet.getMetaData();
-			for ( int i = 1; i <= metaData.getColumnCount(); i++ ) {
-				if ( equal( columnName, metaData.getColumnName( i ), dialect ) ) {
-					return i;
+	/**
+	 * Utility method that instantiates a {@link JdbcValuesMappingProducer} so it can be cached by the
+	 * {@link GeneratedValuesMutationDelegate delegates} when they are instantiated.
+	 *
+	 * @param persister the current entity persister
+	 * @param timing the timing of the mutation operation
+	 * @param supportsArbitraryValues if we should process arbitrary (non-identifier) generated values
+	 * @param supportsRowId if we should process {@link org.hibernate.metamodel.mapping.EntityRowIdMapping rowid}s
+	 * @param useIndex {@code true} if we can use the index of the generated model part to access the result set,
+	 * {@code false} if we should retrieve the index through the column expression
+	 * @param columnNameConsumer optional {@link Consumer consumer} that will obtain column names
+	 *
+	 * @return the instantiated jdbc values mapping producer
+	 */
+	public static JdbcValuesMappingProducer createMappingProducer(
+			EntityPersister persister,
+			EventType timing,
+			boolean supportsArbitraryValues,
+			boolean supportsRowId,
+			boolean useIndex,
+			Consumer<String> columnNameConsumer) {
+		// This is just a mock table group needed to correctly resolve expressions
+		final NavigablePath parentNavigablePath = new NavigablePath( persister.getEntityName() );
+		final TableGroup tableGroup = new TableGroupImpl(
+				parentNavigablePath,
+				null,
+				new NamedTableReference( "t", "t" ),
+				persister
+		);
+		// Create the mapping producer and add all result builders to it
+		final List<? extends ModelPart> generatedProperties = getActualGeneratedModelParts(
+				persister,
+				timing,
+				supportsArbitraryValues,
+				supportsRowId
+		);
+		final GeneratedValuesMappingProducer mappingProducer = new GeneratedValuesMappingProducer();
+		for ( int i = 0; i < generatedProperties.size(); i++ ) {
+			final ModelPart modelPart = generatedProperties.get( i );
+			if ( modelPart instanceof BasicValuedModelPart basicModelPart ) {
+				final GeneratedValueBasicResultBuilder resultBuilder = new GeneratedValueBasicResultBuilder(
+						parentNavigablePath.append( basicModelPart.getSelectableName() ),
+						basicModelPart,
+						tableGroup,
+						useIndex ? i : null
+				);
+				mappingProducer.addResultBuilder( resultBuilder );
+				if ( columnNameConsumer != null ) {
+					columnNameConsumer.accept( basicModelPart.getSelectionExpression() );
 				}
 			}
+			else {
+				throw new UnsupportedOperationException( "Unsupported generated ModelPart: " + modelPart.getPartName() );
+			}
 		}
-		catch (SQLException e) {
-			LOG.debugf( "Could not determine column index from JDBC metadata", e );
-		}
-
-		if ( defaultIndex != null ) {
-			return defaultIndex;
-		}
-		else {
-			throw new HibernateException( "Could not retrieve column index for column name : " + columnName );
-		}
+		return mappingProducer;
 	}
 
-	public static SelectableMapping getActualSelectableMapping(ModelPart modelPart, EntityPersister persister) {
-		// todo marco : would be nice to avoid the cast here, but if we want to keep
-		//  the options open (for Components and/or other attribute types) we're going to need it
-		assert modelPart instanceof SelectableMapping : "Unsupported non-selectable generated value";
-		final ModelPart actualModelPart = modelPart.isEntityIdentifierMapping() ?
-				persister.getRootEntityDescriptor().getIdentifierMapping() :
-				modelPart;
-		return (SelectableMapping) actualModelPart;
+	/**
+	 * Returns a list of {@link ModelPart}s that represent the actual generated values
+	 * based on timing and the support flags passed in input.
+	 */
+	private static List<? extends ModelPart> getActualGeneratedModelParts(
+			EntityPersister persister,
+			EventType timing,
+			boolean supportsArbitraryValues,
+			boolean supportsRowId) {
+		if ( timing == EventType.INSERT ) {
+			final List<? extends ModelPart> generatedProperties = supportsArbitraryValues ?
+					persister.getInsertGeneratedProperties() :
+					List.of( persister.getIdentifierMapping() );
+			if ( persister.getRowIdMapping() != null && supportsRowId ) {
+				final List<ModelPart> newList = new ArrayList<>( generatedProperties.size() + 1 );
+				newList.addAll( generatedProperties );
+				newList.add( persister.getRowIdMapping() );
+				return Collections.unmodifiableList( newList );
+			}
+			else {
+				return generatedProperties;
+			}
+		}
+		else {
+			return persister.getUpdateGeneratedProperties();
+		}
 	}
 
 	/**
@@ -316,7 +303,7 @@ public class GeneratedValuesHelper {
 	 * If the current {@link Dialect} doesn't support any of the available delegates this method returns {@code null}.
 	 */
 	public static GeneratedValuesMutationDelegate getGeneratedValuesDelegate(
-			PostInsertIdentityPersister persister,
+			EntityPersister persister,
 			EventType timing) {
 		final boolean hasGeneratedProperties = !persister.getGeneratedProperties( timing ).isEmpty();
 		final boolean hasRowId = timing == EventType.INSERT && persister.getRowIdMapping() != null;
@@ -349,29 +336,5 @@ public class GeneratedValuesHelper {
 			);
 		}
 		return null;
-	}
-
-	/**
-	 * Returns a list of strings containing the {@linkplain SelectableMapping#getSelectionExpression() column names}
-	 * of the generated properties of the provided {@link EntityPersister persister}.
-	 */
-	public static List<String> getGeneratedColumnNames(
-			EntityPersister persister,
-			Dialect dialect,
-			EventType timing,
-			boolean unquote) {
-		// todo marco : we already iterate through the model parts when creating the ResultSetMapping
-		//  so maybe move this there?
-		final List<? extends ModelPart> generated = persister.getGeneratedProperties( timing );
-		return generated.stream().map( modelPart -> {
-			final SelectableMapping selectableMapping = getActualSelectableMapping( modelPart, persister );
-			final String selectionExpression = selectableMapping.getSelectionExpression();
-			return unquote ? StringHelper.unquote( selectionExpression, dialect ) : selectionExpression;
-		} ).toList();
-	}
-
-	private static boolean equal(String keyColumnName, String alias, Dialect dialect) {
-		return alias.equalsIgnoreCase( keyColumnName )
-				|| alias.equalsIgnoreCase( StringHelper.unquote( keyColumnName, dialect ) );
 	}
 }

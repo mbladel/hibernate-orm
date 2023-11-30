@@ -22,7 +22,12 @@ import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMetadata;
 
 /**
+ * Simple implementation of {@link JdbcValuesMappingProducer} used when reading
+ * generated values from a mutation statement.
+ *
  * @author Marco Belladelli
+ * @see GeneratedValuesMutationDelegate
+ * @see GeneratedValuesHelper#getGeneratedValues
  */
 public class GeneratedValuesMappingProducer implements JdbcValuesMappingProducer {
 	private final List<ResultBuilder> resultBuilders = new ArrayList<>();

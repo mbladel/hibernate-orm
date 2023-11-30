@@ -11,20 +11,17 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
-import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.EntityRowIdMapping;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 import org.hibernate.type.Type;
-
-import static org.hibernate.generator.values.GeneratedValuesHelper.createMappingProducer;
 
 /**
  * Uses a unique key of the inserted entity to locate the newly inserted row.
@@ -39,7 +36,7 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	public UniqueKeySelectingDelegate(
-			PostInsertIdentityPersister persister,
+			EntityPersister persister,
 			Dialect dialect,
 			String[] uniqueKeyPropertyNames,
 			EventType timing) {
@@ -76,23 +73,18 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 		return selectString;
 	}
 
-	@Override @Deprecated
-	public IdentifierGeneratingInsert prepareIdentifierGeneratingInsert(SqlStringGenerationContext context) {
-		return new IdentifierGeneratingInsert( getPersister().getFactory() );
-	}
-
 	@Override
 	public TableMutationBuilder<?> createTableMutationBuilder(
 			Expectation expectation,
 			SessionFactoryImplementor factory) {
-		return new TableInsertBuilderStandard( getPersister(), getPersister().getIdentifierTableMapping(), factory );
+		return new TableInsertBuilderStandard( persister, persister.getIdentifierTableMapping(), factory );
 	}
 
 	protected void bindParameters(Object entity, PreparedStatement ps, SharedSessionContractImplementor session)
 			throws SQLException {
 		int index = 1;
 		for ( int i = 0; i < uniqueKeyPropertyNames.length; i++ ) {
-			uniqueKeyTypes[i].nullSafeSet( ps, getPersister().getPropertyValue( entity, uniqueKeyPropertyNames[i] ), index, session );
+			uniqueKeyTypes[i].nullSafeSet( ps, persister.getPropertyValue( entity, uniqueKeyPropertyNames[i] ), index, session );
 			index += uniqueKeyTypes[i].getColumnSpan( session.getFactory() );
 		}
 	}

@@ -10,11 +10,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.metamodel.mapping.EntityRowIdMapping;
 import org.hibernate.metamodel.mapping.ModelPart;
-import org.hibernate.metamodel.mapping.SelectableMapping;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.model.ast.TableInsert;
 import org.hibernate.sql.model.ast.builder.AbstractTableInsertBuilder;
@@ -25,14 +24,14 @@ import org.hibernate.sql.model.internal.TableInsertStandard;
  */
 public class TableInsertReturningBuilder extends AbstractTableInsertBuilder {
 	public TableInsertReturningBuilder(
-			PostInsertIdentityPersister mutationTarget,
+			EntityPersister mutationTarget,
 			SessionFactoryImplementor sessionFactory) {
 		super( mutationTarget, mutationTarget.getIdentifierTableMapping(), sessionFactory );
 	}
 
 	@Override
-	protected PostInsertIdentityPersister getMutationTarget() {
-		return (PostInsertIdentityPersister) super.getMutationTarget();
+	protected EntityPersister getMutationTarget() {
+		return (EntityPersister) super.getMutationTarget();
 	}
 
 	@Override

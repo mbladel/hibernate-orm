@@ -15,7 +15,6 @@ import org.hibernate.query.results.ResultsHelper;
 import org.hibernate.query.results.dynamic.DynamicFetchBuilderLegacy;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.spi.SqlSelection;
-import org.hibernate.sql.ast.tree.expression.Expression;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableReference;
 import org.hibernate.sql.results.graph.DomainResultCreationState;
@@ -26,7 +25,10 @@ import static org.hibernate.query.results.ResultsHelper.impl;
 import static org.hibernate.query.results.ResultsHelper.jdbcPositionToValuesArrayPosition;
 
 /**
+ * Simple implementation of {@link ResultBuilder} for retrieving generated basic values.
+ *
  * @author Marco Belladelli
+ * @see GeneratedValuesMutationDelegate
  */
 public class GeneratedValueBasicResultBuilder implements ResultBuilder {
 	private final NavigablePath navigablePath;

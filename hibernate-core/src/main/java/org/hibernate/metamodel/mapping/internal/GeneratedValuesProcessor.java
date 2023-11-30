@@ -19,11 +19,11 @@ import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
-import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.loader.ast.internal.LoaderSelectBuilder;
 import org.hibernate.loader.ast.internal.NoCallbackExecutionContext;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.exec.internal.JdbcParameterBindingsImpl;
@@ -56,10 +56,10 @@ public class GeneratedValuesProcessor {
 	private final List<AttributeMapping> generatedValuesToSelect;
 	private final JdbcParametersList jdbcParameters;
 
-	private final PostInsertIdentityPersister entityDescriptor;
+	private final EntityPersister entityDescriptor;
 
 	public GeneratedValuesProcessor(
-			PostInsertIdentityPersister entityDescriptor,
+			EntityPersister entityDescriptor,
 			List<AttributeMapping> generatedAttributes,
 			EventType timing,
 			SessionFactoryImplementor sessionFactory) {

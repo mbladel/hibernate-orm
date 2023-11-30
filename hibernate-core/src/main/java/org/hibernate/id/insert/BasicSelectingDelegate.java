@@ -7,7 +7,6 @@
 package org.hibernate.id.insert;
 
 import org.hibernate.MappingException;
-import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.generator.EventType;
@@ -21,27 +20,20 @@ import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
-import static org.hibernate.generator.values.GeneratedValuesHelper.createMappingProducer;
-
 /**
  * Delegate for dealing with {@code IDENTITY} columns where the dialect requires an
  * additional command execution to retrieve the generated {@code IDENTITY} value
  */
 public class BasicSelectingDelegate extends AbstractSelectingDelegate {
+	final private PostInsertIdentityPersister persister;
 	private final Dialect dialect;
 	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	public BasicSelectingDelegate(PostInsertIdentityPersister persister, Dialect dialect) {
 		super( persister, EventType.INSERT );
+		this.persister = persister;
 		this.dialect = dialect;
 		this.jdbcValuesMappingProducer = getMappingProducer( null );
-	}
-
-	@Override @Deprecated
-	public IdentifierGeneratingInsert prepareIdentifierGeneratingInsert(SqlStringGenerationContext context) {
-		IdentifierGeneratingInsert insert = new IdentifierGeneratingInsert( getPersister().getFactory() );
-		insert.addGeneratedColumns( getPersister().getRootTableKeyColumnNames(), (OnExecutionGenerator) getPersister().getGenerator() );
-		return insert;
 	}
 
 	@Override
@@ -49,12 +41,12 @@ public class BasicSelectingDelegate extends AbstractSelectingDelegate {
 			Expectation expectation,
 			SessionFactoryImplementor factory) {
 		final TableInsertBuilder builder =
-				new TableInsertBuilderStandard( getPersister(), getPersister().getIdentifierTableMapping(), factory );
+				new TableInsertBuilderStandard( persister, persister.getIdentifierTableMapping(), factory );
 
-		final OnExecutionGenerator generator = (OnExecutionGenerator) getPersister().getGenerator();
+		final OnExecutionGenerator generator = (OnExecutionGenerator) persister.getGenerator();
 		if ( generator.referenceColumnsInSql( dialect ) ) {
-			final BasicEntityIdentifierMapping identifierMapping = (BasicEntityIdentifierMapping) getPersister().getIdentifierMapping();
-			final String[] columnNames = getPersister().getRootTableKeyColumnNames();
+			final BasicEntityIdentifierMapping identifierMapping = (BasicEntityIdentifierMapping) persister.getIdentifierMapping();
+			final String[] columnNames = persister.getRootTableKeyColumnNames();
 			final String[] columnValues = generator.getReferencedColumnValues( dialect );
 			if ( columnValues.length != columnNames.length ) {
 				throw new MappingException("wrong number of generated columns");
@@ -69,10 +61,10 @@ public class BasicSelectingDelegate extends AbstractSelectingDelegate {
 
 	@Override
 	protected String getSelectSQL() {
-		if ( getPersister().getIdentitySelectString() == null && !dialect.getIdentityColumnSupport().supportsInsertSelectIdentity() ) {
+		if ( persister.getIdentitySelectString() == null && !dialect.getIdentityColumnSupport().supportsInsertSelectIdentity() ) {
 			throw CoreLogging.messageLogger( BasicSelectingDelegate.class ).nullIdentitySelectString();
 		}
-		return getPersister().getIdentitySelectString();
+		return persister.getIdentitySelectString();
 	}
 
 	@Override

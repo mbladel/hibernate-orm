@@ -16,9 +16,8 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
 import org.hibernate.generator.values.AbstractGeneratedValuesMutationDelegate;
 import org.hibernate.generator.values.GeneratedValues;
-import org.hibernate.id.PostInsertIdentityPersister;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.pretty.MessageHelper;
-import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 /**
  * Abstract {@link org.hibernate.generator.values.GeneratedValuesMutationDelegate} implementation where
@@ -31,7 +30,7 @@ import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesMutationDelegate
 		implements InsertGeneratedIdentifierDelegate {
 
-	public AbstractReturningDelegate(PostInsertIdentityPersister persister, EventType timing) {
+	public AbstractReturningDelegate(EntityPersister persister, EventType timing) {
 		super( persister, timing );
 	}
 
@@ -62,7 +61,7 @@ public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesM
 		catch (SQLException sqle) {
 			throw session.getJdbcServices().getSqlExceptionHelper().convert(
 					sqle,
-					"could not insert: " + MessageHelper.infoString( getPersister() ),
+					"could not insert: " + MessageHelper.infoString( persister ),
 					sql
 			);
 		}

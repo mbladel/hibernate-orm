@@ -9,7 +9,7 @@ package org.hibernate.generator.values;
 import java.util.function.Consumer;
 
 import org.hibernate.generator.EventType;
-import org.hibernate.id.PostInsertIdentityPersister;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 import static org.hibernate.generator.values.GeneratedValuesHelper.createMappingProducer;
@@ -18,16 +18,12 @@ import static org.hibernate.generator.values.GeneratedValuesHelper.createMapping
  * @author Marco Belladelli
  */
 public abstract class AbstractGeneratedValuesMutationDelegate implements GeneratedValuesMutationDelegate {
-	private final PostInsertIdentityPersister persister;
+	protected final EntityPersister persister;
 	private final EventType timing;
 
-	public AbstractGeneratedValuesMutationDelegate(PostInsertIdentityPersister persister, EventType timing) {
+	public AbstractGeneratedValuesMutationDelegate(EntityPersister persister, EventType timing) {
 		this.persister = persister;
 		this.timing = timing;
-	}
-
-	public PostInsertIdentityPersister getPersister() {
-		return persister;
 	}
 
 	@Override
