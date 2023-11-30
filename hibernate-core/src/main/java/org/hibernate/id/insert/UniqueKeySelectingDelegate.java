@@ -57,7 +57,7 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 				|| persister.getInsertGeneratedProperties().size() > 1
 				|| rowIdMapping != null ) {
 			final List<String> columnNames = new ArrayList<>();
-			this.jdbcValuesMappingProducer = createMappingProducer( persister, timing, true, true, columnNames::add );
+			this.jdbcValuesMappingProducer = getMappingProducer( columnNames::add );
 			if ( rowIdMapping != null ) {
 				columnNames.add( rowIdMapping.getSelectionExpression() );
 			}

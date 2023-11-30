@@ -78,9 +78,10 @@ public class ResultsHelper {
 						selectableMapping.getSelectablePath(),
 						selectableMapping.getJdbcMapping()
 				),
-				processingState -> {
-					return new ResultSetMappingSqlSelection( valuesArrayPosition, selectableMapping.getJdbcMapping() );
-				}
+				processingState -> new ResultSetMappingSqlSelection(
+						valuesArrayPosition,
+						selectableMapping.getJdbcMapping()
+				)
 		);
 	}
 

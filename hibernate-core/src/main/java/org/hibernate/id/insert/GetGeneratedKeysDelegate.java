@@ -64,7 +64,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 		this.inferredKeys = inferredKeys;
 
 		if ( inferredKeys ) {
-			this.jdbcValuesMappingProducer = getMappingProducer( null );
+			this.jdbcValuesMappingProducer = getMappingProducer( null, false );
 			columnNames = null;
 		}
 		else {

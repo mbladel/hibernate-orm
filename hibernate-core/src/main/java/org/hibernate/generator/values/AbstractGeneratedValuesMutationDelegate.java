@@ -36,11 +36,16 @@ public abstract class AbstractGeneratedValuesMutationDelegate implements Generat
 	}
 
 	protected JdbcValuesMappingProducer getMappingProducer(Consumer<String> columnNameConsumer) {
+		return getMappingProducer( columnNameConsumer, false );
+	}
+
+	protected JdbcValuesMappingProducer getMappingProducer(Consumer<String> columnNameConsumer, boolean useIndex) {
 		return createMappingProducer(
 				persister,
 				timing,
 				supportsArbitraryValues(),
 				supportsRowId(),
+				useIndex,
 				columnNameConsumer
 		);
 	}

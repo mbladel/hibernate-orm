@@ -15,6 +15,7 @@ import org.hibernate.query.results.ResultsHelper;
 import org.hibernate.query.results.dynamic.DynamicFetchBuilderLegacy;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.spi.SqlSelection;
+import org.hibernate.sql.ast.tree.expression.Expression;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableReference;
 import org.hibernate.sql.results.graph.DomainResultCreationState;
@@ -22,6 +23,7 @@ import org.hibernate.sql.results.graph.basic.BasicResult;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMetadata;
 
 import static org.hibernate.query.results.ResultsHelper.impl;
+import static org.hibernate.query.results.ResultsHelper.jdbcPositionToValuesArrayPosition;
 
 /**
  * @author Marco Belladelli
@@ -29,14 +31,14 @@ import static org.hibernate.query.results.ResultsHelper.impl;
 public class GeneratedValueBasicResultBuilder implements ResultBuilder {
 	private final NavigablePath navigablePath;
 	private final BasicValuedModelPart modelPart;
-	private final int valuesArrayPosition;
+	private final Integer valuesArrayPosition;
 	private final TableGroup tableGroup;
 
 	public GeneratedValueBasicResultBuilder(
 			NavigablePath navigablePath,
 			BasicValuedModelPart modelPart,
 			TableGroup tableGroup,
-			int valuesArrayPosition) {
+			Integer valuesArrayPosition) {
 		this.navigablePath = navigablePath;
 		this.modelPart = modelPart;
 		this.valuesArrayPosition = valuesArrayPosition;
@@ -71,12 +73,15 @@ public class GeneratedValueBasicResultBuilder implements ResultBuilder {
 				"t"
 		);
 
+		final int position = valuesArrayPosition == null ?
+				jdbcPositionToValuesArrayPosition( jdbcResultsMetadata.resolveColumnPosition( modelPart.getSelectionExpression() ) ) :
+				valuesArrayPosition;
 		final SqlSelection sqlSelection = creationStateImpl.resolveSqlSelection(
 				ResultsHelper.resolveSqlExpression(
 						creationStateImpl,
 						tableReference,
 						modelPart,
-						valuesArrayPosition
+						position
 				),
 				modelPart.getJdbcMapping().getJdbcJavaType(),
 				null,

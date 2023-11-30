@@ -113,6 +113,7 @@ public class GeneratedValuesHelper {
 			EventType timing,
 			boolean supportsArbitraryValues,
 			boolean supportsRowId,
+			boolean useIndex,
 			Consumer<String> columnNameConsumer) {
 		// This is just a mock table group needed to correctly resolve expressions
 		final NavigablePath parentNavigablePath = new NavigablePath( persister.getEntityName() );
@@ -138,7 +139,7 @@ public class GeneratedValuesHelper {
 						parentNavigablePath.append( basicModelPart.getSelectableName() ),
 						basicModelPart,
 						tableGroup,
-						i // We know the order of generated values is consistent
+						useIndex ? i : null
 				);
 				mappingProducer.addResultBuilder( resultBuilder );
 				if ( columnNameConsumer != null ) {
