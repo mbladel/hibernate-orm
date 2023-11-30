@@ -335,7 +335,7 @@ public class GeneratedValuesHelper {
 		if ( dialect.supportsInsertReturningGeneratedKeys() ) {
 			return new GetGeneratedKeysDelegate( persister, dialect, false, timing );
 		}
-		else if ( dialect.supportsInsertReturning() && noCustomSql( persister, timing ) ) {
+		else if ( supportsReturning( dialect, timing ) && noCustomSql( persister, timing ) ) {
 			return new InsertReturningDelegate( persister, dialect, timing );
 		}
 		else if ( timing == EventType.INSERT && persister.getNaturalIdentifierProperties() != null
@@ -348,6 +348,10 @@ public class GeneratedValuesHelper {
 			);
 		}
 		return null;
+	}
+
+	private static boolean supportsReturning(Dialect dialect, EventType timing) {
+		return timing == EventType.INSERT ? dialect.supportsInsertReturning() : dialect.supportsUpdateReturning();
 	}
 
 	public static boolean noCustomSql(EntityPersister persister, EventType timing) {

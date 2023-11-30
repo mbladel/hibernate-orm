@@ -67,7 +67,7 @@ public class GeneratedValueBasicResultBuilder implements ResultBuilder {
 
 		final TableGroup tableGroup = creationStateImpl.getFromClauseAccess().resolveTableGroup(
 				navigablePath.getParent(),
-				(p) -> this.tableGroup
+				path -> this.tableGroup
 		);
 		final TableReference tableReference = tableGroup.resolveTableReference(
 				navigablePath,
@@ -76,7 +76,7 @@ public class GeneratedValueBasicResultBuilder implements ResultBuilder {
 		);
 
 		final int position = valuesArrayPosition == null ?
-				jdbcPositionToValuesArrayPosition( jdbcResultsMetadata.resolveColumnPosition( modelPart.getSelectionExpression() ) ) :
+				columnIndex( jdbcResultsMetadata, modelPart ) :
 				valuesArrayPosition;
 		final SqlSelection sqlSelection = creationStateImpl.resolveSqlSelection(
 				ResultsHelper.resolveSqlExpression(
@@ -95,5 +95,25 @@ public class GeneratedValueBasicResultBuilder implements ResultBuilder {
 				null,
 				modelPart.getJdbcMapping()
 		);
+	}
+
+	private static int columnIndex(JdbcValuesMetadata jdbcResultsMetadata, BasicValuedModelPart modelPart) {
+		final BasicValuedModelPart resultModelPart = modelPart.isEntityIdentifierMapping() ?
+				( (BasicValuedModelPart) modelPart.findContainingEntityMapping()
+						.getRootEntityDescriptor()
+						.getIdentifierMapping() )
+				: modelPart;
+		try {
+			return jdbcPositionToValuesArrayPosition( jdbcResultsMetadata.resolveColumnPosition( resultModelPart.getSelectionExpression() ) );
+		}
+		catch (Exception e) {
+			if ( modelPart.isEntityIdentifierMapping() ) {
+				// Default to the first position for entity identifiers
+				return 0;
+			}
+			else {
+				throw e;
+			}
+		}
 	}
 }
