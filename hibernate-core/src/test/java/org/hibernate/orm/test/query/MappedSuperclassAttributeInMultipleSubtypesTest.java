@@ -8,8 +8,6 @@ package org.hibernate.orm.test.query;
 
 import java.util.List;
 
-import org.hibernate.query.PathException;
-
 import org.hibernate.testing.orm.domain.gambit.BasicEntity;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
@@ -91,8 +89,8 @@ public class MappedSuperclassAttributeInMultipleSubtypesTest {
 				fail( "This shouldn't work since the attribute is defined with different" );
 			}
 			catch (Exception e) {
-				final Throwable cause = e.getCause();
-				assertThat( cause ).isInstanceOf( PathException.class );
+				final Throwable cause = e.getCause().getCause();
+				assertThat( cause ).isInstanceOf( IllegalArgumentException.class );
 				assertThat( cause.getMessage() ).contains( "Could not resolve attribute 'otherProp'" );
 			}
 		} );
