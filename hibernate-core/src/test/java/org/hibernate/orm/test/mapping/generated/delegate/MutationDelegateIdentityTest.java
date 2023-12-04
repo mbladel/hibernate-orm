@@ -72,7 +72,7 @@ public class MutationDelegateIdentityTest {
 			assertThat( entity.getId() ).isNotNull();
 			assertThat( entity.getName() ).isNull();
 
-			inspector.assertIsInsert( 0 );
+			assertThat( inspector.getSqlQueries().get( 0 ) ).contains( "insert" );
 			inspector.assertExecutedCount( delegate != null ? 1 : 2 );
 		} );
 	}
@@ -95,7 +95,7 @@ public class MutationDelegateIdentityTest {
 			assertThat( entity.getId() ).isNotNull();
 			assertThat( entity.getName() ).isEqualTo( "default_name" );
 
-			inspector.assertIsInsert( 0 );
+			assertThat( inspector.getSqlQueries().get( 0 ) ).contains( "insert" );
 			inspector.assertExecutedCount(
 					delegate != null && delegate.supportsArbitraryValues() ? 1 : 2
 			);
@@ -127,7 +127,7 @@ public class MutationDelegateIdentityTest {
 			assertThat( entity.getUpdateDate() ).isNotNull();
 
 			inspector.assertIsSelect( 0 );
-			inspector.assertIsUpdate( 1 );
+			assertThat( inspector.getSqlQueries().get( 0 ) ).contains( "update" );
 			inspector.assertExecutedCount(
 					delegate != null && delegate.supportsArbitraryValues() ? 2 : 3
 			);
@@ -152,7 +152,7 @@ public class MutationDelegateIdentityTest {
 			assertThat( entity.getId() ).isNotNull();
 			assertThat( entity.getName() ).isEqualTo( "default_name" );
 
-			inspector.assertIsInsert( 0 );
+			assertThat( inspector.getSqlQueries().get( 0 ) ).contains( "insert" );
 			inspector.assertExecutedCount(
 					delegate != null && delegate.supportsArbitraryValues() ? 1 : 2
 			);
@@ -174,7 +174,7 @@ public class MutationDelegateIdentityTest {
 
 			assertThat( entity.getUpdateDate() ).isNotNull();
 
-			inspector.assertIsUpdate( 0 );
+			assertThat( inspector.getSqlQueries().get( 0 ) ).contains( "update" );
 			inspector.assertNumberOfOccurrenceInQueryNoSpace( 0, "id_column", shouldHaveRowId ? 0 : 1 );
 		} );
 		scope.inSession( session -> assertThat( session.find(
@@ -201,7 +201,7 @@ public class MutationDelegateIdentityTest {
 			assertThat( entity.getId() ).isNotNull();
 			assertThat( entity.getName() ).isEqualTo( "default_name" );
 
-			inspector.assertIsInsert( 0 );
+			assertThat( inspector.getSqlQueries().get( 0 ) ).contains( "insert" );
 			final boolean isUniqueKeyDelegate = delegate instanceof UniqueKeySelectingDelegate;
 			inspector.assertExecutedCount(
 					delegate == null || !delegate.supportsArbitraryValues() || isUniqueKeyDelegate ? 2 : 1

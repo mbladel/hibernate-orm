@@ -28,6 +28,7 @@ import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.metamodel.mapping.ModelPart;
+import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.mutation.EntityTableMapping;
 import org.hibernate.pretty.MessageHelper;
@@ -268,7 +269,7 @@ public class GeneratedValuesHelper {
 				);
 				mappingProducer.addResultBuilder( resultBuilder );
 				if ( columnNameConsumer != null ) {
-					columnNameConsumer.accept( basicModelPart.getSelectionExpression() );
+					columnNameConsumer.accept( getActualSelectionExpression( basicModelPart ) );
 				}
 			}
 			else {
@@ -276,6 +277,17 @@ public class GeneratedValuesHelper {
 			}
 		}
 		return mappingProducer;
+	}
+
+	public static String getActualSelectionExpression(BasicValuedModelPart modelPart) {
+		// Use the root entity descriptor's identifier mapping to get the correct selection
+		// expression since we always retrieve generated values for the root table only
+		final BasicValuedModelPart actualModelPart = modelPart.isEntityIdentifierMapping() ?
+				( (BasicValuedModelPart) modelPart.findContainingEntityMapping()
+						.getRootEntityDescriptor()
+						.getIdentifierMapping() ) :
+				modelPart;
+		return actualModelPart.getSelectionExpression();
 	}
 
 	/**
