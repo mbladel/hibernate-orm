@@ -1031,6 +1031,11 @@ public class DB2Dialect extends Dialect {
 	}
 
 	@Override
+	public boolean supportsInsertReturningRowId() {
+		return false;
+	}
+
+	@Override
 	public boolean supportsValuesList() {
 		return true;
 	}
