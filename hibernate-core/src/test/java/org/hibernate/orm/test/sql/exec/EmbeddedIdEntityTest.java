@@ -120,4 +120,40 @@ public class EmbeddedIdEntityTest {
 		);
 		assertThat( statistics.getPrepareStatementCount(), is( 1L ) );
 	}
+
+	@Test
+	public void testNamedParameterComparison(SessionFactoryScope scope) {
+		final StatisticsImplementor statistics = scope.getSessionFactory().getStatistics();
+		statistics.clear();
+		scope.inTransaction( session -> {
+			final EmbeddedIdEntity loaded = session.createQuery(
+					"select e FROM EmbeddedIdEntity e WHERE e.id = :id",
+					EmbeddedIdEntity.class
+			).setParameter(
+					"id",
+					entityId
+			).uniqueResult();
+			assertThat( loaded.getData(), is( "test" ) );
+			assertThat( loaded.getId(), equalTo( entityId ) );
+		} );
+		assertThat( statistics.getPrepareStatementCount(), is( 1L ) );
+	}
+
+	@Test
+	public void testPositionalParameterComparison(SessionFactoryScope scope) {
+		final StatisticsImplementor statistics = scope.getSessionFactory().getStatistics();
+		statistics.clear();
+		scope.inTransaction( session -> {
+			final EmbeddedIdEntity loaded = session.createQuery(
+					"select e FROM EmbeddedIdEntity e WHERE e.id = ?1",
+					EmbeddedIdEntity.class
+			).setParameter(
+					1,
+					entityId
+			).uniqueResult();
+			assertThat( loaded.getData(), is( "test" ) );
+			assertThat( loaded.getId(), equalTo( entityId ) );
+		} );
+		assertThat( statistics.getPrepareStatementCount(), is( 1L ) );
+	}
 }
