@@ -98,9 +98,9 @@ public class SequenceOrAssignedGeneratorTest {
 			return super.generate( session, owner );
 		}
 
-//		@Override
-//		public boolean allowUnsaved() {
-//			return true;
-//		}
+		@Override
+		public boolean allowAssignedIdentifiers() {
+			return true;
+		}
 	}
 }
