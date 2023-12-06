@@ -38,6 +38,7 @@ import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.Mapping;
+import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.id.IdentifierGenerator;
 import org.hibernate.id.IdentityGenerator;
 import org.hibernate.id.factory.IdentifierGeneratorFactory;
@@ -412,6 +413,9 @@ public abstract class SimpleValue implements KeyValue {
 		}
 		else {
 			generator = createLegacyIdentifierGenerator(this, identifierGeneratorFactory, dialect, null, null, rootClass );
+		}
+		if ( generator instanceof BeforeExecutionGenerator && ( (BeforeExecutionGenerator) generator ).allowAssignedIdentifiers() ) {
+			setNullValue( "undefined" );
 		}
 		return generator;
 	}
