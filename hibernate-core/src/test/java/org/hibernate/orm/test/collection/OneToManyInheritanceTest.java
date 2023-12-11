@@ -3,6 +3,8 @@ package org.hibernate.orm.test.collection;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.hibernate.Hibernate;
+
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.SessionFactory;
@@ -43,9 +45,9 @@ public class OneToManyInheritanceTest {
 			final Cheese cheese1 = new Cheese( 1, "Roquefort", refrigerator );
 			final SmellyCheese cheese2 = new SmellyCheese( 2, "Maroilles", refrigerator );
 			final SmellyCheese cheese3 = new SmellyCheese( 3, "Vieux Lille", refrigerator );
-			refrigerator.getCheeses().add( cheese1 );
-			refrigerator.getCheeses().add( cheese2 );
-			refrigerator.getCheeses().add( cheese3 );
+			refrigerator.addCheese( cheese1 );
+			refrigerator.addCheese( cheese2 );
+			refrigerator.addCheese( cheese3 );
 			session.persist( cheese1 );
 			session.persist( cheese2 );
 			session.persist( cheese3 );
@@ -65,7 +67,17 @@ public class OneToManyInheritanceTest {
 	public void testCollectionLoad(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final Refrigerator refrigerator = session.find( Refrigerator.class, REFRIGERATOR_ID );
+			assertThat( Hibernate.isInitialized( refrigerator.getCheeses() ) ).isFalse();
 			assertThat( refrigerator.getCheeses() ).hasSize( 3 );
+		} );
+	}
+
+	@Test
+	public void testEagerCollectionLoad(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final Refrigerator refrigerator = session.find( Refrigerator.class, REFRIGERATOR_ID );
+			assertThat( Hibernate.isInitialized( refrigerator.getEagerCheeses() ) ).isTrue();
+			assertThat( refrigerator.getEagerCheeses() ).hasSize( 3 );
 		} );
 	}
 
@@ -77,6 +89,7 @@ public class OneToManyInheritanceTest {
 					Refrigerator.class
 			).setParameter( "id", REFRIGERATOR_ID ).getSingleResult();
 			assertThat( refrigerator.getCheeses() ).hasSize( 3 );
+			assertThat( refrigerator.getEagerCheeses() ).hasSize( 3 );
 		} );
 	}
 
@@ -88,7 +101,10 @@ public class OneToManyInheritanceTest {
 		private String name;
 
 		@OneToMany( mappedBy = "refrigerator" )
-		private Set<Cheese> cheeses;
+		private Set<Cheese> cheeses = new HashSet<>();
+
+		@OneToMany( mappedBy = "refrigerator", fetch = FetchType.EAGER )
+		private Set<Cheese> eagerCheeses = new HashSet<>();
 
 		public Refrigerator() {
 		}
@@ -96,11 +112,19 @@ public class OneToManyInheritanceTest {
 		public Refrigerator(Integer id, String name) {
 			this.id = id;
 			this.name = name;
-			this.cheeses = new HashSet<>();
+		}
+
+		public void addCheese(Cheese cheese) {
+			this.cheeses.add( cheese );
+			this.eagerCheeses.add( cheese );
 		}
 
 		public Set<Cheese> getCheeses() {
 			return cheeses;
+		}
+
+		public Set<Cheese> getEagerCheeses() {
+			return eagerCheeses;
 		}
 	}
 
@@ -114,7 +138,7 @@ public class OneToManyInheritanceTest {
 
 		private String name;
 
-		@ManyToOne( fetch = FetchType.LAZY )
+		@ManyToOne
 		@JoinColumn( name = "refrigerator_id" )
 		private Refrigerator refrigerator;
 
@@ -141,7 +165,7 @@ public class OneToManyInheritanceTest {
 	}
 
 	@Entity( name = "SmellyCheese" )
-	@DiscriminatorValue( "SmellyCheese" )
+	@DiscriminatorValue( "Smelly" )
 	public static class SmellyCheese extends Cheese {
 		public SmellyCheese() {
 			super();
