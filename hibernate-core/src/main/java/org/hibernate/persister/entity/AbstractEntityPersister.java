@@ -3092,7 +3092,20 @@ public abstract class AbstractEntityPersister
 			TableGroup tableGroup,
 			SqlAstCreationState creationState) {
 		if ( needsDiscriminator() ) {
-			pruneForSubclasses( tableGroup, Collections.singletonMap( getEntityName(), EntityNameUse.TREAT ) );
+			final Map<String, EntityNameUse> entityNameUseMap;
+			final Collection<EntityMappingType> subMappingTypes = getSubMappingTypes();
+			if ( subMappingTypes.isEmpty() ) {
+				entityNameUseMap = Collections.singletonMap( getEntityName(), EntityNameUse.TREAT );
+			}
+			else {
+				entityNameUseMap = new HashMap<>( 1 + subMappingTypes.size() );
+				entityNameUseMap.put( getEntityName(), EntityNameUse.TREAT );
+				// We need to register TREAT uses for all subtypes when pruning
+				for ( EntityMappingType subMappingType : subMappingTypes ) {
+					entityNameUseMap.put( subMappingType.getEntityName(), EntityNameUse.TREAT );
+				}
+			}
+			pruneForSubclasses( tableGroup, entityNameUseMap );
 		}
 	}
 

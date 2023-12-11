@@ -1323,15 +1323,17 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 				final String[] subclassTableNames = persister.getSubclassTableNames();
 				// Build the intersection of all tables names that are of the class or super class
 				// These are the tables that can be safely inner joined
-				if ( tablesToInnerJoin.isEmpty() ) {
-					for ( int i = 0; i < subclassTableNames.length; i++ ) {
-						if ( persister.isClassOrSuperclassTable[i] ) {
-							tablesToInnerJoin.add( subclassTableNames[i] );
-						}
+				final Set<String> classOrSuperclassTables = new HashSet<>( subclassTableNames.length );
+				for ( int i = 0; i < subclassTableNames.length; i++ ) {
+					if ( persister.isClassOrSuperclassTable[i] ) {
+						classOrSuperclassTables.add( subclassTableNames[i] );
 					}
 				}
+				if ( tablesToInnerJoin.isEmpty() ) {
+					tablesToInnerJoin.addAll( classOrSuperclassTables );
+				}
 				else {
-					tablesToInnerJoin.retainAll( Arrays.asList( subclassTableNames ) );
+					tablesToInnerJoin.retainAll( classOrSuperclassTables );
 				}
 				if ( useKind == EntityNameUse.UseKind.FILTER && explicitDiscriminatorColumnName == null ) {
 					// If there is no discriminator column,
@@ -1387,6 +1389,11 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 					tablesToInnerJoin.add( subclassTableNames[i] );
 				}
 			}
+		}
+
+		if ( needsTreatDiscriminator ) {
+			// Make sure we resolve the root table reference if we need a discriminator predicate
+			tableGroup.resolveTableReference( getRootTableName() );
 		}
 
 		final List<TableReferenceJoin> tableReferenceJoins = tableGroup.getTableReferenceJoins();
