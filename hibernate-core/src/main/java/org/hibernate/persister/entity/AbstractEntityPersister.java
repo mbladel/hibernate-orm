@@ -3130,7 +3130,19 @@ public abstract class AbstractEntityPersister
 			TableGroup tableGroup,
 			SqlAstCreationState creationState) {
 		if ( needsDiscriminator() ) {
-			pruneForSubclasses( tableGroup, Collections.singletonMap( getEntityName(), EntityNameUse.TREAT ) );
+			final Map<String, EntityNameUse> entityNameUseMap;
+			final Collection<EntityMappingType> subMappingTypes = getSubMappingTypes();
+			if ( subMappingTypes.isEmpty() ) {
+				entityNameUseMap = Collections.singletonMap( getEntityName(), EntityNameUse.TREAT );
+			}
+			else {
+				entityNameUseMap = new HashMap<>();
+				entityNameUseMap.put( getEntityName(), EntityNameUse.TREAT );
+				for ( EntityMappingType subMappingType : subMappingTypes ) {
+					entityNameUseMap.put( subMappingType.getEntityName(), EntityNameUse.TREAT );
+				}
+			}
+			pruneForSubclasses( tableGroup, entityNameUseMap );
 		}
 	}
 
