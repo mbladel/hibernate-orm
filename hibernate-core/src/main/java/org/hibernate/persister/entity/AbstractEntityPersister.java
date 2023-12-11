@@ -3136,7 +3136,7 @@ public abstract class AbstractEntityPersister
 				entityNameUseMap = Collections.singletonMap( getEntityName(), EntityNameUse.TREAT );
 			}
 			else {
-				entityNameUseMap = new HashMap<>();
+				entityNameUseMap = new HashMap<>( 1 + subMappingTypes.size() );
 				entityNameUseMap.put( getEntityName(), EntityNameUse.TREAT );
 				for ( EntityMappingType subMappingType : subMappingTypes ) {
 					entityNameUseMap.put( subMappingType.getEntityName(), EntityNameUse.TREAT );
