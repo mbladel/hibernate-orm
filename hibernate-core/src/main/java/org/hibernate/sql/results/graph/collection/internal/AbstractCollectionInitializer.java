@@ -92,15 +92,21 @@ public abstract class AbstractCollectionInitializer implements CollectionInitial
 
 	protected void resolveInstance(RowProcessingState rowProcessingState, boolean isEager) {
 		if ( collectionKey != null ) {
+			final FetchParentAccess entityDescriptorAccess;
 			if ( parentAccess != null ) {
-				final EntityInitializer parentEntityInitializer = parentAccess.findFirstEntityInitializer();
+				entityDescriptorAccess = parentAccess.findFirstEntityDescriptorAccess();
+				final EntityInitializer parentEntityInitializer = entityDescriptorAccess != null ?
+						entityDescriptorAccess.asEntityInitializer() :
+						null;
 				if ( parentEntityInitializer != null && parentEntityInitializer.isEntityInitialized() ) {
 					return;
 				}
 			}
+			else {
+				entityDescriptorAccess = null;
+			}
 			final SharedSessionContractImplementor session = rowProcessingState.getSession();
 			final PersistenceContext persistenceContext = session.getPersistenceContext();
-			final FetchParentAccess fetchParentAccess = parentAccess.findFirstEntityDescriptorAccess();
 
 			final LoadingCollectionEntry loadingEntry = persistenceContext.getLoadContexts()
 					.findLoadingCollectionEntry( collectionKey );
@@ -108,9 +114,7 @@ public abstract class AbstractCollectionInitializer implements CollectionInitial
 			if ( loadingEntry != null ) {
 				collectionInstance = loadingEntry.getCollectionInstance();
 				if ( collectionInstance.getOwner() == null ) {
-					fetchParentAccess.registerResolutionListener(
-							owner -> collectionInstance.setOwner( owner )
-					);
+					registerSetOwnerResolutionListener( entityDescriptorAccess );
 				}
 				return;
 			}
@@ -120,9 +124,7 @@ public abstract class AbstractCollectionInitializer implements CollectionInitial
 			if ( existing != null ) {
 				collectionInstance = existing;
 				if ( collectionInstance.getOwner() == null ) {
-					fetchParentAccess.registerResolutionListener(
-							owner -> collectionInstance.setOwner( owner )
-					);
+					registerSetOwnerResolutionListener( entityDescriptorAccess );
 				}
 				return;
 			}
@@ -137,9 +139,7 @@ public abstract class AbstractCollectionInitializer implements CollectionInitial
 					session
 			);
 
-			fetchParentAccess.registerResolutionListener(
-					owner -> collectionInstance.setOwner( owner )
-			);
+			registerSetOwnerResolutionListener( entityDescriptorAccess );
 
 			persistenceContext.addUninitializedCollection(
 					collectionDescriptor,
@@ -154,6 +154,14 @@ public abstract class AbstractCollectionInitializer implements CollectionInitial
 			if ( collectionSemantics.getCollectionClassification() == CollectionClassification.ARRAY ) {
 				session.getPersistenceContext().addCollectionHolder( collectionInstance );
 			}
+		}
+	}
+
+	private void registerSetOwnerResolutionListener(FetchParentAccess entityDescriptorAccess) {
+		if ( entityDescriptorAccess != null ) {
+			entityDescriptorAccess.registerResolutionListener(
+					owner -> collectionInstance.setOwner( owner )
+			);
 		}
 	}
 

@@ -18,6 +18,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.Tuple;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -65,8 +66,8 @@ public class OneToManyMappedByInEmbeddedTest {
 		scope.inTransaction( session -> {
 			final EmbeddedValue embedded = session.createQuery(
 					"select a.embedded from EntityA a where a.id = 2",
-					EmbeddedValue.class
-			).getSingleResult();
+					Tuple.class
+			).getSingleResult().get( 1, EmbeddedValue.class );
 			assertThat( embedded.getEntityCList() ).hasSize( 1 );
 			assertThat( embedded.getEntityCList().stream().map( EntityC::getName ) ).containsOnly( "entityc_3" );
 			// test orphan removal
@@ -76,6 +77,8 @@ public class OneToManyMappedByInEmbeddedTest {
 			final List<EntityC> entityCList = session.createQuery( "from EntityC", EntityC.class ).getResultList();
 			assertThat( entityCList.stream().map( EntityC::getName ) ).doesNotContain( "entityc_3" );
 		} );
+
+		// todo marco : test both lazy and eager collections
 	}
 
 	@Entity( name = "EntityA" )
@@ -108,7 +111,7 @@ public class OneToManyMappedByInEmbeddedTest {
 
 	@Embeddable
 	public static class EmbeddedValue implements Serializable {
-		@OneToMany( cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER )
+		@OneToMany( cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY )
 		@JoinColumn( name = "entityA_id" )
 		private List<EntityC> entityCList;
 

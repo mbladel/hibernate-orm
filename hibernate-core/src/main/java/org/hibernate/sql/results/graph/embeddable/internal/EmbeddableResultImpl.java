@@ -8,6 +8,7 @@ package org.hibernate.sql.results.graph.embeddable.internal;
 
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
+import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.SqlAstJoinType;
 import org.hibernate.sql.ast.spi.FromClauseAccess;
@@ -20,11 +21,15 @@ import org.hibernate.sql.results.graph.DomainResultAssembler;
 import org.hibernate.sql.results.graph.DomainResultCreationState;
 import org.hibernate.sql.results.graph.Fetch;
 import org.hibernate.sql.results.graph.FetchParentAccess;
+import org.hibernate.sql.results.graph.collection.internal.CollectionFetch;
 import org.hibernate.sql.results.graph.embeddable.EmbeddableInitializer;
 import org.hibernate.sql.results.graph.embeddable.EmbeddableResult;
 import org.hibernate.sql.results.graph.embeddable.EmbeddableResultGraphNode;
+import org.hibernate.sql.results.graph.entity.EntityResult;
 import org.hibernate.sql.results.graph.internal.ImmutableFetchList;
 import org.hibernate.type.descriptor.java.JavaType;
+
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
 /**
  * @author Steve Ebersole
@@ -34,6 +39,7 @@ public class EmbeddableResultImpl<T> extends AbstractFetchParent implements Embe
 	private final boolean containsAnyNonScalars;
 	private final NavigablePath initializerNavigablePath;
 	private final EmbeddableMappingType fetchContainer;
+	private final DomainResult<?> entityResult;
 
 	public EmbeddableResultImpl(
 			NavigablePath navigablePath,
@@ -76,6 +82,26 @@ public class EmbeddableResultImpl<T> extends AbstractFetchParent implements Embe
 
 		// after-after-initialize :D
 		containsAnyNonScalars = determineIfContainedAnyScalars( getFetches() );
+
+		// If this embeddable contains any collection fetches we need to initialize
+		// the containing entity mapping to correctly set the collection's owner
+		boolean needsEntityResult = false;
+		for ( Fetch fetch : getFetches() ) {
+			if ( fetch instanceof CollectionFetch ) {
+				final PluralAttributeMapping pluralAttribute = ( (CollectionFetch) fetch ).getFetchedMapping();
+				// todo : only do this for orphan removal ?
+				if ( pluralAttribute.getCollectionDescriptor().hasOrphanDelete() ) {
+					needsEntityResult = true;
+					break;
+				}
+			}
+		}
+		entityResult = needsEntityResult ? fetchContainer.findContainingEntityMapping().createDomainResult(
+				navigablePath.getParent(),
+				fromClauseAccess.findTableGroup( navigablePath.getParent() ),
+				null,
+				creationState
+		) : null;
 	}
 
 	private static boolean determineIfContainedAnyScalars(ImmutableFetchList fetches) {
@@ -122,15 +148,31 @@ public class EmbeddableResultImpl<T> extends AbstractFetchParent implements Embe
 	public DomainResultAssembler<T> createResultAssembler(
 			FetchParentAccess parentAccess,
 			AssemblerCreationState creationState) {
-		final EmbeddableInitializer initializer = creationState.resolveInitializer(
-				initializerNavigablePath,
-				getReferencedModePart(),
-				() -> new EmbeddableResultInitializer(
-						this,
-						parentAccess,
-						creationState
-				)
-		).asEmbeddableInitializer();
+		final EmbeddableInitializer initializer;
+		if ( entityResult != null ) {
+			// Create the result assembler for the parent entity result ...
+			entityResult.createResultAssembler( parentAccess, creationState );
+			final NavigablePath navigablePath = getNavigablePath();
+			// ... and retrieve the existing embeddable initializer
+			initializer = creationState.resolveInitializer(
+					castNonNull( navigablePath.getParent() ).append( navigablePath.getLocalName() ),
+					getReferencedModePart(),
+					() -> {
+						throw new AssertionError( "Expecting embeddable initializer to be created from entity result" );
+					}
+			).asEmbeddableInitializer();
+		}
+		else {
+			initializer = creationState.resolveInitializer(
+					initializerNavigablePath,
+					getReferencedModePart(),
+					() -> new EmbeddableResultInitializer(
+							this,
+							parentAccess,
+							creationState
+					)
+			).asEmbeddableInitializer();
+		}
 
 		assert initializer != null;
 
