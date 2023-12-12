@@ -6,6 +6,8 @@
  */
 package org.hibernate.sql.results.graph.collection.internal;
 
+import java.util.function.Consumer;
+
 import org.hibernate.collection.spi.CollectionSemantics;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.engine.spi.CollectionKey;
@@ -13,8 +15,10 @@ import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.log.LoggingHelper;
 import org.hibernate.metamodel.CollectionClassification;
+import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.persister.collection.CollectionPersister;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.DomainResultAssembler;
 import org.hibernate.sql.results.graph.FetchParentAccess;
@@ -92,15 +96,21 @@ public abstract class AbstractCollectionInitializer implements CollectionInitial
 
 	protected void resolveInstance(RowProcessingState rowProcessingState, boolean isEager) {
 		if ( collectionKey != null ) {
+			final FetchParentAccess entityDescriptorAccess;
 			if ( parentAccess != null ) {
-				final EntityInitializer parentEntityInitializer = parentAccess.findFirstEntityInitializer();
+				entityDescriptorAccess = parentAccess.findFirstEntityDescriptorAccess();
+				final EntityInitializer parentEntityInitializer = entityDescriptorAccess != null ?
+						entityDescriptorAccess.asEntityInitializer() :
+						null;
 				if ( parentEntityInitializer != null && parentEntityInitializer.isEntityInitialized() ) {
 					return;
 				}
 			}
+			else {
+				entityDescriptorAccess = null;
+			}
 			final SharedSessionContractImplementor session = rowProcessingState.getSession();
 			final PersistenceContext persistenceContext = session.getPersistenceContext();
-			final FetchParentAccess fetchParentAccess = parentAccess.findFirstEntityDescriptorAccess();
 
 			final LoadingCollectionEntry loadingEntry = persistenceContext.getLoadContexts()
 					.findLoadingCollectionEntry( collectionKey );
@@ -108,9 +118,7 @@ public abstract class AbstractCollectionInitializer implements CollectionInitial
 			if ( loadingEntry != null ) {
 				collectionInstance = loadingEntry.getCollectionInstance();
 				if ( collectionInstance.getOwner() == null ) {
-					fetchParentAccess.registerResolutionListener(
-							owner -> collectionInstance.setOwner( owner )
-					);
+					registerSetOwnerResolutionListener( entityDescriptorAccess, collectionInstance.getKey(), session );
 				}
 				return;
 			}
@@ -120,9 +128,7 @@ public abstract class AbstractCollectionInitializer implements CollectionInitial
 			if ( existing != null ) {
 				collectionInstance = existing;
 				if ( collectionInstance.getOwner() == null ) {
-					fetchParentAccess.registerResolutionListener(
-							owner -> collectionInstance.setOwner( owner )
-					);
+					registerSetOwnerResolutionListener( entityDescriptorAccess, collectionInstance.getKey(), session );
 				}
 				return;
 			}
@@ -137,9 +143,7 @@ public abstract class AbstractCollectionInitializer implements CollectionInitial
 					session
 			);
 
-			fetchParentAccess.registerResolutionListener(
-					owner -> collectionInstance.setOwner( owner )
-			);
+			registerSetOwnerResolutionListener( entityDescriptorAccess, key, session );
 
 			persistenceContext.addUninitializedCollection(
 					collectionDescriptor,
@@ -154,6 +158,21 @@ public abstract class AbstractCollectionInitializer implements CollectionInitial
 			if ( collectionSemantics.getCollectionClassification() == CollectionClassification.ARRAY ) {
 				session.getPersistenceContext().addCollectionHolder( collectionInstance );
 			}
+		}
+	}
+
+	private void registerSetOwnerResolutionListener(
+			FetchParentAccess entityDescriptorAccess,
+			Object key,
+			SharedSessionContractImplementor session) {
+		if ( entityDescriptorAccess != null ) {
+			entityDescriptorAccess.registerResolutionListener( owner -> collectionInstance.setOwner( owner ) );
+		}
+		else if ( collectionAttributeMapping.getCollectionDescriptor().hasOrphanDelete() ) {
+			final EntityPersister ownerEntityPersister = collectionAttributeMapping.getCollectionDescriptor()
+					.getOwnerEntityPersister();
+			final Object proxy = ownerEntityPersister.createProxy( key, session );
+			collectionInstance.setOwner( proxy );
 		}
 	}
 

@@ -8,6 +8,7 @@ package org.hibernate.sql.results.graph.collection.internal;
 
 import java.util.List;
 
+import org.hibernate.Hibernate;
 import org.hibernate.LockMode;
 import org.hibernate.collection.spi.CollectionSemantics;
 import org.hibernate.collection.spi.PersistentCollection;
@@ -293,6 +294,9 @@ public abstract class AbstractImmediateCollectionInitializer extends AbstractCol
 						toLoggableString( collectionInstance )
 				);
 			}
+
+			// Ensure the collection's owner is initialized in case it's a proxy
+			Hibernate.initialize( collectionInstance.getOwner() );
 
 			responsibility.load(
 					loadingState -> readCollectionRow( collectionKey, loadingState, rowProcessingState )

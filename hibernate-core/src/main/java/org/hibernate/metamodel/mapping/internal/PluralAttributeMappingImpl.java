@@ -72,6 +72,7 @@ import org.hibernate.sql.results.graph.collection.internal.CollectionDomainResul
 import org.hibernate.sql.results.graph.collection.internal.DelayedCollectionFetch;
 import org.hibernate.sql.results.graph.collection.internal.EagerCollectionFetch;
 import org.hibernate.sql.results.graph.collection.internal.SelectEagerCollectionFetch;
+import org.hibernate.sql.results.graph.embeddable.EmbeddableResult;
 
 import org.jboss.logging.Logger;
 
@@ -606,7 +607,7 @@ public class PluralAttributeMappingImpl
 			DomainResultCreationState creationState,
 			SqlAstCreationState sqlAstCreationState) {
 		final DomainResult<?> collectionKeyDomainResult;
-		if ( referencedPropertyName != null ) {
+		if ( referencedPropertyName != null || fetchParent instanceof EmbeddableResult<?> ) {
 			collectionKeyDomainResult = getKeyDescriptor().createTargetDomainResult(
 					fetchablePath,
 					sqlAstCreationState.getFromClauseAccess().getTableGroup( fetchParent.getNavigablePath() ),
