@@ -15,6 +15,7 @@ import org.hibernate.annotations.IdGeneratorType;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.id.enhanced.SequenceStyleGenerator;
 
+import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -34,15 +35,68 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Marco Belladelli
  */
 @DomainModel( annotatedClasses = SequenceOrAssignedGeneratorTest.MyEntity.class )
-@SessionFactory
+@SessionFactory( useCollectingStatementInspector = true )
 public class SequenceOrAssignedGeneratorTest {
 	@Test
-	public void test(SessionFactoryScope scope) {
+	public void testPersistExistingId(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final MyEntity e = new MyEntity( "Hello World" );
+			session.persist( e );
+			session.flush();
+			assertThat( e.getId() ).isNotNull();
+		} );
+	}
+
+	@Test
+	public void testPersistNullId(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final MyEntity e = new MyEntity( 123L, "Hello World" );
 			session.persist( e );
 			session.flush();
 			assertThat( e.getId() ).isEqualTo( 123L );
+		} );
+	}
+
+	@Test
+	public void testMergeExistingId(SessionFactoryScope scope) {
+		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
+		final MyEntity myEntity = scope.fromTransaction( session -> {
+			final MyEntity e = new MyEntity( 124L, "entity_1" );
+			session.persist( e );
+			session.flush();
+			return e;
+		} );
+		scope.inTransaction( session -> {
+			myEntity.setName( "merged_entity_1" );
+			inspector.clear();
+			session.merge( myEntity );
+			session.flush();
+			assertThat( myEntity.getName() ).isEqualTo( "merged_entity_1" );
+			inspector.assertExecutedCount( 2 );
+			inspector.assertIsSelect( 0 );
+			inspector.assertIsUpdate( 1 );
+		} );
+	}
+
+	@Test
+	public void testMergeNullId(SessionFactoryScope scope) {
+		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
+		final MyEntity myEntity = scope.fromTransaction( session -> {
+			final MyEntity e = new MyEntity( "entity_2" );
+			session.persist( e );
+			session.flush();
+			assertThat( e.getId() ).isNotNull();
+			return e;
+		} );
+		scope.inTransaction( session -> {
+			myEntity.setName( "merged_entity_2" );
+			inspector.clear();
+			session.merge( myEntity );
+			session.flush();
+			assertThat( myEntity.getName() ).isEqualTo( "merged_entity_2" );
+			inspector.assertExecutedCount( 2 );
+			inspector.assertIsSelect( 0 );
+			inspector.assertIsUpdate( 1 );
 		} );
 	}
 
@@ -81,6 +135,22 @@ public class SequenceOrAssignedGeneratorTest {
 
 		public Long getId() {
 			return id;
+		}
+
+		public Long getVersion() {
+			return version;
+		}
+
+		public void setVersion(Long version) {
+			this.version = version;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
 		}
 	}
 
