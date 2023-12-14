@@ -474,15 +474,15 @@ public class NativeQueryImpl<R>
 	private Class<?> extractResultClass(ResultSetMapping resultSetMapping) {
 		final List<ResultBuilder> resultBuilders = resultSetMapping.getResultBuilders();
 		if ( resultBuilders.size() == 1 ) {
-			final ResultBuilder resultBuilder = resultBuilders.get( 0 );
-			if ( resultBuilder instanceof ImplicitResultClassBuilder ) {
-				final ImplicitResultClassBuilder resultTypeBuilder = (ImplicitResultClassBuilder) resultBuilder;
-				return resultTypeBuilder.getJavaType();
-			}
-			else if ( resultBuilder instanceof ImplicitModelPartResultBuilderEntity ) {
-				final ImplicitModelPartResultBuilderEntity resultTypeBuilder = (ImplicitModelPartResultBuilderEntity) resultBuilder;
-				return resultTypeBuilder.getJavaType();
-			}
+			return resultBuilders.get( 0 ).getJavaType();
+//			if ( resultBuilder instanceof ImplicitResultClassBuilder ) {
+//				final ImplicitResultClassBuilder resultTypeBuilder = (ImplicitResultClassBuilder) resultBuilder;
+//				return resultTypeBuilder.getJavaType();
+//			}
+//			else if ( resultBuilder instanceof ImplicitModelPartResultBuilderEntity ) {
+//				final ImplicitModelPartResultBuilderEntity resultTypeBuilder = (ImplicitModelPartResultBuilderEntity) resultBuilder;
+//				return resultTypeBuilder.getJavaType();
+//			}
 		}
 		return null;
 	}
