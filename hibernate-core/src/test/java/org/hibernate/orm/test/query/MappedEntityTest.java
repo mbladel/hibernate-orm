@@ -24,8 +24,6 @@ import jakarta.persistence.MappedSuperclass;
 } )
 @SessionFactory
 public class MappedEntityTest {
-
-
 	@Test
 	public void testQuery(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
@@ -37,21 +35,16 @@ public class MappedEntityTest {
 		} );
 	}
 
-
 	// entities -----------------------------------------------------------
-
 
 	@MappedSuperclass
 	public static abstract class SimpleObject {
-
 		@Id
 		protected Long id;
-
 	}
 
 	@MappedSuperclass
 	public abstract static class CommonObject extends SimpleObject {
-
 	}
 
 	@MappedSuperclass
@@ -63,58 +56,43 @@ public class MappedEntityTest {
 
 	@MappedSuperclass
 	public abstract static class SeqOrderLinkObject<T extends CommonObject> extends CommonLinkObject<T> {
-
 	}
 
 	@MappedSuperclass
 	public abstract static class SeqOrderLinkObjectWithUserContext<T extends CommonObject>
 			extends SeqOrderLinkObject<T> {
-
 	}
-
 
 	@MappedSuperclass
 	public abstract static class ModelingObject extends CommonObject {
-
+//		private String ident;
 	}
-
 
 	@MappedSuperclass
 	public abstract static class GenericLink<T extends ModelingObject> extends SeqOrderLinkObjectWithUserContext<T> {
-
 		private String ident;
-
 	}
-
 
 	@Entity( name = "StandardSalesItem" )
 	public static class StandardSalesItem extends ModelingObject {
-
+		private Integer ident;
 	}
 
 	@Entity( name = "ProductSILink" )
 	public static class ProductSILink extends GenericLink<StandardSalesItem> {
-
 	}
-
 
 	@Entity( name = "Selection" )
 	public static class Selection extends ModelingObject {
-
-
+		private String ident;
 	}
 
 	@Entity( name = "SelectionProductRule" )
 	public static class SelectionProductRule extends SeqOrderLinkObjectWithUserContext<Selection> {
-
 	}
-
 
 	@Entity( name = "ProductCollectionNeedAnalysisLink" )
 	public static class ProductCollectionNeedAnalysisLink extends SeqOrderLinkObjectWithUserContext<Selection> {
-
 		private String ident;
 	}
-
-
 }
