@@ -10,6 +10,7 @@ import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.query.SemanticException;
+import org.hibernate.query.sqm.sql.SqmToSqlAstConverter;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.SqlAstJoinType;
 import org.hibernate.sql.ast.spi.FromClauseAccess;
@@ -47,9 +48,11 @@ public class EmbeddableResultImpl<T> extends AbstractFetchParent implements Embe
 		this.fetchContainer = modelPart.getEmbeddableTypeDescriptor();
 		this.resultVariable = resultVariable;
 
-		// We currently don't support explicitly selecting embeddables that contain collections
-		// as we wouldn't be able to correctly initialize their owning entity instances
-		checkContainsCollections( modelPart, navigablePath );
+		if ( creationState.getSqlAstCreationState() instanceof SqmToSqlAstConverter ) {
+			// We currently don't support explicitly selecting embeddables that contain collections
+			// in queries as we wouldn't be able to correctly initialize their owning entity instances
+			checkContainsCollections( modelPart, navigablePath );
+		}
 
 		/*
 			An `{embeddable_result}` sub-path is created for the corresponding initializer to differentiate it from a fetch-initializer if this embedded is also fetched.
