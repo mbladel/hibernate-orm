@@ -130,12 +130,6 @@ public class IdentifierGeneratorUtil {
 				params
 		);
 
-		// todo marco : remove this and mandate allowAssigned() to return true for mixed-timing ?
-//		if ( generator.generatedOnExecution() && generator instanceof BeforeExecutionGenerator ) {
-//			// support mixed-timing generators
-//			simpleValue.setNullValue( "undefined" );
-//		}
-
 		return generator;
 	}
 

@@ -52,14 +52,10 @@ public interface BeforeExecutionGenerator extends Generator {
 		return false;
 	}
 
-
 	/**
-	 * If this generator allows identifier values to be assigned to the entity instance
-	 * before persisting it, thus triggering value generation. This is useful when allowing
-	 * existing identifier values to be used and falling back to generated values by default.
-	 * <p>
-	 * Note that this method return {@code true} by default for mixed timing generators,
-	 * see {@link #generatedOnExecution(Object, SharedSessionContractImplementor)}
+	 * Should this generator allow identifier values to be manually assigned to the entity instance
+	 * before persisting it. This is useful when, for example, needing existing assigned
+	 * values to be used as identifiers and falling back to generated values by default.
 	 *
 	 * @return {@code true} if this generator allows pre-assigned identifier values,
 	 * {@code false} otherwise.
@@ -67,6 +63,6 @@ public interface BeforeExecutionGenerator extends Generator {
 	 * @since 6.5
 	 */
 	default boolean allowAssignedIdentifiers() {
-		return generatedOnExecution();
+		return false;
 	}
 }

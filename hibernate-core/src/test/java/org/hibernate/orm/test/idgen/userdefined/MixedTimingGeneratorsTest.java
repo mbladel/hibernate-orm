@@ -275,6 +275,11 @@ public class MixedTimingGeneratorsTest {
 		public boolean generatedOnExecution(Object owner, SharedSessionContractImplementor session) {
 			return generate( session, owner, null, null ) == null;
 		}
+
+		@Override
+		public boolean allowAssignedIdentifiers() {
+			return true;
+		}
 	}
 
 	public static class IdentityOrRandomGenerator extends IdentityGenerator implements BeforeExecutionGenerator {
