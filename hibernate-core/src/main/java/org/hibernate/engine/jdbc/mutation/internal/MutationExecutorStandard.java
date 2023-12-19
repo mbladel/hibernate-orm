@@ -90,11 +90,11 @@ public class MutationExecutorStandard extends AbstractMutationExecutor implement
 
 		for ( int i = mutationOperationGroup.getNumberOfOperations() - 1; i >= 0; i-- ) {
 			final MutationOperation operation = mutationOperationGroup.getOperation( i );
-			if ( operation instanceof final SelfExecutingUpdateOperation selfExecutingMutation ) {
+			if ( operation instanceof SelfExecutingUpdateOperation ) {
 				if ( selfExecutingMutations == null ) {
 					selfExecutingMutations = new ArrayList<>();
 				}
-				selfExecutingMutations.add( 0, selfExecutingMutation );
+				selfExecutingMutations.add( 0, ( (SelfExecutingUpdateOperation) operation ) );
 			}
 			else {
 				final PreparableMutationOperation preparableMutationOperation = (PreparableMutationOperation) operation;

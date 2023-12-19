@@ -67,10 +67,13 @@ public interface EntityMutationTarget extends MutationTarget<EntityTableMapping>
 	GeneratedValuesMutationDelegate getUpdateDelegate();
 
 	default GeneratedValuesMutationDelegate getMutationDelegate(MutationType mutationType) {
-		return switch ( mutationType ) {
-			case INSERT -> getInsertDelegate();
-			case UPDATE -> getUpdateDelegate();
-			default -> null;
-		};
+		switch ( mutationType ) {
+			case INSERT:
+				return getInsertDelegate();
+			case UPDATE:
+				return getUpdateDelegate();
+			default:
+				return null;
+		}
 	}
 }

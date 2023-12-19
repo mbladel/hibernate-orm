@@ -7,6 +7,7 @@
 package org.hibernate.generator.values;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
@@ -40,7 +41,7 @@ public class TableUpdateReturningBuilder<O extends MutationOperation> extends Ab
 				.stream().map( prop -> {
 					assert prop instanceof BasicValuedModelPart : "Unsupported non-basic generated value";
 					return new ColumnReference( getMutatingTable(), ( (SelectableMapping) prop ) );
-				} ).toList();
+				} ).collect( Collectors.toList() );
 
 		return (RestrictedTableMutation<O>) new TableUpdateStandard(
 				getMutatingTable(),

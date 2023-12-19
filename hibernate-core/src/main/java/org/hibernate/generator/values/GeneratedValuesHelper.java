@@ -260,7 +260,8 @@ public class GeneratedValuesHelper {
 		final GeneratedValuesMappingProducer mappingProducer = new GeneratedValuesMappingProducer();
 		for ( int i = 0; i < generatedProperties.size(); i++ ) {
 			final ModelPart modelPart = generatedProperties.get( i );
-			if ( modelPart instanceof BasicValuedModelPart basicModelPart ) {
+			if ( modelPart instanceof BasicValuedModelPart ) {
+				final BasicValuedModelPart basicModelPart = (BasicValuedModelPart) modelPart;
 				final GeneratedValueBasicResultBuilder resultBuilder = new GeneratedValueBasicResultBuilder(
 						parentNavigablePath.append( basicModelPart.getSelectableName() ),
 						basicModelPart,
