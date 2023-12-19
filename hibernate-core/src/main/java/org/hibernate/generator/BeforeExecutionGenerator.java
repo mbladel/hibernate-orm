@@ -51,18 +51,4 @@ public interface BeforeExecutionGenerator extends Generator {
 	default boolean generatedOnExecution() {
 		return false;
 	}
-
-	/**
-	 * Should this generator allow identifier values to be manually assigned to the entity instance
-	 * before persisting it. This is useful when, for example, needing existing assigned
-	 * values to be used as identifiers and falling back to generated values by default.
-	 *
-	 * @return {@code true} if this generator allows pre-assigned identifier values,
-	 * {@code false} otherwise.
-	 *
-	 * @since 6.5
-	 */
-	default boolean allowAssignedIdentifiers() {
-		return false;
-	}
 }

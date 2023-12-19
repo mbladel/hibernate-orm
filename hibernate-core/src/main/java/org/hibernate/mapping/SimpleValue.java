@@ -414,9 +414,6 @@ public abstract class SimpleValue implements KeyValue {
 		else {
 			generator = createLegacyIdentifierGenerator(this, identifierGeneratorFactory, dialect, null, null, rootClass );
 		}
-		if ( generator instanceof BeforeExecutionGenerator && ( (BeforeExecutionGenerator) generator ).allowAssignedIdentifiers() ) {
-			setNullValue( "undefined" );
-		}
 		return generator;
 	}
 
