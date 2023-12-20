@@ -194,7 +194,9 @@ public class MutationDelegateIdentityTest {
 		inspector.clear();
 
 		scope.inTransaction( session -> {
-			final IdentityAndValuesAndRowIdAndNaturalId entity = new IdentityAndValuesAndRowIdAndNaturalId();
+			final IdentityAndValuesAndRowIdAndNaturalId entity = new IdentityAndValuesAndRowIdAndNaturalId(
+					"naturalid_1"
+			);
 			session.persist( entity );
 			session.flush();
 
@@ -336,8 +338,7 @@ public class MutationDelegateIdentityTest {
 		public IdentityAndValuesAndRowIdAndNaturalId() {
 		}
 
-		private IdentityAndValuesAndRowIdAndNaturalId(Integer id, String data) {
-			this.id = id;
+		private IdentityAndValuesAndRowIdAndNaturalId(String data) {
 			this.data = data;
 		}
 
