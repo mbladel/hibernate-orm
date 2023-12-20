@@ -29,6 +29,13 @@ import org.hibernate.pretty.MessageHelper;
  */
 public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesMutationDelegate
 		implements InsertGeneratedIdentifierDelegate {
+	/**
+	 * @deprecated Use {@link #AbstractReturningDelegate(EntityPersister, EventType)} instead.
+	 */
+	@Deprecated( forRemoval = true, since = "6.5" )
+	public AbstractReturningDelegate(EntityPersister persister) {
+		super( persister, EventType.INSERT );
+	}
 
 	public AbstractReturningDelegate(EntityPersister persister, EventType timing) {
 		super( persister, timing );
@@ -42,17 +49,17 @@ public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesM
 			SharedSessionContractImplementor session) {
 		session.getJdbcServices().getSqlStatementLogger().logStatement( statementDetails.getSqlString() );
 		valueBindings.beforeStatement( statementDetails );
-		return executeAndExtract( statementDetails.getSqlString(), statementDetails.getStatement(), session );
+		return executeAndExtractReturning( statementDetails.getSqlString(), statementDetails.getStatement(), session );
 	}
 
 	@Override
-	public final GeneratedValues performInsert(String sql, SharedSessionContractImplementor session, Binder binder) {
+	public final GeneratedValues performInsertReturning(String sql, SharedSessionContractImplementor session, Binder binder) {
 		try {
 			// prepare and execute the insert
 			PreparedStatement insert = prepareStatement( sql, session );
 			try {
 				binder.bindValues( insert );
-				return executeAndExtract( sql, insert, session );
+				return executeAndExtractReturning( sql, insert, session );
 			}
 			finally {
 				releaseStatement( insert, session );
@@ -67,7 +74,19 @@ public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesM
 		}
 	}
 
-	protected abstract GeneratedValues executeAndExtract(
+	/**
+	 * @deprecated
+	 */
+	@Deprecated( forRemoval = true, since = "6.5" )
+	protected Object executeAndExtract(
+			String sql,
+			PreparedStatement preparedStatement,
+			SharedSessionContractImplementor session) {
+		final GeneratedValues generatedValues = executeAndExtractReturning( sql, preparedStatement, session );
+		return generatedValues.getGeneratedValue( persister.getIdentifierMapping() );
+	}
+
+	protected abstract GeneratedValues executeAndExtractReturning(
 			String sql,
 			PreparedStatement preparedStatement,
 			SharedSessionContractImplementor session);

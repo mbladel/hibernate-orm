@@ -59,7 +59,7 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 	}
 
 	@Override
-	protected GeneratedValues executeAndExtract(
+	protected GeneratedValues executeAndExtractReturning(
 			String sql,
 			PreparedStatement preparedStatement,
 			SharedSessionContractImplementor session) {

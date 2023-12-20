@@ -24,12 +24,10 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.Generator;
-import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.id.BulkInsertionCapableIdentifierGenerator;
 import org.hibernate.id.OptimizableGenerator;
-import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.id.enhanced.Optimizer;
 import org.hibernate.id.insert.Binder;
 import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
@@ -555,7 +553,7 @@ public class InsertExecutionDelegate implements TableBasedInsertHandler.Executio
 					(BasicEntityIdentifierMapping) entityDescriptor.getIdentifierMapping();
 			final ValueBinder jdbcValueBinder = identifierMapping.getJdbcMapping().getJdbcValueBinder();
 			for ( Map.Entry<Object, Object> entry : entityTableToRootIdentity.entrySet() ) {
-				final GeneratedValues generatedValues = identifierDelegate.performInsert(
+				final GeneratedValues generatedValues = identifierDelegate.performInsertReturning(
 						finalSql,
 						session,
 						new Binder() {

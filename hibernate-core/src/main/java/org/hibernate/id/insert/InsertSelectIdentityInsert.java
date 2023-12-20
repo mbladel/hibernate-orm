@@ -21,7 +21,7 @@ import org.hibernate.generator.OnExecutionGenerator;
  * @deprecated This is not used anymore in any of the
  * {@link org.hibernate.generator.values.GeneratedValuesMutationDelegate} implementations.
  */
-@Deprecated( since = "7.0" )
+@Deprecated( since = "6.5" )
 public class InsertSelectIdentityInsert extends IdentifierGeneratingInsert {
 	protected String identityColumnName;
 

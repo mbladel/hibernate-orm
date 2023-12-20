@@ -8,7 +8,6 @@ package org.hibernate.id.insert;
 
 import java.sql.PreparedStatement;
 
-import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.engine.jdbc.mutation.JdbcValueBindings;
 import org.hibernate.engine.jdbc.mutation.group.PreparedStatementDetails;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -17,6 +16,7 @@ import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
 
 /**
@@ -42,14 +42,12 @@ import org.hibernate.sql.model.ast.builder.TableInsertBuilder;
  *
  * @deprecated Use {@link GeneratedValuesMutationDelegate} instead.
  */
-@Deprecated( forRemoval = true, since = "7.0" )
+@Deprecated( forRemoval = true, since = "6.5" )
 public interface InsertGeneratedIdentifierDelegate extends GeneratedValuesMutationDelegate {
 	/**
 	 * Create a {@link TableInsertBuilder} with any specific identity
 	 * handling already built in.
-	 * @deprecated Use {@link GeneratedValuesMutationDelegate#createTableMutationBuilder} instead.
 	 */
-	@Deprecated( since = "7.0" )
 	default TableInsertBuilder createTableInsertBuilder(
 			BasicEntityIdentifierMapping identifierMapping,
 			Expectation expectation,
@@ -65,16 +63,20 @@ public interface InsertGeneratedIdentifierDelegate extends GeneratedValuesMutati
 	 * primary key value.
 	 *
 	 * @see #createTableInsertBuilder
-	 *
-	 * @deprecated Use {@link GeneratedValuesMutationDelegate#performMutation} instead
 	 */
-	@Deprecated( since = "7.0" )
 	default Object performInsert(
 			PreparedStatementDetails insertStatementDetails,
 			JdbcValueBindings valueBindings,
 			Object entity,
 			SharedSessionContractImplementor session) {
-		return performMutation( insertStatementDetails, valueBindings, entity, session );
+		final EntityPersister entityPersister = session.getEntityPersister( null, entity );
+		final GeneratedValues generatedValues = performMutation(
+				insertStatementDetails,
+				valueBindings,
+				entity,
+				session
+		);
+		return generatedValues.getGeneratedValue( entityPersister.getIdentifierMapping() );
 	}
 
 	/**
@@ -94,8 +96,24 @@ public interface InsertGeneratedIdentifierDelegate extends GeneratedValuesMutati
 	 * @param insertSQL The {@code insert} statement string
 	 * @param session The session in which we are operating
 	 * @param binder The parameter binder
+	 *
+	 * @return The generated identifier value
+	 */
+	default Object performInsert(String insertSQL, SharedSessionContractImplementor session, Binder binder) {
+		final EntityPersister entityPersister = session.getEntityPersister( null, binder.getEntity() );
+		final GeneratedValues generatedValues = performInsertReturning( insertSQL, session, binder );
+		return generatedValues.getGeneratedValue( entityPersister.getIdentifierMapping() );
+	}
+
+	/**
+	 * Execute the given {@code insert} statement and return the generated
+	 * key value.
+	 *
+	 * @param insertSQL The {@code insert} statement string
+	 * @param session The session in which we are operating
+	 * @param binder The parameter binder
 	 * 
 	 * @return The generated identifier value
 	 */
-	GeneratedValues performInsert(String insertSQL, SharedSessionContractImplementor session, Binder binder);
+	GeneratedValues performInsertReturning(String insertSQL, SharedSessionContractImplementor session, Binder binder);
 }

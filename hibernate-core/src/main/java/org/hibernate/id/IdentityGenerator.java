@@ -13,6 +13,7 @@ import org.hibernate.id.factory.spi.StandardGenerator;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.id.insert.BasicSelectingDelegate;
 import org.hibernate.id.insert.GetGeneratedKeysDelegate;
+import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
 import org.hibernate.id.insert.InsertReturningDelegate;
 import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 
@@ -51,7 +52,7 @@ public class IdentityGenerator
 	}
 
 	@Override
-	public GeneratedValuesMutationDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
+	public InsertGeneratedIdentifierDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
 		final Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
 		if ( persister.getInsertGeneratedProperties().size() > 1 ) {
 			// If we have more generated attributes other than the identity

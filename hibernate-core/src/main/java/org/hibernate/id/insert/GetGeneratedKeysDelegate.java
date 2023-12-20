@@ -186,7 +186,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	}
 
 	@Override
-	public GeneratedValues executeAndExtract(
+	public GeneratedValues executeAndExtractReturning(
 			String sql,
 			PreparedStatement preparedStatement,
 			SharedSessionContractImplementor session) {

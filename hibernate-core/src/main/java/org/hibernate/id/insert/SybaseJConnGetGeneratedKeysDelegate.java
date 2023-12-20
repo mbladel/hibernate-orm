@@ -41,7 +41,7 @@ public class SybaseJConnGetGeneratedKeysDelegate extends GetGeneratedKeysDelegat
 	}
 
 	@Override
-	public GeneratedValues executeAndExtract(
+	public GeneratedValues executeAndExtractReturning(
 			String sql,
 			PreparedStatement preparedStatement,
 			SharedSessionContractImplementor session) {

@@ -628,22 +628,50 @@ public interface EntityPersister extends EntityMappingType, EntityMutationTarget
 	/**
 	 * Persist an instance
 	 */
-	GeneratedValues insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session);
+	default void insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session) {
+		insertReturning( id, fields, object, session );
+	}
+
+	/**
+	 * Persist an instance
+	 */
+	GeneratedValues insertReturning(Object id, Object[] fields, Object object, SharedSessionContractImplementor session);
+
+	/**
+	 * Persist an instance
+	 */
+	default Object insert(Object[] fields, Object object, SharedSessionContractImplementor session) {
+		final GeneratedValues generatedValues = insertReturning( fields, object, session );
+		return generatedValues.getGeneratedValue( getIdentifierMapping() );
+	}
 
 	/**
 	 * Persist an instance, using a natively generated identifier (optional operation)
 	 */
-	GeneratedValues insert(Object[] fields, Object object, SharedSessionContractImplementor session);
+	GeneratedValues insertReturning(Object[] fields, Object object, SharedSessionContractImplementor session);
 
 	/**
 	 * Delete a persistent instance
 	 */
 	void delete(Object id, Object version, Object object, SharedSessionContractImplementor session);
 
+	default void update(
+			Object id,
+			Object[] fields,
+			int[] dirtyFields,
+			boolean hasDirtyCollection,
+			Object[] oldFields,
+			Object oldVersion,
+			Object object,
+			Object rowId,
+			SharedSessionContractImplementor session) {
+		updateReturning( id, fields, dirtyFields, hasDirtyCollection, oldFields, oldVersion, object, rowId, session );
+	}
+
 	/**
 	 * Update a persistent instance
 	 */
-	GeneratedValues update(
+	GeneratedValues updateReturning(
 			Object id,
 			Object[] fields,
 			int[] dirtyFields,
@@ -902,7 +930,7 @@ public interface EntityPersister extends EntityMappingType, EntityMutationTarget
 	 * to the PersistenceContext before calling this method.
 	 * @deprecated Use {@link #processInsertGeneratedProperties(Object, Object, Object[], GeneratedValues, SharedSessionContractImplementor)} instead.
 	 */
-	@Deprecated( forRemoval = true, since = "7.0" )
+	@Deprecated( forRemoval = true, since = "6.5" )
 	default void processInsertGeneratedProperties(Object id, Object entity, Object[] state, SharedSessionContractImplementor session) {
 		processInsertGeneratedProperties( id, entity, state, null, session );
 	}
@@ -945,7 +973,7 @@ public interface EntityPersister extends EntityMappingType, EntityMutationTarget
 	 * to the PersistenceContext before calling this method.
 	 * @deprecated Use {@link #processUpdateGeneratedProperties(Object, Object, Object[], GeneratedValues, SharedSessionContractImplementor)} instead.
 	 */
-	@Deprecated( forRemoval = true, since = "7.0" )
+	@Deprecated( forRemoval = true, since = "6.5" )
 	default void processUpdateGeneratedProperties(Object id, Object entity, Object[] state, SharedSessionContractImplementor session) {
 		processUpdateGeneratedProperties( id, entity, state, null, session );
 	}

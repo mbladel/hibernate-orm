@@ -107,7 +107,7 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 		if ( !veto ) {
 			final EntityPersister persister = getPersister();
 			final Object instance = getInstance();
-			final GeneratedValues generatedValues = persister.insert( id, getState(), instance, session );
+			final GeneratedValues generatedValues = persister.insertReturning( id, getState(), instance, session );
 			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
 			final EntityEntry entry = persistenceContext.getEntry( instance );
 			if ( entry == null ) {

@@ -34,6 +34,14 @@ import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedV
  */
 public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesMutationDelegate
 		implements InsertGeneratedIdentifierDelegate {
+	/**
+	 * @deprecated Use {@link #AbstractSelectingDelegate(EntityPersister, EventType)} instead.
+	 */
+	@Deprecated( forRemoval = true, since = "6.5" )
+	protected AbstractSelectingDelegate(EntityPersister persister) {
+		super( persister, EventType.INSERT );
+	}
+
 	protected AbstractSelectingDelegate(EntityPersister persister, EventType timing) {
 		super( persister, timing );
 	}
@@ -50,9 +58,19 @@ public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesM
 	}
 
 	/**
+	 * @deprecated No substitute.
+	 */
+	@Deprecated( forRemoval = true, since = "6.5" )
+	protected Object extractGeneratedValues(ResultSet resultSet, SharedSessionContractImplementor session)
+			throws SQLException {
+		final GeneratedValues generatedValues = extractReturningValues( resultSet, session );
+		return generatedValues.getGeneratedValue( persister.getIdentifierMapping() );
+	}
+
+	/**
 	 * Extract the generated key value from the given result set after execution of {@link #getSelectSQL()}.
 	 */
-	private GeneratedValues extractGeneratedValues(ResultSet resultSet, SharedSessionContractImplementor session)
+	private GeneratedValues extractReturningValues(ResultSet resultSet, SharedSessionContractImplementor session)
 			throws SQLException {
 		return getGeneratedValues( resultSet, persister, getTiming(), session );
 	}
@@ -86,7 +104,7 @@ public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesM
 
 			final ResultSet resultSet = session.getJdbcCoordinator().getResultSetReturn().extract( idSelect, idSelectSql );
 			try {
-				return extractGeneratedValues( resultSet, session );
+				return extractReturningValues( resultSet, session );
 			}
 			catch (SQLException e) {
 				throw jdbcServices.getSqlExceptionHelper().convert(
@@ -110,7 +128,7 @@ public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesM
 	}
 
 	@Override
-	public final GeneratedValues performInsert(String sql, SharedSessionContractImplementor session, Binder binder) {
+	public final GeneratedValues performInsertReturning(String sql, SharedSessionContractImplementor session, Binder binder) {
 		JdbcCoordinator jdbcCoordinator = session.getJdbcCoordinator();
 		StatementPreparer statementPreparer = jdbcCoordinator.getStatementPreparer();
 		try {
@@ -142,7 +160,7 @@ public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesM
 				bindParameters( binder.getEntity(), idSelect, session );
 				ResultSet resultSet = jdbcCoordinator.getResultSetReturn().extract( idSelect, selectSQL );
 				try {
-					return extractGeneratedValues( resultSet, session );
+					return extractReturningValues( resultSet, session );
 				}
 				finally {
 					jdbcCoordinator.getLogicalConnection().getResourceRegistry().release( resultSet, idSelect );

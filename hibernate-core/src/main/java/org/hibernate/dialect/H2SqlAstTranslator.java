@@ -91,7 +91,7 @@ public class H2SqlAstTranslator<T extends JdbcOperation> extends SqlAstTranslato
 		// do nothing - this is handled via `#renderReturningClause`
 	}
 
-	@Deprecated( forRemoval = true, since = "7.0" )
+	@Deprecated( forRemoval = true, since = "6.5" )
 	public void visitReturningInsertStatement(TableInsertStandard tableInsert) {
 		assert tableInsert.getReturningColumns() != null
 				&& !tableInsert.getReturningColumns().isEmpty();

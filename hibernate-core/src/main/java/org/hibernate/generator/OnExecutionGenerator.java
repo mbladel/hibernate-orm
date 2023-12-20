@@ -117,7 +117,7 @@ public interface OnExecutionGenerator extends Generator {
 	 * identity columns is the reason why this layer-breaking method exists.
 	 */
 	@Incubating
-	default GeneratedValuesMutationDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
+	default InsertGeneratedIdentifierDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
 		Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
 		if ( dialect.supportsInsertReturningGeneratedKeys() ) {
 			return new GetGeneratedKeysDelegate( persister, dialect, false, EventType.INSERT );

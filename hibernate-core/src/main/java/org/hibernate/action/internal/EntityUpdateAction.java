@@ -166,7 +166,7 @@ public class EntityUpdateAction extends EntityAction {
 			final Object instance = getInstance();
 			final Object previousVersion = getPreviousVersion();
 			final Object ck = lockCacheItem( previousVersion );
-			final GeneratedValues generatedValues = persister.update(
+			final GeneratedValues generatedValues = persister.updateReturning(
 					id,
 					state,
 					dirtyFields,

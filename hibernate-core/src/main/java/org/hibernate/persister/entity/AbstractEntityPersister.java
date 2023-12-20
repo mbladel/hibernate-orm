@@ -2816,7 +2816,7 @@ public abstract class AbstractEntityPersister
 	 * Update an object
 	 */
 	@Override
-	public GeneratedValues update(
+	public GeneratedValues updateReturning(
 			final Object id,
 			final Object[] values,
 			int[] dirtyAttributeIndexes,
@@ -2888,12 +2888,12 @@ public abstract class AbstractEntityPersister
 	}
 
 	@Override
-	public GeneratedValues insert(Object[] fields, Object object, SharedSessionContractImplementor session) {
+	public GeneratedValues insertReturning(Object[] fields, Object object, SharedSessionContractImplementor session) {
 		return insertCoordinator.coordinateInsert( null, fields, object, session );
 	}
 
 	@Override
-	public GeneratedValues insert(Object id, Object[] fields, Object object, SharedSessionContractImplementor session) {
+	public GeneratedValues insertReturning(Object id, Object[] fields, Object object, SharedSessionContractImplementor session) {
 		return insertCoordinator.coordinateInsert( id, fields, object, session );
 	}
 

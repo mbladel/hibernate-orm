@@ -108,10 +108,10 @@ public class StatelessSessionImpl extends AbstractSharedSessionContract implemen
 					persister.setValues( entity, state );
 				}
 			}
-			persister.insert( id, state, entity, this );
+			persister.insertReturning( id, state, entity, this );
 		}
 		else {
-			final GeneratedValues generatedValues = persister.insert( state, entity, this );
+			final GeneratedValues generatedValues = persister.insertReturning( state, entity, this );
 			id = generatedValues.getGeneratedValue( persister.getIdentifierMapping() );
 		}
 		persister.setIdentifier( entity, id, this );
@@ -167,7 +167,7 @@ public class StatelessSessionImpl extends AbstractSharedSessionContract implemen
 		else {
 			oldVersion = null;
 		}
-		persister.update( id, state, null, false, null, oldVersion, entity, null, this );
+		persister.updateReturning( id, state, null, false, null, oldVersion, entity, null, this );
 	}
 
 	@Override

@@ -503,7 +503,7 @@ public class CustomPersister implements EntityPersister {
 		throw new UnsupportedOperationException();
 	}
 
-	public GeneratedValues insert(
+	public GeneratedValues insertReturning(
 			Object id,
 			Object[] fields,
 			Object object,
@@ -515,7 +515,7 @@ public class CustomPersister implements EntityPersister {
 		return null;
 	}
 
-	public GeneratedValues insert(Object[] fields, Object object, SharedSessionContractImplementor session)
+	public GeneratedValues insertReturning(Object[] fields, Object object, SharedSessionContractImplementor session)
 	throws HibernateException {
 
 		throw new UnsupportedOperationException();
@@ -534,7 +534,7 @@ public class CustomPersister implements EntityPersister {
 	/**
 	 * @see EntityPersister
 	 */
-	public GeneratedValues update(
+	public GeneratedValues updateReturning(
 			Object id,
 			Object[] fields,
 			int[] dirtyFields,
