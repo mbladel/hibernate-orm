@@ -345,7 +345,8 @@ public class GeneratedValuesHelper {
 			return null;
 		}
 
-		if ( dialect.supportsInsertReturningGeneratedKeys() ) {
+		if ( dialect.supportsInsertReturningGeneratedKeys()
+				&& persister.getFactory().getSessionFactoryOptions().isGetGeneratedKeysEnabled() ) {
 			return new GetGeneratedKeysDelegate( persister, dialect, false, timing );
 		}
 		else if ( supportsReturning( dialect, timing ) && noCustomSql( persister, timing ) ) {

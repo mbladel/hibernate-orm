@@ -116,10 +116,11 @@ public interface OnExecutionGenerator extends Generator {
 	 * {@link org.hibernate.id.IdentityGenerator}. And the need for customized behavior for
 	 * identity columns is the reason why this layer-breaking method exists.
 	 */
-	@Incubating
+	@Deprecated( forRemoval = true, since = "6.5" )
 	default InsertGeneratedIdentifierDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
-		Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
-		if ( dialect.supportsInsertReturningGeneratedKeys() ) {
+		final Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
+		if ( dialect.supportsInsertReturningGeneratedKeys()
+				&& persister.getFactory().getSessionFactoryOptions().isGetGeneratedKeysEnabled() ) {
 			return new GetGeneratedKeysDelegate( persister, dialect, false, EventType.INSERT );
 		}
 		else if ( dialect.supportsInsertReturning() && noCustomSql( persister, EventType.INSERT ) ) {

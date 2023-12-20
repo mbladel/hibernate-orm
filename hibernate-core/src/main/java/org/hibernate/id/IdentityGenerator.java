@@ -8,9 +8,8 @@ package org.hibernate.id;
 
 import org.hibernate.dialect.Dialect;
 import org.hibernate.generator.EventType;
-import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
-import org.hibernate.id.factory.spi.StandardGenerator;
 import org.hibernate.generator.OnExecutionGenerator;
+import org.hibernate.id.factory.spi.StandardGenerator;
 import org.hibernate.id.insert.BasicSelectingDelegate;
 import org.hibernate.id.insert.GetGeneratedKeysDelegate;
 import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
@@ -54,24 +53,17 @@ public class IdentityGenerator
 	@Override
 	public InsertGeneratedIdentifierDelegate getGeneratedIdentifierDelegate(PostInsertIdentityPersister persister) {
 		final Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
-		if ( persister.getInsertGeneratedProperties().size() > 1 ) {
-			// If we have more generated attributes other than the identity
-			// try to use generic delegates if the dialects supports them
-			if ( dialect.supportsInsertReturningGeneratedKeys() ) {
-				return new GetGeneratedKeysDelegate( persister, dialect, false, EventType.INSERT );
-			}
-			else if ( dialect.supportsInsertReturning() && noCustomSql( persister, EventType.INSERT ) ) {
-				return new InsertReturningDelegate( persister, dialect, EventType.INSERT );
-			}
+		// Try to use generic delegates if the dialects supports them
+		if ( dialect.supportsInsertReturningGeneratedKeys()
+				&& persister.getFactory().getSessionFactoryOptions().isGetGeneratedKeysEnabled() ) {
+			return new GetGeneratedKeysDelegate( persister, dialect, false, EventType.INSERT );
 		}
-
-		// Fall back to IdentityColumnSupport methods (which only handle identifiers)
-		if ( persister.getFactory().getSessionFactoryOptions().isGetGeneratedKeysEnabled() ) {
-			return dialect.getIdentityColumnSupport().buildGetGeneratedKeysDelegate( persister, dialect );
-		}
-		else if ( dialect.getIdentityColumnSupport().supportsInsertSelectIdentity()
-				&& noCustomSql( persister, EventType.INSERT ) ) {
+		else if ( dialect.supportsInsertReturning() && noCustomSql( persister, EventType.INSERT ) ) {
 			return new InsertReturningDelegate( persister, dialect, EventType.INSERT );
+		}
+		// Fall back to delegates which only handle identifiers
+		else if ( persister.getFactory().getSessionFactoryOptions().isGetGeneratedKeysEnabled() ) {
+			return dialect.getIdentityColumnSupport().buildGetGeneratedKeysDelegate( persister, dialect );
 		}
 		else if ( persister.getNaturalIdentifierProperties() != null
 				&& !persister.getEntityMetamodel().isNaturalIdentifierInsertGenerated() ) {

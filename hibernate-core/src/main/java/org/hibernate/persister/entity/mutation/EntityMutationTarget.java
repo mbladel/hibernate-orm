@@ -53,7 +53,7 @@ public interface EntityMutationTarget extends MutationTarget<EntityTableMapping>
 	 *
 	 * @deprecated use {@link #getInsertDelegate()} instead
 	 */
-	@Deprecated( since = "6.5", forRemoval = true )
+	@Deprecated( forRemoval = true, since = "6.5" )
 	default InsertGeneratedIdentifierDelegate getIdentityInsertDelegate() {
 		final GeneratedValuesMutationDelegate insertDelegate = getInsertDelegate();
 		if ( insertDelegate instanceof InsertGeneratedIdentifierDelegate ) {

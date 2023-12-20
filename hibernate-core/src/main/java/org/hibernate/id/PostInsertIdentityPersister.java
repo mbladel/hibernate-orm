@@ -30,14 +30,14 @@ public interface PostInsertIdentityPersister extends EntityPersister {
 	 * @deprecated Use {@link EntityPersister#getSelectByUniqueKeyString(String)} instead.
 	 */
 	@Override
-	@Deprecated( since = "6.5" )
+	@Deprecated( forRemoval = true, since = "6.5" )
 	String getSelectByUniqueKeyString(String propertyName);
 
 	/**
 	 * @deprecated Use {@link EntityPersister#getSelectByUniqueKeyString(String[])} instead.
 	 */
 	@Override
-	@Deprecated( since = "6.5" )
+	@Deprecated( forRemoval = true, since = "6.5" )
 	default String getSelectByUniqueKeyString(String[] propertyNames) {
 		return EntityPersister.super.getSelectByUniqueKeyString( propertyNames );
 	}
@@ -46,6 +46,6 @@ public interface PostInsertIdentityPersister extends EntityPersister {
 	 * @deprecated Use {@link EntityPersister#getRootTableKeyColumnNames()} instead.
 	 */
 	@Override
-	@Deprecated( since = "6.5" )
+	@Deprecated( forRemoval = true, since = "6.5" )
 	String[] getRootTableKeyColumnNames();
 }
