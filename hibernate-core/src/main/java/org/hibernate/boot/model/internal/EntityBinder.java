@@ -871,6 +871,9 @@ public class EntityBinder {
 					key.setForeignKeyDefinition( pkJoinColumn.foreignKey().foreignKeyDefinition() );
 				}
 			}
+			else if ( noConstraintByDefault ) {
+				key.disableForeignKey();
+			}
 		}
 	}
 
