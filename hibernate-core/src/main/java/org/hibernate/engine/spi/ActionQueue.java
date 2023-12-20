@@ -1290,9 +1290,11 @@ public class ActionQueue {
 				final Iterator<EntityInsertGroup> iterator = insertInfosByEntityName.values().iterator();
 				while (iterator.hasNext()) {
 					final EntityInsertGroup insertGroup = iterator.next();
-					if (scheduledEntityNames.containsAll(insertGroup.dependentEntityNames)) {
-						schedulePosition = schedule(insertInfos, insertGroup.insertInfos, schedulePosition);
-						scheduledEntityNames.add(insertGroup.entityName);
+					if ( scheduledEntityNames.containsAll( insertGroup.dependentEntityNames )
+							|| insertGroup.dependentEntityNames.size() == 1
+							&& insertGroup.dependentEntityNames.iterator().next().equals( insertGroup.entityName ) ) {
+						schedulePosition = schedule( insertInfos, insertGroup.insertInfos, schedulePosition );
+						scheduledEntityNames.add( insertGroup.entityName );
 						iterator.remove();
 					}
 				}
