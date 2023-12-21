@@ -434,8 +434,11 @@ public class InsertCoordinatorStandard extends AbstractMutationCoordinator imple
 			final TableInsertBuilder tableInsertBuilder = (TableInsertBuilder) tableMutationBuilder;
 			final EntityTableMapping tableMapping = (EntityTableMapping) tableInsertBuilder.getMutatingTable().getTableMapping();
 			if ( tableMapping.isIdentifierTable() && entityPersister().isIdentifierAssignedByInsert() && !forceIdentifierBinding ) {
-				// nothing to do - the delegate already includes key column handling
 				assert entityPersister().getInsertDelegate() != null;
+				final OnExecutionGenerator generator = (OnExecutionGenerator) entityPersister().getGenerator();
+				if ( generator.referenceColumnsInSql( dialect() ) ) {
+					handleValueGeneration( entityPersister().getIdentifierMapping(), insertGroupBuilder, generator );
+				}
 			}
 			else {
 				tableMapping.getKeyMapping().forEachKeyColumn( tableInsertBuilder::addKeyColumn );

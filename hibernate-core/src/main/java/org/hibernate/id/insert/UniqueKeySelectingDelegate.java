@@ -23,6 +23,8 @@ import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 import org.hibernate.type.Type;
 
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
+
 /**
  * Uses a unique key of the inserted entity to locate the newly inserted row.
  *
@@ -54,7 +56,9 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 				|| persister.getInsertGeneratedProperties().size() > 1
 				|| rowIdMapping != null ) {
 			final List<String> columnNames = new ArrayList<>();
-			this.jdbcValuesMappingProducer = getMappingProducer( columnNames::add );
+			this.jdbcValuesMappingProducer = getMappingProducer(
+					modelPart -> columnNames.add( castNonNull( modelPart.asBasicValuedModelPart() ).getSelectionExpression() )
+			);
 			if ( rowIdMapping != null ) {
 				columnNames.add( rowIdMapping.getSelectionExpression() );
 			}

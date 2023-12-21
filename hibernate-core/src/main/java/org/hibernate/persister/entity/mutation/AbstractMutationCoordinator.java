@@ -19,6 +19,7 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.AttributeMappingsList;
+import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.sql.model.ModelMutationLogging;
 import org.hibernate.sql.model.MutationOperation;
@@ -118,16 +119,16 @@ public abstract class AbstractMutationCoordinator {
 	}
 
 	void handleValueGeneration(
-			AttributeMapping attributeMapping,
+			ModelPart modelPart,
 			MutationGroupBuilder mutationGroupBuilder,
 			OnExecutionGenerator generator) {
 		final Dialect dialect = factory.getJdbcServices().getDialect();
 		final boolean writePropertyValue = generator.writePropertyValue();
 		final String[] columnValues = writePropertyValue ? null : generator.getReferencedColumnValues( dialect );
-		attributeMapping.forEachSelectable( (j, mapping) -> {
+		modelPart.forEachSelectable( (j, mapping) -> {
 			final String tableName = entityPersister.physicalTableNameForMutation( mapping );
-			final ColumnValuesTableMutationBuilder tableUpdateBuilder = mutationGroupBuilder.findTableDetailsBuilder( tableName );
-			tableUpdateBuilder.addValueColumn(
+			final ColumnValuesTableMutationBuilder tableMutationBuilder = mutationGroupBuilder.findTableDetailsBuilder( tableName );
+			tableMutationBuilder.addValueColumn(
 					mapping.getSelectionExpression(),
 					writePropertyValue ? "?" : columnValues[j],
 					mapping.getJdbcMapping(),

@@ -37,6 +37,7 @@ import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 import static java.sql.Statement.RETURN_GENERATED_KEYS;
 import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedValues;
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 import static org.hibernate.internal.util.StringHelper.unquote;
 
 /**
@@ -69,9 +70,10 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 		else {
 			final List<String> columnNamesList = new ArrayList<>();
 			final boolean unquote = dialect.unquoteGetGeneratedKeys();
-			this.jdbcValuesMappingProducer = getMappingProducer(
-					columnName -> columnNamesList.add( unquote ? unquote( columnName, dialect ) : columnName )
-			);
+			this.jdbcValuesMappingProducer = getMappingProducer( modelPart -> {
+				final String columnName = castNonNull( modelPart.asBasicValuedModelPart() ).getSelectionExpression();
+				columnNamesList.add( unquote ? unquote( columnName, dialect ) : columnName );
+			} );
 			columnNames = columnNamesList.toArray( new String[0] );
 		}
 	}

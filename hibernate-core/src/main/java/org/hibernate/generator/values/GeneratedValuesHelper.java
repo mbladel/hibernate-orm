@@ -28,7 +28,6 @@ import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.metamodel.mapping.ModelPart;
-import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.mutation.EntityTableMapping;
 import org.hibernate.pretty.MessageHelper;
@@ -83,6 +82,10 @@ public class GeneratedValuesHelper {
 			EntityPersister persister,
 			EventType timing,
 			WrapperOptions wrapperOptions) throws SQLException {
+		if ( resultSet == null ) {
+			return null;
+		}
+
 		final GeneratedValuesMutationDelegate delegate = persister.getMutationDelegate(
 				timing == EventType.INSERT ? MutationType.INSERT : MutationType.UPDATE
 		);
@@ -231,7 +234,7 @@ public class GeneratedValuesHelper {
 	 * @param supportsRowId if we should process {@link org.hibernate.metamodel.mapping.EntityRowIdMapping rowid}s
 	 * @param useIndex {@code true} if we can use the index of the generated model part to access the result set,
 	 * {@code false} if we should retrieve the index through the column expression
-	 * @param columnNameConsumer optional {@link Consumer consumer} that will obtain column names
+	 * @param modelPartConsumer optional {@link Consumer consumer} that will obtain generated model parts
 	 *
 	 * @return the instantiated jdbc values mapping producer
 	 */
@@ -241,7 +244,7 @@ public class GeneratedValuesHelper {
 			boolean supportsArbitraryValues,
 			boolean supportsRowId,
 			boolean useIndex,
-			Consumer<String> columnNameConsumer) {
+			Consumer<ModelPart> modelPartConsumer) {
 		// This is just a mock table group needed to correctly resolve expressions
 		final NavigablePath parentNavigablePath = new NavigablePath( persister.getEntityName() );
 		final TableGroup tableGroup = new TableGroupImpl(
@@ -260,8 +263,8 @@ public class GeneratedValuesHelper {
 		final GeneratedValuesMappingProducer mappingProducer = new GeneratedValuesMappingProducer();
 		for ( int i = 0; i < generatedProperties.size(); i++ ) {
 			final ModelPart modelPart = generatedProperties.get( i );
-			if ( modelPart instanceof BasicValuedModelPart ) {
-				final BasicValuedModelPart basicModelPart = (BasicValuedModelPart) modelPart;
+			final BasicValuedModelPart basicModelPart = modelPart.asBasicValuedModelPart();
+			if ( basicModelPart != null ) {
 				final GeneratedValueBasicResultBuilder resultBuilder = new GeneratedValueBasicResultBuilder(
 						parentNavigablePath.append( basicModelPart.getSelectableName() ),
 						basicModelPart,
@@ -269,8 +272,8 @@ public class GeneratedValuesHelper {
 						useIndex ? i : null
 				);
 				mappingProducer.addResultBuilder( resultBuilder );
-				if ( columnNameConsumer != null ) {
-					columnNameConsumer.accept( getActualSelectionExpression( basicModelPart ) );
+				if ( modelPartConsumer != null ) {
+					modelPartConsumer.accept( getActualGeneratedModelPart( basicModelPart ) );
 				}
 			}
 			else {
@@ -280,15 +283,19 @@ public class GeneratedValuesHelper {
 		return mappingProducer;
 	}
 
-	public static String getActualSelectionExpression(BasicValuedModelPart modelPart) {
+	public static BasicValuedModelPart getActualGeneratedModelPart(BasicValuedModelPart modelPart) {
 		// Use the root entity descriptor's identifier mapping to get the correct selection
 		// expression since we always retrieve generated values for the root table only
-		final BasicValuedModelPart actualModelPart = modelPart.isEntityIdentifierMapping() ?
-				( (BasicValuedModelPart) modelPart.findContainingEntityMapping()
+		return modelPart.isEntityIdentifierMapping() ?
+				modelPart.findContainingEntityMapping()
 						.getRootEntityDescriptor()
-						.getIdentifierMapping() ) :
+						.getIdentifierMapping()
+						.asBasicValuedModelPart() :
 				modelPart;
-		return actualModelPart.getSelectionExpression();
+	}
+
+	public static String getActualSelectionExpression(BasicValuedModelPart modelPart) {
+		return getActualGeneratedModelPart( modelPart ).getSelectionExpression();
 	}
 
 	/**

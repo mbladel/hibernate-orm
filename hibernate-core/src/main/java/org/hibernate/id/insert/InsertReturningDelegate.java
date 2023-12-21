@@ -9,6 +9,8 @@ package org.hibernate.id.insert;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.jdbc.spi.JdbcCoordinator;
@@ -21,11 +23,15 @@ import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.generator.values.TableUpdateReturningBuilder;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.sql.ast.tree.expression.ColumnReference;
+import org.hibernate.sql.model.ast.MutatingTableReference;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 import static java.sql.Statement.NO_GENERATED_KEYS;
+import static org.hibernate.generator.values.GeneratedValuesHelper.getActualGeneratedModelPart;
 import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedValues;
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
 /**
  * Delegate for dealing with generated values where the dialect supports
@@ -38,12 +44,19 @@ import static org.hibernate.generator.values.GeneratedValuesHelper.getGeneratedV
  */
 public class InsertReturningDelegate extends AbstractReturningDelegate {
 	private final Dialect dialect;
+	private final MutatingTableReference tableReference;
+	private final List<ColumnReference> generatedColumns;
 	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	public InsertReturningDelegate(EntityPersister persister, Dialect dialect, EventType timing) {
 		super( persister, timing );
 		this.dialect = dialect;
-		this.jdbcValuesMappingProducer = getMappingProducer( null );
+		this.tableReference = new MutatingTableReference( persister.getIdentifierTableMapping() );
+		this.generatedColumns = new ArrayList<>( persister.getGeneratedProperties( timing ).size() );
+		this.jdbcValuesMappingProducer = getMappingProducer( modelPart -> generatedColumns.add( new ColumnReference(
+				tableReference,
+				castNonNull( modelPart.asBasicValuedModelPart() )
+		) ) );
 	}
 
 	@Override
@@ -51,10 +64,10 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 			Expectation expectation,
 			SessionFactoryImplementor sessionFactory) {
 		if ( getTiming() == EventType.INSERT ) {
-			return new TableInsertReturningBuilder( persister, sessionFactory );
+			return new TableInsertReturningBuilder( persister, tableReference, generatedColumns, sessionFactory );
 		}
 		else {
-			return new TableUpdateReturningBuilder<>( persister, sessionFactory );
+			return new TableUpdateReturningBuilder<>( persister, tableReference, generatedColumns, sessionFactory );
 		}
 	}
 

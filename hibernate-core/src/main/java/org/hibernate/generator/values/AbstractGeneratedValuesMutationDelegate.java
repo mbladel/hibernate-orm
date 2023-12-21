@@ -9,6 +9,7 @@ package org.hibernate.generator.values;
 import java.util.function.Consumer;
 
 import org.hibernate.generator.EventType;
+import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
@@ -31,18 +32,18 @@ public abstract class AbstractGeneratedValuesMutationDelegate implements Generat
 		return timing;
 	}
 
-	protected JdbcValuesMappingProducer getMappingProducer(Consumer<String> columnNameConsumer) {
-		return getMappingProducer( columnNameConsumer, true );
+	protected JdbcValuesMappingProducer getMappingProducer(Consumer<ModelPart> modelPartConsumer) {
+		return getMappingProducer( modelPartConsumer, true );
 	}
 
-	protected JdbcValuesMappingProducer getMappingProducer(Consumer<String> columnNameConsumer, boolean useIndex) {
+	protected JdbcValuesMappingProducer getMappingProducer(Consumer<ModelPart> modelPartConsumer, boolean useIndex) {
 		return createMappingProducer(
 				persister,
 				timing,
 				supportsArbitraryValues(),
 				supportsRowId(),
 				useIndex,
-				columnNameConsumer
+				modelPartConsumer
 		);
 	}
 }

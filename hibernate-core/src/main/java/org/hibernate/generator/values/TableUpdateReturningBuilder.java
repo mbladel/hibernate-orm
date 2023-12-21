@@ -7,15 +7,12 @@
 package org.hibernate.generator.values;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.metamodel.mapping.BasicValuedModelPart;
-import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.model.MutationOperation;
-import org.hibernate.sql.model.MutationTarget;
+import org.hibernate.sql.model.ast.MutatingTableReference;
 import org.hibernate.sql.model.ast.RestrictedTableMutation;
 import org.hibernate.sql.model.ast.builder.AbstractTableUpdateBuilder;
 import org.hibernate.sql.model.internal.TableUpdateStandard;
@@ -24,10 +21,15 @@ import org.hibernate.sql.model.internal.TableUpdateStandard;
  * @author Marco Belladelli
  */
 public class TableUpdateReturningBuilder<O extends MutationOperation> extends AbstractTableUpdateBuilder<O> {
+	final List<ColumnReference> generatedColumns;
+
 	public TableUpdateReturningBuilder(
-			MutationTarget<?> mutationTarget,
+			EntityPersister mutationTarget,
+			MutatingTableReference tableReference,
+			List<ColumnReference> generatedColumns,
 			SessionFactoryImplementor sessionFactory) {
-		super( mutationTarget, mutationTarget.getIdentifierTableMapping(), sessionFactory );
+		super( mutationTarget, tableReference, sessionFactory );
+		this.generatedColumns = generatedColumns;
 	}
 
 	@Override
@@ -35,14 +37,9 @@ public class TableUpdateReturningBuilder<O extends MutationOperation> extends Ab
 		return (EntityPersister) super.getMutationTarget();
 	}
 
-	@Override @SuppressWarnings("unchecked")
+	@Override
+	@SuppressWarnings( "unchecked" )
 	public RestrictedTableMutation<O> buildMutation() {
-		final List<ColumnReference> generatedColumns = getMutationTarget().getUpdateGeneratedProperties()
-				.stream().map( prop -> {
-					assert prop instanceof BasicValuedModelPart : "Unsupported non-basic generated value";
-					return new ColumnReference( getMutatingTable(), ( (SelectableMapping) prop ) );
-				} ).collect( Collectors.toList() );
-
 		return (RestrictedTableMutation<O>) new TableUpdateStandard(
 				getMutatingTable(),
 				getMutationTarget(),
