@@ -217,6 +217,7 @@ import org.hibernate.persister.entity.mutation.DeleteCoordinatorStandard;
 import org.hibernate.persister.entity.mutation.EntityMutationTarget;
 import org.hibernate.persister.entity.mutation.EntityTableMapping;
 import org.hibernate.persister.entity.mutation.InsertCoordinator;
+import org.hibernate.persister.entity.mutation.InsertCoordinatorStandard;
 import org.hibernate.persister.entity.mutation.MergeCoordinator;
 import org.hibernate.persister.entity.mutation.UpdateCoordinator;
 import org.hibernate.persister.entity.mutation.UpdateCoordinatorNoOp;
@@ -1051,22 +1052,22 @@ public abstract class AbstractEntityPersister
 		return lazyLoadPlanByFetchGroup.get( fetchGroup );
 	}
 
-	@Internal
+	@Override
 	public InsertCoordinator getInsertCoordinator() {
 		return insertCoordinator;
 	}
 
-	@Internal
+	@Override
 	public UpdateCoordinator getUpdateCoordinator() {
 		return updateCoordinator;
 	}
 
-	@Internal
+	@Override
 	public DeleteCoordinator getDeleteCoordinator() {
 		return deleteCoordinator;
 	}
 
-	@Internal
+	@Override
 	public UpdateCoordinator getMergeCoordinator() {
 		return mergeCoordinator;
 	}
@@ -2813,33 +2814,6 @@ public abstract class AbstractEntityPersister
 	}
 
 	/**
-	 * Update an object
-	 */
-	@Override
-	public GeneratedValues updateReturning(
-			final Object id,
-			final Object[] values,
-			int[] dirtyAttributeIndexes,
-			final boolean hasDirtyCollection,
-			final Object[] oldValues,
-			final Object oldVersion,
-			final Object object,
-			final Object rowId,
-			final SharedSessionContractImplementor session) throws HibernateException {
-		return updateCoordinator.coordinateUpdate(
-				object,
-				id,
-				rowId,
-				values,
-				oldVersion,
-				oldValues,
-				dirtyAttributeIndexes,
-				hasDirtyCollection,
-				session
-		);
-	}
-
-	/**
 	 * Merge an object
 	 */
 	@Override
@@ -2853,7 +2827,7 @@ public abstract class AbstractEntityPersister
 			final Object object,
 			final Object rowId,
 			final SharedSessionContractImplementor session) throws HibernateException {
-		mergeCoordinator.coordinateUpdate(
+		mergeCoordinator.update(
 				object,
 				id,
 				rowId,
@@ -2885,16 +2859,6 @@ public abstract class AbstractEntityPersister
 	@Override
 	public GeneratedValuesMutationDelegate getUpdateDelegate() {
 		return updateDelegate;
-	}
-
-	@Override
-	public GeneratedValues insertReturning(Object[] fields, Object object, SharedSessionContractImplementor session) {
-		return insertCoordinator.coordinateInsert( null, fields, object, session );
-	}
-
-	@Override
-	public GeneratedValues insertReturning(Object id, Object[] fields, Object object, SharedSessionContractImplementor session) {
-		return insertCoordinator.coordinateInsert( id, fields, object, session );
 	}
 
 	protected EntityTableMapping[] getTableMappings() {
@@ -3000,7 +2964,7 @@ public abstract class AbstractEntityPersister
 	 */
 	@Override
 	public void delete(Object id, Object version, Object object, SharedSessionContractImplementor session) {
-		deleteCoordinator.coordinateDelete( object, id, version, session );
+		deleteCoordinator.delete( object, id, version, session );
 	}
 
 	/**
@@ -3022,7 +2986,7 @@ public abstract class AbstractEntityPersister
 			}
 
 			{
-				final MutationOperationGroup staticInsertGroup = insertCoordinator.getStaticInsertGroup();
+				final MutationOperationGroup staticInsertGroup = insertCoordinator.getStaticMutationOperationGroup();
 				if ( staticInsertGroup != null ) {
 					for ( int i = 0; i < staticInsertGroup.getNumberOfOperations(); i++ ) {
 						final MutationOperation mutation = staticInsertGroup.getOperation( i );
@@ -3034,7 +2998,7 @@ public abstract class AbstractEntityPersister
 			}
 
 			{
-				final MutationOperationGroup staticUpdateGroup = updateCoordinator.getStaticUpdateGroup();
+				final MutationOperationGroup staticUpdateGroup = updateCoordinator.getStaticMutationOperationGroup();
 				if ( staticUpdateGroup != null ) {
 					for ( int i = 0; i < staticUpdateGroup.getNumberOfOperations(); i++ ) {
 						final MutationOperation mutation = staticUpdateGroup.getOperation( i );
@@ -3046,7 +3010,7 @@ public abstract class AbstractEntityPersister
 			}
 
 			{
-				final MutationOperationGroup staticDeleteGroup = deleteCoordinator.getStaticDeleteGroup();
+				final MutationOperationGroup staticDeleteGroup = deleteCoordinator.getStaticMutationOperationGroup();
 				if ( staticDeleteGroup != null ) {
 					for ( int i = 0; i < staticDeleteGroup.getNumberOfOperations(); i++ ) {
 						final MutationOperation mutation = staticDeleteGroup.getOperation( i );
@@ -3670,8 +3634,8 @@ public abstract class AbstractEntityPersister
 
 	protected abstract boolean isIdentifierTable(String tableExpression);
 
-	protected InsertCoordinator buildInsertCoordinator() {
-		return new InsertCoordinator( this, factory );
+	protected InsertCoordinatorStandard buildInsertCoordinator() {
+		return new InsertCoordinatorStandard( this, factory );
 	}
 
 	protected UpdateCoordinator buildUpdateCoordinator() {
@@ -6401,7 +6365,7 @@ public abstract class AbstractEntityPersister
 	@Deprecated(forRemoval = true)
 	@Remove
 	public String[] getSQLDeleteStrings() {
-		return extractSqlStrings( deleteCoordinator.getStaticDeleteGroup() );
+		return extractSqlStrings( deleteCoordinator.getStaticMutationOperationGroup() );
 	}
 
 	private String[] extractSqlStrings(MutationOperationGroup operationGroup) {
@@ -6423,7 +6387,7 @@ public abstract class AbstractEntityPersister
 	@Deprecated(forRemoval = true)
 	@Remove
 	public String[] getSQLUpdateStrings() {
-		return extractSqlStrings( updateCoordinator.getStaticUpdateGroup() );
+		return extractSqlStrings( updateCoordinator.getStaticMutationOperationGroup() );
 	}
 
 	/**
