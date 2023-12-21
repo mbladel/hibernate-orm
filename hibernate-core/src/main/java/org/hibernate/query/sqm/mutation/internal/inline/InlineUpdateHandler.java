@@ -136,8 +136,8 @@ public class InlineUpdateHandler implements UpdateHandler {
 
 		final List<Expression> inListExpressions = new ArrayList<>( ids.size() );
 		final EntityIdentifierMapping identifierMapping = entityDescriptor.getIdentifierMapping();
-		if ( identifierMapping instanceof BasicValuedModelPart ) {
-			final BasicValuedModelPart basicValuedModelPart = (BasicValuedModelPart) identifierMapping;
+		final BasicValuedModelPart basicValuedModelPart = identifierMapping.asBasicValuedModelPart();
+		if ( basicValuedModelPart != null ) {
 			for ( int i = 0; i < ids.size(); i++ ) {
 				inListExpressions.add( new QueryLiteral<>( ids.get( i ), basicValuedModelPart ) );
 			}
