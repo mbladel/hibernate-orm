@@ -22,6 +22,8 @@ import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.stat.spi.StatisticsImplementor;
 
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
+
 /**
  * The action for performing entity insertions when entity is using IDENTITY column identifier generation
  *
@@ -80,9 +82,13 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 		// else inserted the same pk first, the insert would fail
 
 		if ( !isVeto() ) {
-			final GeneratedValues generatedValues = persister.insertReturning( getState(), instance, session );
+			final GeneratedValues generatedValues = persister.getInsertCoordinator().insert(
+					instance,
+					getState(),
+					session
+			);
 			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
-			generatedId = generatedValues.getGeneratedValue( persister.getIdentifierMapping() );
+			generatedId = castNonNull( generatedValues ).getGeneratedValue( persister.getIdentifierMapping() );
 			// Process row-id values when available early by replacing the entity entry
 			if ( persister.getRowIdMapping() != null ) {
 				rowId = generatedValues.getGeneratedValue( persister.getRowIdMapping() );

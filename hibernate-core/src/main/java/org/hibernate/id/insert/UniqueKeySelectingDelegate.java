@@ -75,6 +75,7 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 		}
 	}
 
+	@Override
 	protected String getSelectSQL() {
 		return selectString;
 	}
