@@ -120,16 +120,15 @@ public interface OnExecutionGenerator extends Generator {
 		final Dialect dialect = persister.getFactory().getJdbcServices().getDialect();
 		if ( dialect.supportsInsertReturningGeneratedKeys()
 				&& persister.getFactory().getSessionFactoryOptions().isGetGeneratedKeysEnabled() ) {
-			return new GetGeneratedKeysDelegate( persister, dialect, false, EventType.INSERT );
+			return new GetGeneratedKeysDelegate( persister, false, EventType.INSERT );
 		}
 		else if ( dialect.supportsInsertReturning() && noCustomSql( persister, EventType.INSERT ) ) {
-			return new InsertReturningDelegate( persister, dialect, EventType.INSERT );
+			return new InsertReturningDelegate( persister, EventType.INSERT );
 		}
 		else {
 			// let's just hope the entity has a @NaturalId!
 			return new UniqueKeySelectingDelegate(
 					persister,
-					dialect,
 					getUniqueKeyPropertyNames( persister ),
 					EventType.INSERT
 			);

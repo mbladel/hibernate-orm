@@ -12,8 +12,8 @@ import java.util.Set;
 
 import org.hibernate.engine.spi.LoadQueryInfluencers;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.generator.values.GeneratedValueBasicResultBuilder;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
-import org.hibernate.generator.values.internal.GeneratedValuesHelper;
 import org.hibernate.query.results.DomainResultCreationStateImpl;
 import org.hibernate.query.results.JdbcValuesMappingImpl;
 import org.hibernate.query.results.ResultBuilder;
@@ -32,7 +32,7 @@ import org.hibernate.sql.results.jdbc.spi.JdbcValuesMetadata;
  * @see GeneratedValuesHelper#getGeneratedValues
  */
 public class GeneratedValuesMappingProducer implements JdbcValuesMappingProducer {
-	private final List<ResultBuilder> resultBuilders = new ArrayList<>();
+	private final List<GeneratedValueBasicResultBuilder> resultBuilders = new ArrayList<>();
 
 	@Override
 	public JdbcValuesMapping resolve(
@@ -78,8 +78,12 @@ public class GeneratedValuesMappingProducer implements JdbcValuesMappingProducer
 		);
 	}
 
-	public void addResultBuilder(ResultBuilder resultBuilder) {
+	public void addResultBuilder(GeneratedValueBasicResultBuilder resultBuilder) {
 		resultBuilders.add( resultBuilder );
+	}
+
+	public List<GeneratedValueBasicResultBuilder> getResultBuilders() {
+		return resultBuilders;
 	}
 
 	@Override

@@ -15,16 +15,14 @@ import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
+import org.hibernate.generator.values.GeneratedValueBasicResultBuilder;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.metamodel.mapping.EntityRowIdMapping;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
-import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 import org.hibernate.type.Type;
-
-import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
 /**
  * Uses a unique key of the inserted entity to locate the newly inserted row.
@@ -36,19 +34,17 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 	private final Type[] uniqueKeyTypes;
 
 	private final String selectString;
-	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	/**
-	 * @deprecated Use {@link #UniqueKeySelectingDelegate(EntityPersister, Dialect, String[], EventType)} instead.
+	 * @deprecated Use {@link #UniqueKeySelectingDelegate(EntityPersister, String[], EventType)} instead.
 	 */
 	@Deprecated( forRemoval = true, since = "6.5" )
 	public UniqueKeySelectingDelegate(PostInsertIdentityPersister persister, Dialect dialect, String[] uniqueKeyPropertyNames) {
-		this( persister, dialect, uniqueKeyPropertyNames, EventType.INSERT );
+		this( persister, uniqueKeyPropertyNames, EventType.INSERT );
 	}
 
 	public UniqueKeySelectingDelegate(
 			EntityPersister persister,
-			Dialect dialect,
 			String[] uniqueKeyPropertyNames,
 			EventType timing) {
 		super( persister, timing );
@@ -64,12 +60,10 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 		if ( !persister.isIdentifierAssignedByInsert()
 				|| persister.getInsertGeneratedProperties().size() > 1
 				|| rowIdMapping != null ) {
-			final List<String> columnNames = new ArrayList<>();
-			this.jdbcValuesMappingProducer = getMappingProducer(
-					modelPart -> columnNames.add( castNonNull( modelPart.asBasicValuedModelPart() ).getSelectionExpression() )
-			);
-			if ( rowIdMapping != null ) {
-				columnNames.add( rowIdMapping.getSelectionExpression() );
+			final List<GeneratedValueBasicResultBuilder> resultBuilders = jdbcValuesMappingProducer.getResultBuilders();
+			final List<String> columnNames = new ArrayList<>( resultBuilders.size() );
+			for ( GeneratedValueBasicResultBuilder resultBuilder : resultBuilders ) {
+				columnNames.add( resultBuilder.getModelPart().getSelectionExpression() );
 			}
 			selectString = persister.getSelectByUniqueKeyString(
 					uniqueKeyPropertyNames,
@@ -78,7 +72,6 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 		}
 		else {
 			selectString = persister.getSelectByUniqueKeyString( uniqueKeyPropertyNames );
-			this.jdbcValuesMappingProducer = getMappingProducer( null );
 		}
 	}
 
@@ -111,10 +104,5 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 	@Override
 	public boolean supportsRowId() {
 		return true;
-	}
-
-	@Override
-	public JdbcValuesMappingProducer getGeneratedValuesMappingProducer() {
-		return jdbcValuesMappingProducer;
 	}
 }

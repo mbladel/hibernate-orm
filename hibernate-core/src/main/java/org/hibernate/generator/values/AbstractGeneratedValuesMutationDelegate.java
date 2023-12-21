@@ -6,14 +6,12 @@
  */
 package org.hibernate.generator.values;
 
-import java.util.function.Consumer;
-
+import org.hibernate.dialect.Dialect;
 import org.hibernate.generator.EventType;
-import org.hibernate.metamodel.mapping.ModelPart;
+import org.hibernate.generator.values.internal.GeneratedValuesHelper;
+import org.hibernate.generator.values.internal.GeneratedValuesMappingProducer;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
-
-import static org.hibernate.generator.values.internal.GeneratedValuesHelper.createMappingProducer;
 
 /**
  * @author Marco Belladelli
@@ -21,10 +19,22 @@ import static org.hibernate.generator.values.internal.GeneratedValuesHelper.crea
 public abstract class AbstractGeneratedValuesMutationDelegate implements GeneratedValuesMutationDelegate {
 	protected final EntityPersister persister;
 	private final EventType timing;
+	protected final GeneratedValuesMappingProducer jdbcValuesMappingProducer;
 
 	public AbstractGeneratedValuesMutationDelegate(EntityPersister persister, EventType timing) {
+		this( persister, timing, false );
+	}
+
+	public AbstractGeneratedValuesMutationDelegate(EntityPersister persister, EventType timing, boolean inferredKeys) {
 		this.persister = persister;
 		this.timing = timing;
+		this.jdbcValuesMappingProducer = GeneratedValuesHelper.createMappingProducer(
+				persister,
+				timing,
+				supportsArbitraryValues() && !inferredKeys,
+				supportsRowId(),
+				!inferredKeys
+		);
 	}
 
 	@Override
@@ -32,18 +42,12 @@ public abstract class AbstractGeneratedValuesMutationDelegate implements Generat
 		return timing;
 	}
 
-	protected JdbcValuesMappingProducer getMappingProducer(Consumer<ModelPart> modelPartConsumer) {
-		return getMappingProducer( modelPartConsumer, true );
+	@Override
+	public JdbcValuesMappingProducer getGeneratedValuesMappingProducer() {
+		return jdbcValuesMappingProducer;
 	}
 
-	protected JdbcValuesMappingProducer getMappingProducer(Consumer<ModelPart> modelPartConsumer, boolean useIndex) {
-		return createMappingProducer(
-				persister,
-				timing,
-				supportsArbitraryValues(),
-				supportsRowId(),
-				useIndex,
-				modelPartConsumer
-		);
+	protected Dialect dialect() {
+		return persister.getFactory().getJdbcServices().getDialect();
 	}
 }

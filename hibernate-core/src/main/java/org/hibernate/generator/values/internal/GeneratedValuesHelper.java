@@ -12,7 +12,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.hibernate.HibernateException;
 import org.hibernate.Internal;
@@ -237,17 +236,15 @@ public class GeneratedValuesHelper {
 	 * @param supportsRowId if we should process {@link org.hibernate.metamodel.mapping.EntityRowIdMapping rowid}s
 	 * @param useIndex {@code true} if we can use the index of the generated model part to access the result set,
 	 * {@code false} if we should retrieve the index through the column expression
-	 * @param modelPartConsumer optional {@link Consumer consumer} that will obtain generated model parts
 	 *
 	 * @return the instantiated jdbc values mapping producer
 	 */
-	public static JdbcValuesMappingProducer createMappingProducer(
+	public static GeneratedValuesMappingProducer createMappingProducer(
 			EntityPersister persister,
 			EventType timing,
 			boolean supportsArbitraryValues,
 			boolean supportsRowId,
-			boolean useIndex,
-			Consumer<ModelPart> modelPartConsumer) {
+			boolean useIndex) {
 		// This is just a mock table group needed to correctly resolve expressions
 		final NavigablePath parentNavigablePath = new NavigablePath( persister.getEntityName() );
 		final TableGroup tableGroup = new TableGroupImpl(
@@ -268,16 +265,15 @@ public class GeneratedValuesHelper {
 			final ModelPart modelPart = generatedProperties.get( i );
 			final BasicValuedModelPart basicModelPart = modelPart.asBasicValuedModelPart();
 			if ( basicModelPart != null ) {
+				// todo marco : test
+				final BasicValuedModelPart actual = getActualGeneratedModelPart( basicModelPart );
 				final GeneratedValueBasicResultBuilder resultBuilder = new GeneratedValueBasicResultBuilder(
-						parentNavigablePath.append( basicModelPart.getSelectableName() ),
-						basicModelPart,
+						parentNavigablePath.append( actual.getSelectableName() ),
+						actual,
 						tableGroup,
 						useIndex ? i : null
 				);
 				mappingProducer.addResultBuilder( resultBuilder );
-				if ( modelPartConsumer != null ) {
-					modelPartConsumer.accept( getActualGeneratedModelPart( basicModelPart ) );
-				}
 			}
 			else {
 				throw new UnsupportedOperationException( "Unsupported generated ModelPart: " + modelPart.getPartName() );
@@ -295,10 +291,6 @@ public class GeneratedValuesHelper {
 						.getIdentifierMapping()
 						.asBasicValuedModelPart() :
 				modelPart;
-	}
-
-	public static String getActualSelectionExpression(BasicValuedModelPart modelPart) {
-		return getActualGeneratedModelPart( modelPart ).getSelectionExpression();
 	}
 
 	/**
@@ -348,7 +340,7 @@ public class GeneratedValuesHelper {
 				&& noCustomSql( persister, timing ) ) {
 			// Special case for RowId on INSERT, since GetGeneratedKeysDelegate doesn't support it
 			// make InsertReturningDelegate the preferred method if the dialect supports it
-			return new InsertReturningDelegate( persister, dialect, timing );
+			return new InsertReturningDelegate( persister, timing );
 		}
 
 		if ( !hasGeneratedProperties ) {
@@ -357,16 +349,15 @@ public class GeneratedValuesHelper {
 
 		if ( dialect.supportsInsertReturningGeneratedKeys()
 				&& persister.getFactory().getSessionFactoryOptions().isGetGeneratedKeysEnabled() ) {
-			return new GetGeneratedKeysDelegate( persister, dialect, false, timing );
+			return new GetGeneratedKeysDelegate( persister, false, timing );
 		}
 		else if ( supportsReturning( dialect, timing ) && noCustomSql( persister, timing ) ) {
-			return new InsertReturningDelegate( persister, dialect, timing );
+			return new InsertReturningDelegate( persister, timing );
 		}
 		else if ( timing == EventType.INSERT && persister.getNaturalIdentifierProperties() != null
 				&& !persister.getEntityMetamodel().isNaturalIdentifierInsertGenerated() ) {
 			return new UniqueKeySelectingDelegate(
 					persister,
-					dialect,
 					getNaturalIdPropertyNames( persister ),
 					timing
 			);

@@ -22,6 +22,7 @@ import org.hibernate.engine.jdbc.spi.MutationStatementPreparer;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
+import org.hibernate.generator.values.GeneratedValueBasicResultBuilder;
 import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.id.PostInsertIdentityPersister;
 import org.hibernate.jdbc.Expectation;
@@ -29,11 +30,9 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
 import org.hibernate.sql.model.ast.builder.TableUpdateBuilderStandard;
-import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 import static java.sql.Statement.RETURN_GENERATED_KEYS;
 import static org.hibernate.generator.values.internal.GeneratedValuesHelper.getGeneratedValues;
-import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 import static org.hibernate.internal.util.StringHelper.unquote;
 
 /**
@@ -47,35 +46,33 @@ import static org.hibernate.internal.util.StringHelper.unquote;
 public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	private final boolean inferredKeys;
 	private final String[] columnNames;
-	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	/**
-	 * @deprecated Use {@link #GetGeneratedKeysDelegate(EntityPersister, Dialect, boolean, EventType)} instead.
+	 * @deprecated Use {@link #GetGeneratedKeysDelegate(EntityPersister, boolean, EventType)} instead.
 	 */
 	@Deprecated( forRemoval = true, since = "6.5" )
 	public GetGeneratedKeysDelegate(PostInsertIdentityPersister persister, Dialect dialect, boolean inferredKeys) {
-		this( persister, dialect, inferredKeys, EventType.INSERT );
+		this( persister, inferredKeys, EventType.INSERT );
 	}
 
 	public GetGeneratedKeysDelegate(
 			EntityPersister persister,
-			Dialect dialect,
 			boolean inferredKeys,
 			EventType timing) {
-		super( persister, timing );
+		super( persister, timing, inferredKeys );
 		this.inferredKeys = inferredKeys;
 
 		if ( inferredKeys ) {
-			this.jdbcValuesMappingProducer = getMappingProducer( null, false );
 			columnNames = null;
 		}
 		else {
-			final List<String> columnNamesList = new ArrayList<>();
-			final boolean unquote = dialect.unquoteGetGeneratedKeys();
-			this.jdbcValuesMappingProducer = getMappingProducer( modelPart -> {
-				final String columnName = castNonNull( modelPart.asBasicValuedModelPart() ).getSelectionExpression();
-				columnNamesList.add( unquote ? unquote( columnName, dialect ) : columnName );
-			} );
+			final List<GeneratedValueBasicResultBuilder> resultBuilders = jdbcValuesMappingProducer.getResultBuilders();
+			final List<String> columnNamesList = new ArrayList<>( resultBuilders.size() );
+			final boolean unquote = dialect().unquoteGetGeneratedKeys();
+			for ( GeneratedValueBasicResultBuilder resultBuilder : resultBuilders ) {
+				final String columnName = resultBuilder.getModelPart().getSelectionExpression();
+				columnNamesList.add( unquote ? unquote( columnName, dialect() ) : columnName );
+			}
 			columnNames = columnNamesList.toArray( new String[0] );
 		}
 	}
@@ -103,11 +100,6 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 	@Override
 	public boolean supportsArbitraryValues() {
 		return !inferredKeys;
-	}
-
-	@Override
-	public JdbcValuesMappingProducer getGeneratedValuesMappingProducer() {
-		return jdbcValuesMappingProducer;
 	}
 
 	@Override

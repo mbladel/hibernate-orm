@@ -30,24 +30,21 @@ import static org.hibernate.generator.values.internal.GeneratedValuesHelper.getG
  * @author Christian Beikov
  */
 public class SybaseJConnGetGeneratedKeysDelegate extends GetGeneratedKeysDelegate {
-	private final Dialect dialect;
-
 	/**
-	 * @deprecated Use {@link #SybaseJConnGetGeneratedKeysDelegate(EntityPersister, Dialect)} instead.
+	 * @deprecated Use {@link #SybaseJConnGetGeneratedKeysDelegate(EntityPersister)} instead.
 	 */
 	@Deprecated( forRemoval = true, since = "6.5" )
 	public SybaseJConnGetGeneratedKeysDelegate(PostInsertIdentityPersister persister, Dialect dialect) {
-		this( (EntityPersister) persister, dialect );
+		this( persister );
 	}
 
-	public SybaseJConnGetGeneratedKeysDelegate(EntityPersister persister, Dialect dialect) {
-		super( persister, dialect, true, EventType.INSERT );
-		this.dialect = dialect;
+	public SybaseJConnGetGeneratedKeysDelegate(EntityPersister persister) {
+		super( persister, true, EventType.INSERT );
 	}
 
 	@Override
 	public String prepareIdentifierGeneratingInsert(String insertSQL) {
-		return dialect.getIdentityColumnSupport().appendIdentitySelectToInsert(
+		return dialect().getIdentityColumnSupport().appendIdentitySelectToInsert(
 				( (BasicEntityIdentifierMapping) persister.getRootEntityDescriptor().getIdentifierMapping() ).getSelectionExpression(),
 				insertSQL
 		);

@@ -138,7 +138,7 @@ public interface IdentityColumnSupport {
 	default GetGeneratedKeysDelegate buildGetGeneratedKeysDelegate(
 			PostInsertIdentityPersister persister,
 			Dialect dialect) {
-		return buildGetGeneratedKeysDelegate( (EntityPersister) persister, dialect );
+		return buildGetGeneratedKeysDelegate( persister );
 	}
 
 	/**
@@ -149,5 +149,5 @@ public interface IdentityColumnSupport {
 	 *
 	 * @return the dialect specific GetGeneratedKeys delegate
 	 */
-	GetGeneratedKeysDelegate buildGetGeneratedKeysDelegate(EntityPersister persister, Dialect dialect);
+	GetGeneratedKeysDelegate buildGetGeneratedKeysDelegate(EntityPersister persister);
 }

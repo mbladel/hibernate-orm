@@ -16,7 +16,7 @@ public class SybaseJconnIdentityColumnSupport extends AbstractTransactSQLIdentit
 	public static final SybaseJconnIdentityColumnSupport INSTANCE = new SybaseJconnIdentityColumnSupport();
 
 	@Override
-	public GetGeneratedKeysDelegate buildGetGeneratedKeysDelegate(EntityPersister persister, Dialect dialect) {
-		return new SybaseJConnGetGeneratedKeysDelegate( persister, dialect );
+	public GetGeneratedKeysDelegate buildGetGeneratedKeysDelegate(EntityPersister persister) {
+		return new SybaseJConnGetGeneratedKeysDelegate( persister );
 	}
 }

@@ -55,9 +55,7 @@ public class IdentityColumnSupportImpl implements IdentityColumnSupport {
 	}
 
 	@Override
-	public GetGeneratedKeysDelegate buildGetGeneratedKeysDelegate(
-			EntityPersister persister,
-			Dialect dialect) {
-		return new GetGeneratedKeysDelegate( persister, dialect, true, EventType.INSERT );
+	public GetGeneratedKeysDelegate buildGetGeneratedKeysDelegate(EntityPersister persister) {
+		return new GetGeneratedKeysDelegate( persister, true, EventType.INSERT );
 	}
 }

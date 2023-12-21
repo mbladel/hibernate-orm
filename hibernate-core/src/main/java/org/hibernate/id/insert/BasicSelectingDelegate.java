@@ -15,7 +15,6 @@ import org.hibernate.jdbc.Expectation;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.model.ast.builder.TableInsertBuilderStandard;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
-import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 /**
  * Delegate for dealing with {@code IDENTITY} columns where the dialect requires an
@@ -23,22 +22,18 @@ import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
  */
 public class BasicSelectingDelegate extends AbstractSelectingDelegate {
 	final private EntityPersister persister;
-	private final Dialect dialect;
-	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	/**
-	 * @deprecated Use {@link #BasicSelectingDelegate(EntityPersister, Dialect)} instead.
+	 * @deprecated Use {@link #BasicSelectingDelegate(EntityPersister)} instead.
 	 */
 	@Deprecated( forRemoval = true, since = "6.5" )
 	public BasicSelectingDelegate(PostInsertIdentityPersister persister, Dialect dialect) {
-		this( (EntityPersister) persister, dialect );
+		this( persister );
 	}
 
-	public BasicSelectingDelegate(EntityPersister persister, Dialect dialect) {
+	public BasicSelectingDelegate(EntityPersister persister) {
 		super( persister, EventType.INSERT );
 		this.persister = persister;
-		this.dialect = dialect;
-		this.jdbcValuesMappingProducer = getMappingProducer( null );
 	}
 
 	@Override
@@ -50,14 +45,9 @@ public class BasicSelectingDelegate extends AbstractSelectingDelegate {
 
 	@Override
 	protected String getSelectSQL() {
-		if ( persister.getIdentitySelectString() == null && !dialect.getIdentityColumnSupport().supportsInsertSelectIdentity() ) {
+		if ( persister.getIdentitySelectString() == null && !dialect().getIdentityColumnSupport().supportsInsertSelectIdentity() ) {
 			throw CoreLogging.messageLogger( BasicSelectingDelegate.class ).nullIdentitySelectString();
 		}
 		return persister.getIdentitySelectString();
-	}
-
-	@Override
-	public JdbcValuesMappingProducer getGeneratedValuesMappingProducer() {
-		return jdbcValuesMappingProducer;
 	}
 }

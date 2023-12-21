@@ -18,6 +18,7 @@ import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.generator.EventType;
+import org.hibernate.generator.values.GeneratedValueBasicResultBuilder;
 import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.generator.values.internal.TableUpdateReturningBuilder;
@@ -28,11 +29,9 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.model.ast.MutatingTableReference;
 import org.hibernate.sql.model.ast.builder.TableMutationBuilder;
-import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducer;
 
 import static java.sql.Statement.NO_GENERATED_KEYS;
 import static org.hibernate.generator.values.internal.GeneratedValuesHelper.getGeneratedValues;
-import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
 /**
  * Delegate for dealing with generated values where the dialect supports
@@ -44,28 +43,25 @@ import static org.hibernate.internal.util.NullnessUtil.castNonNull;
  * @see GeneratedValuesMutationDelegate
  */
 public class InsertReturningDelegate extends AbstractReturningDelegate {
-	private final Dialect dialect;
 	private final MutatingTableReference tableReference;
 	private final List<ColumnReference> generatedColumns;
-	private final JdbcValuesMappingProducer jdbcValuesMappingProducer;
 
 	/**
 	 * @deprecated Use {@link #InsertReturningDelegate(EntityPersister, Dialect, EventType)} instead.
 	 */
 	@Deprecated( forRemoval = true, since = "6.5" )
 	public InsertReturningDelegate(PostInsertIdentityPersister persister, Dialect dialect) {
-		this( persister, dialect, EventType.INSERT );
+		this( persister, EventType.INSERT );
 	}
 
-	public InsertReturningDelegate(EntityPersister persister, Dialect dialect, EventType timing) {
+	public InsertReturningDelegate(EntityPersister persister, EventType timing) {
 		super( persister, timing );
-		this.dialect = dialect;
 		this.tableReference = new MutatingTableReference( persister.getIdentifierTableMapping() );
-		this.generatedColumns = new ArrayList<>( persister.getGeneratedProperties( timing ).size() );
-		this.jdbcValuesMappingProducer = getMappingProducer( modelPart -> generatedColumns.add( new ColumnReference(
-				tableReference,
-				castNonNull( modelPart.asBasicValuedModelPart() )
-		) ) );
+		final List<GeneratedValueBasicResultBuilder> resultBuilders = jdbcValuesMappingProducer.getResultBuilders();
+		this.generatedColumns = new ArrayList<>( resultBuilders.size() );
+		for ( GeneratedValueBasicResultBuilder resultBuilder : resultBuilders ) {
+			generatedColumns.add( new ColumnReference( tableReference, resultBuilder.getModelPart() ) );
+		}
 	}
 
 	@Override
@@ -111,17 +107,12 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 
 	@Override
 	public boolean supportsRowId() {
-		return dialect.supportsInsertReturningRowId();
-	}
-
-	@Override
-	public JdbcValuesMappingProducer getGeneratedValuesMappingProducer() {
-		return jdbcValuesMappingProducer;
+		return dialect().supportsInsertReturningRowId();
 	}
 
 	@Override
 	public String prepareIdentifierGeneratingInsert(String insertSQL) {
-		return dialect.getIdentityColumnSupport().appendIdentitySelectToInsert(
+		return dialect().getIdentityColumnSupport().appendIdentitySelectToInsert(
 				( (BasicEntityIdentifierMapping) persister.getRootEntityDescriptor().getIdentifierMapping() ).getSelectionExpression(),
 				insertSQL
 		);

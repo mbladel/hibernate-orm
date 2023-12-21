@@ -21,14 +21,14 @@ import org.hibernate.persister.entity.EntityPersister;
 @Deprecated(forRemoval = true) @Remove
 public class Oracle12cGetGeneratedKeysDelegate extends GetGeneratedKeysDelegate {
 	/**
-	 * @deprecated Use {@link #Oracle12cGetGeneratedKeysDelegate(EntityPersister, Dialect)} instead.
+	 * @deprecated Use {@link #Oracle12cGetGeneratedKeysDelegate(EntityPersister)} instead.
 	 */
 	@Deprecated( forRemoval = true, since = "6.5" )
 	public Oracle12cGetGeneratedKeysDelegate(PostInsertIdentityPersister persister, Dialect dialect) {
-		this( (EntityPersister) persister, dialect );
+		this( persister );
 	}
 
-	public Oracle12cGetGeneratedKeysDelegate(EntityPersister persister, Dialect dialect) {
-		super( persister, dialect, false, EventType.INSERT );
+	public Oracle12cGetGeneratedKeysDelegate(EntityPersister persister) {
+		super( persister, false, EventType.INSERT );
 	}
 }

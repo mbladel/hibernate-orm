@@ -42,6 +42,10 @@ public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesM
 		super( persister, timing );
 	}
 
+	public AbstractReturningDelegate(EntityPersister persister, EventType timing, boolean inferredKeys) {
+		super( persister, timing, inferredKeys );
+	}
+
 	@Override
 	public GeneratedValues performMutation(
 			PreparedStatementDetails statementDetails,

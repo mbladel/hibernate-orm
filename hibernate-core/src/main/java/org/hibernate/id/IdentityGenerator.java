@@ -56,10 +56,10 @@ public class IdentityGenerator
 		// Try to use generic delegates if the dialects supports them
 		if ( dialect.supportsInsertReturningGeneratedKeys()
 				&& persister.getFactory().getSessionFactoryOptions().isGetGeneratedKeysEnabled() ) {
-			return new GetGeneratedKeysDelegate( persister, dialect, false, EventType.INSERT );
+			return new GetGeneratedKeysDelegate( persister, false, EventType.INSERT );
 		}
 		else if ( dialect.supportsInsertReturning() && noCustomSql( persister, EventType.INSERT ) ) {
-			return new InsertReturningDelegate( persister, dialect, EventType.INSERT );
+			return new InsertReturningDelegate( persister, EventType.INSERT );
 		}
 		// Fall back to delegates which only handle identifiers
 		else if ( persister.getFactory().getSessionFactoryOptions().isGetGeneratedKeysEnabled() ) {
@@ -69,13 +69,12 @@ public class IdentityGenerator
 				&& !persister.getEntityMetamodel().isNaturalIdentifierInsertGenerated() ) {
 			return new UniqueKeySelectingDelegate(
 					persister,
-					dialect,
 					getNaturalIdPropertyNames( persister ),
 					EventType.INSERT
 			);
 		}
 		else {
-			return new BasicSelectingDelegate( persister, dialect );
+			return new BasicSelectingDelegate( persister );
 		}
 	}
 }

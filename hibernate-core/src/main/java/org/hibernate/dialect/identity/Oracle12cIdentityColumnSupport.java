@@ -29,8 +29,8 @@ public class Oracle12cIdentityColumnSupport extends IdentityColumnSupportImpl {
 	}
 
 	@Override
-	public GetGeneratedKeysDelegate buildGetGeneratedKeysDelegate(EntityPersister persister, Dialect dialect) {
-		return new GetGeneratedKeysDelegate( persister, dialect, false, EventType.INSERT );
+	public GetGeneratedKeysDelegate buildGetGeneratedKeysDelegate(EntityPersister persister) {
+		return new GetGeneratedKeysDelegate( persister, false, EventType.INSERT );
 	}
 
 	@Override

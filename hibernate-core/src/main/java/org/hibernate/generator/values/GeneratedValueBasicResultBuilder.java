@@ -21,7 +21,6 @@ import org.hibernate.sql.results.graph.DomainResultCreationState;
 import org.hibernate.sql.results.graph.basic.BasicResult;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMetadata;
 
-import static org.hibernate.generator.values.internal.GeneratedValuesHelper.getActualSelectionExpression;
 import static org.hibernate.query.results.ResultsHelper.impl;
 import static org.hibernate.query.results.ResultsHelper.jdbcPositionToValuesArrayPosition;
 
@@ -98,10 +97,14 @@ public class GeneratedValueBasicResultBuilder implements ResultBuilder {
 		);
 	}
 
+	public BasicValuedModelPart getModelPart() {
+		return modelPart;
+	}
+
 	private static int columnIndex(JdbcValuesMetadata jdbcResultsMetadata, BasicValuedModelPart modelPart) {
 		try {
 			return jdbcPositionToValuesArrayPosition( jdbcResultsMetadata.resolveColumnPosition(
-					getActualSelectionExpression( modelPart )
+					modelPart.getSelectionExpression()
 			) );
 		}
 		catch (Exception e) {
