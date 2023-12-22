@@ -92,9 +92,6 @@ public class EntityIdentityInsertAction extends AbstractEntityInsertAction  {
 			// Process row-id values when available early by replacing the entity entry
 			if ( persister.getRowIdMapping() != null ) {
 				rowId = generatedValues.getGeneratedValue( persister.getRowIdMapping() );
-				if ( rowId != null && isDelayed ) {
-					persistenceContext.replaceEntityEntryRowId( getInstance(), rowId );
-				}
 			}
 			if ( persister.hasInsertGeneratedProperties() ) {
 				persister.processInsertGeneratedProperties( generatedId, instance, getState(), generatedValues, session );

@@ -40,6 +40,7 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 
 	private Object version;
 	private Object cacheEntry;
+	private Object rowId;
 
 	/**
 	 * Constructs an EntityInsertAction.
@@ -86,7 +87,7 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 
 	@Override
 	protected Object getRowId() {
-		return null;
+		return rowId;
 	}
 
 	@Override
@@ -154,10 +155,7 @@ public class EntityInsertAction extends AbstractEntityInsertAction {
 		}
 		// Process row-id values when available early by replacing the entity entry
 		if ( generatedValues != null && persister.getRowIdMapping() != null ) {
-			final Object rowId = generatedValues.getGeneratedValue( persister.getRowIdMapping() );
-			if ( rowId != null ) {
-				persistenceContext.replaceEntityEntryRowId( getInstance(), rowId );
-			}
+			rowId = generatedValues.getGeneratedValue( persister.getRowIdMapping() );
 		}
 	}
 

@@ -133,11 +133,13 @@ public abstract class AbstractEntityInsertAction extends EntityAction {
 		nullifyTransientReferencesIfNotAlready();
 		final Object version = getVersion( getState(), getPersister() );
 		final PersistenceContext persistenceContextInternal = getSession().getPersistenceContextInternal();
-		persistenceContextInternal.addEntity(
+		persistenceContextInternal.addEntity( getEntityKey(), getInstance() );
+		persistenceContextInternal.addEntry(
 				getInstance(),
 				( getPersister().isMutable() ? Status.MANAGED : Status.READ_ONLY ),
 				getState(),
-				getEntityKey(),
+				getRowId(),
+				getEntityKey().getIdentifier(),
 				version,
 				LockMode.WRITE,
 				isExecuted,
@@ -146,10 +148,6 @@ public abstract class AbstractEntityInsertAction extends EntityAction {
 		);
 		if ( isEarlyInsert() ) {
 			addCollectionsByKeyToPersistenceContext( persistenceContextInternal, getState() );
-			final Object rowId = getRowId();
-			if ( rowId != null ) {
-				persistenceContextInternal.replaceEntityEntryRowId( getInstance(), rowId );
-			}
 		}
 	}
 

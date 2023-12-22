@@ -743,10 +743,6 @@ public interface PersistenceContext {
 	void setReadOnly(Object entityOrProxy, boolean readOnly);
 
 	void replaceDelayedEntityIdentityInsertKeys(EntityKey oldKey, Object generatedId);
-
-	@Internal
-	void replaceEntityEntryRowId(Object entity, Object rowId);
-
 	/**
 	 * Add a child/parent relation to cache for cascading op
 	 *
