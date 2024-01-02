@@ -123,7 +123,8 @@ public class EntityTypeImpl<J>
 	public SqmPathSource<?> findSubPathSource(String name) {
 		final PersistentAttribute<?,?> attribute = findAttribute( name );
 		if ( attribute != null ) {
-			return (SqmPathSource<?>) attribute;
+			final SqmPathSource<?> pathSource = (SqmPathSource<?>) attribute;
+			return pathSource.isGeneric() ? (SqmPathSource<?>) findConcreteGenericAttribute( name ) : pathSource;
 		}
 
 		if ( "id".equalsIgnoreCase( name ) ) {
