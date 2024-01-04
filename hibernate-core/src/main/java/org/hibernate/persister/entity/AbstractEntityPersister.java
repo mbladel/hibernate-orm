@@ -2999,7 +2999,7 @@ public abstract class AbstractEntityPersister
 
 	public abstract Map<Object, String> getSubclassByDiscriminatorValue();
 
-	protected abstract boolean needsDiscriminator();
+	public abstract boolean needsDiscriminator();
 
 	protected boolean isDiscriminatorFormula() {
 		return false;
@@ -3105,6 +3105,7 @@ public abstract class AbstractEntityPersister
 					entityNameUseMap.put( subMappingType.getEntityName(), EntityNameUse.TREAT );
 				}
 			}
+			assert !creationState.supportsEntityNameUsage() : "Entity name usage should have been used instead";
 			pruneForSubclasses( tableGroup, entityNameUseMap );
 		}
 	}

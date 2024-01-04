@@ -742,7 +742,7 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 	}
 
 	@Override
-	protected boolean needsDiscriminator() {
+	public boolean needsDiscriminator() {
 		return forceDiscriminator;
 	}
 
@@ -1389,11 +1389,6 @@ public class JoinedSubclassEntityPersister extends AbstractEntityPersister {
 					tablesToInnerJoin.add( subclassTableNames[i] );
 				}
 			}
-		}
-
-		if ( needsTreatDiscriminator ) {
-			// Make sure we resolve the root table reference if we need a discriminator predicate
-			tableGroup.resolveTableReference( getRootTableName() );
 		}
 
 		final List<TableReferenceJoin> tableReferenceJoins = tableGroup.getTableReferenceJoins();

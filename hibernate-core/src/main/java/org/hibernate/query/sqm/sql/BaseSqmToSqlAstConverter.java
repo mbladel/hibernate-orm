@@ -93,6 +93,7 @@ import org.hibernate.metamodel.spi.MappingMetamodelImplementor;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.EntityNameUse;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.persister.entity.JoinedSubclassEntityPersister;
 import org.hibernate.persister.entity.SingleTableEntityPersister;
 import org.hibernate.query.BindableType;
 import org.hibernate.query.QueryLogging;
@@ -3119,7 +3120,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			}
 		}
 		if ( useKind == EntityNameUse.UseKind.TREAT || useKind == EntityNameUse.UseKind.PROJECTION ) {
-			// If we encounter a treat use, we also want register the use for all subtypes.
+			// If we encounter a treat or projection use, we also want register the use for all subtypes.
 			// We do this here to not have to expand entity name uses during pruning later on
 			for ( EntityMappingType subType : persister.getSubMappingTypes() ) {
 				entityNameUses.compute(
@@ -3132,6 +3133,10 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 							subType.getEntityPersister().getMappedTableDetails().getTableName()
 					);
 				}
+			}
+			if ( useKind == EntityNameUse.UseKind.TREAT && persister.isInherited() && persister.needsDiscriminator() ) {
+				// Make sure the table group includes the root table when needed for TREAT
+				actualTableGroup.resolveTableReference( persister.getRootTableName() );
 			}
 		}
 	}
@@ -8238,7 +8243,9 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 							if ( entityMappingType.getSuperMappingType() != null ) {
 								// A joined table group was created by an enabled entity graph or fetch profile,
 								// and it's of an inheritance subtype, so we should apply the discriminator
-								entityMappingType.applyDiscriminator( null, null, actualTableGroup, this );
+								getCurrentClauseStack().push( Clause.FROM );
+								registerEntityNameUsage( actualTableGroup, EntityNameUse.TREAT, entityMappingType.getEntityName() );
+								getCurrentClauseStack().pop();
 							}
 						}
 					}
