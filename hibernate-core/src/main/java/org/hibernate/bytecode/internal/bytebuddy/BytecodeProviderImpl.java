@@ -72,6 +72,8 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 public class BytecodeProviderImpl implements BytecodeProvider {
 	private static final CoreMessageLogger LOG = CoreLogging.messageLogger( BytecodeProviderImpl.class );
 
+	public static final BytecodeProviderImpl INSTANCE = new BytecodeProviderImpl();
+
 	private static final String INSTANTIATOR_PROXY_NAMING_SUFFIX = "HibernateInstantiator";
 	private static final String OPTIMIZER_PROXY_NAMING_SUFFIX = "HibernateAccessOptimizer";
 	private static final ElementMatcher.Junction<NamedElement> newInstanceMethodName = ElementMatchers.named(
