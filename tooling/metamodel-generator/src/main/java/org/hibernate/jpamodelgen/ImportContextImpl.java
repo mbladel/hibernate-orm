@@ -6,7 +6,9 @@
  */
 package org.hibernate.jpamodelgen;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -67,7 +69,9 @@ public class ImportContextImpl implements ImportContext {
 		// strip off type annotations and '? super' or '? extends'
 		String preamble = "";
 		if ( result.startsWith("@") || result.startsWith("?") ) {
-			int index = result.lastIndexOf(' ');
+			int index = ( result.indexOf( '<' ) > 0 ?
+					result.substring( 0, result.indexOf( '<' ) ) :
+					result ).lastIndexOf( ' ' );
 			if ( index > 0 ) {
 				preamble = result.substring( 0, index+1 );
 				result = result.substring( index+1 );
@@ -121,7 +125,8 @@ public class ImportContextImpl implements ImportContext {
 	}
 
 	private String importTypes(String originalArgList) {
-		String[] args = originalArgList.split(",");
+		// Split on any ',' character that's not inside angle brackets (<>)
+		String[] args = splitOnFirstLevelCommas( originalArgList );
 		StringBuilder argList = new StringBuilder();
 		for ( String arg : args ) {
 			if ( argList.length() > 0 ) {
@@ -130,6 +135,33 @@ public class ImportContextImpl implements ImportContext {
 			argList.append( importType( arg ) );
 		}
 		return argList.toString();
+	}
+
+	private static String[] splitOnFirstLevelCommas(String original) {
+		if ( original.indexOf( '<' ) < 0 ) {
+			return original.split( "," );
+		}
+
+		List<String> splits = new ArrayList<>();
+		StringBuilder sb = new StringBuilder();
+		int count = 0;
+		for ( char c : original.toCharArray() ) {
+			if ( count == 0 && c == ',' ) {
+				splits.add( sb.toString() );
+				sb = new StringBuilder();
+			}
+			else {
+				if ( c == '<' ) {
+					count++;
+				}
+				else if ( c == '>' ) {
+					count--;
+				}
+				sb.append( c );
+			}
+		}
+		splits.add( sb.toString() );
+		return splits.toArray( new String[0] );
 	}
 
 	public String staticImport(String fqcn, String member) {
