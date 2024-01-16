@@ -20,7 +20,9 @@ public interface BytecodeSettings {
 	 * At present only bytebuddy is supported, bytebuddy being the default since version 5.3.
 	 *
 	 * @settingDefault {@code "bytebuddy"}
+	 * @deprecated Will be removed without replacement. See HHH-17643
 	 */
+	@Deprecated(forRemoval = true)
 	String BYTECODE_PROVIDER = "hibernate.bytecode.provider";
 
 	/**

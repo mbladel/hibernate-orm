@@ -7,7 +7,10 @@
 package org.hibernate.proxy.pojo.bytebuddy;
 
 import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.ServiceLoader;
+import java.util.Set;
 
 import org.hibernate.bytecode.internal.bytebuddy.BytecodeProviderImpl;
 import org.hibernate.bytecode.spi.BytecodeProvider;
@@ -30,7 +33,7 @@ public final class SerializableProxy extends AbstractSerializableProxy {
 
 	private final CompositeType componentIdType;
 
-	private static volatile BytecodeProviderImpl bytecodeProvider;
+	private static volatile BytecodeProviderImpl defaultProvider;
 
 	public SerializableProxy(
 			String entityName,
@@ -128,23 +131,39 @@ public final class SerializableProxy extends AbstractSerializableProxy {
 	private static BytecodeProviderImpl retrieveByteBuddyBytecodeProvider(final SessionFactoryImplementor sessionFactory) {
 		if ( sessionFactory == null ) {
 			// When the session factory is not available fallback to local bytecode provider
-			return getBytecodeProvider();
+			return getDefaultProvider();
 		}
 
-		final BytecodeProvider bytecodeProvider = sessionFactory.getServiceRegistry().getService( BytecodeProvider.class );
+		return castBytecodeProvider( sessionFactory.getServiceRegistry().getService( BytecodeProvider.class ) );
+	}
+
+	private static BytecodeProviderImpl getDefaultProvider() {
+		BytecodeProviderImpl provider = defaultProvider;
+		if ( provider == null ) {
+			// todo marco : we probably need to use ServiceRegistry here, but how ???
+			final ServiceLoader<BytecodeProvider> loader = ServiceLoader.load( BytecodeProvider.class );
+			final Set<BytecodeProvider> bytecodeProviders = new HashSet<>( 1 );
+			loader.stream().forEach( p -> bytecodeProviders.add( p.get() ) );
+			if ( bytecodeProviders.isEmpty() ) {
+				// Default to no-op provider
+				throw new IllegalStateException( "Unable to deserialize a SerializableProxy proxy: no bytecode provider service available." );
+			}
+			else if ( bytecodeProviders.size() > 1 ) {
+				throw new IllegalStateException( "Only one BytecodeProvider service must be available at the time" );
+			}
+			else {
+				provider = defaultProvider = castBytecodeProvider( bytecodeProviders.iterator().next() );
+			}
+		}
+		return provider;
+	}
+
+	private static BytecodeProviderImpl castBytecodeProvider(BytecodeProvider bytecodeProvider) {
 		if ( bytecodeProvider instanceof BytecodeProviderImpl ) {
 			return (BytecodeProviderImpl) bytecodeProvider;
 		}
 		else {
 			throw new IllegalStateException( "Unable to deserialize a SerializableProxy proxy: the bytecode provider is not ByteBuddy." );
 		}
-	}
-
-	private static BytecodeProviderImpl getBytecodeProvider() {
-		BytecodeProviderImpl provider = bytecodeProvider;
-		if ( provider == null ) {
-			provider = bytecodeProvider = new BytecodeProviderImpl();
-		}
-		return provider;
 	}
 }
