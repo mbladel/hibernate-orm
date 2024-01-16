@@ -75,6 +75,7 @@ import org.hibernate.type.Type;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.java.spi.JavaTypeRegistry;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
+import org.hibernate.type.internal.BasicTypeImpl;
 import org.hibernate.type.spi.TypeConfiguration;
 
 import jakarta.persistence.metamodel.EmbeddableType;
@@ -776,11 +777,12 @@ public class MappingMetamodelImpl extends QueryParameterBindingTypeResolverImpl
 
 		if ( sqmExpressible instanceof BasicDomainType ) {
 			final BasicDomainType<?> domainType = (BasicDomainType<?>) sqmExpressible;
-			return getTypeConfiguration().getBasicTypeForJavaType( domainType.getExpressibleJavaType().getJavaTypeClass() );
+			return resolveBasicType( domainType.getExpressibleJavaType().getJavaTypeClass(), domainType );
 		}
 
 		if ( sqmExpressible instanceof BasicSqmPathSource<?> ) {
-			return getTypeConfiguration().getBasicTypeForJavaType(((BasicSqmPathSource<?>) sqmExpressible).getJavaType());
+			final BasicSqmPathSource<?> pathSource = (BasicSqmPathSource<?>) sqmExpressible;
+			return resolveBasicType( pathSource.getJavaType(), pathSource.getSqmPathType() );
 		}
 
 		if ( sqmExpressible instanceof SqmFieldLiteral ) {
@@ -826,6 +828,16 @@ public class MappingMetamodelImpl extends QueryParameterBindingTypeResolverImpl
 					: existingMappingModelExpressible;
 		}
 		return null;
+	}
+
+	public BasicType<?> resolveBasicType(Class<?> javaClass, BasicDomainType<?> domainType) {
+		final BasicType<?> basicType = getTypeConfiguration().getBasicTypeForJavaType( javaClass );
+		if ( basicType == null && javaClass.isEnum() ) {
+			// Create ad-hoc basic type for non-registered enum class
+			return new BasicTypeImpl<>( domainType.getExpressibleJavaType(), domainType.getJdbcType() );
+		}
+
+		return basicType;
 	}
 
 	@Override
