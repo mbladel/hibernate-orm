@@ -43,6 +43,7 @@ public final class BytecodeProviderInitiator implements StandardServiceInitiator
 		if ( bytecodeProviders.isEmpty() ) {
 			// Default to the configuration property for backwards compatibility
 			// todo marco : should we default to the no-op impl, and maybe log a warning if using the deprecated config property?
+			// todo marco : should we deprecate the configuration property? Note that it will be removed from auto-generated docs that way
 			final String provider = ConfigurationHelper.getString(
 					BYTECODE_PROVIDER,
 					configurationValues,
