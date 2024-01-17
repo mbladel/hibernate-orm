@@ -7,12 +7,12 @@
 package org.hibernate.bytecode.internal;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
 
 import org.hibernate.Internal;
 import org.hibernate.boot.registry.StandardServiceInitiator;
 import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
-import org.hibernate.bytecode.internal.bytebuddy.BytecodeProviderImpl;
 import org.hibernate.bytecode.spi.BytecodeProvider;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
@@ -52,48 +52,30 @@ public final class BytecodeProviderInitiator implements StandardServiceInitiator
 			ServiceRegistryImplementor registry) {
 		final ClassLoaderService classLoaderService = castNonNull( registry.getService( ClassLoaderService.class ) );
 		final Collection<BytecodeProvider> bytecodeProviders = classLoaderService.loadJavaServices( BytecodeProvider.class );
-		if ( bytecodeProviders.isEmpty() ) {
+		return getBytecodeProvider( bytecodeProviders );
+	}
+
+	public static BytecodeProvider getBytecodeProvider(Iterable<BytecodeProvider> bytecodeProviders) {
+		final Iterator<BytecodeProvider> iterator = bytecodeProviders.iterator();
+		if ( !iterator.hasNext() ) {
 			// If no BytecodeProvider service is available, default to the "no-op" enhancer
 			return new org.hibernate.bytecode.internal.none.BytecodeProviderImpl();
 		}
-		else if ( bytecodeProviders.size() > 1 ) {
-			return getBytecodeProvider( bytecodeProviders );
-		}
-		else {
-			return bytecodeProviders.iterator().next();
-		}
-	}
 
-	public static BytecodeProvider getBytecodeProvider(Collection<BytecodeProvider> bytecodeProviders) {
-		if ( bytecodeProviders.isEmpty() ) {
-			// If no BytecodeProvider service is available, default to the "no-op" enhancer
-			return new org.hibernate.bytecode.internal.none.BytecodeProviderImpl();
-		}
-		else if ( bytecodeProviders.size() > 1 ) {
-			return getCustomProvider( bytecodeProviders );
-		}
-		else {
-			return bytecodeProviders.iterator().next();
-		}
-	}
-
-	private static BytecodeProvider getCustomProvider(Collection<BytecodeProvider> bytecodeProviders) {
-		org.hibernate.bytecode.internal.bytebuddy.BytecodeProviderImpl bytebuddyProvider = null;
-		BytecodeProvider customProvider = null;
-		for ( BytecodeProvider bytecodeProvider : bytecodeProviders ) {
-			if ( bytecodeProvider instanceof org.hibernate.bytecode.internal.bytebuddy.BytecodeProviderImpl ) {
-				bytebuddyProvider = (BytecodeProviderImpl) bytecodeProvider;
+		BytecodeProvider provider = null;
+		while ( iterator.hasNext() ) {
+			final BytecodeProvider next = iterator.next();
+			if ( provider == null ) {
+				provider = next;
 			}
-			else {
-				if ( customProvider == null ) {
-					customProvider = bytecodeProvider;
-				}
-				else {
-					throw new IllegalStateException( "Only one BytecodeProvider service must be registered" );
-				}
+			else if ( provider instanceof org.hibernate.bytecode.internal.none.BytecodeProviderImpl ) {
+				provider = next;
+			}
+			else if ( !( next instanceof org.hibernate.bytecode.internal.none.BytecodeProviderImpl ) ) {
+				throw new IllegalStateException( "Found multiple BytecodeProvider service registrations and cannot determine which one to use" );
 			}
 		}
-		return customProvider != null ? customProvider : bytebuddyProvider;
+		return provider;
 	}
 
 	@Override
@@ -106,13 +88,9 @@ public final class BytecodeProviderInitiator implements StandardServiceInitiator
 		return new org.hibernate.bytecode.internal.bytebuddy.BytecodeProviderImpl();
 	}
 
-	/**
-	 * @deprecated Register a {@link BytecodeProvider} through Java {@linkplain java.util.ServiceLoader services}.
-	 */
 	@Internal
 	@Deprecated( forRemoval = true )
 	public static BytecodeProvider buildBytecodeProvider(String providerName) {
-
 		CoreMessageLogger LOG = Logger.getMessageLogger( CoreMessageLogger.class, BytecodeProviderInitiator.class.getName() );
 		LOG.bytecodeProvider( providerName );
 

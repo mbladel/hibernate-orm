@@ -19,10 +19,9 @@ At the moment, only annotated classes are supported for enhancement.
 Hibernate can also perform run-time bytecode enhancement when used in Jakarta EE compliant
 containers through `jakarta.persistence.spi.ClassTransformer`.  See the documentation of
 your container for any additional details.  Run-time enhancement is controlled through
-4 settings:
+3 true/false settings (all of which default to false):
 
-`hibernate.enhancer.enableDirtyTracking`:: Selects a bytecode enhancement library, at present only bytebuddy is supported. This setting is deprecated for removal, but users can still override the default provider by registering a service provider for the `BytecodeProvider` interface.
 `hibernate.enhancer.enableDirtyTracking`:: Whether to enhance the model for dirty-tracking. This setting is deprecated for removal without a replacement.
 `hibernate.enhancer.enableLazyInitialization`:: Whether to enhance the model for lazy loading at the attribute level.  This allows
 even basic types to be fetched lazily.  It also allows definition of fetch groups (`LazyGroup`). This setting is deprecated for removal without a replacement.
-`hibernate.enhancer.enableAssociationManagement`:: Whether to automatically synchronize a bidirectional association when only one side is changed (default is `false`).
+`hibernate.enhancer.enableAssociationManagement`:: Whether to automatically synchronize a bidirectional association when only one side is changed.

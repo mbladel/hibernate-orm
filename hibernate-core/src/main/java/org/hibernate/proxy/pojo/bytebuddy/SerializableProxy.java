@@ -143,9 +143,7 @@ public final class SerializableProxy extends AbstractSerializableProxy {
 		BytecodeProviderImpl provider = defaultProvider;
 		if ( provider == null ) {
 			final ServiceLoader<BytecodeProvider> loader = ServiceLoader.load( BytecodeProvider.class );
-			final Set<BytecodeProvider> bytecodeProviders = new HashSet<>( 1 );
-			loader.stream().forEach( p -> bytecodeProviders.add( p.get() ) );
-			provider = defaultProvider = castBytecodeProvider( getBytecodeProvider( bytecodeProviders ) );
+			provider = defaultProvider = castBytecodeProvider( getBytecodeProvider( loader ) );
 		}
 		return provider;
 	}
