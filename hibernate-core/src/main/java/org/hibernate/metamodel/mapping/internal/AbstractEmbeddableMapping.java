@@ -9,6 +9,7 @@ package org.hibernate.metamodel.mapping.internal;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.hibernate.MappingException;
@@ -64,6 +65,8 @@ import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.java.MutabilityPlan;
 import org.hibernate.type.spi.TypeConfiguration;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
+
 /**
  * Base support for EmbeddableMappingType implementations
  */
@@ -78,6 +81,11 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 	@Override
 	public JavaType<?> getMappedJavaType() {
 		return getRepresentationStrategy().getMappedJavaType();
+	}
+
+	@Override
+	public boolean areEqual(@Nullable Object one, @Nullable Object other, SharedSessionContractImplementor session) {
+		return Objects.deepEquals( one, other );
 	}
 
 	@Override

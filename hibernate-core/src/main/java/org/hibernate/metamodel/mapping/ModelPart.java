@@ -6,7 +6,6 @@
  */
 package org.hibernate.metamodel.mapping;
 
-import java.util.Objects;
 import java.util.function.BiConsumer;
 
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
@@ -207,8 +206,9 @@ public interface ModelPart extends MappingModelExpressible {
 	EntityMappingType findContainingEntityMapping();
 
 	default boolean areEqual(@Nullable Object one, @Nullable Object other, SharedSessionContractImplementor session) {
-		// NOTE : deepEquals to account for arrays (compound natural-id)
-		return Objects.deepEquals( one, other );
+		//noinspection unchecked
+		final JavaType<Object> javaType = (JavaType<Object>) getJavaType();
+		return javaType.areEqual( one, other );
 	}
 
 	/**
