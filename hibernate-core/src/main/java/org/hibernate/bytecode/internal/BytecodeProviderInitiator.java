@@ -8,25 +8,37 @@ package org.hibernate.bytecode.internal;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.ServiceLoader;
 
 import org.hibernate.Internal;
 import org.hibernate.boot.registry.StandardServiceInitiator;
 import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
+import org.hibernate.bytecode.internal.bytebuddy.BytecodeProviderImpl;
 import org.hibernate.bytecode.spi.BytecodeProvider;
 import org.hibernate.internal.CoreMessageLogger;
-import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
 
 import org.jboss.logging.Logger;
 
-import static org.hibernate.cfg.BytecodeSettings.BYTECODE_PROVIDER;
 import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
 public final class BytecodeProviderInitiator implements StandardServiceInitiator<BytecodeProvider> {
 
+	/**
+	 * @deprecated Register a {@link BytecodeProvider} through Java {@linkplain java.util.ServiceLoader services}.
+	 */
+	@Deprecated( forRemoval = true )
 	public static final String BYTECODE_PROVIDER_NAME_BYTEBUDDY = "bytebuddy";
+
+	/**
+	 * @deprecated Register a {@link BytecodeProvider} through Java {@linkplain java.util.ServiceLoader services}.
+	 */
+	@Deprecated( forRemoval = true )
 	public static final String BYTECODE_PROVIDER_NAME_NONE = "none";
+
+	/**
+	 * @deprecated Deprecated with no replacement
+	 */
+	@Deprecated( forRemoval = true )
 	public static final String BYTECODE_PROVIDER_NAME_DEFAULT = BYTECODE_PROVIDER_NAME_BYTEBUDDY;
 
 	/**
@@ -41,22 +53,47 @@ public final class BytecodeProviderInitiator implements StandardServiceInitiator
 		final ClassLoaderService classLoaderService = castNonNull( registry.getService( ClassLoaderService.class ) );
 		final Collection<BytecodeProvider> bytecodeProviders = classLoaderService.loadJavaServices( BytecodeProvider.class );
 		if ( bytecodeProviders.isEmpty() ) {
-			// Default to the configuration property for backwards compatibility
-			// todo marco : should we default to the no-op impl, and maybe log a warning if using the deprecated config property?
-			// todo marco : should we deprecate the configuration property? Note that it will be removed from auto-generated docs that way
-			final String provider = ConfigurationHelper.getString(
-					BYTECODE_PROVIDER,
-					configurationValues,
-					BYTECODE_PROVIDER_NAME_DEFAULT
-			);
-			return buildBytecodeProvider( provider );
+			// If no BytecodeProvider service is available, default to the "no-op" enhancer
+			return new org.hibernate.bytecode.internal.none.BytecodeProviderImpl();
 		}
 		else if ( bytecodeProviders.size() > 1 ) {
-			throw new IllegalStateException( "Only one BytecodeProvider service must be available at the time" );
+			return getBytecodeProvider( bytecodeProviders );
 		}
 		else {
 			return bytecodeProviders.iterator().next();
 		}
+	}
+
+	public static BytecodeProvider getBytecodeProvider(Collection<BytecodeProvider> bytecodeProviders) {
+		if ( bytecodeProviders.isEmpty() ) {
+			// If no BytecodeProvider service is available, default to the "no-op" enhancer
+			return new org.hibernate.bytecode.internal.none.BytecodeProviderImpl();
+		}
+		else if ( bytecodeProviders.size() > 1 ) {
+			return getCustomProvider( bytecodeProviders );
+		}
+		else {
+			return bytecodeProviders.iterator().next();
+		}
+	}
+
+	private static BytecodeProvider getCustomProvider(Collection<BytecodeProvider> bytecodeProviders) {
+		org.hibernate.bytecode.internal.bytebuddy.BytecodeProviderImpl bytebuddyProvider = null;
+		BytecodeProvider customProvider = null;
+		for ( BytecodeProvider bytecodeProvider : bytecodeProviders ) {
+			if ( bytecodeProvider instanceof org.hibernate.bytecode.internal.bytebuddy.BytecodeProviderImpl ) {
+				bytebuddyProvider = (BytecodeProviderImpl) bytecodeProvider;
+			}
+			else {
+				if ( customProvider == null ) {
+					customProvider = bytecodeProvider;
+				}
+				else {
+					throw new IllegalStateException( "Only one BytecodeProvider service must be registered" );
+				}
+			}
+		}
+		return customProvider != null ? customProvider : bytebuddyProvider;
 	}
 
 	@Override
@@ -66,13 +103,16 @@ public final class BytecodeProviderInitiator implements StandardServiceInitiator
 
 	@Internal
 	public static BytecodeProvider buildDefaultBytecodeProvider() {
-		// todo marco : deprecate this ? Probably not, change it to just instantiate ByteBuddy impl
-		return buildBytecodeProvider( BYTECODE_PROVIDER_NAME_BYTEBUDDY );
+		return new org.hibernate.bytecode.internal.bytebuddy.BytecodeProviderImpl();
 	}
 
+	/**
+	 * @deprecated Register a {@link BytecodeProvider} through Java {@linkplain java.util.ServiceLoader services}.
+	 */
 	@Internal
+	@Deprecated( forRemoval = true )
 	public static BytecodeProvider buildBytecodeProvider(String providerName) {
-		// todo marco : deprecate this ?
+
 		CoreMessageLogger LOG = Logger.getMessageLogger( CoreMessageLogger.class, BytecodeProviderInitiator.class.getName() );
 		LOG.bytecodeProvider( providerName );
 

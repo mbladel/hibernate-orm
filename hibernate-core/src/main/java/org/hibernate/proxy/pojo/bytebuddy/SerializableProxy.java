@@ -20,6 +20,8 @@ import org.hibernate.proxy.AbstractSerializableProxy;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.type.CompositeType;
 
+import static org.hibernate.bytecode.internal.BytecodeProviderInitiator.getBytecodeProvider;
+
 public final class SerializableProxy extends AbstractSerializableProxy {
 	private final Class<?> persistentClass;
 	private final Class<?>[] interfaces;
@@ -140,20 +142,10 @@ public final class SerializableProxy extends AbstractSerializableProxy {
 	private static BytecodeProviderImpl getDefaultProvider() {
 		BytecodeProviderImpl provider = defaultProvider;
 		if ( provider == null ) {
-			// todo marco : we probably need to use ServiceRegistry here, but how ???
 			final ServiceLoader<BytecodeProvider> loader = ServiceLoader.load( BytecodeProvider.class );
 			final Set<BytecodeProvider> bytecodeProviders = new HashSet<>( 1 );
 			loader.stream().forEach( p -> bytecodeProviders.add( p.get() ) );
-			if ( bytecodeProviders.isEmpty() ) {
-				// Default to no-op provider
-				throw new IllegalStateException( "Unable to deserialize a SerializableProxy proxy: no bytecode provider service available." );
-			}
-			else if ( bytecodeProviders.size() > 1 ) {
-				throw new IllegalStateException( "Only one BytecodeProvider service must be available at the time" );
-			}
-			else {
-				provider = defaultProvider = castBytecodeProvider( bytecodeProviders.iterator().next() );
-			}
+			provider = defaultProvider = castBytecodeProvider( getBytecodeProvider( bytecodeProviders ) );
 		}
 		return provider;
 	}
