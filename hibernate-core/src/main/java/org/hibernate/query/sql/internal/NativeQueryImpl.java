@@ -709,22 +709,9 @@ public class NativeQueryImpl<R>
 
 			// check if placeholder is already immediately enclosed in parentheses
 			// (ignoring whitespace)
-			boolean isEnclosedInParens = true;
-			for ( int i = sourcePosition - 1; i >= 0; i-- ) {
-				final char ch = sqlString.charAt( i );
-				if ( !Character.isWhitespace( ch ) ) {
-					isEnclosedInParens = ch == '(';
-					break;
-				}
-			}
+			boolean isEnclosedInParens = isEnclosedInParens( sqlString, sourcePosition, true );
 			if ( isEnclosedInParens ) {
-				for ( int i = sourcePosition + 1; i < sqlString.length(); i++ ) {
-					final char ch = sqlString.charAt( i );
-					if ( !Character.isWhitespace( ch ) ) {
-						isEnclosedInParens = ch == ')';
-						break;
-					}
-				}
+				isEnclosedInParens = isEnclosedInParens( sqlString, sourcePosition, false );
 			}
 
 			if ( bindValueCount == 1 && isEnclosedInParens ) {
@@ -781,6 +768,37 @@ public class NativeQueryImpl<R>
 			offset += expansionListAsString.length() - 1;
 		}
 		return sb == null ? sqlString : sb.toString();
+	}
+
+	private static boolean isEnclosedInParens(String sqlString, int sourcePosition, boolean reverse) {
+		final int increment;
+		final char parenthesis;
+		if ( reverse ) {
+			parenthesis = '(';
+			increment = -1;
+		}
+		else {
+			parenthesis = ')';
+			increment = 1;
+		}
+
+		boolean skipLiteral = false;
+		for ( int i = sourcePosition + increment; i >= 0; i += increment ) {
+			final char ch = sqlString.charAt( i );
+			if ( !Character.isWhitespace( ch ) ) {
+				if ( ch == ',' ) {
+					// If we encounter a comma skip the next "word"
+					skipLiteral = true;
+				}
+				else if ( ch == parenthesis ) {
+					return true;
+				}
+				else if ( !skipLiteral ) {
+					return false;
+				}
+			}
+		}
+		return false;
 	}
 
 	public static int determineBindValueMaxCount(boolean paddingEnabled, int inExprLimit, int bindValueCount) {
