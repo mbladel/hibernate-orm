@@ -91,7 +91,6 @@ import org.hibernate.metamodel.spi.MappingMetamodelImplementor;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.EntityNameUse;
 import org.hibernate.persister.entity.EntityPersister;
-import org.hibernate.persister.entity.SingleTableEntityPersister;
 import org.hibernate.query.BindableType;
 import org.hibernate.query.QueryLogging;
 import org.hibernate.query.ReturnableType;
@@ -3183,9 +3182,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			registerEntityNameUsage( tableGroup, EntityNameUse.PROJECTION, persister.getEntityName(), true );
 		}
 		else {
-			// Avoid doing this for single table entity persisters, as the table span includes secondary tables,
-			// which we don't want to resolve, though we know that there is only a single table anyway
-			if ( persister instanceof SingleTableEntityPersister ) {
+			// Avoid doing this for persisters with physical discriminators as we won't need to resolve subclass tables
+			if ( persister.getDiscriminatorMapping().hasPhysicalColumn() ) {
 				return;
 			}
 			final int subclassTableSpan = persister.getSubclassTableSpan();
@@ -7578,25 +7576,38 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		else {
 			return;
 		}
+		final TableGroup tableGroup = getFromClauseIndex().getTableGroup( typeExpression.getNavigablePath().getParent() );
+		final EntityMappingType entityMappingType = (EntityMappingType)  tableGroup.getModelPart().getPartMappingType();
+		if ( entityMappingType.getDiscriminatorMapping().hasPhysicalColumn() ) {
+			// Prevent pruning of the root type's table reference containing the physical discriminator column
+			registerEntityNameUsage(
+					tableGroup,
+					EntityNameUse.EXPRESSION,
+					entityMappingType.getRootEntityDescriptor().getEntityName()
+			);
+		}
 		if ( literalExpression == null ) {
 			// We have to assume all types are possible and can't do optimizations
-			final TableGroup tableGroup = getFromClauseIndex().getTableGroup( typeExpression.getNavigablePath().getParent() );
-			final EntityMappingType entityMappingType = (EntityMappingType)  tableGroup.getModelPart().getPartMappingType();
 			registerEntityNameUsage( tableGroup, EntityNameUse.FILTER, entityMappingType.getEntityName() );
 			for ( EntityMappingType subMappingType : entityMappingType.getSubMappingTypes() ) {
 				registerEntityNameUsage( tableGroup, EntityNameUse.FILTER, subMappingType.getEntityName() );
 			}
 		}
 		else {
-			handleTypeComparison( typeExpression, Collections.singletonList( literalExpression ), inclusive );
+			handleTypeComparison(
+					tableGroup,
+					entityMappingType,
+					Collections.singletonList( literalExpression ),
+					inclusive
+			);
 		}
 	}
 
 	private void handleTypeComparison(
-			DiscriminatorPathInterpretation typeExpression,
+			TableGroup tableGroup,
+			EntityMappingType entityMappingType,
 			List<EntityTypeLiteral> literalExpressions,
 			boolean inclusive) {
-		final TableGroup tableGroup = getFromClauseIndex().getTableGroup( typeExpression.getNavigablePath().getParent() );
 		if ( inclusive ) {
 			for ( EntityTypeLiteral literalExpr : literalExpressions ) {
 				registerEntityNameUsage(
@@ -7607,8 +7618,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			}
 		}
 		else {
-			final EntityMappingType entityMappingType = (EntityMappingType) tableGroup.getModelPart().getPartMappingType();
-			final Set<String> excludedEntityNames = new HashSet<>(entityMappingType.getSubMappingTypes().size());
+			final Set<String> excludedEntityNames = new HashSet<>( entityMappingType.getSubMappingTypes().size() );
 			for ( EntityTypeLiteral literalExpr : literalExpressions ) {
 				excludedEntityNames.add( literalExpr.getEntityTypeDescriptor().getEntityName() );
 			}
@@ -7866,6 +7876,19 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		final Expression testExpression = inPredicate.getTestExpression();
 		if ( testExpression instanceof DiscriminatorPathInterpretation<?> ) {
 			final DiscriminatorPathInterpretation<?> typeExpression = (DiscriminatorPathInterpretation<?>) testExpression;
+			final TableGroup tableGroup = getFromClauseIndex().getTableGroup(
+					typeExpression.getNavigablePath().getParent()
+			);
+			final EntityMappingType entityMappingType = (EntityMappingType) tableGroup.getModelPart()
+					.getPartMappingType();
+			if ( entityMappingType.getDiscriminatorMapping().hasPhysicalColumn() ) {
+				// Prevent pruning of the root type's table reference containing the physical discriminator column
+				registerEntityNameUsage(
+						tableGroup,
+						EntityNameUse.EXPRESSION,
+						entityMappingType.getRootEntityDescriptor().getEntityName()
+				);
+			}
 			boolean containsNonLiteral = false;
 			for ( Expression listExpression : inPredicate.getListExpressions() ) {
 				if ( !( listExpression instanceof EntityTypeLiteral ) ) {
@@ -7875,11 +7898,6 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			}
 			if ( containsNonLiteral ) {
 				// We have to assume all types are possible and can't do optimizations
-				final TableGroup tableGroup = getFromClauseIndex().getTableGroup(
-						typeExpression.getNavigablePath().getParent()
-				);
-				final EntityMappingType entityMappingType = (EntityMappingType) tableGroup.getModelPart()
-						.getPartMappingType();
 				registerEntityNameUsage( tableGroup, EntityNameUse.FILTER, entityMappingType.getEntityName() );
 				for ( EntityMappingType subMappingType : entityMappingType.getSubMappingTypes() ) {
 					registerEntityNameUsage( tableGroup, EntityNameUse.FILTER, subMappingType.getEntityName() );
@@ -7888,7 +7906,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			else {
 				//noinspection unchecked
 				handleTypeComparison(
-						typeExpression,
+						tableGroup,
+						entityMappingType,
 						(List<EntityTypeLiteral>) (List<?>) inPredicate.getListExpressions(),
 						!inPredicate.isNegated()
 				);
