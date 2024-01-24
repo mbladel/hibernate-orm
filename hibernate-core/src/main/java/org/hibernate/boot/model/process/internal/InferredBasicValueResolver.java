@@ -159,8 +159,23 @@ public class InferredBasicValueResolver {
 						registeredElementType = resolution.getLegacyResolvedBasicType();
 					}
 					else {
-						registeredElementType = typeConfiguration.getBasicTypeRegistry()
+						final BasicType foundElementType = typeConfiguration.getBasicTypeRegistry()
 								.getRegisteredType( elementJtd.getJavaType() );
+						if ( foundElementType != null ) {
+							registeredElementType = foundElementType;
+						}
+						else {
+							final JdbcType elementJdbcType = elementJtd.getRecommendedJdbcType( stdIndicators );
+							if ( elementJdbcType != null ) {
+								registeredElementType = typeConfiguration.getBasicTypeRegistry().resolve(
+										elementJtd,
+										elementJdbcType
+								);
+							}
+							else {
+								registeredElementType = null;
+							}
+						}
 					}
 					final ColumnTypeInformation columnTypeInformation;
 					if ( selectable instanceof ColumnTypeInformation ) {
