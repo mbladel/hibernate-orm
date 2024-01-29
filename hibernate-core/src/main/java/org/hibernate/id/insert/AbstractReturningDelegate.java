@@ -54,7 +54,17 @@ public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesM
 			SharedSessionContractImplementor session) {
 		session.getJdbcServices().getSqlStatementLogger().logStatement( statementDetails.getSqlString() );
 		valueBindings.beforeStatement( statementDetails );
-		return executeAndExtractReturning( statementDetails.getSqlString(), statementDetails.getStatement(), session );
+		final GeneratedValues generatedValues = executeAndExtractReturning(
+				statementDetails.getSqlString(),
+				statementDetails.getStatement(),
+				session
+		);
+		if ( statementDetails.getStatement() != null ) {
+			statementDetails.releaseStatement( session );
+		}
+		valueBindings.afterStatement( statementDetails.getMutatingTableDetails() );
+		session.getJdbcCoordinator().afterStatementExecution();
+		return generatedValues;
 	}
 
 	@Override
@@ -80,7 +90,7 @@ public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesM
 	}
 
 	/**
-	 * @deprecated
+	 * @deprecated No longer used
 	 */
 	@Deprecated( forRemoval = true, since = "6.5" )
 	protected Object executeAndExtract(

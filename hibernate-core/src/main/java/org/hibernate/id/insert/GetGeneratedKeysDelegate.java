@@ -145,6 +145,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 					statementDetails.releaseStatement( session );
 				}
 				jdbcValueBindings.afterStatement( statementDetails.getMutatingTableDetails() );
+				jdbcCoordinator.afterStatementExecution();
 			}
 		}
 		catch (SQLException e) {

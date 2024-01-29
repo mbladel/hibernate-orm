@@ -100,6 +100,12 @@ public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesM
 		jdbcCoordinator.getResultSetReturn()
 				.executeUpdate( statementDetails.resolveStatement(), statementDetails.getSqlString() );
 
+		if ( statementDetails.getStatement() != null ) {
+			statementDetails.releaseStatement( session );
+		}
+		jdbcValueBindings.afterStatement( statementDetails.getMutatingTableDetails() );
+		session.getJdbcCoordinator().afterStatementExecution();
+
 		// the insert is complete, select the generated id...
 
 		final String idSelectSql = getSelectSQL();
