@@ -75,6 +75,12 @@ public abstract class AbstractSelectingDelegate implements InsertGeneratedIdenti
 		jdbcCoordinator.getResultSetReturn()
 				.executeUpdate( insertStatementDetails.resolveStatement(), insertStatementDetails.getSqlString() );
 
+		if ( insertStatementDetails.getStatement() != null ) {
+			insertStatementDetails.releaseStatement( session );
+		}
+		jdbcValueBindings.afterStatement( insertStatementDetails.getMutatingTableDetails() );
+		session.getJdbcCoordinator().afterStatementExecution();
+
 		// the insert is complete, select the generated id...
 
 		final String idSelectSql = getSelectSQL();

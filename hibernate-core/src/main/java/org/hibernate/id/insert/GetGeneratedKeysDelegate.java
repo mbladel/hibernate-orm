@@ -132,7 +132,11 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 				}
 			}
 			finally {
-				jdbcCoordinator.getLogicalConnection().getResourceRegistry().release( insertStatement );
+				if ( insertStatementDetails.getStatement() != null ) {
+					insertStatementDetails.releaseStatement( session );
+				}
+				jdbcValueBindings.afterStatement( insertStatementDetails.getMutatingTableDetails() );
+				jdbcCoordinator.afterStatementExecution();
 			}
 		}
 		catch (SQLException e) {
