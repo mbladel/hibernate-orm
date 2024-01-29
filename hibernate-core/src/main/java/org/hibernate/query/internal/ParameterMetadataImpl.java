@@ -141,6 +141,8 @@ public class ParameterMetadataImpl implements ParameterMetadataImplementor {
 			return;
 		}
 
+		// todo marco : collect ordinal parameters here so we have a single iteration ?
+
 		final List<Integer> sortedLabels = new ArrayList<>( labels );
 		sortedLabels.sort( ComparableComparator.instance() );
 
