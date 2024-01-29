@@ -10,10 +10,10 @@ import java.util.HashSet;
 import java.util.Set;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
-import jakarta.persistence.MappedSuperclass;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
@@ -26,7 +26,7 @@ import org.hibernate.envers.ModifiedEntityNames;
  *
  * @author Lukasz Antoniak (lukasz dot antoniak at gmail dot com)
  */
-@MappedSuperclass
+@Entity
 public class SequenceIdTrackingModifiedEntitiesRevisionEntity extends SequenceIdRevisionEntity {
 	@ElementCollection(fetch = FetchType.EAGER)
 	@JoinTable(name = "REVCHANGES", joinColumns = @JoinColumn(name = "REV"))

@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.Set;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
@@ -25,7 +26,7 @@ import org.hibernate.annotations.FetchMode;
  *
  * @author Lukasz Antoniak (lukasz dot antoniak at gmail dot com)
  */
-@MappedSuperclass
+@Entity
 public class DefaultTrackingModifiedEntitiesRevisionEntity extends DefaultRevisionEntity {
 	@ElementCollection(fetch = FetchType.EAGER)
 	@JoinTable(name = "REVCHANGES", joinColumns = @JoinColumn(name = "REV"))

@@ -8,9 +8,10 @@ package org.hibernate.envers.enhanced;
 
 import java.io.Serializable;
 import java.util.Date;
+
+import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.Transient;
 
 import org.hibernate.annotations.GenericGenerator;
@@ -24,7 +25,7 @@ import org.hibernate.envers.RevisionTimestamp;
  * @author Lukasz Antoniak (lukasz dot antoniak at gmail dot com)
  * @author Chris Cranford
  */
-@MappedSuperclass
+@Entity
 public class SequenceIdRevisionEntity implements Serializable {
 	private static final long serialVersionUID = 4159156677698841902L;
 
