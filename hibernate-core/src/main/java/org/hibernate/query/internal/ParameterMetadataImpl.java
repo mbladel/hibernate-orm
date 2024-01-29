@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
@@ -30,6 +32,9 @@ import org.hibernate.query.sqm.tree.expression.SqmParameter;
 
 import jakarta.persistence.Parameter;
 
+import static org.hibernate.internal.util.collections.ArrayHelper.isEmpty;
+import static org.hibernate.internal.util.collections.ArrayHelper.newInstance;
+
 /**
  * Encapsulates metadata about parameters encountered within a query.
  *
@@ -43,7 +48,7 @@ public class ParameterMetadataImpl implements ParameterMetadataImplementor {
 
 	private final Map<QueryParameterImplementor<?>, List<SqmParameter<?>>> queryParameters;
 	private final Map<String, QueryParameterImplementor<?>> queryParametersByName;
-	private final Map<Integer, QueryParameterImplementor<?>> queryParametersByPosition;
+	private final QueryParameterImplementor<?>[] queryParametersByPosition;
 
 	private ParameterMetadataImpl() {
 		this.queryParameters = Collections.emptyMap();
@@ -74,8 +79,14 @@ public class ParameterMetadataImpl implements ParameterMetadataImplementor {
 
 		if ( tempQueryParametersByPosition != null ) {
 			verifyOrdinalParamLabels( tempQueryParametersByPosition.keySet() );
+			this.queryParametersByPosition = newInstance( QueryParameterImplementor.class, tempQueryParametersByPosition.size() );
+			for ( Map.Entry<Integer, QueryParameterImplementor<?>> entry : tempQueryParametersByPosition.entrySet() ) {
+				this.queryParametersByPosition[entry.getKey() - 1] = entry.getValue();
+			}
 		}
-		this.queryParametersByPosition = tempQueryParametersByPosition;
+		else {
+			this.queryParametersByPosition = null;
+		}
 		this.queryParametersByName = tempQueryParametersByName;
 	}
 
@@ -101,9 +112,6 @@ public class ParameterMetadataImpl implements ParameterMetadataImplementor {
 					}
 					tempQueryParametersByPosition.put( value.getPosition(), value );
 				}
-				if ( tempQueryParametersByPosition != null ) {
-					verifyOrdinalParamLabels( tempQueryParametersByPosition.keySet() );
-				}
 			}
 			if ( namedQueryParameters != null ) {
 				for ( QueryParameterImplementor<?> value : namedQueryParameters.values() ) {
@@ -114,7 +122,16 @@ public class ParameterMetadataImpl implements ParameterMetadataImplementor {
 					tempQueryParametersByName.put( value.getName(), value );
 				}
 			}
-			this.queryParametersByPosition = tempQueryParametersByPosition;
+			if ( tempQueryParametersByPosition != null ) {
+				verifyOrdinalParamLabels( tempQueryParametersByPosition.keySet() );
+				this.queryParametersByPosition = newInstance( QueryParameterImplementor.class, tempQueryParametersByPosition.size() );
+				for ( Map.Entry<Integer, QueryParameterImplementor<?>> entry : tempQueryParametersByPosition.entrySet() ) {
+					this.queryParametersByPosition[entry.getKey() - 1] = entry.getValue();
+				}
+			}
+			else {
+				this.queryParametersByPosition = null;
+			}
 			this.queryParametersByName = tempQueryParametersByName;
 		}
 	}
@@ -271,22 +288,23 @@ public class ParameterMetadataImpl implements ParameterMetadataImplementor {
 
 	@Override
 	public boolean hasPositionalParameters() {
-		return queryParametersByPosition != null && !queryParametersByPosition.isEmpty();
+		return isEmpty( queryParametersByPosition );
 	}
 
+	/**
+	 * @deprecated Deprecated, no longer used
+	 */
+	@Deprecated( forRemoval = true )
 	public Set<Integer> getOrdinalParameterLabels() {
-		if ( queryParametersByPosition == null ) {
-			return Collections.EMPTY_SET;
-		}
-		return queryParametersByPosition.keySet();
+		return IntStream.range( 1, queryParametersByPosition.length + 1 ).boxed().collect( Collectors.toSet() );
 	}
 
 	@Override
 	public QueryParameterImplementor<?> findQueryParameter(int positionLabel) {
-		if(queryParametersByPosition == null){
+		if ( queryParametersByPosition == null ) {
 			return null;
 		}
-		return queryParametersByPosition.get( positionLabel );
+		return queryParametersByPosition[positionLabel - 1];
 	}
 
 	@Override
@@ -301,7 +319,7 @@ public class ParameterMetadataImpl implements ParameterMetadataImplementor {
 				Locale.ROOT,
 				"Could not locate ordinal parameter [%s], expecting one of [%s]",
 				positionLabel,
-				StringHelper.join( ", ", getOrdinalParameterLabels() )
+				StringHelper.join( ", ", IntStream.range( 1, queryParametersByPosition.length + 1 ).iterator() )
 		);
 		throw new IllegalArgumentException(
 				errorMessage,
