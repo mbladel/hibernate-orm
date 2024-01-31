@@ -70,13 +70,19 @@ public class SqmNegatedPredicate extends AbstractNegatableSqmPredicate {
 
 	@Override
 	public void appendHqlString(StringBuilder sb) {
-		sb.append( "not (" );
-		wrappedPredicate.appendHqlString( sb );
-		sb.append( ')' );
+		if ( isNegated() ) {
+			// double negation, render original predicate
+			wrappedPredicate.appendHqlString( sb );
+		}
+		else {
+			sb.append( '(' );
+			wrappedPredicate.appendHqlString( sb );
+			sb.append( ')' );
+		}
 	}
 
 	@Override
 	protected SqmNegatablePredicate createNegatedNode() {
-		return new SqmNegatedPredicate( this, nodeBuilder() );
+		return new SqmNegatedPredicate( wrappedPredicate, !isNegated(), nodeBuilder() );
 	}
 }

@@ -12,10 +12,15 @@ import org.hibernate.sql.ast.SqlAstWalker;
 /**
  * @author Steve Ebersole
  */
-public class NegatedPredicate implements Predicate {
+public class NegatedPredicate extends AbstractPredicate {
 	private final Predicate predicate;
 
 	public NegatedPredicate(Predicate predicate) {
+		this( predicate, false );
+	}
+
+	public NegatedPredicate(Predicate predicate, boolean negated) {
+		super (predicate.getExpressionType(), negated );
 		this.predicate = predicate;
 	}
 
@@ -31,10 +36,5 @@ public class NegatedPredicate implements Predicate {
 	@Override
 	public void accept(SqlAstWalker sqlTreeWalker) {
 		sqlTreeWalker.visitNegatedPredicate( this );
-	}
-
-	@Override
-	public JdbcMappingContainer getExpressionType() {
-		return predicate.getExpressionType();
 	}
 }

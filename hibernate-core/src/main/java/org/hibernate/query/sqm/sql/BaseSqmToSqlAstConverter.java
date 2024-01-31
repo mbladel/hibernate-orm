@@ -7525,7 +7525,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 	@Override
 	public NegatedPredicate visitNegatedPredicate(SqmNegatedPredicate predicate) {
 		return new NegatedPredicate(
-				(Predicate) predicate.getWrappedPredicate().accept( this )
+				(Predicate) predicate.getWrappedPredicate().accept( this ),
+				predicate.isNegated()
 		);
 	}
 

@@ -56,14 +56,6 @@ public class SqmComparisonPredicate extends AbstractNegatableSqmPredicate {
 		rightHandExpression.applyInferableType( expressibleType );
 	}
 
-	private SqmComparisonPredicate(SqmComparisonPredicate affirmativeForm) {
-		super( true, affirmativeForm.nodeBuilder() );
-		this.leftHandExpression = affirmativeForm.leftHandExpression;
-		this.rightHandExpression = affirmativeForm.rightHandExpression;
-		this.operator = affirmativeForm.operator;
-		assertComparable( leftHandExpression, rightHandExpression, nodeBuilder().getSessionFactory() );
-	}
-
 	@Override
 	public SqmComparisonPredicate copy(SqmCopyContext context) {
 		final SqmComparisonPredicate existing = context.getCopy( this );
@@ -103,7 +95,13 @@ public class SqmComparisonPredicate extends AbstractNegatableSqmPredicate {
 
 	@Override
 	protected SqmNegatablePredicate createNegatedNode() {
-		return new SqmComparisonPredicate( this );
+		return new SqmComparisonPredicate(
+				leftHandExpression,
+				operator,
+				rightHandExpression,
+				!isNegated(),
+				nodeBuilder()
+		);
 	}
 
 	@Override

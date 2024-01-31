@@ -8088,9 +8088,15 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 			return;
 		}
 
-		appendSql( "not(" );
-		negatedPredicate.getPredicate().accept( this );
-		appendSql( CLOSE_PARENTHESIS );
+		if ( negatedPredicate.isNegated() ) {
+			// double negation, render original predicate
+			negatedPredicate.getPredicate().accept( this );
+		}
+		else {
+			appendSql( "not(" );
+			negatedPredicate.getPredicate().accept( this );
+			appendSql( CLOSE_PARENTHESIS );
+		}
 	}
 
 	@Override
