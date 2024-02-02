@@ -85,7 +85,15 @@ public final class BytecodeProviderInitiator implements StandardServiceInitiator
 
 	@Internal
 	public static BytecodeProvider buildDefaultBytecodeProvider(ClassLoader classLoader) {
-		log.error( "Using new classLoader default provider method" );
+		final Iterator<BytecodeProvider> iterator = ServiceLoader.load( BytecodeProvider.class ).iterator();
+		if ( iterator.hasNext()) {
+			final BytecodeProvider next = iterator.next();
+			log.errorf( "Found BytecodeProvider with default ClassLoder: %s", next.getClass() );
+			Thread.dumpStack();
+			return next;
+		}
+
+		log.errorf( "Getting BytecodeProvider from provided classloader: %s", classLoader.getClass() );
 		Thread.dumpStack();
 		// this is not correct, we get a strange error that the bytebuddy impl is not an implementation of BytecodeProvider?
 		return getBytecodeProvider( ServiceLoader.load( BytecodeProvider.class, classLoader ) );
@@ -103,7 +111,7 @@ public final class BytecodeProviderInitiator implements StandardServiceInitiator
 
 		final BytecodeProvider provider = iterator.next();
 
-		log.error( "Found a BytecodeProvider: " + provider.getClass() );
+		log.error( "Found BytecodeProvider: " + provider.getClass() );
 		Thread.dumpStack();
 
 		if ( iterator.hasNext() ) {
