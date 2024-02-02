@@ -15,11 +15,16 @@ import org.hibernate.Internal;
 import org.hibernate.boot.registry.StandardServiceInitiator;
 import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
 import org.hibernate.bytecode.spi.BytecodeProvider;
+import org.hibernate.internal.CoreLogging;
+import org.hibernate.internal.CoreMessageLogger;
+import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
 
+import static org.hibernate.cfg.BytecodeSettings.BYTECODE_PROVIDER;
 import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
 public final class BytecodeProviderInitiator implements StandardServiceInitiator<BytecodeProvider> {
+	private static final CoreMessageLogger log = CoreLogging.messageLogger( BytecodeProviderInitiator.class );
 
 	/**
 	 * @deprecated Register a {@link BytecodeProvider} through Java {@linkplain java.util.ServiceLoader services}.
@@ -46,6 +51,9 @@ public final class BytecodeProviderInitiator implements StandardServiceInitiator
 
 	@Override
 	public BytecodeProvider initiateService(Map<String, Object> configurationValues, ServiceRegistryImplementor registry) {
+		final String provider = ConfigurationHelper.getString( BYTECODE_PROVIDER, configurationValues );
+		log.error( "Old provider configuration: " + provider );
+
 		final ClassLoaderService classLoaderService = castNonNull( registry.getService( ClassLoaderService.class ) );
 		final Collection<BytecodeProvider> bytecodeProviders = classLoaderService.loadJavaServices( BytecodeProvider.class );
 		return getBytecodeProvider( bytecodeProviders );
@@ -62,14 +70,42 @@ public final class BytecodeProviderInitiator implements StandardServiceInitiator
 	}
 
 	@Internal
+	public static BytecodeProvider buildDefaultByteBuddyProvider() {
+		final Iterator<BytecodeProvider> iterator = ServiceLoader.load( BytecodeProvider.class ).iterator();
+		if ( iterator.hasNext() ) {
+			log.error( "Found something!!!" );
+			Thread.dumpStack();
+			return iterator.next();
+		}
+
+		log.error( "Defaulting to ByteBuddy implementation" );
+		Thread.dumpStack();
+		return new org.hibernate.bytecode.internal.bytebuddy.BytecodeProviderImpl();
+	}
+
+	@Internal
+	public static BytecodeProvider buildDefaultBytecodeProvider(ClassLoader classLoader) {
+		log.error( "Using new classLoader default provider method" );
+		Thread.dumpStack();
+		// this is not correct, we get a strange error that the bytebuddy impl is not an implementation of BytecodeProvider?
+		return getBytecodeProvider( ServiceLoader.load( BytecodeProvider.class, classLoader ) );
+	}
+
+	@Internal
 	public static BytecodeProvider getBytecodeProvider(Iterable<BytecodeProvider> bytecodeProviders) {
 		final Iterator<BytecodeProvider> iterator = bytecodeProviders.iterator();
 		if ( !iterator.hasNext() ) {
 			// If no BytecodeProvider service is available, default to the "no-op" enhancer
+			log.error( "No BytecodeProvider service found" );
+			Thread.dumpStack();
 			return new org.hibernate.bytecode.internal.none.BytecodeProviderImpl();
 		}
 
 		final BytecodeProvider provider = iterator.next();
+
+		log.error( "Found a BytecodeProvider: " + provider.getClass() );
+		Thread.dumpStack();
+
 		if ( iterator.hasNext() ) {
 			throw new IllegalStateException( "Found multiple BytecodeProvider service registrations, cannot determine which one to use" );
 		}

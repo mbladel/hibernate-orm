@@ -147,6 +147,10 @@ public class EnhancerImpl implements Enhancer {
 	public byte[] enhance(String className, byte[] originalBytes) throws EnhancementException {
 		//Classpool#describe does not accept '/' in the description name as it expects a class name. See HHH-12545
 		final String safeClassName = className.replace( '/', '.' );
+
+		log.error( "Enhancing class: " + className );
+		Thread.dumpStack();
+
 		classFileLocator.registerClassNameAndBytes( safeClassName, originalBytes );
 		try {
 			final TypeDescription typeDescription = typePool.describe( safeClassName ).resolve();
@@ -194,13 +198,13 @@ public class EnhancerImpl implements Enhancer {
 	private DynamicType.Builder<?> doEnhance(Supplier<DynamicType.Builder<?>> builderSupplier, TypeDescription managedCtClass) {
 		// can't effectively enhance interfaces
 		if ( managedCtClass.isInterface() ) {
-			log.debugf( "Skipping enhancement of [%s]: it's an interface", managedCtClass.getName() );
+			log.errorf( "Skipping enhancement of [%s]: it's an interface", managedCtClass.getName() );
 			return null;
 		}
 
 		// can't effectively enhance records
 		if ( managedCtClass.isRecord() ) {
-			log.debugf( "Skipping enhancement of [%s]: it's a record", managedCtClass.getName() );
+			log.errorf( "Skipping enhancement of [%s]: it's a record", managedCtClass.getName() );
 			return null;
 		}
 
@@ -208,12 +212,14 @@ public class EnhancerImpl implements Enhancer {
 		if ( alreadyEnhanced( managedCtClass ) ) {
 			verifyVersions( managedCtClass, enhancementContext );
 
-			log.debugf( "Skipping enhancement of [%s]: already enhanced", managedCtClass.getName() );
+			log.errorf( "Skipping enhancement of [%s]: already enhanced", managedCtClass.getName() );
 			return null;
 		}
 
 		if ( enhancementContext.isEntityClass( managedCtClass ) ) {
-			log.debugf( "Enhancing [%s] as Entity", managedCtClass.getName() );
+			log.errorf( "Enhancing [%s] as Entity", managedCtClass.getName() );
+			Thread.dumpStack();
+
 			DynamicType.Builder<?> builder = builderSupplier.get();
 			builder = builder.implement( ManagedEntity.class )
 					.defineMethod( EnhancerConstants.ENTITY_INSTANCE_GETTER_NAME, Object.class, Visibility.PUBLIC )
@@ -364,7 +370,8 @@ public class EnhancerImpl implements Enhancer {
 			return createTransformer( managedCtClass ).applyTo( builder );
 		}
 		else if ( enhancementContext.isCompositeClass( managedCtClass ) ) {
-			log.debugf( "Enhancing [%s] as Composite", managedCtClass.getName() );
+			log.errorf( "Enhancing [%s] as Composite", managedCtClass.getName() );
+			Thread.dumpStack();
 
 			DynamicType.Builder<?> builder = builderSupplier.get();
 			builder = builder.implement( ManagedComposite.class );
@@ -398,18 +405,20 @@ public class EnhancerImpl implements Enhancer {
 			return createTransformer( managedCtClass ).applyTo( builder );
 		}
 		else if ( enhancementContext.isMappedSuperclassClass( managedCtClass ) ) {
-			log.debugf( "Enhancing [%s] as MappedSuperclass", managedCtClass.getName() );
+			log.errorf( "Enhancing [%s] as MappedSuperclass", managedCtClass.getName() );
+			Thread.dumpStack();
 
 			DynamicType.Builder<?> builder = builderSupplier.get();
 			builder = builder.implement( ManagedMappedSuperclass.class );
 			return createTransformer( managedCtClass ).applyTo( builder );
 		}
 		else if ( enhancementContext.doExtendedEnhancement( managedCtClass ) ) {
-			log.debugf( "Extended enhancement of [%s]", managedCtClass.getName() );
+			log.errorf( "Extended enhancement of [%s]", managedCtClass.getName() );
+			Thread.dumpStack();
 			return createTransformer( managedCtClass ).applyExtended( builderSupplier.get() );
 		}
 		else {
-			log.debugf( "Skipping enhancement of [%s]: not entity or composite", managedCtClass.getName() );
+			log.errorf( "Skipping enhancement of [%s]: not entity or composite", managedCtClass.getName() );
 			return null;
 		}
 	}

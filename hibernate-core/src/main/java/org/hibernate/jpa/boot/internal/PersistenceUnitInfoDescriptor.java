@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
+import java.util.ServiceLoader;
 
 import jakarta.persistence.PersistenceException;
 import jakarta.persistence.SharedCacheMode;
@@ -121,7 +122,10 @@ public class PersistenceUnitInfoDescriptor implements PersistenceUnitDescriptor 
 		}
 		// During testing, we will return a null temp class loader in cases where we don't care about enhancement
 		if ( persistenceUnitInfo.getNewTempClassLoader() != null ) {
-			final EnhancingClassTransformerImpl classTransformer = new EnhancingClassTransformerImpl( enhancementContext );
+			final EnhancingClassTransformerImpl classTransformer = new EnhancingClassTransformerImpl(
+					enhancementContext,
+					persistenceUnitInfo.getNewTempClassLoader()
+			);
 			this.classTransformer = classTransformer;
 			persistenceUnitInfo.addTransformer( classTransformer );
 		}
