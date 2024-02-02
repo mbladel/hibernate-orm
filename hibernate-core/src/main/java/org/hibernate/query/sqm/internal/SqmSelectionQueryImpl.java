@@ -81,6 +81,7 @@ import static org.hibernate.jpa.SpecHints.HINT_SPEC_CACHE_RETRIEVE_MODE;
 import static org.hibernate.jpa.SpecHints.HINT_SPEC_CACHE_STORE_MODE;
 import static org.hibernate.query.spi.SqlOmittingQueryOptions.omitSqlQueryOptions;
 import static org.hibernate.query.sqm.internal.SqmInterpretationsKey.createInterpretationsKey;
+import static org.hibernate.query.sqm.internal.SqmUtil.containsCollectionFetches;
 import static org.hibernate.query.sqm.internal.SqmUtil.sortSpecification;
 
 /**
@@ -324,7 +325,9 @@ public class SqmSelectionQueryImpl<R> extends AbstractSelectionQuery<R>
 
 	protected List<R> doList() {
 		final SqmSelectStatement<?> sqmStatement = getSqmStatement();
-		final boolean containsCollectionFetches = sqmStatement.containsCollectionFetches();
+		final boolean containsCollectionFetches =
+				sqmStatement.containsCollectionFetches()
+						|| containsCollectionFetches( getQueryOptions(), getSession() );
 		final boolean hasLimit = hasLimit( sqmStatement, getQueryOptions() );
 		final boolean needsDistinct = containsCollectionFetches
 				&& ( sqmStatement.usesDistinct() || hasAppliedGraph( getQueryOptions() ) || hasLimit );

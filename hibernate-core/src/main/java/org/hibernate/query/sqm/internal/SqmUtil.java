@@ -18,10 +18,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.hibernate.engine.profile.Association;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.MappingMetamodel;
+import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.BasicValuedMapping;
 import org.hibernate.metamodel.mapping.Bindable;
 import org.hibernate.metamodel.mapping.EntityAssociationMapping;
@@ -37,6 +39,7 @@ import org.hibernate.query.IllegalQueryOperationException;
 import org.hibernate.query.IllegalSelectQueryException;
 import org.hibernate.query.Order;
 import org.hibernate.query.criteria.JpaOrder;
+import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.spi.QueryParameterBinding;
 import org.hibernate.query.spi.QueryParameterBindings;
 import org.hibernate.query.spi.QueryParameterImplementor;
@@ -599,6 +602,32 @@ public class SqmUtil {
 				throw new IllegalQueryOperationException("Query has multiple items in the select list");
 			}
 		}
+	}
+
+	static boolean containsCollectionFetches(QueryOptions queryOptions, SharedSessionContractImplementor session) {
+		// Check applied entity graphs
+		if ( AppliedGraphs.containsCollectionFetches( queryOptions ) ) {
+			return true;
+		}
+
+		// Check enabled fetch profiles
+		if ( session.getLoadQueryInfluencers().hasEnabledFetchProfiles() ) {
+			for ( String profileName : session.getLoadQueryInfluencers().getEnabledFetchProfileNames() ) {
+				for ( final org.hibernate.engine.profile.Fetch fetch : session.getSessionFactory()
+						.getFetchProfile( profileName )
+						.getFetches()
+						.values() ) {
+					final Association association = fetch.getAssociation();
+					final AttributeMapping attributeMapping = association.getOwner()
+							.findAttributeMapping( association.getAssociationPath() );
+					if ( attributeMapping != null && attributeMapping.isPluralAttributeMapping() ) {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
 	}
 
 	private static class CriteriaParameterCollector {

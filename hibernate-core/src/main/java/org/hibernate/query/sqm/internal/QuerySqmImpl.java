@@ -127,6 +127,7 @@ import static org.hibernate.query.spi.SqlOmittingQueryOptions.omitSqlQueryOption
 import static org.hibernate.query.spi.SqlOmittingQueryOptions.omitSqlQueryOptionsWithUniqueSemanticFilter;
 import static org.hibernate.query.sqm.internal.SqmInterpretationsKey.createInterpretationsKey;
 import static org.hibernate.query.sqm.internal.SqmInterpretationsKey.generateNonSelectKey;
+import static org.hibernate.query.sqm.internal.SqmUtil.containsCollectionFetches;
 import static org.hibernate.query.sqm.internal.SqmUtil.isSelect;
 import static org.hibernate.query.sqm.internal.SqmUtil.sortSpecification;
 import static org.hibernate.query.sqm.internal.SqmUtil.verifyIsNonSelectStatement;
@@ -500,7 +501,7 @@ public class QuerySqmImpl<R>
 		final SqmSelectStatement<?> sqmStatement = (SqmSelectStatement<?>) getSqmStatement();
 		final boolean containsCollectionFetches =
 				sqmStatement.containsCollectionFetches()
-						|| AppliedGraphs.containsCollectionFetches( getQueryOptions() );
+						|| containsCollectionFetches( getQueryOptions(), getSession() );
 		final boolean hasLimit = hasLimit( sqmStatement, getQueryOptions() );
 		final boolean needsDistinct = containsCollectionFetches
 				&& ( hasLimit || sqmStatement.usesDistinct() || hasAppliedGraph( getQueryOptions() ) );

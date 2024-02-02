@@ -57,6 +57,7 @@ import org.hibernate.sql.results.spi.RowTransformer;
 
 import static org.hibernate.internal.util.ReflectHelper.isClass;
 import static org.hibernate.query.sqm.internal.QuerySqmImpl.CRITERIA_HQL_STRING;
+import static org.hibernate.query.sqm.internal.SqmUtil.containsCollectionFetches;
 
 /**
  * Standard Hibernate implementation of SelectQueryPlan for SQM-backed
@@ -87,13 +88,7 @@ public class ConcreteSqmSelectQueryPlan<R> implements SelectQueryPlan<R> {
 
 		this.rowTransformer = determineRowTransformer( sqm, resultType, tupleMetadata, queryOptions );
 
-		final ListResultsConsumer.UniqueSemantic uniqueSemantic;
-		if ( sqm.producesUniqueResults() && !AppliedGraphs.containsCollectionFetches( queryOptions ) ) {
-			uniqueSemantic = ListResultsConsumer.UniqueSemantic.NONE;
-		}
-		else {
-			uniqueSemantic = ListResultsConsumer.UniqueSemantic.ALLOW;
-		}
+		final boolean uniqueResults = sqm.producesUniqueResults();
 		this.executeQueryInterpreter = (resultsConsumer, executionContext, sqmInterpretation, jdbcParameterBindings) -> {
 			final SharedSessionContractImplementor session = executionContext.getSession();
 			final JdbcOperationQuerySelect jdbcSelect = sqmInterpretation.getJdbcSelect();
@@ -139,7 +134,7 @@ public class ConcreteSqmSelectQueryPlan<R> implements SelectQueryPlan<R> {
 						jdbcParameterBindings,
 						listInterpreterExecutionContext( hql, executionContext, jdbcSelect, subSelectFetchKeyHandler ),
 						rowTransformer,
-						uniqueSemantic
+						uniqueSemantic( uniqueResults, queryOptions, session )
 				);
 			}
 			finally {
@@ -193,6 +188,15 @@ public class ConcreteSqmSelectQueryPlan<R> implements SelectQueryPlan<R> {
 			JdbcOperationQuerySelect jdbcSelect,
 			SubselectFetch.RegistrationHandler subSelectFetchKeyHandler) {
 		return new MySqmJdbcExecutionContextAdapter( executionContext, jdbcSelect, subSelectFetchKeyHandler, hql );
+	}
+
+	private static ListResultsConsumer.UniqueSemantic uniqueSemantic(
+			boolean uniqueResults,
+			QueryOptions queryOptions,
+			SharedSessionContractImplementor session) {
+		return uniqueResults && !containsCollectionFetches( queryOptions, session ) ?
+				ListResultsConsumer.UniqueSemantic.NONE :
+				ListResultsConsumer.UniqueSemantic.ALLOW;
 	}
 
 	private static SqmSelection<?> singleSelection(SqmSelectStatement<?> sqm) {
