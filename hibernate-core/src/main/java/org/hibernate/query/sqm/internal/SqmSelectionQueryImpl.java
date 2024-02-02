@@ -324,10 +324,12 @@ public class SqmSelectionQueryImpl<R> extends AbstractSelectionQuery<R>
 
 	protected List<R> doList() {
 		final SqmSelectStatement<?> sqmStatement = getSqmStatement();
-		final boolean containsCollectionFetches = sqmStatement.containsCollectionFetches();
+		final boolean containsCollectionFetches =
+				sqmStatement.containsCollectionFetches()
+				|| AppliedGraphs.containsCollectionFetches( getQueryOptions() );
 		final boolean hasLimit = hasLimit( sqmStatement, getQueryOptions() );
 		final boolean needsDistinct = containsCollectionFetches
-				&& ( sqmStatement.usesDistinct() || hasAppliedGraph( getQueryOptions() ) || hasLimit );
+				&& ( hasLimit || sqmStatement.usesDistinct() || hasAppliedGraph( getQueryOptions() ) );
 
 		final DomainQueryExecutionContext executionContextToUse;
 		if ( hasLimit && containsCollectionFetches ) {
