@@ -728,13 +728,16 @@ public class SchemaManagementToolCoordinator {
 		}
 
 		public static Set<ActionGrouping> interpret(Metadata metadata, Map<?,?> configurationValues) {
+			return interpret( metadata.getContributors(), configurationValues );
+		}
+
+		public static Set<ActionGrouping> interpret(Set<String> contributors, Map<?,?> configurationValues) {
 			// these represent the base (non-contributor-specific) values
 			final Action rootDatabaseAction = determineJpaDbActionSetting( configurationValues, null, null );
 			final Action rootScriptAction = determineJpaScriptActionSetting( configurationValues, null, null );
 
 			final Action rootAutoAction = determineAutoSettingImpliedAction( configurationValues, null, null );
 
-			final Set<String> contributors = metadata.getContributors();
 			final Set<ActionGrouping> groupings = new HashSet<>( contributors.size() );
 
 			// for each contributor, look for specific tooling config values

@@ -6,8 +6,10 @@
  */
 package org.hibernate.id.enhanced;
 
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 
 import org.hibernate.HibernateException;
 import org.hibernate.MappingException;
@@ -31,6 +33,7 @@ import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.tool.schema.extract.spi.SequenceInformation;
+import org.hibernate.tool.schema.spi.SchemaManagementToolCoordinator;
 import org.hibernate.type.Type;
 
 import org.jboss.logging.Logger;
@@ -199,6 +202,7 @@ public class SequenceStyleGenerator
 		final QualifiedName sequenceName = determineSequenceName( parameters, dialect, jdbcEnvironment, serviceRegistry );
 		final int initialValue = determineInitialValue( parameters );
 		int incrementSize = determineIncrementSize( parameters );
+		final String contributor = determineContributor( parameters );
 		final OptimizerDescriptor optimizationStrategy = determineOptimizationStrategy( parameters, incrementSize );
 
 		boolean forceTableUse = getBoolean( FORCE_TBL_PARAM, parameters );
@@ -208,6 +212,7 @@ public class SequenceStyleGenerator
 				jdbcEnvironment,
 				sequenceName,
 				incrementSize,
+				contributor,
 				physicalSequence,
 				optimizationStrategy,
 				serviceRegistry
@@ -242,6 +247,7 @@ public class SequenceStyleGenerator
 			JdbcEnvironment jdbcEnvironment,
 			QualifiedName sequenceName,
 			int incrementSize,
+			String contributor,
 			boolean physicalSequence,
 			OptimizerDescriptor optimizationStrategy,
 			ServiceRegistry serviceRegistry) {
@@ -254,7 +260,8 @@ public class SequenceStyleGenerator
 
 		if ( sequenceMismatchStrategy != SequenceMismatchStrategy.NONE
 				&& optimizationStrategy.isPooled()
-				&& physicalSequence ) {
+				&& physicalSequence
+				&& !hasCreateAction( contributor, configurationService ) ) {
 			final String databaseSequenceName = sequenceName.getObjectName().getText();
 			final Number databaseIncrementValue = getSequenceIncrementValue( jdbcEnvironment, databaseSequenceName );
 			if ( databaseIncrementValue != null && databaseIncrementValue.intValue() != incrementSize) {
@@ -278,6 +285,25 @@ public class SequenceStyleGenerator
 			}
 		}
 		return determineAdjustedIncrementSize( optimizationStrategy, incrementSize );
+	}
+
+	private static boolean hasCreateAction(String contributor, ConfigurationService configurationService) {
+		final Set<String> contributors = contributor == null ? Set.of() : Set.of( contributor );
+		final Set<SchemaManagementToolCoordinator.ActionGrouping> actionGroupings = SchemaManagementToolCoordinator.ActionGrouping.interpret(
+				contributors,
+				configurationService.getSettings()
+		);
+
+		if ( !actionGroupings.isEmpty() ) {
+			assert actionGroupings.size() == 1;
+			switch ( actionGroupings.iterator().next().getDatabaseAction() ) {
+				case CREATE_ONLY:
+				case CREATE:
+				case CREATE_DROP:
+					return true;
+			}
+		}
+		return false;
 	}
 
 	@Override
