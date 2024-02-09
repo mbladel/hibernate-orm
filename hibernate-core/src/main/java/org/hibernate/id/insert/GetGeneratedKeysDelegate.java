@@ -69,8 +69,10 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 			final List<String> columnNamesList = new ArrayList<>( resultBuilders.size() );
 			final boolean unquote = dialect().unquoteGetGeneratedKeys();
 			for ( GeneratedValueBasicResultBuilder resultBuilder : resultBuilders ) {
-				final String col = getActualGeneratedModelPart( resultBuilder.getModelPart() ).getSelectionExpression();
-				columnNamesList.add( unquote ? unquote( col, dialect() ) : col );
+				getActualGeneratedModelPart( resultBuilder.getModelPart() ).forEachSelectable( (i, selectable) -> {
+					final String col = selectable.getSelectionExpression();
+					columnNamesList.add( unquote ? unquote( col, dialect() ) : col );
+				} );
 			}
 			columnNames = columnNamesList.toArray( new String[0] );
 		}

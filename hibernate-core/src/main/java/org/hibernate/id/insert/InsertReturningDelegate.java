@@ -66,10 +66,9 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 		final List<GeneratedValueBasicResultBuilder> resultBuilders = jdbcValuesMappingProducer.getResultBuilders();
 		this.generatedColumns = new ArrayList<>( resultBuilders.size() );
 		for ( GeneratedValueBasicResultBuilder resultBuilder : resultBuilders ) {
-			generatedColumns.add( new ColumnReference(
-					tableReference,
-					getActualGeneratedModelPart( resultBuilder.getModelPart() )
-			) );
+			getActualGeneratedModelPart( resultBuilder.getModelPart() ).forEachSelectable(
+					(i, selectable) -> generatedColumns.add( new ColumnReference( tableReference, selectable ) )
+			);
 		}
 	}
 

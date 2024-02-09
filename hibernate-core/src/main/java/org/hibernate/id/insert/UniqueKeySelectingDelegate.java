@@ -65,7 +65,9 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 			final List<GeneratedValueBasicResultBuilder> resultBuilders = jdbcValuesMappingProducer.getResultBuilders();
 			final List<String> columnNames = new ArrayList<>( resultBuilders.size() );
 			for ( GeneratedValueBasicResultBuilder resultBuilder : resultBuilders ) {
-				columnNames.add( getActualGeneratedModelPart( resultBuilder.getModelPart() ).getSelectionExpression() );
+				getActualGeneratedModelPart( resultBuilder.getModelPart() ).forEachSelectable(
+						(i, selectable) -> columnNames.add( selectable.getSelectionExpression() )
+				);
 			}
 			selectString = persister.getSelectByUniqueKeyString(
 					uniqueKeyPropertyNames,

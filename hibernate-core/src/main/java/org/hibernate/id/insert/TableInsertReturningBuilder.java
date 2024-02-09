@@ -44,10 +44,9 @@ public class TableInsertReturningBuilder extends AbstractTableInsertBuilder {
 		);
 		final List<? extends ModelPart> insertGeneratedProperties = getMutationTarget().getInsertGeneratedProperties();
 		for ( final ModelPart prop : insertGeneratedProperties ) {
-			generatedColumns.add( new ColumnReference(
-					getMutatingTable(),
-					getActualGeneratedModelPart( castNonNull( prop.asBasicValuedModelPart() ) )
-			) );
+			getActualGeneratedModelPart( prop ).forEachSelectable(
+					(i, selectable) -> generatedColumns.add( new ColumnReference( getMutatingTable(), selectable ) )
+			);
 		}
 		// special case for rowid when the dialect supports it
 		final EntityRowIdMapping rowIdMapping = getMutationTarget().getRowIdMapping();

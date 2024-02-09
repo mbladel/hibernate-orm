@@ -27,6 +27,7 @@ import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.AttributeMappingsList;
 import org.hibernate.metamodel.mapping.BasicEntityIdentifierMapping;
+import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.sql.model.MutationOperation;
@@ -438,13 +439,22 @@ public class InsertCoordinatorStandard extends AbstractMutationCoordinator imple
 				assert entityPersister().getInsertDelegate() != null;
 				final OnExecutionGenerator generator = (OnExecutionGenerator) entityPersister().getGenerator();
 				if ( generator.referenceColumnsInSql( dialect() ) ) {
-					final BasicEntityIdentifierMapping identifierMapping = (BasicEntityIdentifierMapping) entityPersister().getIdentifierMapping();
+					final EntityIdentifierMapping identifierMapping = entityPersister().getIdentifierMapping();
 					final String[] columnValues = generator.getReferencedColumnValues( dialect );
-					tableMapping.getKeyMapping().forEachKeyColumn( (i, column) -> tableInsertBuilder.addKeyColumn(
-							column.getColumnName(),
-							columnValues[i],
-							identifierMapping.getJdbcMapping()
-					) );
+					tableMapping.getKeyMapping().forEachKeyColumn( (i, column) -> {
+						if ( columnValues[i] == null ) {
+							// Add the key column normally for assignment, this should only happen for composite identifier mappings
+							assert !(identifierMapping instanceof BasicEntityIdentifierMapping);
+							tableInsertBuilder.addKeyColumn( column );
+						}
+						else {
+							tableInsertBuilder.addKeyColumn(
+									column.getColumnName(),
+									columnValues[i],
+									identifierMapping.getJdbcMapping( i )
+							);
+						}
+					} );
 				}
 			}
 			else {

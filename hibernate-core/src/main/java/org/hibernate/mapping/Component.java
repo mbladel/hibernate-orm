@@ -670,9 +670,9 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 				return ( (BeforeExecutionGenerator) subgenerator)
 						.generate( session, incomingObject, null, INSERT );
 			}
-//			else {
-//				throw new IdentifierGenerationException( "Identity generation isn't supported for composite ids" );
-//			}
+			else {
+				throw new IllegalStateException( "Unexpected on-execution generator" );
+			}
 		}
 
 		@Override

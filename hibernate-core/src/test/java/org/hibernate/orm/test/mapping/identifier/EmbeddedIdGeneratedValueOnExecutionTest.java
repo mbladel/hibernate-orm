@@ -87,6 +87,10 @@ public class EmbeddedIdGeneratedValueOnExecutionTest {
 		@GeneratedValue(strategy = GenerationType.IDENTITY)
 		private Integer registrationId;
 
+		// todo marco : also add before-exeuction
+
+		// todo marco : also add on-update generated ? makes sense for non-ids imo
+
 		public PK() {
 		}
 

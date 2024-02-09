@@ -29,11 +29,14 @@ import org.hibernate.id.insert.UniqueKeySelectingDelegate;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
+import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.mutation.EntityTableMapping;
 import org.hibernate.pretty.MessageHelper;
+import org.hibernate.query.results.ResultBuilder;
 import org.hibernate.query.results.TableGroupImpl;
+import org.hibernate.query.results.implicit.ImplicitModelPartResultBuilderEmbeddable;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
@@ -260,7 +263,7 @@ public class GeneratedValuesHelper {
 				supportsRowId
 		);
 		final GeneratedValuesMappingProducer mappingProducer = new GeneratedValuesMappingProducer();
-		for ( int i = 0; i < generatedProperties.size(); i++ ) {
+		for ( int i = 0; i < generatedProperties.size(); ) {
 			final ModelPart modelPart = generatedProperties.get( i );
 			final BasicValuedModelPart basicModelPart = modelPart.asBasicValuedModelPart();
 			if ( basicModelPart != null ) {
@@ -273,20 +276,33 @@ public class GeneratedValuesHelper {
 				mappingProducer.addResultBuilder( resultBuilder );
 			}
 			else {
-				throw new UnsupportedOperationException( "Unsupported generated ModelPart: " + modelPart.getPartName() );
+				if ( modelPart instanceof EmbeddableValuedModelPart ) {
+					final EmbeddableValuedModelPart embeddableModelPart = (EmbeddableValuedModelPart) modelPart;
+					// todo marco : we need a new custom result builder, might use something like EmbeddableExpressionResultImpl
+					// and implement it like we did for the basic one.
+					final ResultBuilder builder = new ImplicitModelPartResultBuilderEmbeddable(
+							parentNavigablePath.append( modelPart.getPartName() ),
+							embeddableModelPart
+					);
+					// mappingProducer.addResultBuilder( builder );
+				}
+				else {
+					throw new UnsupportedOperationException( "Unsupported generated ModelPart: " + modelPart.getPartName() );
+				}
 			}
+
+			i += modelPart.getJdbcTypeCount();
 		}
 		return mappingProducer;
 	}
 
-	public static BasicValuedModelPart getActualGeneratedModelPart(BasicValuedModelPart modelPart) {
+	public static ModelPart getActualGeneratedModelPart(ModelPart modelPart) {
 		// Use the root entity descriptor's identifier mapping to get the correct selection
 		// expression since we always retrieve generated values for the root table only
 		return modelPart.isEntityIdentifierMapping() ?
 				modelPart.findContainingEntityMapping()
 						.getRootEntityDescriptor()
-						.getIdentifierMapping()
-						.asBasicValuedModelPart() :
+						.getIdentifierMapping() :
 				modelPart;
 	}
 

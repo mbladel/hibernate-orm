@@ -9,6 +9,7 @@ package org.hibernate.generator.values;
 import java.util.function.BiFunction;
 
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
+import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.query.results.DomainResultCreationStateImpl;
 import org.hibernate.query.results.ResultBuilder;
 import org.hibernate.query.results.ResultsHelper;
@@ -104,8 +105,10 @@ public class GeneratedValueBasicResultBuilder implements ResultBuilder {
 
 	private static int columnIndex(JdbcValuesMetadata jdbcResultsMetadata, BasicValuedModelPart modelPart) {
 		try {
+			final BasicValuedModelPart actualModelPart = getActualGeneratedModelPart( modelPart ).asBasicValuedModelPart();
+			assert actualModelPart != null : "Trying to resolve column index for non-basic model part";
 			return jdbcPositionToValuesArrayPosition( jdbcResultsMetadata.resolveColumnPosition(
-					getActualGeneratedModelPart( modelPart ).getSelectionExpression()
+					actualModelPart.getSelectionExpression()
 			) );
 		}
 		catch (Exception e) {

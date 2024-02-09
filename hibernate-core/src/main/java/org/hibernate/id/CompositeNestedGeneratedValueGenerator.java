@@ -24,9 +24,10 @@ import org.hibernate.generator.EventType;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.id.factory.spi.StandardGenerator;
+import org.hibernate.internal.util.collections.ArrayHelper;
 import org.hibernate.property.access.spi.Setter;
-import org.hibernate.type.CompositeType;
 import org.hibernate.service.ServiceRegistry;
+import org.hibernate.type.CompositeType;
 import org.hibernate.type.Type;
 
 import static org.hibernate.generator.EventTypeSets.INSERT_ONLY;
@@ -36,7 +37,7 @@ import static org.hibernate.generator.EventTypeSets.INSERT_ONLY;
  * need to happen to "fill" the identifier property(s).
  * <p>
  * This generator is used implicitly for all composite identifier scenarios if an
- * explicit generator is not in place.  So it make sense to discuss the various 
+ * explicit generator is not in place.  So it make sense to discuss the various
  * potential scenarios:<ul>
  * <li>
  * <i>"embedded" composite identifier</i> - this is possible only in HBM mappings
@@ -63,7 +64,11 @@ import static org.hibernate.generator.EventTypeSets.INSERT_ONLY;
  */
 @Internal
 public class CompositeNestedGeneratedValueGenerator
-		implements IdentifierGenerator, PostInsertIdentifierGenerator, StandardGenerator, IdentifierGeneratorAggregator, Serializable {
+		implements IdentifierGenerator,
+		PostInsertIdentifierGenerator,
+		StandardGenerator,
+		IdentifierGeneratorAggregator,
+		Serializable {
 	/**
 	 * Contract for declaring how to locate the context for sub-value injection.
 	 */
@@ -149,6 +154,10 @@ public class CompositeNestedGeneratedValueGenerator
 				null :
 				new ArrayList<>( generationPlans.size() );
 		for ( GenerationPlan generationPlan : generationPlans ) {
+			if ( generationPlan.getSubgenerator().generatedOnExecution() ) {
+				// todo marco : skip on-execution generators, better way?
+				continue;
+			}
 			final Object generated = generationPlan.execute( session, object );
 			if ( generatedValues != null ) {
 				generatedValues.add( generated );
@@ -158,7 +167,7 @@ public class CompositeNestedGeneratedValueGenerator
 			}
 		}
 
-		if ( generatedValues != null) {
+		if ( generatedValues != null ) {
 			final Object[] values = compositeType.getPropertyValues( context );
 			for ( int i = 0; i < generatedValues.size(); i++ ) {
 				values[generationPlans.get( i ).getPropertyIndex()] = generatedValues.get( i );
@@ -187,14 +196,31 @@ public class CompositeNestedGeneratedValueGenerator
 
 	@Override
 	public String[] getReferencedColumnValues(Dialect dialect) {
-		final List<OnExecutionGenerator> subgenerators = getOnExecutionSubgenerators();
-		assert !subgenerators.isEmpty();
-
-		final List<String> referencedColumnValues = new ArrayList<>( subgenerators.size() );
-		for ( OnExecutionGenerator subgenerator : subgenerators ) {
-			referencedColumnValues.addAll( List.of( subgenerator.getReferencedColumnValues( dialect ) ) );
+		final List<String> referencedColumnValues = new ArrayList<>( generationPlans.size() );
+		for ( int i = 0; i < compositeType.getPropertyNames().length; i++ ) {
+			final GenerationPlan generationPlan = getGenerationPlan( i );
+			if ( generationPlan != null ) {
+				final Generator subgenerator = generationPlan.getSubgenerator();
+				if ( subgenerator.generatedOnExecution() ) {
+					referencedColumnValues.addAll( List.of(
+							( (OnExecutionGenerator) subgenerator ).getReferencedColumnValues( dialect )
+					) );
+					continue;
+				}
+			}
+			// todo marco : this only works for basic values, what about nested embeddables?
+			referencedColumnValues.add( null );
 		}
-		return referencedColumnValues.toArray( new String[0] );
+		return ArrayHelper.toStringArray( referencedColumnValues );
+	}
+
+	private GenerationPlan getGenerationPlan(int propertyIndex) {
+		for ( GenerationPlan generationPlan : generationPlans ) {
+			if ( generationPlan.getPropertyIndex() == propertyIndex ) {
+				return generationPlan;
+			}
+		}
+		return null;
 	}
 
 	@Override
@@ -203,7 +229,7 @@ public class CompositeNestedGeneratedValueGenerator
 	}
 
 	private List<OnExecutionGenerator> getOnExecutionSubgenerators() {
-		if ( onExecutionGenerators == null ){
+		if ( onExecutionGenerators == null ) {
 			onExecutionGenerators = generationPlans.stream()
 					.map( GenerationPlan::getSubgenerator )
 					.filter( Generator::generatedOnExecution )
