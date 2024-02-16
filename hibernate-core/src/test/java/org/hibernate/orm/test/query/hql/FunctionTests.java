@@ -2076,10 +2076,46 @@ public class FunctionTests {
 	}
 
 	@Test
+	@RequiresDialectFeature(feature = DialectFeatureChecks.SupportsGroupByRollup.class)
+	public void testGroupByRollupPositional(SessionFactoryScope scope) {
+		scope.inTransaction(
+				session -> session.createQuery( "select avg(e.theDouble) as avgDouble, e.gender as gender, abs(e.theInt) as absInt from EntityOfBasics e group by rollup(2, 3)", Object[].class)
+						.list()
+		);
+	}
+
+	@Test
+	@RequiresDialectFeature(feature = DialectFeatureChecks.SupportsGroupByRollup.class)
+	public void testGroupByRollupAlias(SessionFactoryScope scope) {
+		scope.inTransaction(
+				session -> session.createQuery( "select avg(e.theDouble) as avgDouble, e.gender as gender, abs(e.theInt) as absInt from EntityOfBasics e group by rollup(gender, absInt)", Object[].class)
+						.list()
+		);
+	}
+
+	@Test
 	@RequiresDialectFeature(feature = DialectFeatureChecks.SupportsGroupByGroupingSets.class)
 	public void testGroupByGroupingSets(SessionFactoryScope scope) {
 		scope.inTransaction(
 				session -> session.createQuery( "select avg(e.theDouble), e.gender, e.theInt from EntityOfBasics e group by cube(e.gender, e.theInt)", Object[].class)
+						.list()
+		);
+	}
+
+	@Test
+	@RequiresDialectFeature(feature = DialectFeatureChecks.SupportsGroupByGroupingSets.class)
+	public void testGroupByGroupingSetsPositional(SessionFactoryScope scope) {
+		scope.inTransaction(
+				session -> session.createQuery( "select avg(e.theDouble) as avgDouble, e.gender as gender, abs(e.theInt) as absInt from EntityOfBasics e group by cube(2, 3)", Object[].class)
+						.list()
+		);
+	}
+
+	@Test
+	@RequiresDialectFeature(feature = DialectFeatureChecks.SupportsGroupByGroupingSets.class)
+	public void testGroupByGroupingSetsAlias(SessionFactoryScope scope) {
+		scope.inTransaction(
+				session -> session.createQuery( "select avg(e.theDouble) as avgDouble, e.gender as gender, abs(e.theInt) as absInt from EntityOfBasics e group by cube(gender, absInt)", Object[].class)
 						.list()
 		);
 	}
