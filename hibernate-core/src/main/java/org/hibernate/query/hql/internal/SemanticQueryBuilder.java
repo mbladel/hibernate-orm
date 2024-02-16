@@ -3183,19 +3183,23 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 					StrictJpaComplianceViolation.Type.TUPLES
 			);
 		}
-		final List<SqmExpression<?>> expressions = visitExpressions( ctx );
+		final List<SqmExpression<?>> expressions = visitExpressions( ctx, false );
 		return new SqmTuple<>( expressions, creationContext.getNodeBuilder() );
 	}
 
-	private List<SqmExpression<?>> visitExpressions(ParserRuleContext parentContext) {
+	private List<SqmExpression<?>> visitExpressions(ParserRuleContext parentContext, boolean allowPositionalOrAliases) {
 		final int size = parentContext.getChildCount();
 		// Shift 1 bit instead of division by 2
 		final int estimateExpressionsCount = ( size >> 1 ) - 1;
 		final List<SqmExpression<?>> expressions = new ArrayList<>( estimateExpressionsCount );
 		for ( int i = 0; i < size; i++ ) {
 			final ParseTree parseTree = parentContext.getChild( i );
-			if ( parseTree instanceof HqlParser.ExpressionOrPredicateContext ) {
-				expressions.add( (SqmExpression<?>) parseTree.accept( this ) );
+			if ( parseTree instanceof HqlParser.SummarizationExpressionContext ) {
+				final ParseTree child = parseTree.getChild( 0 );
+				final SqmExpression<?> expression = allowPositionalOrAliases
+						? resolveOrderByOrGroupByExpression( child, false, true )
+						: (SqmExpression<?>) child.accept( this );
+				expressions.add( expression );
 			}
 		}
 		return expressions;
@@ -4773,7 +4777,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 	public SqmExpression<?> visitCube(HqlParser.CubeContext ctx) {
 		return new SqmSummarization<>(
 				SqmSummarization.Kind.CUBE,
-				visitExpressions( ctx ),
+				visitExpressions( ctx, true ),
 				creationContext.getNodeBuilder()
 		);
 	}
@@ -4782,7 +4786,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 	public SqmExpression<?> visitRollup(HqlParser.RollupContext ctx) {
 		return new SqmSummarization<>(
 				SqmSummarization.Kind.ROLLUP,
-				visitExpressions( ctx ),
+				visitExpressions( ctx, true ),
 				creationContext.getNodeBuilder()
 		);
 	}

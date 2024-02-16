@@ -1574,15 +1574,27 @@ positionFunctionStringArgument
  * The 'cube()' function specific to the 'group by' clause
  */
 cube
-	: CUBE LEFT_PAREN expressionOrPredicate (COMMA expressionOrPredicate)* RIGHT_PAREN
+	: CUBE LEFT_PAREN summarizationExpression (COMMA summarizationExpression)* RIGHT_PAREN
 	;
 
 /**
  * The 'rollup()' function specific to the 'group by' clause
  */
 rollup
-	: ROLLUP LEFT_PAREN expressionOrPredicate (COMMA expressionOrPredicate)* RIGHT_PAREN
+	: ROLLUP LEFT_PAREN summarizationExpression (COMMA summarizationExpression)* RIGHT_PAREN
 	;
+
+/**
+ * A grouped item that occurs in the 'cube' or 'rollup' summarization functions
+ *
+ * a select item alias, an ordinal position of a select item, or an expression
+ */
+summarizationExpression
+	: identifier
+	| INTEGER_LITERAL
+	| expressionOrPredicate
+	;
+
 
 /**
  * Support for "soft" keywords which may be used as identifiers

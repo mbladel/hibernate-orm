@@ -7047,8 +7047,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		final List<SqmExpression<?>> groupingExpressions = sqmSummarization.getGroupings();
 		final int size = groupingExpressions.size();
 		final List<Expression> expressions = new ArrayList<>( size );
-		for ( int i = 0; i < size; i++ ) {
-			expressions.add( (Expression) groupingExpressions.get( i ).accept( this ) );
+		for ( SqmExpression<?> groupingExpression : groupingExpressions ) {
+			expressions.add( resolveGroupOrOrderByExpression( groupingExpression ) );
 		}
 		return new Summarization(
 				getSummarizationKind( sqmSummarization.getKind() ),

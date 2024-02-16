@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.mapping.CollectionPart;
@@ -32,6 +33,7 @@ import org.hibernate.query.sqm.tree.domain.SqmEntityValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.expression.SqmAliasedNodeRef;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
+import org.hibernate.query.sqm.tree.expression.SqmSummarization;
 import org.hibernate.query.sqm.tree.from.SqmAttributeJoin;
 import org.hibernate.query.sqm.tree.from.SqmFrom;
 import org.hibernate.query.sqm.tree.from.SqmFromClause;
@@ -246,14 +248,22 @@ public class SqmQuerySpec<T> extends SqmQueryPart<T>
 		}
 		else {
 			this.groupByClauseExpressions = groupByClauseExpressions;
-			for ( int i = 0; i < groupByClauseExpressions.size(); i++ ) {
-				final SqmExpression<?> groupItem = groupByClauseExpressions.get( i );
-				if ( groupItem instanceof SqmAliasedNodeRef ) {
-					this.hasPositionalGroupItem = true;
-					break;
+			this.hasPositionalGroupItem = hasPositionalGroupItem( groupByClauseExpressions );
+		}
+	}
+
+	private static boolean hasPositionalGroupItem(List<SqmExpression<?>> groupByExpressions) {
+		for ( final SqmExpression<?> groupItem : groupByExpressions ) {
+			if ( groupItem instanceof SqmAliasedNodeRef ) {
+				return true;
+			}
+			else if ( groupItem instanceof SqmSummarization<?> ) {
+				if ( hasPositionalGroupItem( ( (SqmSummarization<?>) groupItem ).getGroupings() ) ) {
+					return true;
 				}
 			}
 		}
+		return false;
 	}
 
 	public SqmPredicate getHavingClausePredicate() {
@@ -391,13 +401,14 @@ public class SqmQuerySpec<T> extends SqmQueryPart<T>
 	@Override
 	public SqmQuerySpec<T> setGroupingExpressions(List<? extends JpaExpression<?>> groupExpressions) {
 		this.hasPositionalGroupItem = false;
+		this.groupByClauseExpressions = groupExpressions.stream()
+				.map( e -> (SqmExpression<?>) e )
+				.collect( Collectors.toList() );
 		this.groupByClauseExpressions = new ArrayList<>( groupExpressions.size() );
 		for ( JpaExpression<?> groupExpression : groupExpressions ) {
-			if ( groupExpression instanceof SqmAliasedNodeRef ) {
-				this.hasPositionalGroupItem = true;
-			}
 			this.groupByClauseExpressions.add( (SqmExpression<?>) groupExpression );
 		}
+		this.hasPositionalGroupItem = hasPositionalGroupItem( this.groupByClauseExpressions );
 		return this;
 	}
 
@@ -406,11 +417,9 @@ public class SqmQuerySpec<T> extends SqmQueryPart<T>
 		this.hasPositionalGroupItem = false;
 		this.groupByClauseExpressions = new ArrayList<>( groupExpressions.length );
 		for ( JpaExpression<?> groupExpression : groupExpressions ) {
-			if ( groupExpression instanceof SqmAliasedNodeRef ) {
-				this.hasPositionalGroupItem = true;
-			}
 			this.groupByClauseExpressions.add( (SqmExpression<?>) groupExpression );
 		}
+		this.hasPositionalGroupItem = hasPositionalGroupItem( this.groupByClauseExpressions );
 		return this;
 	}
 
