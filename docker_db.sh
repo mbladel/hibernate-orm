@@ -909,8 +909,10 @@ tidb() {
 }
 
 tidb_5_1() {
+    $CONTAINER_CLI network rm -f tidb_network || true
+    $CONTAINER_CLI network create tidb_network
     $CONTAINER_CLI rm -f tidb || true
-    $CONTAINER_CLI run --name tidb -p4000:4000 -d docker.io/pingcap/tidb:v5.1.4
+    $CONTAINER_CLI run --name tidb -p4000:4000 -d --network tidb_network docker.io/pingcap/tidb:v5.1.4
     # Give the container some time to start
     OUTPUT=
     n=0
@@ -924,7 +926,7 @@ tidb_5_1() {
         echo "Waiting for TiDB to start..."
         sleep 3
     done
-    $CONTAINER_CLI run --link tidb:tidb -it --rm docker.io/mysql:8.2.0 mysql -htidb -P4000 -uroot -e "create database hibernate_orm_test; create user 'hibernate_orm_test' identified by 'hibernate_orm_test'; grant all on hibernate_orm_test.* to 'hibernate_orm_test';"
+    $CONTAINER_CLI run -it --rm --network tidb_network docker.io/mysql:8.2.0 mysql -htidb -P4000 -uroot -e "create database hibernate_orm_test; create user 'hibernate_orm_test' identified by 'hibernate_orm_test'; grant all on hibernate_orm_test.* to 'hibernate_orm_test';"
     if [ "$n" -ge 5 ]; then
       echo "TiDB failed to start and configure after 15 seconds"
     else
