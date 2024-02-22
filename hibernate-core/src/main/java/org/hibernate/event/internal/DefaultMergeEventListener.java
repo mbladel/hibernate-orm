@@ -425,7 +425,7 @@ public class DefaultMergeEventListener
 			cascadeOnMerge( source, persister, entity, copyCache );
 			copyValues( persister, entity, target, source, copyCache );
 			//copyValues works by reflection, so explicitly mark the entity instance dirty
-			markInterceptorDirty( entity, target );
+			markInterceptorDirty( entity, target, persister );
 			event.setResult( result );
 		}
 	}
@@ -510,7 +510,7 @@ public class DefaultMergeEventListener
 		return managed;
 	}
 
-	private static void markInterceptorDirty(final Object entity, final Object target) {
+	private static void markInterceptorDirty(final Object entity, final Object target, EntityPersister persister) {
 		// for enhanced entities, copy over the dirty attributes
 		if ( isSelfDirtinessTracker( entity ) && isSelfDirtinessTracker( target ) ) {
 			// clear, because setting the embedded attributes dirties them
@@ -518,6 +518,13 @@ public class DefaultMergeEventListener
 			selfDirtinessTrackerTarget.$$_hibernate_clearDirtyAttributes();
 			for ( String fieldName : asSelfDirtinessTracker( entity ).$$_hibernate_getDirtyAttributes() ) {
 				selfDirtinessTrackerTarget.$$_hibernate_trackChange( fieldName );
+			}
+			// If no dirty field was found the entity might have just been initialized.
+			// Mark all attributes as dirty and force the update
+			if ( !selfDirtinessTrackerTarget.$$_hibernate_hasDirtyAttributes() ) {
+				persister.getAttributeMappings().forEach(
+						a -> selfDirtinessTrackerTarget.$$_hibernate_trackChange( a.getAttributeName() )
+				);
 			}
 		}
 	}
