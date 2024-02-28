@@ -154,7 +154,7 @@ public class EntitySelectFetchInitializer implements EntityInitializer {
 						)
 				);
 			}
-			entityInstance = holder.getEntity();
+			entityInstance = holder.getManagedObject();
 			if ( holder.getEntityInitializer() == null ) {
 				if ( entityInstance != null && Hibernate.isInitialized( entityInstance ) ) {
 					state = State.INITIALIZED;
@@ -169,6 +169,14 @@ public class EntitySelectFetchInitializer implements EntityInitializer {
 							CONCRETE_NAME,
 							toLoggableString( getNavigablePath(), entityIdentifier ),
 							holder.getEntityInitializer()
+					);
+				}
+				if ( holder.getProxy() != null ) {
+					entityInstance = persistenceContext.narrowProxy(
+							entityInstance,
+							concreteDescriptor,
+							null,
+							holder.getEntity()
 					);
 				}
 				state = State.INITIALIZED;
@@ -212,12 +220,24 @@ public class EntitySelectFetchInitializer implements EntityInitializer {
 					entityIdentifier
 			);
 		}
-		entityInstance = session.internalLoad(
+
+		final Object loadedInstance = session.internalLoad(
 				entityName,
 				entityIdentifier,
 				true,
 				toOneMapping.isInternalLoadNullable()
 		);
+
+		final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( entityInstance );
+		if ( lazyInitializer != null && loadedInstance != null ) {
+			lazyInitializer.setUnwrap( toOneMapping.isUnwrapProxy() && isEnhancedForLazyLoading );
+			if ( lazyInitializer.isUninitialized() ) {
+				lazyInitializer.setImplementation( loadedInstance );
+			}
+		}
+		else {
+			entityInstance = loadedInstance;
+		}
 
 		if ( entityInstance == null ) {
 			if ( toOneMapping.getNotFoundAction() == NotFoundAction.EXCEPTION ) {
@@ -238,12 +258,6 @@ public class EntitySelectFetchInitializer implements EntityInitializer {
 					toLoggableString( getNavigablePath(), entityIdentifier ),
 					entityIdentifier
 			);
-		}
-
-		final boolean unwrapProxy = toOneMapping.isUnwrapProxy() && isEnhancedForLazyLoading;
-		final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( entityInstance );
-		if ( lazyInitializer != null ) {
-			lazyInitializer.setUnwrap( unwrapProxy );
 		}
 	}
 
