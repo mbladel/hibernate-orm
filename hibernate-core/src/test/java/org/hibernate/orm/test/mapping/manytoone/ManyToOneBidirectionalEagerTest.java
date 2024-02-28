@@ -8,24 +8,22 @@ package org.hibernate.orm.test.mapping.manytoone;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
 
 import static jakarta.persistence.CascadeType.ALL;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,6 +46,14 @@ public class ManyToOneBidirectionalEagerTest {
 			one.addMany( many1 );
 			one.addMany( many2 );
 			session.persist( one );
+		} );
+	}
+
+	@AfterAll
+	public void tearDown(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			session.createMutationQuery( "delete from ManyEntity" ).executeUpdate();
+			session.createMutationQuery( "delete from OneEntity" ).executeUpdate();
 		} );
 	}
 
