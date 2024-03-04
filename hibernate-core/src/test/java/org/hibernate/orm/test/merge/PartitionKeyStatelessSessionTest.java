@@ -28,7 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class PartitionKeyStatelessSessionTest {
 	@AfterAll
 	public void tearDown(SessionFactoryScope scope) {
-		scope.inTransaction( session -> session.createMutationQuery( "delete from PartitionedEntity" ).executeUpdate() );
+		scope.inTransaction( session -> session.createMutationQuery( "delete from PartitionedEntity" )
+				.executeUpdate() );
 	}
 
 	@Test
@@ -55,9 +56,11 @@ public class PartitionKeyStatelessSessionTest {
 			session.upsert( new PartitionedEntity( 2, 2, "entity_2" ) );
 		} );
 
-		scope.inStatelessSession( session -> assertThat(
-				session.get( PartitionedEntity.class, 2 ).getName()
-		).isEqualTo( "entity_2" ) );
+		scope.inStatelessSession( session -> {
+			final PartitionedEntity entity = session.get( PartitionedEntity.class, 2 );
+			assertThat( entity.getPartitionKey() ).isEqualTo( 2 );
+			assertThat( entity.getName() ).isEqualTo( "entity_2" );
+		} );
 	}
 
 	@Test
