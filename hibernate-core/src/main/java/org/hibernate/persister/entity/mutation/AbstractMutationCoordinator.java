@@ -20,6 +20,7 @@ import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.AttributeMappingsList;
 import org.hibernate.persister.entity.AbstractEntityPersister;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.model.ModelMutationLogging;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.MutationOperationGroup;
@@ -137,6 +138,7 @@ public abstract class AbstractMutationCoordinator {
 	}
 
 	protected void bindPartitionColumnValueBindings(
+			Object entity,
 			Object[] loadedState,
 			SharedSessionContractImplementor session,
 			JdbcValueBindings jdbcValueBindings) {
@@ -147,8 +149,9 @@ public abstract class AbstractMutationCoordinator {
 			for ( int i = 0; i < size; i++ ) {
 				final AttributeMapping attributeMapping = attributeMappings.get( i );
 				if ( attributeMapping.hasPartitionedSelectionMapping() ) {
+					final Object domainValue = loadedState != null ? loadedState[i] : persister.getValue( entity, i );
 					attributeMapping.decompose(
-							loadedState[i],
+							domainValue,
 							0,
 							jdbcValueBindings,
 							null,

@@ -267,6 +267,7 @@ public abstract class AbstractDeleteCoordinator
 		}
 
 		applyStaticDeleteTableDetails(
+				entity,
 				id,
 				rowId,
 				loadedState,
@@ -295,6 +296,7 @@ public abstract class AbstractDeleteCoordinator
 	}
 
 	protected void applyStaticDeleteTableDetails(
+			Object entity,
 			Object id,
 			Object rowId,
 			Object[] loadedState,
@@ -307,7 +309,8 @@ public abstract class AbstractDeleteCoordinator
 		}
 
 		final JdbcValueBindings jdbcValueBindings = mutationExecutor.getJdbcValueBindings();
-		bindPartitionColumnValueBindings( loadedState, session, jdbcValueBindings );
+		// todo marco : why don't we do this for dynamic deletes ???
+		bindPartitionColumnValueBindings( entity, loadedState, session, jdbcValueBindings );
 
 		applyId( id, rowId, mutationExecutor, staticOperationGroup, session );
 	}
