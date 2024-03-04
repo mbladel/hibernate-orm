@@ -310,7 +310,7 @@ public abstract class AbstractDeleteCoordinator
 
 		final JdbcValueBindings jdbcValueBindings = mutationExecutor.getJdbcValueBindings();
 		// todo marco : why don't we do this for dynamic deletes ???
-		bindPartitionColumnValueBindings( entity, loadedState, session, jdbcValueBindings );
+		bindPartitionColumnValueBindings( entity, id, loadedState, session, jdbcValueBindings );
 
 		applyId( id, rowId, mutationExecutor, staticOperationGroup, session );
 	}

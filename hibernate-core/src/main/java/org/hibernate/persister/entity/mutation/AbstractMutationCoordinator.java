@@ -139,19 +139,22 @@ public abstract class AbstractMutationCoordinator {
 
 	protected void bindPartitionColumnValueBindings(
 			Object entity,
+			Object id,
 			Object[] loadedState,
 			SharedSessionContractImplementor session,
 			JdbcValueBindings jdbcValueBindings) {
 		final AbstractEntityPersister persister = entityPersister();
 		if ( persister.hasPartitionedSelectionMapping() ) {
+			if ( loadedState == null ) {
+				loadedState = persister.getDatabaseSnapshot( id, session );
+			}
 			final AttributeMappingsList attributeMappings = persister.getAttributeMappings();
 			final int size = attributeMappings.size();
 			for ( int i = 0; i < size; i++ ) {
 				final AttributeMapping attributeMapping = attributeMappings.get( i );
 				if ( attributeMapping.hasPartitionedSelectionMapping() ) {
-					final Object domainValue = loadedState != null ? loadedState[i] : persister.getValue( entity, i );
 					attributeMapping.decompose(
-							domainValue,
+							loadedState != null ? loadedState[i] : persister.getValue( entity, i ),
 							0,
 							jdbcValueBindings,
 							null,

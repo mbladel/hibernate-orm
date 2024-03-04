@@ -775,7 +775,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 				(position, attribute) -> AttributeAnalysis.DirtynessStatus.CONSIDER_LIKE_DIRTY,
 				session
 		);
-		bindPartitionColumnValueBindings( entity, oldValues, session, mutationExecutor.getJdbcValueBindings() );
+		bindPartitionColumnValueBindings( entity, id, oldValues, session, mutationExecutor.getJdbcValueBindings() );
 
 		try {
 			return mutationExecutor.execute(
@@ -962,7 +962,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 				(attributeIndex, attribute) -> dirtinessChecker.include( attributeIndex, (SingularAttributeMapping) attribute ) ? AttributeAnalysis.DirtynessStatus.CONSIDER_LIKE_DIRTY : AttributeAnalysis.DirtynessStatus.NOT_DIRTY,
 				session
 		);
-		bindPartitionColumnValueBindings( entity, oldValues, session, mutationExecutor.getJdbcValueBindings() );
+		bindPartitionColumnValueBindings( entity, id, oldValues, session, mutationExecutor.getJdbcValueBindings() );
 
 		try {
 			return mutationExecutor.execute(
