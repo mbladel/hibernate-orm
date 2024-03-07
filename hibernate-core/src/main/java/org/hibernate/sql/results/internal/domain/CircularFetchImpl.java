@@ -138,7 +138,8 @@ public class CircularFetchImpl extends AbstractNonJoinedEntityFetch implements B
 				referencedPath,
 				fetchable,
 				selectByUniqueKey,
-				resultAssembler
+				resultAssembler,
+				null // todo marco : should we do this here?
 		);
 	}
 

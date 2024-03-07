@@ -203,6 +203,11 @@ public class Subclass extends PersistentClass {
 		return getSuperclass().isExplicitPolymorphism();
 	}
 
+	@Override
+	public boolean isConcreteType() {
+		return getRootClass().isConcreteType();
+	}
+
 	public void setSuperclass(PersistentClass superclass) {
 		this.superclass = superclass;
 	}

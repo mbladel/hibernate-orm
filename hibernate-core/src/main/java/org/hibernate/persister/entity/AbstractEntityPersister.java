@@ -194,6 +194,7 @@ import org.hibernate.metamodel.mapping.internal.CompoundNaturalIdMapping;
 import org.hibernate.metamodel.mapping.internal.DiscriminatedAssociationAttributeMapping;
 import org.hibernate.metamodel.mapping.internal.DiscriminatorTypeImpl;
 import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
+import org.hibernate.loader.ast.internal.EntityConcreteTypeLoader;
 import org.hibernate.metamodel.mapping.internal.EntityRowIdMappingImpl;
 import org.hibernate.metamodel.mapping.internal.EntityVersionMappingImpl;
 import org.hibernate.metamodel.mapping.internal.ExplicitColumnDiscriminatorMappingImpl;
@@ -450,6 +451,8 @@ public abstract class AbstractEntityPersister
 
 	private EntityMappingType superMappingType;
 	private SortedMap<String, EntityMappingType> subclassMappingTypes;
+	private final boolean concreteType;
+	private EntityConcreteTypeLoader concreteTypeLoader;
 
 	private EntityIdentifierMapping identifierMapping;
 	private NaturalIdMapping naturalIdMapping;
@@ -539,6 +542,10 @@ public abstract class AbstractEntityPersister
 		javaType = representationStrategy.getLoadJavaType();
 		assert javaType != null;
 		this.implementsLifecycle = Lifecycle.class.isAssignableFrom( javaType.getJavaTypeClass() );
+
+		concreteType = isPolymorphic()
+				&& ( getBytecodeEnhancementMetadata().isEnhancedForLazyLoading() || hasProxy() )
+				&& persistentClass.isConcreteType();
 
 		final Dialect dialect = creationContext.getDialect();
 
@@ -4279,6 +4286,28 @@ public abstract class AbstractEntityPersister
 	}
 
 	@Override
+	public boolean isConcreteType() {
+		return concreteType;
+	}
+
+	@Override
+	public EntityMappingType resolveConcreteTypeForId(Object id, SessionImplementor session) {
+		if ( !concreteType ) {
+			return this;
+		}
+
+		if ( superMappingType != null ) {
+			return getRootEntityDescriptor().resolveConcreteTypeForId( id, session );
+		}
+		else {
+			if ( concreteTypeLoader == null ) {
+				concreteTypeLoader = new EntityConcreteTypeLoader( getRootEntityDescriptor(), session.getFactory() );
+			}
+			return concreteTypeLoader.getConcreteType( id, session );
+		}
+	}
+
+	@Override
 	public String[] getKeyColumnNames() {
 		return getIdentifierColumnNames();
 	}
@@ -5214,6 +5243,7 @@ public abstract class AbstractEntityPersister
 		}
 
 		discriminatorMapping = generateDiscriminatorMapping( bootEntityDescriptor, creationProcess );
+
 		softDeleteMapping = resolveSoftDeleteMapping( this, bootEntityDescriptor, getIdentifierTableName(), creationProcess );
 
 		if ( softDeleteMapping != null ) {

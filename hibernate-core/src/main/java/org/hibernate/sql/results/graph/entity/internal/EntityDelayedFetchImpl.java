@@ -6,13 +6,18 @@
  */
 package org.hibernate.sql.results.graph.entity.internal;
 
+import java.util.BitSet;
+
 import org.hibernate.engine.FetchTiming;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.DomainResult;
+import org.hibernate.sql.results.graph.DomainResultCreationState;
 import org.hibernate.sql.results.graph.FetchParent;
 import org.hibernate.sql.results.graph.FetchParentAccess;
+import org.hibernate.sql.results.graph.basic.BasicFetch;
+import org.hibernate.sql.results.graph.basic.BasicResultAssembler;
 import org.hibernate.sql.results.graph.entity.EntityInitializer;
 
 /**
@@ -20,14 +25,19 @@ import org.hibernate.sql.results.graph.entity.EntityInitializer;
  * @author Steve Ebersole
  */
 public class EntityDelayedFetchImpl extends AbstractNonJoinedEntityFetch {
+	final BasicFetch<?> discriminatorFetch;
 
 	public EntityDelayedFetchImpl(
 			FetchParent fetchParent,
 			ToOneAttributeMapping fetchedAttribute,
 			NavigablePath navigablePath,
 			DomainResult<?> keyResult,
-			boolean selectByUniqueKey) {
+			boolean selectByUniqueKey,
+			DomainResultCreationState creationState) {
 		super( navigablePath, fetchedAttribute, fetchParent, keyResult, selectByUniqueKey );
+		discriminatorFetch = fetchedAttribute.getEntityMappingType().getEntityPersister().isConcreteType()
+				? creationState.visitDiscriminatorFetch( this )
+				: null;
 	}
 
 	@Override
@@ -42,7 +52,18 @@ public class EntityDelayedFetchImpl extends AbstractNonJoinedEntityFetch {
 				getNavigablePath(),
 				getEntityValuedModelPart(),
 				isSelectByUniqueKey(),
-				getKeyResult().createResultAssembler( parentAccess, creationState )
+				getKeyResult().createResultAssembler( parentAccess, creationState ),
+				discriminatorFetch != null
+						? (BasicResultAssembler<?>) discriminatorFetch.createResultAssembler( parentAccess, creationState )
+						: null
 		);
+	}
+
+	@Override
+	public void collectValueIndexesToCache(BitSet valueIndexes) {
+		if ( discriminatorFetch != null ) {
+			discriminatorFetch.collectValueIndexesToCache( valueIndexes );
+		}
+		super.collectValueIndexesToCache( valueIndexes );
 	}
 }

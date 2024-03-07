@@ -1355,7 +1355,8 @@ public class ToOneAttributeMapping
 					this,
 					fetchablePath,
 					domainResult,
-					isSelectByUniqueKey( sideNature )
+					isSelectByUniqueKey( sideNature ),
+					creationState
 			);
 		}
 	}
@@ -1368,8 +1369,16 @@ public class ToOneAttributeMapping
 			ToOneAttributeMapping fetchedAttribute,
 			NavigablePath navigablePath,
 			DomainResult<?> keyResult,
-			boolean selectByUniqueKey) {
-		return new EntityDelayedFetchImpl( fetchParent, fetchedAttribute, navigablePath, keyResult, selectByUniqueKey );
+			boolean selectByUniqueKey,
+			DomainResultCreationState creationState) {
+		return new EntityDelayedFetchImpl(
+				fetchParent,
+				fetchedAttribute,
+				navigablePath,
+				keyResult,
+				selectByUniqueKey,
+				creationState
+		);
 	}
 
 	/**
@@ -1651,12 +1660,22 @@ public class ToOneAttributeMapping
 			);
 		}
 
+		final TableGroup tableGroup = determineTableGroupForFetch(
+				fetchablePath,
+				fetchParent,
+				parentTableGroup,
+				resultVariable,
+				fromClauseAccess,
+				creationState
+		);
+
 		return buildEntityDelayedFetch(
 				fetchParent,
 				this,
 				fetchablePath,
 				keyResult,
-				selectByUniqueKey
+				selectByUniqueKey,
+				creationState
 		);
 	}
 

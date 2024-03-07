@@ -29,6 +29,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.CacheLayout;
 import org.hibernate.annotations.Check;
 import org.hibernate.annotations.Checks;
+import org.hibernate.annotations.ConcreteType;
 import org.hibernate.annotations.DiscriminatorFormula;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
@@ -188,6 +189,7 @@ public class EntityBinder {
 	private PolymorphismType polymorphismType;
 	private boolean lazy;
 	private XClass proxyClass;
+	private boolean concreteType;
 	private String where;
 	// todo : we should defer to InFlightMetadataCollector.EntityTableXref for secondary table tracking;
 	//		atm we use both from here; HBM binding solely uses InFlightMetadataCollector.EntityTableXref
@@ -1302,6 +1304,7 @@ public class EntityBinder {
 		bindOptimisticLocking();
 		bindPolymorphism();
 		bindProxy();
+		bindConcreteType();
 		bindWhere();
 		bindCache();
 		bindNaturalIdCache();
@@ -1588,6 +1591,16 @@ public class EntityBinder {
 		final ReflectionManager reflectionManager = context.getBootstrapContext().getReflectionManager();
 		final XClass proxyClass = reflectionManager.toXClass( proxy.proxyClass() );
 		return isDefault( proxyClass, context ) ? annotatedClass : proxyClass;
+	}
+
+	public void bindConcreteType() {
+		final ConcreteType concreteType = annotatedClass.getAnnotation( ConcreteType.class );
+		if ( concreteType != null ) {
+			if ( persistentClass.getSuperclass() != null ) {
+				throw new AnnotationException( "Annotation '@ConcreteType' is only supported on root entity types" );
+			}
+			persistentClass.getRootClass().setConcreteType( true );
+		}
 	}
 
 	public void bindWhere() {
