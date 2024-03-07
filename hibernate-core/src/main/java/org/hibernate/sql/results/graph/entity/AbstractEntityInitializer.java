@@ -358,7 +358,7 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 				);
 			}
 			else if ( concreteDescriptor != null
-					|| ( concreteDescriptor = determineConcreteEntityDescriptor( rowProcessingState ) ) != null ) {
+					|| ( concreteDescriptor = determineConcreteEntityDescriptor( rowProcessingState, discriminatorAssembler, entityDescriptor ) ) != null ) {
 				// 2) build the EntityKey
 				entityKey = new EntityKey( id, concreteDescriptor );
 				state = State.KEY_RESOLVED;
@@ -374,7 +374,10 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 		}
 	}
 
-	private EntityPersister determineConcreteEntityDescriptor(RowProcessingState rowProcessingState)
+	public static EntityPersister determineConcreteEntityDescriptor(
+			RowProcessingState rowProcessingState,
+			BasicResultAssembler<?> discriminatorAssembler,
+			EntityPersister entityDescriptor)
 			throws WrongClassException {
 		if ( discriminatorAssembler == null
 				|| rowProcessingState.isQueryCacheHit() && !entityDescriptor.storeDiscriminatorInShallowQueryCacheLayout() ) {
@@ -406,6 +409,7 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 			}
 		}
 	}
+
 	private Object initializeIdentifier(RowProcessingState rowProcessingState) {
 		final JdbcValuesSourceProcessingState jdbcValuesSourceProcessingState =
 				rowProcessingState.getJdbcValuesSourceProcessingState();
@@ -431,7 +435,7 @@ public abstract class AbstractEntityInitializer extends AbstractFetchParentAcces
 				// The id can only be the entity instance if this is a non-aggregated id that has no containing class
 				&& entityDescriptor.getIdentifierMapping() instanceof CompositeIdentifierMapping
 				&& !( (CompositeIdentifierMapping) entityDescriptor.getIdentifierMapping() ).hasContainingClass()
-				&& ( concreteDescriptor = determineConcreteEntityDescriptor( rowProcessingState ) ) != null
+				&& ( concreteDescriptor = determineConcreteEntityDescriptor( rowProcessingState, discriminatorAssembler, entityDescriptor ) ) != null
 				&& concreteDescriptor.isInstance( id );
 	}
 

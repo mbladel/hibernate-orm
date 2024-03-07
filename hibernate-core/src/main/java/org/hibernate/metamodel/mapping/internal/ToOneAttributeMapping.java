@@ -98,6 +98,7 @@ import org.hibernate.sql.results.graph.embeddable.EmbeddableValuedFetchable;
 import org.hibernate.sql.results.graph.entity.EntityFetch;
 import org.hibernate.sql.results.graph.entity.EntityValuedFetchable;
 import org.hibernate.sql.results.graph.entity.internal.EntityDelayedFetchImpl;
+import org.hibernate.sql.results.graph.entity.internal.EntityDelayedFetchJoinedDiscriminatorImpl;
 import org.hibernate.sql.results.graph.entity.internal.EntityFetchJoinedImpl;
 import org.hibernate.sql.results.graph.entity.internal.EntityFetchSelectImpl;
 import org.hibernate.sql.results.internal.NullValueAssembler;
@@ -1355,7 +1356,8 @@ public class ToOneAttributeMapping
 					this,
 					fetchablePath,
 					domainResult,
-					isSelectByUniqueKey( sideNature )
+					isSelectByUniqueKey( sideNature ),
+					creationState
 			);
 		}
 	}
@@ -1368,8 +1370,17 @@ public class ToOneAttributeMapping
 			ToOneAttributeMapping fetchedAttribute,
 			NavigablePath navigablePath,
 			DomainResult<?> keyResult,
-			boolean selectByUniqueKey) {
-		return new EntityDelayedFetchImpl( fetchParent, fetchedAttribute, navigablePath, keyResult, selectByUniqueKey );
+			boolean selectByUniqueKey,
+			DomainResultCreationState creationState) {
+		// return new EntityDelayedFetchImpl( fetchParent, fetchedAttribute, navigablePath, keyResult, selectByUniqueKey );
+		return new EntityDelayedFetchJoinedDiscriminatorImpl(
+				fetchParent,
+				fetchedAttribute,
+				keyResult,
+				navigablePath,
+				selectByUniqueKey,
+				creationState
+		);
 	}
 
 	/**
@@ -1651,12 +1662,22 @@ public class ToOneAttributeMapping
 			);
 		}
 
+		final TableGroup tableGroup = determineTableGroupForFetch(
+				fetchablePath,
+				fetchParent,
+				parentTableGroup,
+				resultVariable,
+				fromClauseAccess,
+				creationState
+		);
+
 		return buildEntityDelayedFetch(
 				fetchParent,
 				this,
 				fetchablePath,
 				keyResult,
-				selectByUniqueKey
+				selectByUniqueKey,
+				creationState
 		);
 	}
 
