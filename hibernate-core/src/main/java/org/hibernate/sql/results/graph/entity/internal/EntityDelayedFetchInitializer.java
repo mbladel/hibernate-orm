@@ -26,11 +26,14 @@ import org.hibernate.sql.exec.spi.ExecutionContext;
 import org.hibernate.sql.results.graph.DomainResultAssembler;
 import org.hibernate.sql.results.graph.FetchParentAccess;
 import org.hibernate.sql.results.graph.Initializer;
+import org.hibernate.sql.results.graph.basic.BasicResultAssembler;
 import org.hibernate.sql.results.graph.entity.EntityInitializer;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 import org.hibernate.type.Type;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
+
+import static org.hibernate.sql.results.graph.entity.AbstractEntityInitializer.determineConcreteEntityDescriptor;
 
 /**
  * @author Andrea Boriero
@@ -46,6 +49,7 @@ public class EntityDelayedFetchInitializer implements EntityInitializer {
 	private final ToOneAttributeMapping referencedModelPart;
 	private final boolean selectByUniqueKey;
 	private final DomainResultAssembler<?> identifierAssembler;
+	private final BasicResultAssembler<?> discriminatorAssembler;
 
 	protected boolean parentShallowCached;
 
@@ -60,6 +64,16 @@ public class EntityDelayedFetchInitializer implements EntityInitializer {
 			ToOneAttributeMapping referencedModelPart,
 			boolean selectByUniqueKey,
 			DomainResultAssembler<?> identifierAssembler) {
+		this( parentAccess, fetchedNavigable, referencedModelPart, selectByUniqueKey, identifierAssembler, null );
+	}
+
+	public EntityDelayedFetchInitializer(
+			FetchParentAccess parentAccess,
+			NavigablePath fetchedNavigable,
+			ToOneAttributeMapping referencedModelPart,
+			boolean selectByUniqueKey,
+			DomainResultAssembler<?> identifierAssembler,
+			BasicResultAssembler<?> discriminatorAssembler) {
 		// associations marked with `@NotFound` are ALWAYS eagerly fetched
 		assert referencedModelPart.getNotFoundAction() == null;
 
@@ -71,6 +85,7 @@ public class EntityDelayedFetchInitializer implements EntityInitializer {
 		this.referencedModelPart = referencedModelPart;
 		this.selectByUniqueKey = selectByUniqueKey;
 		this.identifierAssembler = identifierAssembler;
+		this.discriminatorAssembler = discriminatorAssembler;
 	}
 
 	@Override
@@ -109,7 +124,12 @@ public class EntityDelayedFetchInitializer implements EntityInitializer {
 		}
 		else {
 			final SharedSessionContractImplementor session = rowProcessingState.getSession();
-			final EntityPersister concreteDescriptor = referencedModelPart.getEntityMappingType().getEntityPersister();
+
+			final EntityPersister concreteDescriptor = determineConcreteEntityDescriptor(
+					rowProcessingState,
+					discriminatorAssembler,
+					referencedModelPart.getEntityMappingType().getEntityPersister()
+			);
 			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
 			if ( selectByUniqueKey ) {
 				final String uniqueKeyPropertyName = referencedModelPart.getReferencedPropertyName();
