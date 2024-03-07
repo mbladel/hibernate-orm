@@ -36,6 +36,8 @@ import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.Filters;
 import org.hibernate.annotations.HQLSelect;
 import org.hibernate.annotations.Immutable;
+import org.hibernate.annotations.Lazy;
+import org.hibernate.annotations.LazyOption;
 import org.hibernate.annotations.Loader;
 import org.hibernate.annotations.Mutability;
 import org.hibernate.annotations.NaturalIdCache;
@@ -186,7 +188,7 @@ public class EntityBinder {
 	private XClass annotatedClass;
 	private PersistentClass persistentClass;
 	private PolymorphismType polymorphismType;
-	private boolean lazy;
+	private LazyOption lazy;
 	private XClass proxyClass;
 	private String where;
 	// todo : we should defer to InFlightMetadataCollector.EntityTableXref for secondary table tracking;
@@ -1307,7 +1309,7 @@ public class EntityBinder {
 		bindRowManagement();
 		bindOptimisticLocking();
 		bindPolymorphism();
-		bindProxy();
+		bindLazy();
 		bindWhere();
 		bindCache();
 		bindNaturalIdCache();
@@ -1579,14 +1581,24 @@ public class EntityBinder {
 	}
 
 	public void bindProxy() {
-		final Proxy proxy = annotatedClass.getAnnotation( Proxy.class );
-		if ( proxy != null ) {
-			lazy = proxy.lazy();
-			proxyClass = lazy ? proxyClass( proxy ) : null;
+
+	}
+
+	public void bindLazy() {
+		final Lazy lazy = annotatedClass.getAnnotation( Lazy.class );
+		if ( lazy != null ) {
+			this.lazy = lazy.value();
 		}
 		else {
-			lazy = true; //needed to allow association lazy loading.
-			proxyClass = annotatedClass;
+			final Proxy proxy = annotatedClass.getAnnotation( Proxy.class );
+			if ( proxy != null ) {
+				this.lazy = proxy.lazy() ? LazyOption.DEFAULT : LazyOption.NONE;
+				proxyClass = proxy.lazy() ? proxyClass( proxy ) : null;
+			}
+			else {
+				this.lazy = LazyOption.DEFAULT;
+				proxyClass = annotatedClass;
+			}
 		}
 	}
 

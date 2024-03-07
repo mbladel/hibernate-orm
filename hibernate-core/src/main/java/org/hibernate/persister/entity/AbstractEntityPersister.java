@@ -46,6 +46,7 @@ import org.hibernate.Remove;
 import org.hibernate.StaleObjectStateException;
 import org.hibernate.StaleStateException;
 import org.hibernate.annotations.CacheLayout;
+import org.hibernate.annotations.LazyOption;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.model.internal.SoftDeleteHelper;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
@@ -310,6 +311,7 @@ import static org.hibernate.engine.internal.Versioning.isVersionIncrementRequire
 import static org.hibernate.generator.EventType.INSERT;
 import static org.hibernate.generator.EventType.UPDATE;
 import static org.hibernate.internal.util.ReflectHelper.isAbstractClass;
+import static org.hibernate.internal.util.ReflectHelper.isFinalClass;
 import static org.hibernate.internal.util.StringHelper.isEmpty;
 import static org.hibernate.internal.util.StringHelper.qualifyConditionally;
 import static org.hibernate.internal.util.collections.ArrayHelper.contains;
@@ -446,6 +448,7 @@ public abstract class AbstractEntityPersister
 	private final Map<String,String[]> subclassPropertyColumnNames = new HashMap<>();
 
 	private final JavaType<?> javaType;
+	private LazyOption lazyOption; // not final because ProxyFactory creation can fail
 	private final EntityRepresentationStrategy representationStrategy;
 
 	private EntityMappingType superMappingType;
@@ -532,6 +535,14 @@ public abstract class AbstractEntityPersister
 				: ImmutableEntityEntryFactory.INSTANCE;
 
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+		lazyOption = persistentClass.getLazy();
+		if ( lazyOption != LazyOption.NONE
+				&& !getBytecodeEnhancementMetadata().isEnhancedForLazyLoading()
+				// TODO: this disables laziness even in non-pojo entity modes:
+				&& ( persistentClass.hasPojoRepresentation() || isFinalClass( persistentClass.getProxyInterface() ) ) ) {
+			lazyOption = LazyOption.NONE;
+		}
 
 		representationStrategy = creationContext.getBootstrapContext().getRepresentationStrategySelector()
 				.resolveStrategy( persistentClass, this, creationContext );
@@ -1220,7 +1231,7 @@ public abstract class AbstractEntityPersister
 			return NoopCacheEntryHelper.INSTANCE;
 		}
 		else if ( canUseReferenceCacheEntries() ) {
-			entityMetamodel.setLazy( false );
+			setLazy( LazyOption.NONE );
 			// todo : do we also need to unset proxy factory?
 			return new ReferenceCacheEntryHelper( this );
 		}
@@ -4238,9 +4249,19 @@ public abstract class AbstractEntityPersister
 	}
 
 	@Override
+	public LazyOption getLazy() {
+		return lazyOption;
+	}
+
+	@Override
+	public void setLazy(LazyOption lazyOption) {
+		this.lazyOption = lazyOption;
+	}
+
+	@Override
 	public boolean hasProxy() {
 		// skip proxy instantiation if entity is bytecode enhanced
-		return entityMetamodel.isLazy() && !entityMetamodel.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading();
+		return lazyOption != LazyOption.NONE && !entityMetamodel.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading();
 	}
 
 	@Override @Deprecated

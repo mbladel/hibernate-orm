@@ -12,6 +12,7 @@ import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.metamodel.spi.EntityInstantiator;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.tuple.entity.EntityMetamodel;
 import org.hibernate.type.descriptor.java.JavaType;
 
@@ -24,17 +25,17 @@ import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttrib
  * @author Steve Ebersole
  */
 public abstract class AbstractEntityInstantiatorPojo extends AbstractPojoInstantiator implements EntityInstantiator {
-	private final EntityMetamodel entityMetamodel;
+	private final EntityPersister entityPersister;
 	private final Class<?> proxyInterface;
 	private final boolean applyBytecodeInterception;
 
 	public AbstractEntityInstantiatorPojo(
-			EntityMetamodel entityMetamodel,
+			EntityPersister entityPersister,
 			PersistentClass persistentClass,
 			JavaType<?> javaType) {
 		super( javaType.getJavaTypeClass() );
 
-		this.entityMetamodel = entityMetamodel;
+		this.entityPersister = entityPersister;
 		this.proxyInterface = persistentClass.getProxyInterface();
 
 		//TODO this PojoEntityInstantiator appears to not be reused ?!
@@ -47,9 +48,9 @@ public abstract class AbstractEntityInstantiatorPojo extends AbstractPojoInstant
 		}
 
 		PersistentAttributeInterceptor interceptor = new LazyAttributeLoadingInterceptor(
-				entityMetamodel.getName(),
+				entityPersister.getEntityName(),
 				null,
-				entityMetamodel.getBytecodeEnhancementMetadata()
+				entityPersister.getBytecodeEnhancementMetadata()
 						.getLazyAttributesMetadata()
 						.getLazyAttributeNames(),
 				null

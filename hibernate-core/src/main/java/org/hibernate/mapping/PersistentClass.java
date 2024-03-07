@@ -18,6 +18,7 @@ import java.util.StringTokenizer;
 import org.hibernate.Internal;
 import org.hibernate.MappingException;
 import org.hibernate.annotations.CacheLayout;
+import org.hibernate.annotations.LazyOption;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.registry.classloading.spi.ClassLoadingException;
 import org.hibernate.boot.spi.ClassLoaderAccess;
@@ -83,7 +84,7 @@ public abstract class PersistentClass implements IdentifiableTypeClass, Attribut
 	private String jpaEntityName;
 
 	private String discriminatorValue;
-	private boolean lazy;
+	private LazyOption lazy;
 	private final List<Property> properties = new ArrayList<>();
 	private final List<Property> declaredProperties = new ArrayList<>();
 	private final List<Subclass> subclasses = new ArrayList<>();
@@ -406,11 +407,11 @@ public abstract class PersistentClass implements IdentifiableTypeClass, Attribut
 		return getTable() == closureTable;
 	}
 
-	public boolean isLazy() {
+	public LazyOption getLazy() {
 		return lazy;
 	}
 
-	public void setLazy(boolean lazy) {
+	public void setLazy(LazyOption lazy) {
 		this.lazy = lazy;
 	}
 
