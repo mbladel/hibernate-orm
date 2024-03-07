@@ -63,15 +63,6 @@ public class EntityDelayedFetchInitializer implements EntityInitializer {
 			NavigablePath fetchedNavigable,
 			ToOneAttributeMapping referencedModelPart,
 			boolean selectByUniqueKey,
-			DomainResultAssembler<?> identifierAssembler) {
-		this( parentAccess, fetchedNavigable, referencedModelPart, selectByUniqueKey, identifierAssembler, null );
-	}
-
-	public EntityDelayedFetchInitializer(
-			FetchParentAccess parentAccess,
-			NavigablePath fetchedNavigable,
-			ToOneAttributeMapping referencedModelPart,
-			boolean selectByUniqueKey,
 			DomainResultAssembler<?> identifierAssembler,
 			BasicResultAssembler<?> discriminatorAssembler) {
 		// associations marked with `@NotFound` are ALWAYS eagerly fetched

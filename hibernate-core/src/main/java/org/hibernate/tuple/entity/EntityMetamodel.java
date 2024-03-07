@@ -30,9 +30,9 @@ import org.hibernate.engine.spi.CascadeStyle;
 import org.hibernate.engine.spi.CascadeStyles;
 import org.hibernate.engine.spi.CascadingActions;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
-import org.hibernate.generator.BeforeExecutionGenerator;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.collections.ArrayHelper;
 import org.hibernate.mapping.Component;
@@ -41,7 +41,6 @@ import org.hibernate.mapping.ManyToOne;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Subclass;
-import org.hibernate.mapping.ToOne;
 import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
@@ -61,7 +60,6 @@ import org.hibernate.type.Type;
 import static java.util.Collections.singleton;
 import static org.hibernate.internal.CoreLogging.messageLogger;
 import static org.hibernate.internal.util.ReflectHelper.isAbstractClass;
-import static org.hibernate.internal.util.ReflectHelper.isFinalClass;
 import static org.hibernate.internal.util.collections.ArrayHelper.toIntArray;
 import static org.hibernate.internal.util.collections.CollectionHelper.toSmallMap;
 import static org.hibernate.internal.util.collections.CollectionHelper.toSmallSet;
@@ -125,8 +123,6 @@ public class EntityMetamodel implements Serializable {
 	private final int[] naturalIdPropertyNumbers;
 	private final boolean hasImmutableNaturalId;
 	private final boolean hasCacheableNaturalId;
-
-	private boolean lazy; //not final because proxy factory creation can fail
 	private final boolean hasCascades;
 	private final boolean hasCascadeDelete;
 	private final boolean mutable;
@@ -409,11 +405,6 @@ public class EntityMetamodel implements Serializable {
 		if ( hasLazyProperties ) {
 			LOG.lazyPropertyFetchingAvailable( name );
 		}
-
-		lazy = persistentClass.isLazy() && (
-				// TODO: this disables laziness even in non-pojo entity modes:
-				!persistentClass.hasPojoRepresentation() || !isFinalClass( persistentClass.getProxyInterface() ) )
-				|| bytecodeEnhancementMetadata.isEnhancedForLazyLoading();
 
 		mutable = persistentClass.isMutable();
 		if ( persistentClass.isAbstract() == null ) {
@@ -749,14 +740,6 @@ public class EntityMetamodel implements Serializable {
 
 	public boolean hasSubclasses() {
 		return hasSubclasses;
-	}
-
-	public boolean isLazy() {
-		return lazy;
-	}
-
-	public void setLazy(boolean lazy) {
-		this.lazy = lazy;
 	}
 
 	public boolean isVersioned() {

@@ -8,6 +8,7 @@ package org.hibernate.sql.results.graph.entity.internal;
 
 import java.util.BitSet;
 
+import org.hibernate.annotations.LazyOption;
 import org.hibernate.engine.FetchTiming;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
 import org.hibernate.spi.NavigablePath;
@@ -35,8 +36,9 @@ public class EntityDelayedFetchImpl extends AbstractNonJoinedEntityFetch {
 			boolean selectByUniqueKey,
 			DomainResultCreationState creationState) {
 		super( navigablePath, fetchedAttribute, fetchParent, keyResult, selectByUniqueKey );
-		// todo marco : add check for @LazyOptions == CONCRETE_TYPE
-		discriminatorFetch = creationState.visitDiscriminatorFetch( this );
+		discriminatorFetch = fetchedAttribute.getEntityMappingType().getEntityPersister().getLazy() == LazyOption.CONCRETE_TYPE
+				? creationState.visitDiscriminatorFetch( this )
+		: null;
 	}
 
 	@Override
