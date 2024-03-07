@@ -98,7 +98,6 @@ import org.hibernate.sql.results.graph.embeddable.EmbeddableValuedFetchable;
 import org.hibernate.sql.results.graph.entity.EntityFetch;
 import org.hibernate.sql.results.graph.entity.EntityValuedFetchable;
 import org.hibernate.sql.results.graph.entity.internal.EntityDelayedFetchImpl;
-import org.hibernate.sql.results.graph.entity.internal.EntityDelayedFetchJoinedDiscriminatorImpl;
 import org.hibernate.sql.results.graph.entity.internal.EntityFetchJoinedImpl;
 import org.hibernate.sql.results.graph.entity.internal.EntityFetchSelectImpl;
 import org.hibernate.sql.results.internal.NullValueAssembler;
@@ -1372,12 +1371,11 @@ public class ToOneAttributeMapping
 			DomainResult<?> keyResult,
 			boolean selectByUniqueKey,
 			DomainResultCreationState creationState) {
-		// return new EntityDelayedFetchImpl( fetchParent, fetchedAttribute, navigablePath, keyResult, selectByUniqueKey );
-		return new EntityDelayedFetchJoinedDiscriminatorImpl(
+		return new EntityDelayedFetchImpl(
 				fetchParent,
 				fetchedAttribute,
-				keyResult,
 				navigablePath,
+				keyResult,
 				selectByUniqueKey,
 				creationState
 		);
