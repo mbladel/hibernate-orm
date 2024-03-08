@@ -16,7 +16,6 @@ import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.mapping.PersistentClass;
-import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.tuple.entity.EntityMetamodel;
 import org.hibernate.type.descriptor.java.JavaType;
 
@@ -29,18 +28,18 @@ import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttrib
 public class EntityInstantiatorPojoStandard extends AbstractEntityInstantiatorPojo {
 	private static final CoreMessageLogger LOG = CoreLogging.messageLogger( EntityInstantiatorPojoStandard.class );
 
-	private final EntityPersister entityPersister;
+	private final EntityMetamodel entityMetamodel;
 	private final Class<?> proxyInterface;
 	private final boolean applyBytecodeInterception;
 
 	private final Constructor<?> constructor;
 
 	public EntityInstantiatorPojoStandard(
-			EntityPersister entityPersister,
+			EntityMetamodel entityMetamodel,
 			PersistentClass persistentClass,
 			JavaType<?> javaType) {
-		super( entityPersister, persistentClass, javaType );
-		this.entityPersister = entityPersister;
+		super( entityMetamodel, persistentClass, javaType );
+		this.entityMetamodel = entityMetamodel;
 		proxyInterface = persistentClass.getProxyInterface();
 		constructor = isAbstract() ? null : resolveConstructor( getMappedPojoClass() );
 		applyBytecodeInterception = isPersistentAttributeInterceptableType( persistentClass.getMappedClass() );
@@ -66,9 +65,9 @@ public class EntityInstantiatorPojoStandard extends AbstractEntityInstantiatorPo
 		if ( applyBytecodeInterception ) {
 			asPersistentAttributeInterceptable( entity )
 					.$$_hibernate_setInterceptor( new LazyAttributeLoadingInterceptor(
-							entityPersister.getEntityName(),
+							entityMetamodel.getName(),
 							null,
-							entityPersister.getBytecodeEnhancementMetadata()
+							entityMetamodel.getBytecodeEnhancementMetadata()
 									.getLazyAttributesMetadata()
 									.getLazyAttributeNames(),
 							null

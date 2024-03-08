@@ -14,7 +14,6 @@ import java.util.Set;
 
 import org.hibernate.HibernateException;
 import org.hibernate.MappingException;
-import org.hibernate.annotations.LazyOption;
 import org.hibernate.boot.registry.selector.spi.StrategySelector;
 import org.hibernate.bytecode.spi.BytecodeProvider;
 import org.hibernate.bytecode.spi.ReflectionOptimizer;
@@ -143,11 +142,12 @@ public class EntityRepresentationStrategyPojoStandard implements EntityRepresent
 				creationContext.getBootstrapContext().getServiceRegistry()
 						.requireService( BytecodeProvider.class );
 
+		final EntityMetamodel entityMetamodel = runtimeDescriptor.getEntityMetamodel();
 		ProxyFactory proxyFactory = null;
-		if ( proxyJtd != null && runtimeDescriptor.getLazy() != LazyOption.NONE ) {
+		if ( proxyJtd != null && entityMetamodel.isLazy() ) {
 			proxyFactory = createProxyFactory( bootDescriptor, bytecodeProvider, creationContext );
 			if ( proxyFactory == null ) {
-				runtimeDescriptor.setLazy( LazyOption.NONE );
+				entityMetamodel.setLazy( false );
 			}
 		}
 		this.proxyFactory = proxyFactory;
@@ -161,21 +161,21 @@ public class EntityRepresentationStrategyPojoStandard implements EntityRepresent
 		this.propertyAccessMap = propertyAccessMap;
 		this.reflectionOptimizer = resolveReflectionOptimizer( bytecodeProvider );
 
-		this.instantiator = determineInstantiator( bootDescriptor, runtimeDescriptor );
+		this.instantiator = determineInstantiator( bootDescriptor, entityMetamodel );
 	}
 
-	private EntityInstantiator determineInstantiator(PersistentClass bootDescriptor, EntityPersister entityPersister) {
+	private EntityInstantiator determineInstantiator(PersistentClass bootDescriptor, EntityMetamodel entityMetamodel) {
 		if ( reflectionOptimizer != null && reflectionOptimizer.getInstantiationOptimizer() != null ) {
 			final InstantiationOptimizer instantiationOptimizer = reflectionOptimizer.getInstantiationOptimizer();
 			return new EntityInstantiatorPojoOptimized(
-					entityPersister,
+					entityMetamodel,
 					bootDescriptor,
 					mappedJtd,
 					instantiationOptimizer
 			);
 		}
 
-		return new EntityInstantiatorPojoStandard( entityPersister, bootDescriptor, mappedJtd );
+		return new EntityInstantiatorPojoStandard( entityMetamodel, bootDescriptor, mappedJtd );
 	}
 
 	private ProxyFactory createProxyFactory(

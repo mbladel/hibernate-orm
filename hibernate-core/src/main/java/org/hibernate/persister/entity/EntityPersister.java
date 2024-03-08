@@ -17,7 +17,6 @@ import org.hibernate.Incubating;
 import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
 import org.hibernate.MappingException;
-import org.hibernate.annotations.LazyOption;
 import org.hibernate.bytecode.enhance.spi.interceptor.EnhancementAsProxyLazinessInterceptor;
 import org.hibernate.bytecode.spi.BytecodeEnhancementMetadata;
 import org.hibernate.cache.MutableCacheKeyBuilder;
@@ -543,10 +542,6 @@ public interface EntityPersister extends EntityMappingType, EntityMutationTarget
 		}
 		return span;
 	}
-
-	LazyOption getLazy();
-
-	void setLazy(LazyOption lazy);
 
 	/**
 	 * Determine whether this entity defines any lazy properties (when bytecode
@@ -1262,6 +1257,12 @@ public interface EntityPersister extends EntityMappingType, EntityMutationTarget
 
 	@Incubating
 	boolean storeDiscriminatorInShallowQueryCacheLayout();
+
+	@Incubating
+	default boolean isConcreteType() {
+		// todo marco : jdoc
+		return false; // todo marco : keep default impl?
+	}
 
 	/**
 	 * The property name of the "special" identifier property in HQL

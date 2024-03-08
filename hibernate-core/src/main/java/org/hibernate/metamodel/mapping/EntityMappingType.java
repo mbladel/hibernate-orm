@@ -243,7 +243,6 @@ public interface EntityMappingType
 		return getDiscriminatorValue().toString();
 	}
 
-
 	default EntityMappingType getRootEntityDescriptor() {
 		final EntityMappingType superMappingType = getSuperMappingType();
 		if ( superMappingType == null ) {
