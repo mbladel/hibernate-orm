@@ -18,7 +18,6 @@ import java.util.Properties;
 import org.hibernate.AssertionFailure;
 import org.hibernate.FetchMode;
 import org.hibernate.Remove;
-import org.hibernate.annotations.LazyOption;
 import org.hibernate.annotations.SourceType;
 import org.hibernate.boot.MappingException;
 import org.hibernate.boot.jaxb.Origin;
@@ -410,15 +409,15 @@ public class ModelBinder {
 		if ( StringHelper.isNotEmpty( entitySource.getProxy() ) ) {
 			final String qualifiedProxyName = sourceDocument.qualifyClassName( entitySource.getProxy() );
 			entityDescriptor.setProxyInterfaceName( qualifiedProxyName );
-			entityDescriptor.setLazy( LazyOption.DEFAULT );
+			entityDescriptor.setLazy( true );
 		}
 		else if ( entitySource.isLazy() ) {
 			entityDescriptor.setProxyInterfaceName( entityDescriptor.getClassName() );
-			entityDescriptor.setLazy( LazyOption.DEFAULT );
+			entityDescriptor.setLazy( true );
 		}
 		else {
 			entityDescriptor.setProxyInterfaceName( null );
-			entityDescriptor.setLazy( LazyOption.NONE );
+			entityDescriptor.setLazy( false );
 		}
 
 		entityDescriptor.setAbstract( entitySource.isAbstract() );

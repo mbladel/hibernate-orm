@@ -26,6 +26,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.CacheLayout;
 import org.hibernate.annotations.Check;
 import org.hibernate.annotations.Checks;
+import org.hibernate.annotations.ConcreteType;
 import org.hibernate.annotations.DiscriminatorFormula;
 import org.hibernate.annotations.DiscriminatorOptions;
 import org.hibernate.annotations.DynamicInsert;
@@ -34,8 +35,6 @@ import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.Filters;
 import org.hibernate.annotations.HQLSelect;
 import org.hibernate.annotations.Immutable;
-import org.hibernate.annotations.Lazy;
-import org.hibernate.annotations.LazyOption;
 import org.hibernate.annotations.Loader;
 import org.hibernate.annotations.Mutability;
 import org.hibernate.annotations.NaturalIdCache;
@@ -184,8 +183,9 @@ public class EntityBinder {
 	private Boolean forceDiscriminator;
 	private Boolean insertableDiscriminator;
 	private PolymorphismType polymorphismType;
-	private LazyOption lazy;
+	private boolean lazy;
 	private XClass proxyClass;
+	private boolean concreteType;
 	private String where;
 	// todo : we should defer to InFlightMetadataCollector.EntityTableXref for secondary table tracking;
 	//		atm we use both from here; HBM binding solely uses InFlightMetadataCollector.EntityTableXref
@@ -1263,7 +1263,8 @@ public class EntityBinder {
 		bindRowManagement();
 		bindOptimisticLocking();
 		bindPolymorphism();
-		bindLazy();
+		bindProxy();
+		bindConcreteType();
 		bindBatchSize();
 		bindWhere();
 		bindCache();
@@ -1276,6 +1277,7 @@ public class EntityBinder {
 		persistentClass.setEntityName( annotatedClass.getName() );
 		persistentClass.setCached( isCached );
 		persistentClass.setLazy( lazy );
+		persistentClass.setConcreteType( concreteType );
 		persistentClass.setQueryCacheLayout( queryCacheLayout );
 		if ( proxyClass != null ) {
 			persistentClass.setProxyInterfaceName( proxyClass.getName() );
@@ -1552,24 +1554,14 @@ public class EntityBinder {
 	}
 
 	public void bindProxy() {
-
-	}
-
-	public void bindLazy() {
-		final Lazy lazy = annotatedClass.getAnnotation( Lazy.class );
-		if ( lazy != null ) {
-			this.lazy = lazy.value();
+		final Proxy proxy = annotatedClass.getAnnotation( Proxy.class );
+		if ( proxy != null ) {
+			lazy = proxy.lazy();
+			proxyClass = lazy ? proxyClass( proxy ) : null;
 		}
 		else {
-			final Proxy proxy = annotatedClass.getAnnotation( Proxy.class );
-			if ( proxy != null ) {
-				this.lazy = proxy.lazy() ? LazyOption.DEFAULT : LazyOption.NONE;
-				proxyClass = proxy.lazy() ? proxyClass( proxy ) : null;
-			}
-			else {
-				this.lazy = LazyOption.DEFAULT;
-				proxyClass = annotatedClass;
-			}
+			lazy = true; //needed to allow association lazy loading.
+			proxyClass = annotatedClass;
 		}
 	}
 
@@ -1577,6 +1569,13 @@ public class EntityBinder {
 		final ReflectionManager reflectionManager = context.getBootstrapContext().getReflectionManager();
 		final XClass proxyClass = reflectionManager.toXClass( proxy.proxyClass() );
 		return isDefault( proxyClass, context ) ? annotatedClass : proxyClass;
+	}
+
+	public void bindConcreteType() {
+		final ConcreteType concreteType =annotatedClass.getAnnotation( ConcreteType.class );
+		if ( concreteType != null ) {
+			this.concreteType = true;
+		}
 	}
 
 	public void bindWhere() {

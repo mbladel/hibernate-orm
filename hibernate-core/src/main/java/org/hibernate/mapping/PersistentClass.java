@@ -18,7 +18,6 @@ import java.util.StringTokenizer;
 import org.hibernate.Internal;
 import org.hibernate.MappingException;
 import org.hibernate.annotations.CacheLayout;
-import org.hibernate.annotations.LazyOption;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.model.CustomSql;
 import org.hibernate.boot.registry.classloading.spi.ClassLoadingException;
@@ -83,7 +82,8 @@ public abstract class PersistentClass implements IdentifiableTypeClass, Attribut
 	private String jpaEntityName;
 
 	private String discriminatorValue;
-	private LazyOption lazy;
+	private boolean lazy;
+	private boolean concreteType;
 	private final List<Property> properties = new ArrayList<>();
 	private final List<Property> declaredProperties = new ArrayList<>();
 	private final List<Subclass> subclasses = new ArrayList<>();
@@ -402,12 +402,20 @@ public abstract class PersistentClass implements IdentifiableTypeClass, Attribut
 		return getTable() == closureTable;
 	}
 
-	public LazyOption getLazy() {
+	public boolean isLazy() {
 		return lazy;
 	}
 
-	public void setLazy(LazyOption lazy) {
+	public void setLazy(boolean lazy) {
 		this.lazy = lazy;
+	}
+
+	public boolean isConcreteType() {
+		return concreteType || getSuperclass() != null && getSuperclass().isConcreteType();
+	}
+
+	public void setConcreteType(boolean concreteType) {
+		this.concreteType = concreteType;
 	}
 
 	public abstract boolean hasEmbeddedIdentifier();

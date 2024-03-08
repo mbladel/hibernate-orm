@@ -46,7 +46,6 @@ import org.hibernate.Remove;
 import org.hibernate.StaleObjectStateException;
 import org.hibernate.StaleStateException;
 import org.hibernate.annotations.CacheLayout;
-import org.hibernate.annotations.LazyOption;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.model.internal.SoftDeleteHelper;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
@@ -311,7 +310,6 @@ import static org.hibernate.engine.internal.Versioning.isVersionIncrementRequire
 import static org.hibernate.generator.EventType.INSERT;
 import static org.hibernate.generator.EventType.UPDATE;
 import static org.hibernate.internal.util.ReflectHelper.isAbstractClass;
-import static org.hibernate.internal.util.ReflectHelper.isFinalClass;
 import static org.hibernate.internal.util.StringHelper.isEmpty;
 import static org.hibernate.internal.util.StringHelper.qualifyConditionally;
 import static org.hibernate.internal.util.collections.ArrayHelper.contains;
@@ -448,11 +446,11 @@ public abstract class AbstractEntityPersister
 	private final Map<String,String[]> subclassPropertyColumnNames = new HashMap<>();
 
 	private final JavaType<?> javaType;
-	private LazyOption lazyOption; // not final because ProxyFactory creation can fail
 	private final EntityRepresentationStrategy representationStrategy;
 
 	private EntityMappingType superMappingType;
 	private SortedMap<String, EntityMappingType> subclassMappingTypes;
+	private final boolean concreteType;
 
 	private EntityIdentifierMapping identifierMapping;
 	private NaturalIdMapping naturalIdMapping;
@@ -536,20 +534,14 @@ public abstract class AbstractEntityPersister
 
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-		lazyOption = persistentClass.getLazy();
-		if ( lazyOption != LazyOption.NONE
-				&& !getBytecodeEnhancementMetadata().isEnhancedForLazyLoading()
-				// TODO: this disables laziness even in non-pojo entity modes:
-				&& ( persistentClass.hasPojoRepresentation() || isFinalClass( persistentClass.getProxyInterface() ) ) ) {
-			lazyOption = LazyOption.NONE;
-		}
-
 		representationStrategy = creationContext.getBootstrapContext().getRepresentationStrategySelector()
 				.resolveStrategy( persistentClass, this, creationContext );
 
 		javaType = representationStrategy.getLoadJavaType();
 		assert javaType != null;
 		this.implementsLifecycle = Lifecycle.class.isAssignableFrom( javaType.getJavaTypeClass() );
+
+		concreteType = isPolymorphic() && persistentClass.isConcreteType();
 
 		final Dialect dialect = creationContext.getDialect();
 
@@ -1231,7 +1223,7 @@ public abstract class AbstractEntityPersister
 			return NoopCacheEntryHelper.INSTANCE;
 		}
 		else if ( canUseReferenceCacheEntries() ) {
-			setLazy( LazyOption.NONE );
+			entityMetamodel.setLazy( false );
 			// todo : do we also need to unset proxy factory?
 			return new ReferenceCacheEntryHelper( this );
 		}
@@ -4259,19 +4251,9 @@ public abstract class AbstractEntityPersister
 	}
 
 	@Override
-	public LazyOption getLazy() {
-		return lazyOption;
-	}
-
-	@Override
-	public void setLazy(LazyOption lazyOption) {
-		this.lazyOption = lazyOption;
-	}
-
-	@Override
 	public boolean hasProxy() {
 		// skip proxy instantiation if entity is bytecode enhanced
-		return lazyOption != LazyOption.NONE && !entityMetamodel.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading();
+		return entityMetamodel.isLazy() && !entityMetamodel.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading();
 	}
 
 	@Override @Deprecated
@@ -4307,6 +4289,11 @@ public abstract class AbstractEntityPersister
 	@Override
 	public boolean isExplicitPolymorphism() {
 		return entityMetamodel.isExplicitPolymorphism();
+	}
+
+	@Override
+	public boolean isConcreteType() {
+		return concreteType;
 	}
 
 	@Override
