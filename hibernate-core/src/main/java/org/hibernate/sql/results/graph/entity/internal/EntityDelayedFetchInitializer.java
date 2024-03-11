@@ -116,11 +116,22 @@ public class EntityDelayedFetchInitializer implements EntityInitializer {
 		else {
 			final SharedSessionContractImplementor session = rowProcessingState.getSession();
 
+			final EntityPersister entityPersister = referencedModelPart.getEntityMappingType().getEntityPersister();
 			final EntityPersister concreteDescriptor = determineConcreteEntityDescriptor(
 					rowProcessingState,
 					discriminatorAssembler,
-					referencedModelPart.getEntityMappingType().getEntityPersister()
+					entityPersister
 			);
+			if ( discriminatorAssembler != null && concreteDescriptor == entityPersister && referencedModelPart.isOptional()
+					&& referencedModelPart.getCardinality() == ToOneAttributeMapping.Cardinality.ONE_TO_ONE ) {
+				// Special case for optional-lazy-@OneToOne, if we find no discriminator it means the entity instance should be null
+				final Object discriminator = discriminatorAssembler.extractRawValue( rowProcessingState );
+				if ( discriminator == null ) {
+					entityInstance = null;
+					return;
+				}
+			}
+
 			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
 			if ( selectByUniqueKey ) {
 				final String uniqueKeyPropertyName = referencedModelPart.getReferencedPropertyName();
