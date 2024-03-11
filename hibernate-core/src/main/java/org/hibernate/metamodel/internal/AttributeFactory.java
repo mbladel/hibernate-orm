@@ -50,12 +50,15 @@ import org.hibernate.metamodel.model.domain.internal.EntityTypeImpl;
 import org.hibernate.metamodel.model.domain.internal.MapMember;
 import org.hibernate.metamodel.model.domain.internal.MappedSuperclassTypeImpl;
 import org.hibernate.metamodel.model.domain.internal.PluralAttributeBuilder;
+import org.hibernate.metamodel.model.domain.internal.PrimitiveBasicTypeImpl;
 import org.hibernate.metamodel.model.domain.internal.SingularAttributeImpl;
 import org.hibernate.metamodel.spi.EmbeddableRepresentationStrategy;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.property.access.internal.PropertyAccessMapImpl;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.type.AnyType;
+import org.hibernate.type.BasicType;
+import org.hibernate.type.ConvertedBasicType;
 import org.hibernate.type.EntityType;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.spi.CompositeTypeImplementor;
@@ -319,17 +322,23 @@ public class AttributeFactory {
 		);
 	}
 
+	@SuppressWarnings("unchecked")
 	private static <Y> DomainType<Y> basicDomainType(ValueContext typeContext, MetadataContext context) {
 		if ( typeContext.getJpaBindableType().isPrimitive() ) {
 			// Special BasicDomainType necessary for primitive types in the JPA metamodel
-			@SuppressWarnings("unchecked")
-			final Class<Y> type = (Class<Y>) typeContext.getJpaBindableType();
-			return context.resolveBasicType(type);
+			final Class<Y> primitiveClass = (Class<Y>) typeContext.getJpaBindableType();
+			if ( ( (SimpleValue) typeContext.getHibernateValue() ).getJpaAttributeConverterDescriptor() != null ) {
+				final BasicType<Y> convertedBasicType = (BasicType<Y>) typeContext.getHibernateValue().getType();
+				return new PrimitiveBasicTypeImpl<>(
+						convertedBasicType.getJavaTypeDescriptor(),
+						convertedBasicType.getJdbcType(),
+						primitiveClass
+				);
+			}
+			return context.resolveBasicType( primitiveClass );
 		}
 		else {
-			@SuppressWarnings("unchecked")
-			final DomainType<Y> type = (DomainType<Y>) typeContext.getHibernateValue().getType();
-			return type;
+			return (DomainType<Y>) typeContext.getHibernateValue().getType();
 		}
 	}
 
