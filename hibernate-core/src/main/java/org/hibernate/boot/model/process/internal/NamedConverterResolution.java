@@ -6,6 +6,7 @@
  */
 package org.hibernate.boot.model.process.internal;
 
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Map;
 import java.util.function.Function;
@@ -40,6 +41,7 @@ public class NamedConverterResolution<J> implements BasicValue.Resolution<J> {
 			Function<TypeConfiguration, BasicJavaType> explicitJtdAccess,
 			Function<TypeConfiguration, JdbcType> explicitStdAccess,
 			Function<TypeConfiguration, MutabilityPlan> explicitMutabilityPlanAccess,
+			Type resolvedJavaType,
 			JdbcTypeIndicators sqlTypeIndicators,
 			JpaAttributeConverterCreationContext converterCreationContext,
 			MetadataBuildingContext context) {
@@ -48,6 +50,7 @@ public class NamedConverterResolution<J> implements BasicValue.Resolution<J> {
 				explicitStdAccess,
 				explicitMutabilityPlanAccess,
 				converter( converterCreationContext, converterDescriptor ),
+				resolvedJavaType,
 				sqlTypeIndicators,
 				context
 		);
@@ -76,6 +79,7 @@ public class NamedConverterResolution<J> implements BasicValue.Resolution<J> {
 				explicitStdAccess,
 				explicitMutabilityPlanAccess,
 				converter( converterCreationContext, converterDescriptor ),
+				null,
 				sqlTypeIndicators,
 				context
 		);
@@ -93,6 +97,7 @@ public class NamedConverterResolution<J> implements BasicValue.Resolution<J> {
 			Function<TypeConfiguration, JdbcType> explicitStdAccess,
 			Function<TypeConfiguration, MutabilityPlan> explicitMutabilityPlanAccess,
 			JpaAttributeConverter<T,?> converter,
+			Type resolvedJavaType,
 			JdbcTypeIndicators sqlTypeIndicators,
 			MetadataBuildingContext context) {
 		final TypeConfiguration typeConfiguration = context.getBootstrapContext().getTypeConfiguration();
@@ -122,12 +127,18 @@ public class NamedConverterResolution<J> implements BasicValue.Resolution<J> {
 				domainJtd
 		);
 
+		//noinspection unchecked
+		final Class<T> primitiveClass = resolvedJavaType instanceof Class<?> && ( (Class<?>) resolvedJavaType ).isPrimitive()
+				? (Class<T>) resolvedJavaType
+				: null;
+
 		return new NamedConverterResolution<>(
 				domainJtd,
 				relationalJtd,
 				jdbcType,
 				converter,
 				mutabilityPlan,
+				primitiveClass,
 				context.getBootstrapContext().getTypeConfiguration()
 		);
 	}
@@ -182,6 +193,7 @@ public class NamedConverterResolution<J> implements BasicValue.Resolution<J> {
 			JdbcType jdbcType,
 			JpaAttributeConverter<J,?> valueConverter,
 			MutabilityPlan<J> mutabilityPlan,
+			Class<J> primitiveClass,
 			TypeConfiguration typeConfiguration) {
 		assert domainJtd != null;
 		this.domainJtd = domainJtd;
@@ -208,6 +220,7 @@ public class NamedConverterResolution<J> implements BasicValue.Resolution<J> {
 				),
 				jdbcType,
 				valueConverter,
+				primitiveClass,
 				mutabilityPlan
 		);
 		this.jdbcMapping = legacyResolvedType;

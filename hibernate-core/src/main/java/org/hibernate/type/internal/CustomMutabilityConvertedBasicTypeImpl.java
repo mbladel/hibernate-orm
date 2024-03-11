@@ -14,8 +14,8 @@ import org.hibernate.type.descriptor.jdbc.JdbcType;
  * @author Christian Beikov
  */
 public class CustomMutabilityConvertedBasicTypeImpl<J> extends ConvertedBasicTypeImpl<J> {
-
 	private final MutabilityPlan<J> mutabilityPlan;
+	private final Class<J> primitiveClass;
 
 	public CustomMutabilityConvertedBasicTypeImpl(
 			String name,
@@ -24,6 +24,7 @@ public class CustomMutabilityConvertedBasicTypeImpl<J> extends ConvertedBasicTyp
 			MutabilityPlan<J> mutabilityPlan) {
 		super( name, jdbcType, converter );
 		this.mutabilityPlan = mutabilityPlan;
+		this.primitiveClass = null;
 	}
 
 	public CustomMutabilityConvertedBasicTypeImpl(
@@ -31,13 +32,21 @@ public class CustomMutabilityConvertedBasicTypeImpl<J> extends ConvertedBasicTyp
 			String description,
 			JdbcType jdbcType,
 			BasicValueConverter<J, ?> converter,
+			Class<J> primitiveClass,
 			MutabilityPlan<J> mutabilityPlan) {
 		super( name, description, jdbcType, converter );
 		this.mutabilityPlan = mutabilityPlan;
+		assert primitiveClass == null || primitiveClass.isPrimitive();
+		this.primitiveClass = primitiveClass;
 	}
 
 	@Override
 	protected MutabilityPlan<J> getMutabilityPlan() {
 		return mutabilityPlan;
+	}
+
+	@Override
+	public Class<J> getJavaType() {
+		return primitiveClass != null ? primitiveClass : super.getJavaType();
 	}
 }
