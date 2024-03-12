@@ -50,6 +50,7 @@ import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.TypeDetails;
+import org.hibernate.models.spi.TypeVariableScope;
 import org.hibernate.usertype.CompositeUserType;
 
 import org.jboss.logging.Logger;
@@ -563,10 +564,11 @@ public class PropertyBinder {
 		}
 
 		final ClassDetails declaringClass = propertyContainer.getDeclaringClass();
-		final ClassDetails entity = propertyContainer.getEntityAtStake();
+		final TypeDetails entity = propertyContainer.getEntityAtStake();
 		int idPropertyCounter = 0;
 		final PropertyData propertyAnnotatedElement = new PropertyInferredData(
 				declaringClass,
+				entity,
 				property,
 				propertyContainer.getClassLevelAccessType().getType(),
 				context
@@ -579,7 +581,7 @@ public class PropertyBinder {
 			inFlightPropertyDataList.add( 0, propertyAnnotatedElement );
 			handleIdProperty( propertyContainer, context, declaringClass, entity, element );
 			if ( hasToOneAnnotation( element ) ) {
-				context.getMetadataCollector().addToOneAndIdProperty( entity, propertyAnnotatedElement );
+				context.getMetadataCollector().addToOneAndIdProperty( entity.determineRawClass(), propertyAnnotatedElement );
 			}
 			idPropertyCounter++;
 		}
@@ -587,7 +589,7 @@ public class PropertyBinder {
 			inFlightPropertyDataList.add( propertyAnnotatedElement );
 		}
 		if ( element.hasAnnotationUsage( MapsId.class ) ) {
-			context.getMetadataCollector().addPropertyAnnotatedWithMapsId( entity, propertyAnnotatedElement );
+			context.getMetadataCollector().addPropertyAnnotatedWithMapsId( entity.determineRawClass(), propertyAnnotatedElement );
 		}
 
 		return idPropertyCounter;
@@ -612,7 +614,7 @@ public class PropertyBinder {
 			PropertyContainer propertyContainer,
 			MetadataBuildingContext context,
 			ClassDetails declaringClass,
-			ClassDetails entity,
+			TypeDetails entity,
 			MemberDetails element) {
 		// The property must be put in hibernate.properties as it's a system wide property. Fixable?
 		//TODO support true/false/default on the property instead of present / not present
@@ -625,9 +627,10 @@ public class PropertyBinder {
 					if ( !element.hasAnnotationUsage( MapsId.class ) && isJoinColumnPresent( columnName, element ) ) {
 						//create a PropertyData for the specJ property holding the mapping
 						context.getMetadataCollector().addPropertyAnnotatedWithMapsIdSpecj(
-								entity,
+								entity.determineRawClass(),
 								new PropertyInferredData(
 										declaringClass,
+										entity,
 										//same dec
 										element,
 										// the actual @XToOne property

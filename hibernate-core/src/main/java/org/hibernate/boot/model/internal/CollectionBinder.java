@@ -2469,6 +2469,7 @@ public abstract class CollectionBinder {
 		//Make sure that collTyp is never used during the @ManyToAny branch: it will be set to void.class
 		final PropertyData inferredData = new PropertyInferredData(
 				null,
+				null,
 				property,
 				"unsupported",
 				buildingContext

@@ -7,25 +7,17 @@
 package org.hibernate.boot.model.internal;
 
 import java.util.Collection;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 import org.hibernate.MappingException;
 import org.hibernate.annotations.Target;
 import org.hibernate.boot.spi.AccessType;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.boot.spi.PropertyData;
-import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.models.internal.ClassTypeDetailsImpl;
 import org.hibernate.models.spi.AnnotationUsage;
-import org.hibernate.models.spi.ClassBasedTypeDetails;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
-import org.hibernate.models.spi.ParameterizedTypeDetails;
 import org.hibernate.models.spi.TypeDetails;
-import org.hibernate.models.spi.TypeVariableDetails;
-import org.hibernate.models.spi.WildcardTypeDetails;
 
 import jakarta.persistence.Access;
 
@@ -39,6 +31,7 @@ public class PropertyInferredData implements PropertyData {
 	private final AccessType defaultAccess;
 
 	private final ClassDetails declaringClass;
+	private final TypeDetails entity;
 	private final MemberDetails propertyMember;
 	private final MetadataBuildingContext buildingContext;
 
@@ -47,10 +40,12 @@ public class PropertyInferredData implements PropertyData {
 	 */
 	public PropertyInferredData(
 			ClassDetails declaringClass,
+			TypeDetails entity,
 			MemberDetails propertyMember,
 			String propertyAccessor,
 			MetadataBuildingContext buildingContext) {
 		this.declaringClass = declaringClass;
+		this.entity = entity;
 		this.propertyMember = propertyMember;
 		this.defaultAccess = AccessType.getAccessStrategy( propertyAccessor );
 		this.buildingContext = buildingContext;
@@ -95,7 +90,7 @@ public class PropertyInferredData implements PropertyData {
 			return new ClassTypeDetailsImpl( legacyTargetAnnotation.getClassDetails( "value" ), TypeDetails.Kind.CLASS );
 		}
 
-		return propertyMember.getType();
+		return entity != null ? propertyMember.resolveRelativeType( entity ) : propertyMember.getType();
 	}
 
 	@Override
@@ -110,7 +105,8 @@ public class PropertyInferredData implements PropertyData {
 			return new ClassTypeDetailsImpl( legacyAnnotationUsage.getClassDetails( "value" ), TypeDetails.Kind.CLASS );
 		}
 
-		return propertyMember.getAssociatedType();
+		final TypeDetails associatedType = propertyMember.getAssociatedType();
+		return entity != null ? associatedType.determineRelativeType( entity ) : associatedType;
 
 //		final TypeDetails memberType = propertyMember.getType();
 //
