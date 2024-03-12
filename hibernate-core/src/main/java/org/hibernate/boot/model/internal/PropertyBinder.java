@@ -141,7 +141,7 @@ public class PropertyBinder {
 	// property can be null
 	// prefer propertyName to property.getName() since some are overloaded
 	private MemberDetails memberDetails;
-	private ClassDetails returnedClass;
+	private TypeDetails returnedClass;
 	private boolean isId;
 	private Map<ClassDetails, InheritanceState> inheritanceStatePerClass;
 
@@ -207,7 +207,7 @@ public class PropertyBinder {
 		this.memberDetails = memberDetails;
 	}
 
-	public void setReturnedClass(ClassDetails returnedClass) {
+	public void setReturnedClass(TypeDetails returnedClass) {
 		this.returnedClass = returnedClass;
 	}
 
@@ -255,8 +255,7 @@ public class PropertyBinder {
 		basicValueBinder.setPersistentClassName( containerClassName );
 		basicValueBinder.setType(
 				memberDetails,
-				// todo marco : not sure about this one
-				returnedClass.asTypeDetails(),
+				returnedClass,
 				containerClassName,
 				holder.resolveAttributeConverterDescriptor( memberDetails )
 		);
@@ -364,7 +363,7 @@ public class PropertyBinder {
 					new PropertyPreloadedData(),
 					true,
 					false,
-					resolveCustomInstantiator( memberDetails, returnedClass ),
+					resolveCustomInstantiator( memberDetails, returnedClass.determineRawClass() ),
 					buildingContext
 			);
 			rootClass.setIdentifier( identifier );
@@ -776,7 +775,7 @@ public class PropertyBinder {
 		propertyBinder.setAccessType( inferredData.getDefaultAccess() );
 		propertyBinder.setHolder( propertyHolder );
 		propertyBinder.setMemberDetails( property );
-		propertyBinder.setReturnedClass( attributeClassDetails );
+		propertyBinder.setReturnedClass( attributeTypeDetails );
 		propertyBinder.setBuildingContext( context );
 		if ( isIdentifierMapper ) {
 			propertyBinder.setInsertable( false );
