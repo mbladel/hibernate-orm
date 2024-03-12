@@ -11,7 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MappedSuperclass;
 
 @MappedSuperclass
-public class ExampleSuperClassEmbedded<T> {
+public class ExampleSuperClassEmbedded {
 	private UserEntity user;
 
 	@ManyToOne( fetch = FetchType.LAZY )

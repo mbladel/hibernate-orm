@@ -81,6 +81,8 @@ public class MappedSuperclassWithGenericsTest {
 	}
 
 	@Entity(name = "BaseEntity")
+	// todo marco : here, T is re-defined locally and when resolving the type variable
+	//  we find that (which is not bound). How should we fix this ?
 	public static class BaseEntity<T> extends IntermediateAbstractMapped<byte[]> {
 
 		String aString;

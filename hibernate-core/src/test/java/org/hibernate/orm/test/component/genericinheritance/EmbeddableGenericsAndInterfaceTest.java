@@ -25,6 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SessionFactory
 @DomainModel( annotatedClasses = {
+		// todo marco : the wildcard types in this mappings didn't make sense to me
+		//  so I just removed them, is that ok?
 		UserEntity.class,
 		ExampleSuperClassEmbedded.class,
 		ExampleEmbedded.class,
@@ -38,7 +40,7 @@ public class EmbeddableGenericsAndInterfaceTest {
 			final UserEntity user = new UserEntity();
 			user.setName( "Debbie" );
 			session.persist( user );
-			final ExampleEmbedded<?> embedded = new ExampleEmbedded<>();
+			final ExampleEmbedded embedded = new ExampleEmbedded();
 			embedded.setUser( user );
 			final ExampleEntity entity = new ExampleEntity();
 			entity.setExampleEmbedded( embedded );
