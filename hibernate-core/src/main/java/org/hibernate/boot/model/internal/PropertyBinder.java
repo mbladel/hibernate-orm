@@ -255,7 +255,8 @@ public class PropertyBinder {
 		basicValueBinder.setPersistentClassName( containerClassName );
 		basicValueBinder.setType(
 				memberDetails,
-				memberDetails.getType(),
+				// todo marco : not sure about this one
+				returnedClass != null ? returnedClass.asTypeDetails() : memberDetails.getType(),
 				containerClassName,
 				holder.resolveAttributeConverterDescriptor( memberDetails )
 		);
