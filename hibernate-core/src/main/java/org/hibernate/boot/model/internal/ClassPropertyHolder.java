@@ -40,6 +40,7 @@ import org.hibernate.models.spi.TypeDetails;
 import jakarta.persistence.Convert;
 import jakarta.persistence.JoinTable;
 
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 import static org.hibernate.internal.util.StringHelper.isEmpty;
 
 /**
@@ -224,9 +225,6 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 			final Component component = (Component) value;
 			if ( component.isGeneric() && context.getMetadataCollector()
 					.getGenericComponent( component.getComponentClass() ) == null ) {
-				assert memberDetails.getType().getTypeKind() == TypeDetails.Kind.PARAMETERIZED_TYPE;
-				final ClassDetails componentClass = memberDetails.getType().asParameterizedType().getClassDetails();
-
 				// If we didn't already, register the generic component to use it later
 				// as the metamodel type for generic embeddable attributes
 				final Component copy = component.copy();
@@ -236,7 +234,7 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 					prepareActualProperty(
 							prop,
 							null,
-							componentClass,
+							memberDetails.getType().determineRawClass(),
 							true,
 							context,
 							copy::addProperty
@@ -302,37 +300,23 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 			return;
 		}
 
-		if ( memberDetails != null && memberDetails.getType().getTypeKind() != TypeDetails.Kind.PARAMETERIZED_TYPE ) {
-			// Avoid copying when the property doesn't depend on a type variable
-			propertyConsumer.accept( prop );
-			return;
+		final MemberDetails attributeMember;
+		if ( memberDetails == null ) {
+			attributeMember = getDeclaredAttributeMember(
+					prop.getName(),
+					declaringClass,
+					prop.getPropertyAccessorName()
+			);
+			if ( attributeMember == null ) {
+				return;
+			}
+		}
+		else {
+			attributeMember = memberDetails;
 		}
 
-		// no idea what this code should be doing
-//		final TypeDetails typeDetails = memberDetails.getType();
-//		if ( typeDetails.getTypeKind() == TypeDetails.Kind.PARAMETERIZED_TYPE ) {
-//
-//		}
-//		else if ( typeDetails.getTypeKind() == TypeDetails.Kind.TYPE_VARIABLE ) {
-//
-//		}
-
-		applyGenerics2( prop, declaringClass, allowCollections, propertyConsumer, context );
-		//applyGenerics( prop, typeDetails, allowCollections, propertyConsumer, context );
-	}
-
-	private static void applyGenerics2(
-			Property prop,
-			ClassDetails declaringClassDetails,
-			boolean allowCollections,
-			Consumer<Property> propertyConsumer,
-			MetadataBuildingContext context) {
-		final MemberDetails attributeMember = getDeclaredAttributeMember( prop.getName(), declaringClassDetails, prop.getPropertyAccessorName() );
-		if ( attributeMember == null ) {
-			return;
-		}
-
-		if ( attributeMember.getType().getTypeKind() != TypeDetails.Kind.TYPE_VARIABLE ) {
+		final TypeDetails.Kind kind = attributeMember.getType().getTypeKind();
+		if ( kind != TypeDetails.Kind.TYPE_VARIABLE && kind != TypeDetails.Kind.PARAMETERIZED_TYPE ) {
 			// Avoid copying when the property doesn't depend on a type variable
 			propertyConsumer.accept( prop );
 			return;
@@ -349,7 +333,7 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 			}
 			// The owner is a MappedSuperclass which is not a PersistentClass, so set it to null
 //						collection.setOwner( null );
-			collection.setRole( declaringClassDetails.getName() + "." + prop.getName() );
+			collection.setRole( declaringClass.getName() + "." + prop.getName() );
 			// To copy the element and key values, we need to defer setting the type name until the CollectionBinder ran
 			final Value originalValue = prop.getValue();
 			context.getMetadataCollector().addSecondPass(
