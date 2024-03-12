@@ -110,6 +110,8 @@ public class GenericMapAssociationTest {
 
 	@MappedSuperclass
 	public static abstract class AbstractParent<K, E> {
+		// todo marco : how are we supposed to interpret this @JoinTable?
+
 		@OneToMany
 		@JoinTable( name = "map_join_table", joinColumns = @JoinColumn( name = "container_id" ) )
 		private Map<K, E> map;
