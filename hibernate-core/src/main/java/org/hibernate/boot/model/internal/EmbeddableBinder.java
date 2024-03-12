@@ -460,8 +460,11 @@ public class EmbeddableBinder {
 		ClassDetails superClass = annotatedClass.determineRawClass().getSuperClass();
 		while ( isValidSuperclass( superClass, isIdClass ) ) {
 			//FIXME: proper support of type variables incl var resolved at upper levels
-			final PropertyContainer superContainer =
-					new PropertyContainer( superClass, annotatedClass.determineRawClass(), propertyAccessor );
+			final PropertyContainer superContainer = new PropertyContainer(
+					superClass,
+					annotatedClass,
+					propertyAccessor
+			);
 			addElementsOfClass( classElements, superContainer, context );
 			superClass = superClass.getSuperClass();
 		}

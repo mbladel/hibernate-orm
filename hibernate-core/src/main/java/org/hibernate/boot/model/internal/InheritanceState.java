@@ -224,7 +224,7 @@ public class InheritanceState {
 			for ( ClassDetails classToProcessForMappedSuperclass : classesToProcessForMappedSuperclass ) {
 				PropertyContainer propertyContainer = new PropertyContainer(
 						classToProcessForMappedSuperclass,
-						classDetails,
+						classDetails.asTypeDetails(),
 						accessType
 				);
 				int currentIdPropertyCount = addElementsOfClass(
