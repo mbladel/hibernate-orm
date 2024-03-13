@@ -224,10 +224,7 @@ public class InheritanceState {
 			for ( ClassDetails classToProcessForMappedSuperclass : classesToProcessForMappedSuperclass ) {
 				PropertyContainer propertyContainer = new PropertyContainer(
 						classToProcessForMappedSuperclass,
-						// todo marco : is this ok ?
-						//  note: TypeDetails because this could be a parametrized type (in case of embeddables)
-						//  e.g. see GenericEmbeddedPropertyMappedSuperclassTest
-						classDetails.asTypeDetails(),
+						classDetails,
 						accessType
 				);
 				int currentIdPropertyCount = addElementsOfClass(

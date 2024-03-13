@@ -63,7 +63,7 @@ public class PropertyContainer {
 	 * The class for which this container is created.
 	 */
 	private final ClassDetails classDetails;
-	private final TypeDetails entityAtStake;
+	private final TypeVariableScope typeAtStake;
 
 	/**
 	 * Holds the AccessType indicated for use at the class/container-level for cases where persistent attribute
@@ -73,14 +73,13 @@ public class PropertyContainer {
 
 	private final List<MemberDetails> attributeMembers;
 
-	public PropertyContainer(TypeDetails classDetails, TypeDetails entityAtStake, AccessType propertyAccessor) {
-		// todo : should use the TypeDetails, no?
-		this( classDetails.determineRawClass(), entityAtStake, propertyAccessor );
+	public PropertyContainer(TypeDetails classDetails, TypeVariableScope typeAtStake, AccessType propertyAccessor) {
+		this( classDetails.determineRawClass(), typeAtStake, propertyAccessor );
 	}
 
-	public PropertyContainer(ClassDetails classDetails, TypeDetails entityAtStake, AccessType defaultClassLevelAccessType) {
+	public PropertyContainer(ClassDetails classDetails, TypeVariableScope typeAtStake, AccessType defaultClassLevelAccessType) {
 		this.classDetails = classDetails;
-		this.entityAtStake = entityAtStake;
+		this.typeAtStake = typeAtStake;
 
 		if ( defaultClassLevelAccessType == AccessType.DEFAULT ) {
 			// this is effectively what the old code did when AccessType.DEFAULT was passed in
@@ -97,12 +96,12 @@ public class PropertyContainer {
 		assert classLevelAccessType == AccessType.FIELD || classLevelAccessType == AccessType.PROPERTY
 				|| classLevelAccessType == AccessType.RECORD;
 
-		attributeMembers = resolveAttributeMembers( classDetails, entityAtStake, classLevelAccessType );
+		attributeMembers = resolveAttributeMembers( classDetails, typeAtStake, classLevelAccessType );
 	}
 
 	private static List<MemberDetails> resolveAttributeMembers(
 			ClassDetails classDetails,
-			TypeDetails entityAtStake,
+			TypeVariableScope typeAtStake,
 			AccessType classLevelAccessType) {
 		final List<FieldDetails> fields = collectPotentialAttributeMembers( classDetails.getFields() );
 		final List<MethodDetails> getters = collectPotentialAttributeMembers( classDetails.getMethods() );
@@ -136,7 +135,7 @@ public class PropertyContainer {
 				getters,
 				recordComponents
 		);
-		return verifyAndInitializePersistentAttributes( classDetails, entityAtStake, attributeMemberMap );
+		return verifyAndInitializePersistentAttributes( classDetails, typeAtStake, attributeMemberMap );
 	}
 
 	private static Map<String, MemberDetails> buildAttributeMemberMap(
@@ -297,8 +296,8 @@ public class PropertyContainer {
 		return classDetails;
 	}
 
-	public TypeDetails getEntityAtStake() {
-		return entityAtStake;
+	public TypeVariableScope getTypeAtStake() {
+		return typeAtStake;
 	}
 
 	public AccessType getClassLevelAccessType() {
@@ -311,11 +310,11 @@ public class PropertyContainer {
 
 	private static List<MemberDetails> verifyAndInitializePersistentAttributes(
 			ClassDetails classDetails,
-			TypeDetails entityAtStake,
+			TypeVariableScope typeAtStake,
 			Map<String, MemberDetails> attributeMemberMap) {
 		final ArrayList<MemberDetails> output = new ArrayList<>( attributeMemberMap.size() );
 		for ( MemberDetails attributeMemberDetails : attributeMemberMap.values() ) {
-			final TypeDetails memberType = attributeMemberDetails.resolveRelativeType( entityAtStake );
+			final TypeDetails memberType = attributeMemberDetails.resolveRelativeType( typeAtStake );
 			if ( !memberType.isResolved()
 					&& !discoverTypeWithoutReflection( classDetails, attributeMemberDetails ) ) {
 				final String msg = "Property '" + StringHelper.qualify( classDetails.getName(), attributeMemberDetails.getName() ) +

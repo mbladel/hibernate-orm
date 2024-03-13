@@ -18,6 +18,7 @@ import org.hibernate.models.spi.AnnotationUsage;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.TypeDetails;
+import org.hibernate.models.spi.TypeVariableScope;
 
 import jakarta.persistence.Access;
 
@@ -31,7 +32,7 @@ public class PropertyInferredData implements PropertyData {
 	private final AccessType defaultAccess;
 
 	private final ClassDetails declaringClass;
-	private final TypeDetails entity;
+	private final TypeVariableScope ownerType;
 	private final MemberDetails propertyMember;
 	private final MetadataBuildingContext buildingContext;
 
@@ -40,12 +41,12 @@ public class PropertyInferredData implements PropertyData {
 	 */
 	public PropertyInferredData(
 			ClassDetails declaringClass,
-			TypeDetails entity,
+			TypeVariableScope ownerType,
 			MemberDetails propertyMember,
 			String propertyAccessor,
 			MetadataBuildingContext buildingContext) {
 		this.declaringClass = declaringClass;
-		this.entity = entity;
+		this.ownerType = ownerType;
 		this.propertyMember = propertyMember;
 		this.defaultAccess = AccessType.getAccessStrategy( propertyAccessor );
 		this.buildingContext = buildingContext;
@@ -90,7 +91,7 @@ public class PropertyInferredData implements PropertyData {
 			return new ClassTypeDetailsImpl( legacyTargetAnnotation.getClassDetails( "value" ), TypeDetails.Kind.CLASS );
 		}
 
-		return entity != null ? propertyMember.resolveRelativeType( entity ) : propertyMember.getType();
+		return ownerType != null ? propertyMember.resolveRelativeType( ownerType ) : propertyMember.getType();
 	}
 
 	@Override
@@ -106,90 +107,7 @@ public class PropertyInferredData implements PropertyData {
 		}
 
 		final TypeDetails associatedType = propertyMember.getAssociatedType();
-		return entity != null ? associatedType.determineRelativeType( entity ) : associatedType;
-
-//		final TypeDetails memberType = propertyMember.getType();
-//
-//		if ( !propertyMember.isPlural() ) {
-//			return memberType;
-//		}
-//
-//		if ( propertyMember.isArray() ) {
-//			return memberType.asArrayType().getConstituentType();
-//		}
-//
-//		if ( memberType.isImplementor( Collection.class ) ) {
-//			if ( memberType.getTypeKind() == TypeDetails.Kind.PARAMETERIZED_TYPE ) {
-//				final ParameterizedTypeDetails parameterizedType = memberType.asParameterizedType();
-//				final List<TypeDetails> typeArguments = parameterizedType.getArguments();
-//				if ( CollectionHelper.size( typeArguments ) == 1 ) {
-//					return typeArguments.get( 0 );
-//				}
-//				return ClassBasedTypeDetails.OBJECT_TYPE_DETAILS;
-//			}
-//			if ( memberType.getTypeKind() == TypeDetails.Kind.TYPE_VARIABLE ) {
-//				// something like -
-//				//		class TheEntity<E, L extends List<E>> {
-//				//			L stuff;
-//				//		}
-//				final TypeVariableDetails typeVariable = memberType.asTypeVariable();
-//				if ( CollectionHelper.size( typeVariable.getBounds() ) == 1 ) {
-//					return typeVariable.getBounds().get( 0 );
-//				}
-//				return ClassBasedTypeDetails.OBJECT_TYPE_DETAILS;
-//			}
-//			if ( memberType.getTypeKind() == TypeDetails.Kind.CLASS ) {
-//				// something like -
-//				//		class LongList extends java.util.ArrayList<Long> {...}
-//				//
-//				//		LongList values;
-//				return extractCollectionElementTypeFromClass( memberType.asClassType().getClassDetails() );
-//			}
-//			if ( memberType.getTypeKind() == TypeDetails.Kind.WILDCARD_TYPE ) {
-//				// todo : this is not correct, though can this ever happen in persistence models?
-//				final WildcardTypeDetails wildcardType = memberType.asWildcardType();
-//				return wildcardType.getBound();
-//			}
-//		}
-//
-//		if ( memberType.isImplementor( Map.class ) ) {
-//			if ( memberType.getTypeKind() == TypeDetails.Kind.PARAMETERIZED_TYPE ) {
-//				final ParameterizedTypeDetails parameterizedType = memberType.asParameterizedType();
-//				final List<TypeDetails> typeArguments = parameterizedType.getArguments();
-//				if ( CollectionHelper.size( typeArguments ) == 2 ) {
-//					return typeArguments.get( 1 );
-//				}
-//				return ClassBasedTypeDetails.OBJECT_TYPE_DETAILS;
-//			}
-//			if ( memberType.getTypeKind() == TypeDetails.Kind.TYPE_VARIABLE ) {
-//				final TypeVariableDetails typeVariable = memberType.asTypeVariable();
-//				if ( CollectionHelper.size( typeVariable.getBounds() ) == 2 ) {
-//					return typeVariable.getBounds().get( 1 );
-//				}
-//				return ClassBasedTypeDetails.OBJECT_TYPE_DETAILS;
-//			}
-//			if ( memberType.getTypeKind() == TypeDetails.Kind.CLASS ) {
-//				// something like -
-//				//		class LongList extends java.util.ArrayList<Long> {...}
-//				//
-//				//		LongList values;
-//				return extractMapValueTypeFromClass( memberType.asClassType().getClassDetails() );
-//			}
-//			if ( memberType.getTypeKind() == TypeDetails.Kind.WILDCARD_TYPE ) {
-//				final WildcardTypeDetails wildcardType = memberType.asWildcardType();
-//				wildcardType.getBound();
-//			}
-//		}
-//
-//		throw new MappingException(
-//				String.format(
-//						Locale.ROOT,
-//						"Unable to determine class/element type - %s#%s (%s)",
-//						declaringClass.getName(),
-//						propertyMember.getName(),
-//						memberType
-//				)
-//		);
+		return ownerType != null ? associatedType.determineRelativeType( ownerType ) : associatedType;
 	}
 
 	private TypeDetails extractCollectionElementTypeFromClass(ClassDetails classDetails) {
