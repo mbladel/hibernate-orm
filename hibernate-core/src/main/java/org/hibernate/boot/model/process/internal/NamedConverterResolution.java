@@ -21,6 +21,7 @@ import org.hibernate.mapping.BasicValue;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.type.BasicType;
 import org.hibernate.type.descriptor.converter.internal.AttributeConverterMutabilityPlanImpl;
+import org.hibernate.type.descriptor.converter.spi.BasicValueConverter;
 import org.hibernate.type.descriptor.converter.spi.JpaAttributeConverter;
 import org.hibernate.type.descriptor.java.BasicJavaType;
 import org.hibernate.type.descriptor.java.ImmutableMutabilityPlan;
@@ -29,6 +30,7 @@ import org.hibernate.type.descriptor.java.MutabilityPlan;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcTypeIndicators;
 import org.hibernate.type.internal.CustomMutabilityConvertedBasicTypeImpl;
+import org.hibernate.type.internal.CustomMutabilityConvertedPrimitiveBasicTypeImpl;
 import org.hibernate.type.spi.TypeConfiguration;
 
 /**
@@ -210,7 +212,7 @@ public class NamedConverterResolution<J> implements BasicValue.Resolution<J> {
 		assert mutabilityPlan != null;
 		this.mutabilityPlan = mutabilityPlan;
 
-		this.legacyResolvedType = new CustomMutabilityConvertedBasicTypeImpl<>(
+		this.legacyResolvedType = legacyResolvedType(
 				ConverterDescriptor.TYPE_NAME_PREFIX
 						+ valueConverter.getConverterJavaType().getTypeName(),
 				String.format(
@@ -224,6 +226,34 @@ public class NamedConverterResolution<J> implements BasicValue.Resolution<J> {
 				mutabilityPlan
 		);
 		this.jdbcMapping = legacyResolvedType;
+	}
+
+	private static <J> BasicType<J> legacyResolvedType(
+			String name,
+			String description,
+			JdbcType jdbcType,
+			BasicValueConverter<J, ?> converter,
+			Class<J> primitiveClass,
+			MutabilityPlan<J> mutabilityPlan) {
+		if ( primitiveClass != null ) {
+			return new CustomMutabilityConvertedPrimitiveBasicTypeImpl<>(
+					name,
+					description,
+					jdbcType,
+					converter,
+					primitiveClass,
+					mutabilityPlan
+			);
+		}
+		else {
+			return new CustomMutabilityConvertedBasicTypeImpl<>(
+					name,
+					description,
+					jdbcType,
+					converter,
+					mutabilityPlan
+			);
+		}
 	}
 
 	@Override
