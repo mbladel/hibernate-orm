@@ -194,6 +194,7 @@ import org.hibernate.metamodel.mapping.internal.CompoundNaturalIdMapping;
 import org.hibernate.metamodel.mapping.internal.DiscriminatedAssociationAttributeMapping;
 import org.hibernate.metamodel.mapping.internal.DiscriminatorTypeImpl;
 import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
+import org.hibernate.metamodel.mapping.internal.EntityConcreteTypeLoader;
 import org.hibernate.metamodel.mapping.internal.EntityRowIdMappingImpl;
 import org.hibernate.metamodel.mapping.internal.EntityVersionMappingImpl;
 import org.hibernate.metamodel.mapping.internal.ExplicitColumnDiscriminatorMappingImpl;
@@ -451,6 +452,7 @@ public abstract class AbstractEntityPersister
 	private EntityMappingType superMappingType;
 	private SortedMap<String, EntityMappingType> subclassMappingTypes;
 	private final boolean concreteType;
+	private EntityConcreteTypeLoader concreteTypeLoader;
 
 	private EntityIdentifierMapping identifierMapping;
 	private NaturalIdMapping naturalIdMapping;
@@ -541,7 +543,9 @@ public abstract class AbstractEntityPersister
 		assert javaType != null;
 		this.implementsLifecycle = Lifecycle.class.isAssignableFrom( javaType.getJavaTypeClass() );
 
-		concreteType = isPolymorphic() && persistentClass.isConcreteType();
+		concreteType = isPolymorphic()
+				&& ( getBytecodeEnhancementMetadata().isEnhancedForLazyLoading() || hasProxy() )
+				&& persistentClass.isConcreteType();
 
 		final Dialect dialect = creationContext.getDialect();
 
@@ -4284,6 +4288,18 @@ public abstract class AbstractEntityPersister
 	@Override
 	public boolean isConcreteType() {
 		return concreteType;
+	}
+
+	@Override
+	public EntityPersister resolveConcreteTypeForId(Object id, SessionImplementor session) {
+		if ( !concreteType ) {
+			return this;
+		}
+
+		if ( concreteTypeLoader == null ) {
+			concreteTypeLoader = new EntityConcreteTypeLoader( this, session.getFactory() );
+		}
+		return concreteTypeLoader.getConcreteType( id, session );
 	}
 
 	@Override

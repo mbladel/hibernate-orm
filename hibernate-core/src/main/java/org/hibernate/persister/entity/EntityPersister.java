@@ -1258,10 +1258,26 @@ public interface EntityPersister extends EntityMappingType, EntityMutationTarget
 	@Incubating
 	boolean storeDiscriminatorInShallowQueryCacheLayout();
 
+	/**
+	 * Returns {@code true} if this entity is annotated with the
+	 * {@link org.hibernate.annotations.ConcreteType} annotation
+	 */
 	@Incubating
 	default boolean isConcreteType() {
-		// todo marco : jdoc
-		return false; // todo marco : keep default impl?
+		return false;
+	}
+
+	/**
+	 * If this entity is configured to return {@linkplain org.hibernate.annotations.ConcreteType concrete-typed}
+	 * proxies, this method queries the entity table(s) do determine the concrete entity type
+	 * associated with the provided id and returns its persister. Otherwise, this method
+	 * simply return this entity persister.
+	 *
+	 * @see #isConcreteType()
+	 */
+	@Incubating
+	default EntityPersister resolveConcreteTypeForId(Object id, SessionImplementor session) {
+		return this;
 	}
 
 	/**

@@ -128,15 +128,15 @@ public class IdentifierLoadAccessImpl<T> implements IdentifierLoadAccess<T>, Jav
 	protected T doGetReference(Object id) {
 		final SessionImplementor session = context.getSession();
 		final SessionFactoryImplementor factory = session.getFactory();
+		final EntityPersister concreteType = entityPersister.resolveConcreteTypeForId( id, session );
 		return (T) getReference(
 				coerceId( id, factory ),
 				session.asEventSource(),
 				factory,
-				entityPersister.getEntityName(),
+				concreteType.getEntityName(),
 				isReadOnly( session )
 		);
 	}
-
 
 	private Boolean isReadOnly(SessionImplementor session) {
 		return readOnly != null

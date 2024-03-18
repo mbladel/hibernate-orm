@@ -42,6 +42,7 @@ public abstract class AbstractConcreteTypeTest extends BaseNonConfigCoreFunction
 
 	@Test
 	public void testSingleTable() {
+		// test find and association
 		inSession( session -> {
 			final ParentEntity parent1 = session.find( ParentEntity.class, 1L );
 			assertThat( Hibernate.isInitialized( parent1.getSingle() ), is( false ) );
@@ -49,6 +50,7 @@ public abstract class AbstractConcreteTypeTest extends BaseNonConfigCoreFunction
 			final SingleSubChild1 proxy = (SingleSubChild1) parent1.getSingle();
 			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
 		} );
+		// test query and association
 		inSession( session -> {
 			final ParentEntity parent2 = session.createQuery(
 					"from ParentEntity where id = 2",
@@ -58,6 +60,14 @@ public abstract class AbstractConcreteTypeTest extends BaseNonConfigCoreFunction
 			assertThat( parent2.getSingle(), instanceOf( SingleChild2.class ) );
 			final SingleChild2 proxy = (SingleChild2) parent2.getSingle();
 			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
+		} );
+		// test get reference
+		inSession( session -> {
+			final SingleBase single1 = session.getReference( SingleBase.class, 1L );
+			assertThat( single1, instanceOf( SingleSubChild1.class ) );
+
+			final SingleBase single2 = session.byId( SingleBase.class ).getReference( 2L );
+			assertThat( single2, instanceOf( SingleChild2.class ) );
 		} );
 	}
 
