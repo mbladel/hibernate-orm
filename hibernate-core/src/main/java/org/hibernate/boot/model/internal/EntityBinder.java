@@ -29,7 +29,7 @@ import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.CacheLayout;
 import org.hibernate.annotations.Check;
 import org.hibernate.annotations.Checks;
-import org.hibernate.annotations.ConcreteType;
+import org.hibernate.annotations.ConcreteProxy;
 import org.hibernate.annotations.DiscriminatorFormula;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
@@ -1304,7 +1304,7 @@ public class EntityBinder {
 		bindOptimisticLocking();
 		bindPolymorphism();
 		bindProxy();
-		bindConcreteType();
+		bindConcreteProxy();
 		bindWhere();
 		bindCache();
 		bindNaturalIdCache();
@@ -1593,13 +1593,13 @@ public class EntityBinder {
 		return isDefault( proxyClass, context ) ? annotatedClass : proxyClass;
 	}
 
-	public void bindConcreteType() {
-		final ConcreteType concreteType = annotatedClass.getAnnotation( ConcreteType.class );
-		if ( concreteType != null ) {
+	public void bindConcreteProxy() {
+		final ConcreteProxy concreteProxy = annotatedClass.getAnnotation( ConcreteProxy.class );
+		if ( concreteProxy != null ) {
 			if ( persistentClass.getSuperclass() != null ) {
 				throw new AnnotationException( "Annotation '@ConcreteType' is only supported on root entity types" );
 			}
-			persistentClass.getRootClass().setConcreteType( true );
+			persistentClass.getRootClass().setConcreteProxy( true );
 		}
 	}
 

@@ -51,7 +51,7 @@ public class RootClass extends PersistentClass implements TableOwner, SoftDeleta
 	private boolean explicitPolymorphism;
 	private Class<? extends EntityPersister> entityPersisterClass;
 	private boolean forceDiscriminator;
-	private boolean concreteType;
+	private boolean concreteProxy;
 	private String where;
 	private Table table;
 	private boolean discriminatorInsertable = true;
@@ -264,12 +264,12 @@ public class RootClass extends PersistentClass implements TableOwner, SoftDeleta
 	}
 
 	@Override
-	public boolean isConcreteType() {
-		return concreteType;
+	public boolean isConcreteProxy() {
+		return concreteProxy;
 	}
 
-	public void setConcreteType(boolean concreteType) {
-		this.concreteType = concreteType;
+	public void setConcreteProxy(boolean concreteProxy) {
+		this.concreteProxy = concreteProxy;
 	}
 
 	@Override

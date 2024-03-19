@@ -17,10 +17,10 @@ import java.util.List;
 
 import org.hibernate.LockOptions;
 import org.hibernate.ObjectNotFoundException;
+import org.hibernate.annotations.ConcreteProxy;
 import org.hibernate.engine.spi.LoadQueryInfluencers;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SessionImplementor;
-import org.hibernate.loader.ast.internal.LoaderSelectBuilder;
 import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.persister.entity.EntityPersister;
@@ -43,7 +43,7 @@ import static java.util.Collections.singletonList;
  * resolved concrete entity type.
  *
  * @author Marco Belladelli
- * @see org.hibernate.annotations.ConcreteType
+ * @see ConcreteProxy
  */
 public class EntityConcreteTypeLoader {
 	private final EntityMappingType entityDescriptor;

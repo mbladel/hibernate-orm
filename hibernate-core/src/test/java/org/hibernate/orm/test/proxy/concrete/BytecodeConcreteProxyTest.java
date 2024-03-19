@@ -10,10 +10,10 @@ import org.hibernate.testing.bytecode.enhancement.BytecodeEnhancerRunner;
 import org.junit.runner.RunWith;
 
 /**
- * Version of {@link AbstractConcreteTypeTest} using bytecode-enhanced {@linkplain org.hibernate.proxy.HibernateProxy proxies}.
+ * Version of {@link AbstractConcreteProxyTest} using bytecode-enhanced {@linkplain org.hibernate.proxy.HibernateProxy proxies}.
  *
  * @author Marco Belladelli
  */
 @RunWith( BytecodeEnhancerRunner.class )
-public class BytecodeConcreteTypeTest extends AbstractConcreteTypeTest {
+public class BytecodeConcreteProxyTest extends AbstractConcreteProxyTest {
 }

@@ -129,7 +129,7 @@ public class IdentifierLoadAccessImpl<T> implements IdentifierLoadAccess<T>, Jav
 	protected T doGetReference(Object id) {
 		final SessionImplementor session = context.getSession();
 		final SessionFactoryImplementor factory = session.getFactory();
-		final EntityMappingType concreteType = entityPersister.resolveConcreteTypeForId( id, session );
+		final EntityMappingType concreteType = entityPersister.resolveConcreteProxyTypeForId( id, session );
 		return (T) getReference(
 				coerceId( id, factory ),
 				session.asEventSource(),

@@ -414,7 +414,7 @@ public abstract class PersistentClass implements IdentifiableTypeClass, Attribut
 		this.lazy = lazy;
 	}
 
-	public abstract boolean isConcreteType();
+	public abstract boolean isConcreteProxy();
 
 	public abstract boolean hasEmbeddedIdentifier();
 

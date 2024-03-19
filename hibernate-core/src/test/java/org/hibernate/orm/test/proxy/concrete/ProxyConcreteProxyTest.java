@@ -7,9 +7,9 @@
 package org.hibernate.orm.test.proxy.concrete;
 
 /**
- * Version of {@link AbstractConcreteTypeTest} using normal {@linkplain org.hibernate.proxy.HibernateProxy proxies}.
+ * Version of {@link AbstractConcreteProxyTest} using normal {@linkplain org.hibernate.proxy.HibernateProxy proxies}.
  *
  * @author Marco Belladelli
  */
-public class ProxyConcreteTypeTest extends AbstractConcreteTypeTest {
+public class ProxyConcreteProxyTest extends AbstractConcreteProxyTest {
 }

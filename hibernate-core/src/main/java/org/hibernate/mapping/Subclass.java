@@ -204,8 +204,8 @@ public class Subclass extends PersistentClass {
 	}
 
 	@Override
-	public boolean isConcreteType() {
-		return getRootClass().isConcreteType();
+	public boolean isConcreteProxy() {
+		return getRootClass().isConcreteProxy();
 	}
 
 	public void setSuperclass(PersistentClass superclass) {

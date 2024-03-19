@@ -13,7 +13,7 @@ import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * Root entity types annotated with {@link ConcreteType} that define an inheritance
+ * Root entity types annotated with {@link ConcreteProxy} that define an inheritance
  * hierarchy will always produce proxies that resolve to the concrete subtype class.
  * This means both {@linkplain jakarta.persistence.FetchType#LAZY lazy associations}
  * and {@linkplain org.hibernate.Session#getReference plain references} can safely
@@ -43,5 +43,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  */
 @Target( TYPE )
 @Retention( RUNTIME )
-public @interface ConcreteType {
+public @interface ConcreteProxy {
 }

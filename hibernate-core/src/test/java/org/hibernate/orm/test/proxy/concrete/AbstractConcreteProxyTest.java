@@ -7,7 +7,7 @@
 package org.hibernate.orm.test.proxy.concrete;
 
 import org.hibernate.Hibernate;
-import org.hibernate.annotations.ConcreteType;
+import org.hibernate.annotations.ConcreteProxy;
 import org.hibernate.boot.MetadataSources;
 
 import org.hibernate.testing.junit4.BaseNonConfigCoreFunctionalTestCase;
@@ -29,7 +29,7 @@ import static org.hamcrest.Matchers.is;
 /**
  * @author Marco Belladelli
  */
-public abstract class AbstractConcreteTypeTest extends BaseNonConfigCoreFunctionalTestCase {
+public abstract class AbstractConcreteProxyTest extends BaseNonConfigCoreFunctionalTestCase {
 	@Override
 	protected void applyMetadataSources(MetadataSources sources) {
 		sources.addAnnotatedClass( ParentEntity.class );
@@ -101,7 +101,7 @@ public abstract class AbstractConcreteTypeTest extends BaseNonConfigCoreFunction
 
 	@Entity( name = "SingleBase" )
 	@Inheritance( strategy = InheritanceType.SINGLE_TABLE )
-	@ConcreteType
+	@ConcreteProxy
 	public static class SingleBase {
 		@Id
 		private Long id;

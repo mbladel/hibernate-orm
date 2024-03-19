@@ -451,7 +451,7 @@ public abstract class AbstractEntityPersister
 
 	private EntityMappingType superMappingType;
 	private SortedMap<String, EntityMappingType> subclassMappingTypes;
-	private final boolean concreteType;
+	private final boolean concreteProxy;
 	private EntityConcreteTypeLoader concreteTypeLoader;
 
 	private EntityIdentifierMapping identifierMapping;
@@ -543,9 +543,9 @@ public abstract class AbstractEntityPersister
 		assert javaType != null;
 		this.implementsLifecycle = Lifecycle.class.isAssignableFrom( javaType.getJavaTypeClass() );
 
-		concreteType = isPolymorphic()
+		concreteProxy = isPolymorphic()
 				&& ( getBytecodeEnhancementMetadata().isEnhancedForLazyLoading() || hasProxy() )
-				&& persistentClass.isConcreteType();
+				&& persistentClass.isConcreteProxy();
 
 		final Dialect dialect = creationContext.getDialect();
 
@@ -4286,18 +4286,18 @@ public abstract class AbstractEntityPersister
 	}
 
 	@Override
-	public boolean isConcreteType() {
-		return concreteType;
+	public boolean isConcreteProxy() {
+		return concreteProxy;
 	}
 
 	@Override
-	public EntityMappingType resolveConcreteTypeForId(Object id, SessionImplementor session) {
-		if ( !concreteType ) {
+	public EntityMappingType resolveConcreteProxyTypeForId(Object id, SessionImplementor session) {
+		if ( !concreteProxy ) {
 			return this;
 		}
 
 		if ( superMappingType != null ) {
-			return getRootEntityDescriptor().resolveConcreteTypeForId( id, session );
+			return getRootEntityDescriptor().resolveConcreteProxyTypeForId( id, session );
 		}
 		else {
 			if ( concreteTypeLoader == null ) {

@@ -35,7 +35,7 @@ public class EntityDelayedFetchImpl extends AbstractNonJoinedEntityFetch {
 			boolean selectByUniqueKey,
 			DomainResultCreationState creationState) {
 		super( navigablePath, fetchedAttribute, fetchParent, keyResult, selectByUniqueKey );
-		discriminatorFetch = fetchedAttribute.getEntityMappingType().getEntityPersister().isConcreteType()
+		discriminatorFetch = fetchedAttribute.getEntityMappingType().getEntityPersister().isConcreteProxy()
 				? creationState.visitDiscriminatorFetch( this )
 				: null;
 	}

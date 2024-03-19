@@ -41,7 +41,6 @@ import org.hibernate.mapping.ManyToOne;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Subclass;
-import org.hibernate.mapping.ToOne;
 import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
@@ -445,7 +444,7 @@ public class EntityMetamodel implements Serializable {
 				persistentClass.getSuperclass().getEntityName() :
 				null;
 		hasSubclasses = persistentClass.hasSubclasses();
-		concreteType = persistentClass.isConcreteType();
+		concreteType = persistentClass.isConcreteProxy();
 
 		optimisticLockStyle = persistentClass.getOptimisticLockStyle();
 		final boolean isAllOrDirty = optimisticLockStyle.isAllOrDirty();
