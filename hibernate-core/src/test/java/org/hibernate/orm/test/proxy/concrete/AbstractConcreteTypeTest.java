@@ -39,7 +39,6 @@ public abstract class AbstractConcreteTypeTest extends BaseNonConfigCoreFunction
 		sources.addAnnotatedClass( SingleChild2.class );
 	}
 
-
 	@Test
 	public void testSingleTable() {
 		// test find and association
@@ -63,9 +62,8 @@ public abstract class AbstractConcreteTypeTest extends BaseNonConfigCoreFunction
 		} );
 		// test get reference
 		inSession( session -> {
-			final SingleBase single1 = session.getReference( SingleBase.class, 1L );
+			final SingleChild1 single1 = session.getReference( SingleChild1.class, 1L );
 			assertThat( single1, instanceOf( SingleSubChild1.class ) );
-
 			final SingleBase single2 = session.byId( SingleBase.class ).getReference( 2L );
 			assertThat( single2, instanceOf( SingleChild2.class ) );
 		} );

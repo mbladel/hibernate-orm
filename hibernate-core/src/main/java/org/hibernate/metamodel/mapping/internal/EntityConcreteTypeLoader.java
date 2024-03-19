@@ -35,6 +35,7 @@ import static java.util.Collections.singletonList;
  * resolved concrete entity type.
  *
  * @author Marco Belladelli
+ * @see org.hibernate.annotations.ConcreteType
  */
 public class EntityConcreteTypeLoader {
 	private final EntityPersister entityPersister;
@@ -43,9 +44,7 @@ public class EntityConcreteTypeLoader {
 
 	public EntityConcreteTypeLoader(EntityPersister entityPersister, SessionFactoryImplementor sessionFactory) {
 		this.entityPersister = entityPersister;
-
 		final EntityDiscriminatorMapping discriminatorMapping = entityPersister.getDiscriminatorMapping();
-
 		final JdbcParametersList.Builder jdbcParametersBuilder = JdbcParametersList.newBuilder();
 		sqlSelect = LoaderSelectBuilder.createSelect(
 				entityPersister,
@@ -58,7 +57,6 @@ public class EntityConcreteTypeLoader {
 				jdbcParametersBuilder::add,
 				sessionFactory
 		);
-
 		jdbcParameters = jdbcParametersBuilder.build();
 	}
 
@@ -96,7 +94,6 @@ public class EntityConcreteTypeLoader {
 			final EntityPersister entityDescriptor = sessionFactory.getRuntimeMetamodels()
 					.getMappingMetamodel()
 					.getEntityDescriptor( subtype );
-
 			assert entityDescriptor.isTypeOrSuperType( entityPersister );
 			return entityDescriptor;
 		}

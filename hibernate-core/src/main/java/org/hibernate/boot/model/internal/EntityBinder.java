@@ -1601,8 +1601,11 @@ public class EntityBinder {
 	}
 
 	public void bindConcreteType() {
-		final ConcreteType concreteType =annotatedClass.getAnnotation( ConcreteType.class );
+		final ConcreteType concreteType = annotatedClass.getAnnotation( ConcreteType.class );
 		if ( concreteType != null ) {
+			if ( !isRootEntity() ) {
+				throw new AnnotationException( "Annotation '@ConcreteType' is only supported on inheritance" );
+			}
 			this.concreteType = true;
 		}
 	}

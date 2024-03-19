@@ -543,7 +543,7 @@ public abstract class AbstractEntityPersister
 		assert javaType != null;
 		this.implementsLifecycle = Lifecycle.class.isAssignableFrom( javaType.getJavaTypeClass() );
 
-		concreteType = isPolymorphic()
+		concreteType = hasSubclasses()
 				&& ( getBytecodeEnhancementMetadata().isEnhancedForLazyLoading() || hasProxy() )
 				&& persistentClass.isConcreteType();
 
@@ -4287,17 +4287,22 @@ public abstract class AbstractEntityPersister
 
 	@Override
 	public boolean isConcreteType() {
-		return concreteType;
+		return superMappingType != null ?
+				getRootEntityDescriptor().getEntityPersister().isConcreteType() :
+				concreteType;
 	}
 
 	@Override
 	public EntityPersister resolveConcreteTypeForId(Object id, SessionImplementor session) {
-		if ( !concreteType ) {
+		if ( !isConcreteType() ) {
 			return this;
 		}
 
 		if ( concreteTypeLoader == null ) {
-			concreteTypeLoader = new EntityConcreteTypeLoader( this, session.getFactory() );
+			concreteTypeLoader = new EntityConcreteTypeLoader(
+					getRootEntityDescriptor().getEntityPersister(),
+					session.getFactory()
+			);
 		}
 		return concreteTypeLoader.getConcreteType( id, session );
 	}
