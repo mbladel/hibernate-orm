@@ -13,9 +13,9 @@ import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * Entities annotated with {@link ConcreteType} that define an inheritance hierarchy
- * will always produce proxies that resolve to the concrete subtype class. This
- * means both {@linkplain jakarta.persistence.FetchType#LAZY lazy associations}
+ * Root entity types annotated with {@link ConcreteType} that define an inheritance
+ * hierarchy will always produce proxies that resolve to the concrete subtype class.
+ * This means both {@linkplain jakarta.persistence.FetchType#LAZY lazy associations}
  * and {@linkplain org.hibernate.Session#getReference plain references} can safely
  * be used with {@code instanceof} checks and type-casts.
  * <p>
@@ -30,13 +30,14 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  *     <li>
  *         When using {@linkplain jakarta.persistence.InheritanceType#JOINED joined} inheritance,
  *         all subtype tables will need to be {@code left join}ed to determine the concrete type.
- *         Note that when using an explicit {@linkplain jakarta.persistence.DiscriminatorColumn discriminator column},
- *         the behavior is the same as for single-table inheritance.
+ *         Note however that when using an explicit {@linkplain jakarta.persistence.DiscriminatorColumn
+ *         discriminator column}, the behavior is the same as for single-table inheritance.
  *     </li>
  *     <li>
  *         Finally, for {@linkplain jakarta.persistence.InheritanceType#TABLE_PER_CLASS table-per-class}
  *         inheritance, all subtype tables will need to be (union) queried to determine the concrete type.
  *     </li>
+ * </ul>
  *
  * @author Marco Belladelli
  */

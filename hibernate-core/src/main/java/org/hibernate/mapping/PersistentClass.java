@@ -84,7 +84,6 @@ public abstract class PersistentClass implements IdentifiableTypeClass, Attribut
 
 	private String discriminatorValue;
 	private boolean lazy;
-	private boolean concreteType;
 	private final List<Property> properties = new ArrayList<>();
 	private final List<Property> declaredProperties = new ArrayList<>();
 	private final List<Subclass> subclasses = new ArrayList<>();
@@ -415,13 +414,7 @@ public abstract class PersistentClass implements IdentifiableTypeClass, Attribut
 		this.lazy = lazy;
 	}
 
-	public boolean isConcreteType() {
-		return concreteType || getSuperclass() != null && getSuperclass().isConcreteType();
-	}
-
-	public void setConcreteType(boolean concreteType) {
-		this.concreteType = concreteType;
-	}
+	public abstract boolean isConcreteType();
 
 	public abstract boolean hasEmbeddedIdentifier();
 

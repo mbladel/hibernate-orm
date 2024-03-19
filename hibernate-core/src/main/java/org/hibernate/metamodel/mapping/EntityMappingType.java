@@ -15,10 +15,12 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.hibernate.Filter;
+import org.hibernate.Incubating;
 import org.hibernate.Internal;
 import org.hibernate.boot.jaxb.mapping.JaxbEntity;
 import org.hibernate.engine.OptimisticLockStyle;
 import org.hibernate.engine.spi.LoadQueryInfluencers;
+import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.loader.ast.spi.Loadable;
 import org.hibernate.loader.ast.spi.MultiNaturalIdLoader;
@@ -324,6 +326,30 @@ public interface EntityMappingType
 	 * entity mappings within an inheritance hierarchy.
 	 */
 	EntityDiscriminatorMapping getDiscriminatorMapping();
+
+	/**
+	 * Returns {@code true} if this entity type's hierarchy is configured to return
+	 * {@linkplain org.hibernate.annotations.ConcreteType concrete-typed} proxies.
+	 *
+	 * @see org.hibernate.annotations.ConcreteType
+	 */
+	@Incubating
+	default boolean isConcreteType() {
+		return false;
+	}
+
+	/**
+	 * If this entity is configured to return {@linkplain org.hibernate.annotations.ConcreteType concrete-typed}
+	 * proxies, this method queries the entity table(s) do determine the concrete entity type
+	 * associated with the provided id and returns its persister. Otherwise, this method
+	 * simply return this entity persister.
+	 *
+	 * @see #isConcreteType()
+	 */
+	@Incubating
+	default EntityMappingType resolveConcreteTypeForId(Object id, SessionImplementor session) {
+		return this;
+	}
 
 	/**
 	 * Mapping details for the entity's version when using the

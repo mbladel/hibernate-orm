@@ -141,6 +141,7 @@ public class EntityMetamodel implements Serializable {
 	private final boolean explicitPolymorphism;
 	private final boolean inherited;
 	private final boolean hasSubclasses;
+	private final boolean concreteType;
 	private final Set<String> subclassEntityNames;
 	private final Map<Class<?>,String> entityNameByInheritanceClassMap;
 
@@ -444,6 +445,7 @@ public class EntityMetamodel implements Serializable {
 				persistentClass.getSuperclass().getEntityName() :
 				null;
 		hasSubclasses = persistentClass.hasSubclasses();
+		concreteType = persistentClass.isConcreteType();
 
 		optimisticLockStyle = persistentClass.getOptimisticLockStyle();
 		final boolean isAllOrDirty = optimisticLockStyle.isAllOrDirty();
@@ -749,6 +751,10 @@ public class EntityMetamodel implements Serializable {
 
 	public boolean hasSubclasses() {
 		return hasSubclasses;
+	}
+
+	public boolean isConcreteType() {
+		return concreteType;
 	}
 
 	public boolean isLazy() {

@@ -1322,7 +1322,6 @@ public class EntityBinder {
 		persistentClass.setEntityName( annotatedClass.getName() );
 		persistentClass.setCached( isCached );
 		persistentClass.setLazy( lazy );
-		persistentClass.setConcreteType( concreteType );
 		persistentClass.setQueryCacheLayout( queryCacheLayout );
 		if ( proxyClass != null ) {
 			persistentClass.setProxyInterfaceName( proxyClass.getName() );
@@ -1603,10 +1602,10 @@ public class EntityBinder {
 	public void bindConcreteType() {
 		final ConcreteType concreteType = annotatedClass.getAnnotation( ConcreteType.class );
 		if ( concreteType != null ) {
-			if ( !isRootEntity() ) {
-				throw new AnnotationException( "Annotation '@ConcreteType' is only supported on inheritance" );
+			if ( persistentClass.getSuperclass() != null ) {
+				throw new AnnotationException( "Annotation '@ConcreteType' is only supported on root entity types" );
 			}
-			this.concreteType = true;
+			persistentClass.getRootClass().setConcreteType( true );
 		}
 	}
 

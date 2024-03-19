@@ -4,7 +4,14 @@
  * License: GNU Lesser General Public License (LGPL), version 2.1 or later
  * See the lgpl.txt file in the root directory or http://www.gnu.org/licenses/lgpl-2.1.html
  */
-package org.hibernate.metamodel.mapping.internal;
+
+/*
+ * Hibernate, Relational Persistence for Idiomatic Java
+ *
+ * License: GNU Lesser General Public License (LGPL), version 2.1 or later
+ * See the lgpl.txt file in the root directory or http://www.gnu.org/licenses/lgpl-2.1.html
+ */
+package org.hibernate.loader.ast.internal;
 
 import java.util.List;
 
@@ -15,6 +22,7 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.loader.ast.internal.LoaderSelectBuilder;
 import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
+import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
@@ -38,18 +46,18 @@ import static java.util.Collections.singletonList;
  * @see org.hibernate.annotations.ConcreteType
  */
 public class EntityConcreteTypeLoader {
-	private final EntityPersister entityPersister;
+	private final EntityMappingType entityDescriptor;
 	private final SelectStatement sqlSelect;
 	private final JdbcParametersList jdbcParameters;
 
-	public EntityConcreteTypeLoader(EntityPersister entityPersister, SessionFactoryImplementor sessionFactory) {
-		this.entityPersister = entityPersister;
-		final EntityDiscriminatorMapping discriminatorMapping = entityPersister.getDiscriminatorMapping();
+	public EntityConcreteTypeLoader(EntityMappingType entityDescriptor, SessionFactoryImplementor sessionFactory) {
+		this.entityDescriptor = entityDescriptor;
+		final EntityDiscriminatorMapping discriminatorMapping = entityDescriptor.getDiscriminatorMapping();
 		final JdbcParametersList.Builder jdbcParametersBuilder = JdbcParametersList.newBuilder();
 		sqlSelect = LoaderSelectBuilder.createSelect(
-				entityPersister,
+				entityDescriptor,
 				singletonList( discriminatorMapping ),
-				entityPersister.getIdentifierMapping(),
+				entityDescriptor.getIdentifierMapping(),
 				null,
 				1,
 				new LoadQueryInfluencers( sessionFactory ),
@@ -60,7 +68,7 @@ public class EntityConcreteTypeLoader {
 		jdbcParameters = jdbcParametersBuilder.build();
 	}
 
-	public EntityPersister getConcreteType(Object id, SessionImplementor session) {
+	public EntityMappingType getConcreteType(Object id, SessionImplementor session) {
 		final SessionFactoryImplementor sessionFactory = session.getSessionFactory();
 		final SqlAstTranslatorFactory sqlAstTranslatorFactory = sessionFactory.getJdbcServices()
 				.getJdbcEnvironment()
@@ -69,15 +77,15 @@ public class EntityConcreteTypeLoader {
 		final JdbcParameterBindings jdbcParamBindings = new JdbcParameterBindingsImpl( jdbcParameters.size() );
 		int offset = jdbcParamBindings.registerParametersForEachJdbcValue(
 				id,
-				entityPersister.getIdentifierMapping(),
+				entityDescriptor.getIdentifierMapping(),
 				jdbcParameters,
 				session
 		);
 		assert offset == jdbcParameters.size();
+
 		final JdbcOperationQuerySelect jdbcSelect =
 				sqlAstTranslatorFactory.buildSelectTranslator( sessionFactory, sqlSelect )
 						.translate( jdbcParamBindings, QueryOptions.NONE );
-
 		final List<Object> results = session.getFactory().getJdbcServices().getJdbcSelectExecutor().list(
 				jdbcSelect,
 				jdbcParamBindings,
@@ -85,17 +93,18 @@ public class EntityConcreteTypeLoader {
 				RowTransformerStandardImpl.instance(),
 				ListResultsConsumer.UniqueSemantic.NONE
 		);
+
 		if ( results.isEmpty() ) {
-			throw new ObjectNotFoundException( entityPersister.getEntityName(), id );
+			throw new ObjectNotFoundException( entityDescriptor.getEntityName(), id );
 		}
 		else {
 			assert results.size() == 1;
-			final Class<?> subtype = (Class<?>) results.get( 0 );
-			final EntityPersister entityDescriptor = sessionFactory.getRuntimeMetamodels()
+			final Class<?> entityJavaType = (Class<?>) results.get( 0 );
+			final EntityPersister concreteType = sessionFactory.getRuntimeMetamodels()
 					.getMappingMetamodel()
-					.getEntityDescriptor( subtype );
-			assert entityDescriptor.isTypeOrSuperType( entityPersister );
-			return entityDescriptor;
+					.getEntityDescriptor( entityJavaType );
+			assert concreteType.isTypeOrSuperType( entityDescriptor );
+			return concreteType;
 		}
 	}
 }
