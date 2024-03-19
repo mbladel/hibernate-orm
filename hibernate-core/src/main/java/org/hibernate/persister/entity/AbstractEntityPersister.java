@@ -4296,15 +4296,10 @@ public abstract class AbstractEntityPersister
 			return this;
 		}
 
-		if ( superMappingType != null ) {
-			return getRootEntityDescriptor().resolveConcreteProxyTypeForId( id, session );
+		if ( concreteTypeLoader == null ) {
+			concreteTypeLoader = new EntityConcreteTypeLoader( this, session.getFactory() );
 		}
-		else {
-			if ( concreteTypeLoader == null ) {
-				concreteTypeLoader = new EntityConcreteTypeLoader( getRootEntityDescriptor(), session.getFactory() );
-			}
-			return concreteTypeLoader.getConcreteType( id, session );
-		}
+		return concreteTypeLoader.getConcreteType( id, session );
 	}
 
 	@Override
