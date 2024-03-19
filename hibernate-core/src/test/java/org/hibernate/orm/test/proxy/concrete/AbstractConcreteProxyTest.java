@@ -65,24 +65,24 @@ public abstract class AbstractConcreteProxyTest extends BaseNonConfigCoreFunctio
 	@Test
 	public void testJoined() {
 		// test find and association
-//		inSession( session -> {
-//			final ParentEntity parent1 = session.find( ParentEntity.class, 1L );
-//			assertThat( Hibernate.isInitialized( parent1.getJoined() ), is( false ) );
-//			assertThat( parent1.getJoined(), instanceOf( JoinedSubChild1.class ) );
-//			final JoinedSubChild1 proxy = (JoinedSubChild1) parent1.getJoined();
-//			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
-//		} );
-//		// test query and association
-//		inSession( session -> {
-//			final ParentEntity parent2 = session.createQuery(
-//					"from ParentEntity where id = 2",
-//					ParentEntity.class
-//			).getSingleResult();
-//			assertThat( Hibernate.isInitialized( parent2.getJoined() ), is( false ) );
-//			assertThat( parent2.getJoined(), instanceOf( JoinedChild2.class ) );
-//			final JoinedChild2 proxy = (JoinedChild2) parent2.getJoined();
-//			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
-//		} );
+		inSession( session -> {
+			final ParentEntity parent1 = session.find( ParentEntity.class, 1L );
+			assertThat( Hibernate.isInitialized( parent1.getJoined() ), is( false ) );
+			assertThat( parent1.getJoined(), instanceOf( JoinedSubChild1.class ) );
+			final JoinedSubChild1 proxy = (JoinedSubChild1) parent1.getJoined();
+			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
+		} );
+		// test query and association
+		inSession( session -> {
+			final ParentEntity parent2 = session.createQuery(
+					"from ParentEntity where id = 2",
+					ParentEntity.class
+			).getSingleResult();
+			assertThat( Hibernate.isInitialized( parent2.getJoined() ), is( false ) );
+			assertThat( parent2.getJoined(), instanceOf( JoinedChild2.class ) );
+			final JoinedChild2 proxy = (JoinedChild2) parent2.getJoined();
+			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
+		} );
 		// test get reference
 		inSession( session -> {
 			final JoinedChild1 proxy1 = session.getReference( JoinedChild1.class, 1L );

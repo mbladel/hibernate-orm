@@ -8,6 +8,7 @@ package org.hibernate.sql.results.graph.entity.internal;
 
 import java.util.function.Consumer;
 
+import org.hibernate.FetchNotFoundException;
 import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
 import org.hibernate.engine.spi.EntityHolder;
 import org.hibernate.engine.spi.EntityKey;
@@ -122,11 +123,13 @@ public class EntityDelayedFetchInitializer implements EntityInitializer {
 					discriminatorAssembler,
 					entityPersister
 			);
-			if ( discriminatorAssembler != null && concreteDescriptor == entityPersister && referencedModelPart.isOptional()
-					&& referencedModelPart.getCardinality() == ToOneAttributeMapping.Cardinality.ONE_TO_ONE ) {
+			if ( discriminatorAssembler != null && concreteDescriptor == entityPersister ) {
 				// Special case for optional-lazy-@OneToOne, if we find no discriminator it means the entity instance should be null
 				final Object discriminator = discriminatorAssembler.extractRawValue( rowProcessingState );
 				if ( discriminator == null ) {
+					if ( !referencedModelPart.isOptional() ) {
+						throw new FetchNotFoundException( concreteDescriptor.getEntityName(), identifier );
+					}
 					entityInstance = null;
 					return;
 				}

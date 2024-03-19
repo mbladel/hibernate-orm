@@ -1643,13 +1643,7 @@ public class ToOneAttributeMapping
 		}
 		final boolean selectByUniqueKey = isSelectByUniqueKey( side );
 
-		// Consider all associations annotated with @NotFound as EAGER
-		// and LAZY one-to-one that are not instrumented and not  optional
-		if ( fetchTiming == FetchTiming.IMMEDIATE
-				|| hasNotFoundAction()
-				|| getAssociatedEntityMappingType().getSoftDeleteMapping() != null
-				|| ( !entityMappingType.getEntityPersister().isInstrumented()
-				&& cardinality == Cardinality.ONE_TO_ONE && isOptional ) ) {
+		if ( needsImmediateFetch( fetchTiming ) ) {
 			return buildEntityFetchSelect(
 					fetchParent,
 					this,
@@ -1660,14 +1654,16 @@ public class ToOneAttributeMapping
 			);
 		}
 
-		final TableGroup tableGroup = determineTableGroupForFetch(
-				fetchablePath,
-				fetchParent,
-				parentTableGroup,
-				resultVariable,
-				fromClauseAccess,
-				creationState
-		);
+		if ( entityMappingType.isConcreteProxy() ) {
+			determineTableGroupForFetch(
+					fetchablePath,
+					fetchParent,
+					parentTableGroup,
+					resultVariable,
+					fromClauseAccess,
+					creationState
+			);
+		}
 
 		return buildEntityDelayedFetch(
 				fetchParent,
@@ -1677,6 +1673,25 @@ public class ToOneAttributeMapping
 				selectByUniqueKey,
 				creationState
 		);
+	}
+
+	private boolean needsImmediateFetch(FetchTiming fetchTiming) {
+		if ( fetchTiming == FetchTiming.IMMEDIATE ) {
+			return true;
+		}
+		else if ( !entityMappingType.isConcreteProxy() ) {
+			// Consider all associations annotated with @NotFound as EAGER
+			// and LAZY one-to-one that are not instrumented and not optional.
+			// When resolving the concrete entity type we can preserve laziness
+			// and handle not found actions based on the discriminator value
+			return hasNotFoundAction()
+					|| entityMappingType.getSoftDeleteMapping() != null
+					|| ( !entityMappingType.getEntityPersister().isInstrumented()
+					&& cardinality == Cardinality.ONE_TO_ONE && isOptional );
+		}
+		else {
+			return false;
+		}
 	}
 
 	private TableGroup determineTableGroupForFetch(
