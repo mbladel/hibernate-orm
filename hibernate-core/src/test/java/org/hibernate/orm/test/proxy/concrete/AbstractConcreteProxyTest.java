@@ -9,7 +9,10 @@ package org.hibernate.orm.test.proxy.concrete;
 import org.hibernate.Hibernate;
 import org.hibernate.annotations.ConcreteProxy;
 import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.SessionFactoryBuilder;
+import org.hibernate.sql.ast.SqlAstJoinType;
 
+import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.junit4.BaseNonConfigCoreFunctionalTestCase;
 import org.junit.After;
 import org.junit.Before;
@@ -34,25 +37,31 @@ import static org.hamcrest.Matchers.is;
 public abstract class AbstractConcreteProxyTest extends BaseNonConfigCoreFunctionalTestCase {
 	@Test
 	public void testSingleTable() {
+		final SQLStatementInspector inspector = getStatementInspector();
+		inspector.clear();
 		// test find and association
 		inSession( session -> {
 			final ParentEntity parent1 = session.find( ParentEntity.class, 1L );
-			assertThat( Hibernate.isInitialized( parent1.getSingle() ), is( false ) );
 			assertThat( parent1.getSingle(), instanceOf( SingleSubChild1.class ) );
+			assertThat( Hibernate.isInitialized( parent1.getSingle() ), is( false ) );
 			final SingleSubChild1 proxy = (SingleSubChild1) parent1.getSingle();
 			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
+			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 1 );
 		} );
+		inspector.clear();
 		// test query and association
 		inSession( session -> {
 			final ParentEntity parent2 = session.createQuery(
 					"from ParentEntity where id = 2",
 					ParentEntity.class
 			).getSingleResult();
-			assertThat( Hibernate.isInitialized( parent2.getSingle() ), is( false ) );
 			assertThat( parent2.getSingle(), instanceOf( SingleChild2.class ) );
+			assertThat( Hibernate.isInitialized( parent2.getSingle() ), is( false ) );
 			final SingleChild2 proxy = (SingleChild2) parent2.getSingle();
 			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
+			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 1 );
 		} );
+		inspector.clear();
 		// test get reference
 		inSession( session -> {
 			final SingleChild1 proxy1 = session.getReference( SingleChild1.class, 1L );
@@ -185,23 +194,34 @@ public abstract class AbstractConcreteProxyTest extends BaseNonConfigCoreFunctio
 
 	@Override
 	protected void applyMetadataSources(MetadataSources sources) {
-		sources.addAnnotatedClass( ParentEntity.class );
-		sources.addAnnotatedClass( SingleBase.class );
-		sources.addAnnotatedClass( SingleChild1.class );
-		sources.addAnnotatedClass( SingleSubChild1.class );
-		sources.addAnnotatedClass( SingleChild2.class );
-		sources.addAnnotatedClass( JoinedBase.class );
-		sources.addAnnotatedClass( JoinedChild1.class );
-		sources.addAnnotatedClass( JoinedSubChild1.class );
-		sources.addAnnotatedClass( JoinedChild2.class );
-		sources.addAnnotatedClass( JoinedDiscBase.class );
-		sources.addAnnotatedClass( JoinedDiscChild1.class );
-		sources.addAnnotatedClass( JoinedDiscSubChild1.class );
-		sources.addAnnotatedClass( JoinedDiscChild2.class );
-		sources.addAnnotatedClass( UnionBase.class );
-		sources.addAnnotatedClass( UnionChild1.class );
-		sources.addAnnotatedClass( UnionSubChild1.class );
-		sources.addAnnotatedClass( UnionChild2.class );
+		sources.addAnnotatedClasses(
+				ParentEntity.class,
+				SingleBase.class,
+				SingleChild1.class,
+				SingleSubChild1.class,
+				SingleChild2.class,
+				JoinedBase.class,
+				JoinedChild1.class,
+				JoinedSubChild1.class,
+				JoinedChild2.class,
+				JoinedDiscBase.class,
+				JoinedDiscChild1.class,
+				JoinedDiscSubChild1.class,
+				JoinedDiscChild2.class,
+				UnionBase.class,
+				UnionChild1.class,
+				UnionSubChild1.class,
+				UnionChild2.class
+		);
+	}
+
+	@Override
+	protected void configureSessionFactoryBuilder(SessionFactoryBuilder sfb) {
+		sfb.applyStatementInspector( new SQLStatementInspector() );
+	}
+
+	protected SQLStatementInspector getStatementInspector() {
+		return (SQLStatementInspector) sessionFactory().getSessionFactoryOptions().getStatementInspector();
 	}
 
 	@Entity( name = "ParentEntity" )
