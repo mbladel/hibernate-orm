@@ -41,153 +41,192 @@ public abstract class AbstractConcreteProxyTest extends BaseNonConfigCoreFunctio
 		inspector.clear();
 		// test find and association
 		inSession( session -> {
-			final ParentEntity parent1 = session.find( ParentEntity.class, 1L );
+			final SingleParent parent1 = session.find( SingleParent.class, 1L );
 			assertThat( parent1.getSingle(), instanceOf( SingleSubChild1.class ) );
 			assertThat( Hibernate.isInitialized( parent1.getSingle() ), is( false ) );
 			final SingleSubChild1 proxy = (SingleSubChild1) parent1.getSingle();
 			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
 			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 1 );
+			inspector.assertNumberOfOccurrenceInQueryNoSpace( 0, "disc_col", 1 );
 		} );
 		inspector.clear();
 		// test query and association
 		inSession( session -> {
-			final ParentEntity parent2 = session.createQuery(
-					"from ParentEntity where id = 2",
-					ParentEntity.class
+			final SingleParent parent2 = session.createQuery(
+					"from SingleParent where id = 2",
+					SingleParent.class
 			).getSingleResult();
 			assertThat( parent2.getSingle(), instanceOf( SingleChild2.class ) );
 			assertThat( Hibernate.isInitialized( parent2.getSingle() ), is( false ) );
 			final SingleChild2 proxy = (SingleChild2) parent2.getSingle();
 			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
 			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 1 );
+			inspector.assertNumberOfOccurrenceInQueryNoSpace( 0, "disc_col", 1 );
 		} );
 		inspector.clear();
 		// test get reference
 		inSession( session -> {
 			final SingleChild1 proxy1 = session.getReference( SingleChild1.class, 1L );
 			assertThat( proxy1, instanceOf( SingleSubChild1.class ) );
+			assertThat( Hibernate.isInitialized( proxy1 ), is( false ) );
+			inspector.assertNumberOfOccurrenceInQueryNoSpace( 0, "disc_col", 2 );
 			final SingleBase proxy2 = session.byId( SingleBase.class ).getReference( 2L );
 			assertThat( proxy2, instanceOf( SingleChild2.class ) );
+			assertThat( Hibernate.isInitialized( proxy2 ), is( false ) );
+			inspector.assertNumberOfOccurrenceInQueryNoSpace( 1, "disc_col", 1 );
 		} );
 	}
 
 	@Test
 	public void testJoined() {
+		final SQLStatementInspector inspector = getStatementInspector();
+		inspector.clear();
 		// test find and association
 		inSession( session -> {
-			final ParentEntity parent1 = session.find( ParentEntity.class, 1L );
+			final JoinedParent parent1 = session.find( JoinedParent.class, 1L );
 			assertThat( Hibernate.isInitialized( parent1.getJoined() ), is( false ) );
 			assertThat( parent1.getJoined(), instanceOf( JoinedSubChild1.class ) );
 			final JoinedSubChild1 proxy = (JoinedSubChild1) parent1.getJoined();
 			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
+			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 4 );
 		} );
+		inspector.clear();
 		// test query and association
 		inSession( session -> {
-			final ParentEntity parent2 = session.createQuery(
-					"from ParentEntity where id = 2",
-					ParentEntity.class
+			final JoinedParent parent2 = session.createQuery(
+					"from JoinedParent where id = 2",
+					JoinedParent.class
 			).getSingleResult();
 			assertThat( Hibernate.isInitialized( parent2.getJoined() ), is( false ) );
 			assertThat( parent2.getJoined(), instanceOf( JoinedChild2.class ) );
 			final JoinedChild2 proxy = (JoinedChild2) parent2.getJoined();
 			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
+			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 4 );
 		} );
+		inspector.clear();
 		// test get reference
 		inSession( session -> {
 			final JoinedChild1 proxy1 = session.getReference( JoinedChild1.class, 1L );
 			assertThat( proxy1, instanceOf( JoinedSubChild1.class ) );
+			assertThat( Hibernate.isInitialized( proxy1 ), is( false ) );
+			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 1 );
 			final JoinedBase proxy2 = session.byId( JoinedBase.class ).getReference( 2L );
 			assertThat( proxy2, instanceOf( JoinedChild2.class ) );
+			assertThat( Hibernate.isInitialized( proxy2 ), is( false ) );
+			inspector.assertNumberOfJoins( 1, SqlAstJoinType.LEFT, 3 );
 		} );
 	}
 
 	@Test
 	public void testJoinedDisc() {
+		final SQLStatementInspector inspector = getStatementInspector();
+		inspector.clear();
 		// test find and association
 		inSession( session -> {
-			final ParentEntity parent1 = session.find( ParentEntity.class, 1L );
+			final JoinedDiscParent parent1 = session.find( JoinedDiscParent.class, 1L );
 			assertThat( Hibernate.isInitialized( parent1.getJoinedDisc() ), is( false ) );
 			assertThat( parent1.getJoinedDisc(), instanceOf( JoinedDiscSubChild1.class ) );
 			final JoinedDiscSubChild1 proxy = (JoinedDiscSubChild1) parent1.getJoinedDisc();
 			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
+			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 1 );
+			inspector.assertNumberOfOccurrenceInQueryNoSpace( 0, "disc_col", 1 );
 		} );
+		inspector.clear();
 		// test query and association
 		inSession( session -> {
-			final ParentEntity parent2 = session.createQuery(
-					"from ParentEntity where id = 2",
-					ParentEntity.class
+			final JoinedDiscParent parent2 = session.createQuery(
+					"from JoinedDiscParent where id = 2",
+					JoinedDiscParent.class
 			).getSingleResult();
 			assertThat( Hibernate.isInitialized( parent2.getJoinedDisc() ), is( false ) );
 			assertThat( parent2.getJoinedDisc(), instanceOf( JoinedDiscChild2.class ) );
 			final JoinedDiscChild2 proxy = (JoinedDiscChild2) parent2.getJoinedDisc();
 			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
+			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 1 );
+			inspector.assertNumberOfOccurrenceInQueryNoSpace( 0, "disc_col", 1 );
 		} );
+		inspector.clear();
 		// test get reference
 		inSession( session -> {
-			final JoinedDiscChild1 single1 = session.getReference( JoinedDiscChild1.class, 1L );
-			assertThat( single1, instanceOf( JoinedDiscSubChild1.class ) );
-			final JoinedDiscBase single2 = session.byId( JoinedDiscBase.class ).getReference( 2L );
-			assertThat( single2, instanceOf( JoinedDiscChild2.class ) );
+			final JoinedDiscChild1 proxy1 = session.getReference( JoinedDiscChild1.class, 1L );
+			assertThat( proxy1, instanceOf( JoinedDiscSubChild1.class ) );
+			assertThat( Hibernate.isInitialized( proxy1 ), is( false ) );
+			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 0 );
+			inspector.assertNumberOfOccurrenceInQueryNoSpace( 0, "disc_col", 1 );
+			final JoinedDiscBase proxy2 = session.byId( JoinedDiscBase.class ).getReference( 2L );
+			assertThat( proxy2, instanceOf( JoinedDiscChild2.class ) );
+			assertThat( Hibernate.isInitialized( proxy2 ), is( false ) );
+			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 0 );
+			inspector.assertNumberOfOccurrenceInQueryNoSpace( 0, "disc_col", 1 );
 		} );
 	}
 
 	@Test
 	public void testUnion() {
+		final SQLStatementInspector inspector = getStatementInspector();
+		inspector.clear();
 		// test find and association
 		inSession( session -> {
-			final ParentEntity parent1 = session.find( ParentEntity.class, 1L );
+			final UnionParent parent1 = session.find( UnionParent.class, 1L );
 			assertThat( Hibernate.isInitialized( parent1.getUnion() ), is( false ) );
 			assertThat( parent1.getUnion(), instanceOf( UnionSubChild1.class ) );
 			final UnionSubChild1 proxy = (UnionSubChild1) parent1.getUnion();
 			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
+			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 1 );
+			inspector.assertNumberOfOccurrenceInQuery( 0, "union", 3 );
 		} );
+		inspector.clear();
 		// test query and association
 		inSession( session -> {
-			final ParentEntity parent2 = session.createQuery(
-					"from ParentEntity where id = 2",
-					ParentEntity.class
+			final UnionParent parent2 = session.createQuery(
+					"from UnionParent where id = 2",
+					UnionParent.class
 			).getSingleResult();
 			assertThat( Hibernate.isInitialized( parent2.getUnion() ), is( false ) );
 			assertThat( parent2.getUnion(), instanceOf( UnionChild2.class ) );
 			final UnionChild2 proxy = (UnionChild2) parent2.getUnion();
 			assertThat( Hibernate.isInitialized( proxy ), is( false ) );
+			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 1 );
+			inspector.assertNumberOfOccurrenceInQuery( 0, "union", 3 );
 		} );
+		inspector.clear();
 		// test get reference
 		inSession( session -> {
-			final UnionChild1 single1 = session.getReference( UnionChild1.class, 1L );
-			assertThat( single1, instanceOf( UnionSubChild1.class ) );
-			final UnionBase single2 = session.byId( UnionBase.class ).getReference( 2L );
-			assertThat( single2, instanceOf( UnionChild2.class ) );
+			final UnionChild1 proxy1 = session.getReference( UnionChild1.class, 1L );
+			assertThat( proxy1, instanceOf( UnionSubChild1.class ) );
+			assertThat( Hibernate.isInitialized( proxy1 ), is( false ) );
+			inspector.assertNumberOfOccurrenceInQuery( 0, "union", 1 );
+			final UnionBase proxy2 = session.byId( UnionBase.class ).getReference( 2L );
+			assertThat( proxy2, instanceOf( UnionChild2.class ) );
+			assertThat( Hibernate.isInitialized( proxy2 ), is( false ) );
+			inspector.assertNumberOfOccurrenceInQuery( 1, "union", 3 );
 		} );
 	}
 
 	@Before
 	public void setUp() {
 		inTransaction( session -> {
-			session.persist( new ParentEntity(
-					1L,
-					new SingleSubChild1( 1L, "1", "1" ),
-					new JoinedSubChild1( 1L, "1", "1" ),
-					new JoinedDiscSubChild1( 1L, "1", "1" ),
-					new UnionSubChild1( 1L, "1", "1" )
-			) );
-			session.persist( new ParentEntity(
-					2L,
-					new SingleChild2( 2L, 2 ),
-					new JoinedChild2( 2L, 2 ),
-					new JoinedDiscChild2( 2L, 2 ),
-					new UnionChild2( 2L, 2 )
-			) );
+			session.persist( new SingleParent( 1L, new SingleSubChild1( 1L, "1", "1" ) ) );
+			session.persist( new JoinedParent( 1L, new JoinedSubChild1( 1L, "1", "1" ) ) );
+			session.persist( new JoinedDiscParent( 1L, new JoinedDiscSubChild1( 1L, "1", "1" ) ) );
+			session.persist( new UnionParent( 1L, new UnionSubChild1( 1L, "1", "1" ) ) );
+			session.persist( new SingleParent( 2L, new SingleChild2( 2L, 2 ) ) );
+			session.persist( new JoinedParent( 2L, new JoinedChild2( 2L, 2 ) ) );
+			session.persist( new JoinedDiscParent( 2L, new JoinedDiscChild2( 2L, 2 ) ) );
+			session.persist( new UnionParent( 2L, new UnionChild2( 2L, 2 ) ) );
 		} );
 	}
 
 	@After
 	public void tearDown() {
 		inTransaction( session -> {
-			session.createMutationQuery( "delete from ParentEntity" ).executeUpdate();
+			session.createMutationQuery( "delete from SingleParent" ).executeUpdate();
 			session.createMutationQuery( "delete from SingleBase" ).executeUpdate();
+			session.createMutationQuery( "delete from JoinedParent" ).executeUpdate();
 			session.createMutationQuery( "delete from JoinedBase" ).executeUpdate();
+			session.createMutationQuery( "delete from JoinedDiscParent" ).executeUpdate();
 			session.createMutationQuery( "delete from JoinedDiscBase" ).executeUpdate();
+			session.createMutationQuery( "delete from UnionParent" ).executeUpdate();
 			session.createMutationQuery( "delete from UnionBase" ).executeUpdate();
 		} );
 	}
@@ -195,19 +234,22 @@ public abstract class AbstractConcreteProxyTest extends BaseNonConfigCoreFunctio
 	@Override
 	protected void applyMetadataSources(MetadataSources sources) {
 		sources.addAnnotatedClasses(
-				ParentEntity.class,
+				SingleParent.class,
 				SingleBase.class,
 				SingleChild1.class,
 				SingleSubChild1.class,
 				SingleChild2.class,
+				JoinedParent.class,
 				JoinedBase.class,
 				JoinedChild1.class,
 				JoinedSubChild1.class,
 				JoinedChild2.class,
+				JoinedDiscParent.class,
 				JoinedDiscBase.class,
 				JoinedDiscChild1.class,
 				JoinedDiscSubChild1.class,
 				JoinedDiscChild2.class,
+				UnionParent.class,
 				UnionBase.class,
 				UnionChild1.class,
 				UnionSubChild1.class,
@@ -224,48 +266,24 @@ public abstract class AbstractConcreteProxyTest extends BaseNonConfigCoreFunctio
 		return (SQLStatementInspector) sessionFactory().getSessionFactoryOptions().getStatementInspector();
 	}
 
-	@Entity( name = "ParentEntity" )
-	public static class ParentEntity {
+	@Entity( name = "SingleParent" )
+	public static class SingleParent {
 		@Id
 		private Long id;
 
 		@ManyToOne( fetch = FetchType.LAZY, cascade = CascadeType.PERSIST )
 		private SingleBase single;
 
-		@ManyToOne( fetch = FetchType.LAZY, cascade = CascadeType.PERSIST )
-		private JoinedBase joined;
-
-		@ManyToOne( fetch = FetchType.LAZY, cascade = CascadeType.PERSIST )
-		private JoinedDiscBase joinedDisc;
-
-		@ManyToOne( fetch = FetchType.LAZY, cascade = CascadeType.PERSIST )
-		private UnionBase union;
-
-		public ParentEntity() {
+		public SingleParent() {
 		}
 
-		public ParentEntity(Long id, SingleBase single, JoinedBase joined, JoinedDiscBase joinedDisc, UnionBase union) {
+		public SingleParent(Long id, SingleBase single) {
 			this.id = id;
 			this.single = single;
-			this.joined = joined;
-			this.joinedDisc = joinedDisc;
-			this.union = union;
 		}
 
 		public SingleBase getSingle() {
 			return single;
-		}
-
-		public JoinedBase getJoined() {
-			return joined;
-		}
-
-		public JoinedDiscBase getJoinedDisc() {
-			return joinedDisc;
-		}
-
-		public UnionBase getUnion() {
-			return union;
 		}
 	}
 
@@ -328,6 +346,27 @@ public abstract class AbstractConcreteProxyTest extends BaseNonConfigCoreFunctio
 
 	// InheritanceType.JOINED
 
+	@Entity( name = "JoinedParent" )
+	public static class JoinedParent {
+		@Id
+		private Long id;
+
+		@ManyToOne( fetch = FetchType.LAZY, cascade = CascadeType.PERSIST )
+		private JoinedBase joined;
+
+		public JoinedParent() {
+		}
+
+		public JoinedParent(Long id, JoinedBase joined) {
+			this.id = id;
+			this.joined = joined;
+		}
+
+		public JoinedBase getJoined() {
+			return joined;
+		}
+	}
+
 	@Entity( name = "JoinedBase" )
 	@Inheritance( strategy = InheritanceType.JOINED )
 	@ConcreteProxy
@@ -383,6 +422,27 @@ public abstract class AbstractConcreteProxyTest extends BaseNonConfigCoreFunctio
 	}
 
 	// InheritanceType.JOINED + @DiscriminatorColumn
+
+	@Entity( name = "JoinedDiscParent" )
+	public static class JoinedDiscParent {
+		@Id
+		private Long id;
+
+		@ManyToOne( fetch = FetchType.LAZY, cascade = CascadeType.PERSIST )
+		private JoinedDiscBase joinedDisc;
+
+		public JoinedDiscParent() {
+		}
+
+		public JoinedDiscParent(Long id, JoinedDiscBase joinedDisc) {
+			this.id = id;
+			this.joinedDisc = joinedDisc;
+		}
+
+		public JoinedDiscBase getJoinedDisc() {
+			return joinedDisc;
+		}
+	}
 
 	@Entity( name = "JoinedDiscBase" )
 	@Inheritance( strategy = InheritanceType.JOINED )
@@ -440,6 +500,27 @@ public abstract class AbstractConcreteProxyTest extends BaseNonConfigCoreFunctio
 	}
 
 	// InheritanceType.TABLE_PER_CLASS
+
+	@Entity( name = "UnionParent" )
+	public static class UnionParent {
+		@Id
+		private Long id;
+
+		@ManyToOne( fetch = FetchType.LAZY, cascade = CascadeType.PERSIST )
+		private UnionBase union;
+
+		public UnionParent() {
+		}
+
+		public UnionParent(Long id, UnionBase union) {
+			this.id = id;
+			this.union = union;
+		}
+
+		public UnionBase getUnion() {
+			return union;
+		}
+	}
 
 	@Entity( name = "UnionBase" )
 	@Inheritance( strategy = InheritanceType.TABLE_PER_CLASS )
