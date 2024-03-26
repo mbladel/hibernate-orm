@@ -10,27 +10,32 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.hibernate.Hibernate;
 import org.hibernate.annotations.ConcreteProxy;
+import org.hibernate.sql.ast.SqlAstJoinType;
 
+import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
+import jakarta.annotation.Nullable;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EntityGraph;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
+import jakarta.persistence.NamedAttributeNode;
+import jakarta.persistence.NamedEntityGraph;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hibernate.jpa.SpecHints.HINT_SPEC_FETCH_GRAPH;
 
 /**
  * @author Marco Belladelli
@@ -42,40 +47,84 @@ import static org.assertj.core.api.Assertions.assertThat;
 		LazyOptionalOneToOneConcreteProxyTest.PersonContact.class,
 		LazyOptionalOneToOneConcreteProxyTest.BusinessContact.class,
 } )
-@SessionFactory
+@SessionFactory( useCollectingStatementInspector = true )
 public class LazyOptionalOneToOneConcreteProxyTest {
-	@BeforeAll
-	public void setUp(SessionFactoryScope scope) {
-		scope.inTransaction( entityManager -> {
-			final Person person = new Person( 1L, "test" );
-			final Person child1 = new Person( 2L, "child1" );
-			final Person child2 = new Person( 2L, "child2" );
-			child1.addParent( person );
-			child2.addParent( person );
-			entityManager.persist( person );
+	@Test
+	public void testFindChildrenContact(SessionFactoryScope scope) {
+		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
+		inspector.clear();
+		scope.inTransaction( session -> {
+			final Person person = session.find(
+					Person.class,
+					1L,
+					Map.of( HINT_SPEC_FETCH_GRAPH, session.getEntityGraph( "Person.children" ) )
+			);
+			assertThat( person.getPersonContact() ).isNull();
+			assertThat( person.getChildren() ).matches( Hibernate::isInitialized )
+					.hasSize( 1 )
+					.element( 0 )
+					.extracting( Person::getPersonContact )
+					.isInstanceOf( PersonContact.class )
+					.matches( child -> !Hibernate.isInitialized( child ) );
+			inspector.assertExecutedCount( 1 );
+			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 3 );
 		} );
 	}
 
 	@Test
-	public void testFindNull(SessionFactoryScope scope) {
-		scope.inTransaction( entityManager -> {
-			final EntityGraph<?> personGraph = entityManager.createEntityGraph( Person.class );
-			personGraph.addAttributeNodes( "children" );
-
-			final Person loadedPerson = entityManager.find(
+	public void testFindParentContact(SessionFactoryScope scope) {
+		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
+		inspector.clear();
+		scope.inTransaction( session -> {
+			final Person person = session.find(
 					Person.class,
-					1L,
-					Map.of( "javax.persistence.fetchgraph", personGraph )
+					3L,
+					Map.of( HINT_SPEC_FETCH_GRAPH, session.getEntityGraph( "Person.children" ) )
 			);
+			assertThat( person.getPersonContact() )
+					.isInstanceOf( BusinessContact.class )
+					.matches( contact -> !Hibernate.isInitialized( contact ) );
+			assertThat( person.getChildren() ).matches( Hibernate::isInitialized ).hasSize( 2 );
+			inspector.assertExecutedCount( 1 );
+			inspector.assertNumberOfJoins( 0, SqlAstJoinType.LEFT, 3 );
+		} );
+	}
 
-			final PersonContact personContact = loadedPerson.getPersonContact();
-			assertThat( personContact ).isNull();
+	@BeforeAll
+	public void setUp(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final Person parent1 = new Person( 1L, "parent1" );
+			final Person child1 = new Person( 2L, "child1" );
+			child1.setParent( parent1 );
+			session.persist( parent1 );
+			session.persist( child1 );
+			session.persist( new PersonContact( 2L, child1 ) );
+			final Person parent2 = new Person( 3L, "parent2" );
+			final Person child2 = new Person( 4L, "child2" );
+			final Person child3 = new Person( 5L, "child3" );
+			child2.setParent( parent2 );
+			child3.setParent( parent2 );
+			session.persist( parent2 );
+			session.persist( child2 );
+			session.persist( child3 );
+			session.persist( new BusinessContact( 3L, parent2, "business2" ) );
+		} );
+	}
+
+	@AfterAll
+	public void tearDown(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			session.createMutationQuery( "delete from PersonContact" ).executeUpdate();
+			session.createQuery( "from Person", Person.class ).getResultList().forEach( p -> {
+				p.setParent( null );
+				session.remove( p );
+			} );
 		} );
 	}
 
 	@Entity( name = "Person" )
+	@NamedEntityGraph( name = "Person.children", attributeNodes = @NamedAttributeNode( "children" ) )
 	public static class Person {
-
 		@Id
 		private Long id;
 
@@ -84,11 +133,11 @@ public class LazyOptionalOneToOneConcreteProxyTest {
 		@ManyToOne
 		private Person parent;
 
-		@OneToOne( mappedBy = "person", orphanRemoval = true, cascade = CascadeType.ALL )
+		@OneToOne( mappedBy = "person" )
 		private PersonContact personContact;
 
 		@OneToMany( mappedBy = "parent" )
-		private Set<Person> children = new HashSet<>( 0 );
+		private Set<Person> children = new HashSet<>();
 
 		public Person() {
 		}
@@ -98,49 +147,19 @@ public class LazyOptionalOneToOneConcreteProxyTest {
 			this.name = name;
 		}
 
-		public Long getId() {
-			return id;
-		}
-
-		public void setId(Long id) {
-			this.id = id;
-		}
-
-		public String getName() {
-			return name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
+		public void setParent(@Nullable Person parent) {
+			this.parent = parent;
+			if ( parent != null ) {
+				parent.getChildren().add( this );
+			}
 		}
 
 		public PersonContact getPersonContact() {
 			return personContact;
 		}
 
-		public void setPersonContact(PersonContact personContact) {
-			this.personContact = personContact;
-		}
-
-		public Person getParent() {
-			return parent;
-		}
-
-		public void setParent(Person parent) {
-			this.parent = parent;
-		}
-
-		public void addParent(Person parent) {
-			this.parent = parent;
-			parent.getChildren().add( this );
-		}
-
 		public Set<Person> getChildren() {
 			return children;
-		}
-
-		public void setChildren(Set<Person> children) {
-			this.children = children;
 		}
 	}
 
@@ -153,10 +172,26 @@ public class LazyOptionalOneToOneConcreteProxyTest {
 		@OneToOne( optional = false, fetch = FetchType.LAZY )
 		@MapsId
 		private Person person;
+
+		public PersonContact() {
+		}
+
+		public PersonContact(Long id, Person person) {
+			this.id = id;
+			this.person = person;
+		}
 	}
 
-	@Entity(name="BusinessContact")
+	@Entity( name = "BusinessContact" )
 	public static class BusinessContact extends PersonContact {
 		private String business;
+
+		public BusinessContact() {
+		}
+
+		public BusinessContact(Long id, Person person, String business) {
+			super( id, person );
+			this.business = business;
+		}
 	}
 }
