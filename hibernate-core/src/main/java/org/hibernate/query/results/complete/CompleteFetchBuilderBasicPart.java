@@ -123,7 +123,7 @@ public class CompleteFetchBuilderBasicPart implements CompleteFetchBuilder, Basi
 
 		// we just care about the registration here.  The ModelPart will find it later
 		creationStateImpl.resolveSqlExpression(
-				createColumnReferenceKey( tableReference, referencedModelPart.getSelectablePath(), jdbcMapping ),
+				createColumnReferenceKey( tableReference, referencedModelPart, jdbcMapping ),
 				processingState -> new ResultSetMappingSqlSelection( valuesArrayPosition, referencedModelPart )
 		);
 

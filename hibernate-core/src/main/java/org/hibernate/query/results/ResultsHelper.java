@@ -73,11 +73,7 @@ public class ResultsHelper {
 			SelectableMapping selectableMapping,
 			int valuesArrayPosition) {
 		return resolver.resolveSqlExpression(
-				createColumnReferenceKey(
-						tableReference,
-						selectableMapping.getSelectablePath(),
-						selectableMapping.getJdbcMapping()
-				),
+				createColumnReferenceKey( tableReference, selectableMapping ),
 				processingState -> new ResultSetMappingSqlSelection(
 						valuesArrayPosition,
 						selectableMapping.getJdbcMapping()

@@ -47,23 +47,23 @@ public interface SqlExpressionResolver {
 	static ColumnReferenceKey createColumnReferenceKey(String tableExpression, String columnExpression, JdbcMapping jdbcMapping) {
 		return createColumnReferenceKey( tableExpression, new SelectablePath( columnExpression ), jdbcMapping );
 	}
+
 	/**
 	 * Helper for generating an expression key for a column reference.
 	 *
 	 * @see #resolveSqlExpression
 	 */
 	static ColumnReferenceKey createColumnReferenceKey(TableReference tableReference, String columnExpression, JdbcMapping jdbcMapping) {
-		return createColumnReferenceKey( tableReference, new SelectablePath( columnExpression ), jdbcMapping );
-	}
-	static ColumnReferenceKey createColumnReferenceKey(TableReference tableReference, SelectablePath selectablePath, JdbcMapping jdbcMapping) {
 		assert tableReference != null : "tableReference expected to be non-null";
-		assert selectablePath != null : "selectablePath expected to be non-null";
 		assert tableReference.getIdentificationVariable() != null : "tableReference#identificationVariable expected to be non-null";
 		final String qualifier = tableReference.getIdentificationVariable();
-		return createColumnReferenceKey( qualifier, selectablePath, jdbcMapping );
+		return createColumnReferenceKey( qualifier, new SelectablePath( columnExpression ), jdbcMapping );
 	}
 
-	static ColumnReferenceKey createColumnReferenceKey(String qualifier, SelectablePath selectablePath, JdbcMapping jdbcMapping) {
+	/**
+	 * This should only be used by other methods of this interface, callers should use SelectableMapping instead
+	 */
+	private static ColumnReferenceKey createColumnReferenceKey(String qualifier, SelectablePath selectablePath, JdbcMapping jdbcMapping) {
 		assert qualifier != null : "qualifier expected to be non-null";
 		assert selectablePath != null : "selectablePath expected to be non-null";
 		assert jdbcMapping != null : "jdbcMapping expected to be non-null";
@@ -79,18 +79,33 @@ public interface SqlExpressionResolver {
 	 * Convenience form for creating a key from table expression and SelectableMapping
 	 */
 	static ColumnReferenceKey createColumnReferenceKey(String tableExpression, SelectableMapping selectable) {
-		return createColumnReferenceKey( tableExpression, selectable.getSelectablePath(), selectable.getJdbcMapping() );
+		return createColumnReferenceKey( tableExpression, selectable, selectable.getJdbcMapping() );
+	}
+
+	/**
+	 * Helper for generating an expression key for a SelectableMapping.
+	 */
+	static ColumnReferenceKey createColumnReferenceKey(String qualifier, SelectableMapping selectable, JdbcMapping jdbcMapping) {
+		return selectable.isFormula()
+				? createColumnReferenceKey( qualifier, selectable.getSelectionExpression(), jdbcMapping )
+				: createColumnReferenceKey( qualifier, selectable.getSelectablePath(), jdbcMapping );
 	}
 
 	/**
 	 * Convenience form for creating a key from TableReference and SelectableMapping
 	 */
 	static ColumnReferenceKey createColumnReferenceKey(TableReference tableReference, SelectableMapping selectable) {
-		assert tableReference.containsAffectedTableName( selectable.getContainingTableExpression() )
-				: String.format( ROOT, "Expecting tables to match between TableReference (%s) and SelectableMapping (%s)", tableReference.getTableId(), selectable.getContainingTableExpression() );
-		return selectable.isFormula()
-				? createColumnReferenceKey( tableReference, selectable.getSelectionExpression(), selectable.getJdbcMapping() )
-				: createColumnReferenceKey( tableReference, selectable.getSelectablePath(), selectable.getJdbcMapping() );
+		return createColumnReferenceKey( tableReference, selectable, selectable.getJdbcMapping() );
+	}
+
+	/**
+	 * Helper for generating an expression key for a SelectableMapping.
+	 */
+	static ColumnReferenceKey createColumnReferenceKey(TableReference tableReference, SelectableMapping selectable, JdbcMapping jdbcMapping) {
+		assert tableReference != null : "tableReference expected to be non-null";
+		assert tableReference.getIdentificationVariable() != null : "tableReference#identificationVariable expected to be non-null";
+		final String qualifier = tableReference.getIdentificationVariable();
+		return createColumnReferenceKey( qualifier, selectable, jdbcMapping );
 	}
 
 	default Expression resolveSqlExpression(TableReference tableReference, SelectableMapping selectableMapping) {
