@@ -61,7 +61,7 @@ public interface SqlExpressionResolver {
 	}
 
 	/**
-	 * This should only be used by other methods of this interface, callers should use SelectableMapping instead
+	 * This should only be used by other methods of this interface, callers should use selectable or column expression instead
 	 */
 	private static ColumnReferenceKey createColumnReferenceKey(String qualifier, SelectablePath selectablePath, JdbcMapping jdbcMapping) {
 		assert qualifier != null : "qualifier expected to be non-null";
@@ -83,7 +83,7 @@ public interface SqlExpressionResolver {
 	}
 
 	/**
-	 * Helper for generating an expression key for a SelectableMapping.
+	 * Convenience form for creating a key from table expression, SelectableMapping and JdbcMapping
 	 */
 	static ColumnReferenceKey createColumnReferenceKey(String qualifier, SelectableMapping selectable, JdbcMapping jdbcMapping) {
 		return selectable.isFormula()
@@ -99,7 +99,7 @@ public interface SqlExpressionResolver {
 	}
 
 	/**
-	 * Helper for generating an expression key for a SelectableMapping.
+	 * Convenience form for creating a key from TableReference, SelectableMapping and JdbcMapping
 	 */
 	static ColumnReferenceKey createColumnReferenceKey(TableReference tableReference, SelectableMapping selectable, JdbcMapping jdbcMapping) {
 		assert tableReference != null : "tableReference expected to be non-null";
