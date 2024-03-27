@@ -13,6 +13,7 @@ import org.hibernate.annotations.Formula;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -33,6 +34,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 } )
 @SessionFactory
 public class EmbeddableFormulaOnSameColumnTest {
+	@Test
+	public void testFind(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final Person p = session.find( Person.class, 1L );
+			assertThat( p.getAddress().getFullAddress() ).isEqualTo( "Via Gustavo Fara, Milan, Italy" );
+			assertThat( p.getAddressBis().getFullAddress() ).isEqualTo( "Via Gustavo Fara, Milan, Italy bis" );
+		} );
+	}
+
+	@Test
+	public void testQuery(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final Person p = session.createQuery( "from Person where id = 1", Person.class ).getSingleResult();
+			assertThat( p.getAddress().getFullAddress() ).isEqualTo( "Via Gustavo Fara, Milan, Italy" );
+			assertThat( p.getAddressBis().getFullAddress() ).isEqualTo( "Via Gustavo Fara, Milan, Italy bis" );
+		} );
+	}
+
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
@@ -43,13 +62,9 @@ public class EmbeddableFormulaOnSameColumnTest {
 		} );
 	}
 
-	@Test
-	public void test(SessionFactoryScope scope) {
-		scope.inTransaction( session -> {
-			final Person p = session.find( Person.class, 1L );
-			assertThat( p.getAddress().getFullAddress() ).isEqualTo( "Via Gustavo Fara, Milan, Italy" );
-			assertThat( p.getAddressBis().getFullAddress() ).isEqualTo( "Via Gustavo Fara, Milan, Italy bis" );
-		} );
+	@AfterAll
+	public void tearDown(SessionFactoryScope scope) {
+		scope.inTransaction( session -> session.createMutationQuery( "delete from Person" ).executeUpdate() );
 	}
 
 	@Entity( name = "Person" )
