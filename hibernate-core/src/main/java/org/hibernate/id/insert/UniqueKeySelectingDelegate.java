@@ -49,7 +49,7 @@ public class UniqueKeySelectingDelegate extends AbstractSelectingDelegate {
 			EntityPersister persister,
 			String[] uniqueKeyPropertyNames,
 			EventType timing) {
-		super( persister, timing, true, true );
+		super( persister, timing, true, true, true );
 
 		this.uniqueKeyPropertyNames = uniqueKeyPropertyNames;
 

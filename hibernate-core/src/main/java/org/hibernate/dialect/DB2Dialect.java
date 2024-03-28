@@ -1134,6 +1134,11 @@ public class DB2Dialect extends Dialect {
 	}
 
 	@Override
+	public boolean supportsInsertReturningBatching() {
+		return false;
+	}
+
+	@Override
 	public boolean supportsValuesList() {
 		return true;
 	}

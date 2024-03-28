@@ -4105,15 +4105,27 @@ public abstract class Dialect implements ConversionContext, TypeContributor, Fun
 	}
 
 	/**
-	 * Does this dialect supports returning the {@link org.hibernate.annotations.RowId} column
+	 * Does this dialect support returning the {@link org.hibernate.annotations.RowId} column
 	 * after execution of an {@code insert} statement, using native SQL syntax?
 	 *
-	 * @return {@code true} is the dialect supports returning the rowid column
+	 * @return {@code true} is the dialect supports returning the rowid column, false otherwise
 	 *
 	 * @see #supportsInsertReturning()
 	 * @since 6.5
 	 */
 	public boolean supportsInsertReturningRowId() {
+		return supportsInsertReturning();
+	}
+
+	/**
+	 * Does this dialect support batching insert - returning statements?
+	 *
+	 * @return {@code true} is the dialect supports returning batching, false otherwise
+	 *
+	 * @see #supportsInsertReturning()
+	 * @since 6.6
+	 */
+	public boolean supportsInsertReturningBatching() {
 		return supportsInsertReturning();
 	}
 

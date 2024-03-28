@@ -36,7 +36,7 @@ import static org.hibernate.generator.values.internal.GeneratedValuesHelper.getG
 public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesMutationDelegate
 		implements InsertGeneratedIdentifierDelegate {
 	/**
-	 * @deprecated Use {@link #AbstractSelectingDelegate(EntityPersister, EventType, boolean, boolean)} instead.
+	 * @deprecated Use {@link #AbstractSelectingDelegate(EntityPersister, EventType, boolean, boolean, boolean)} instead.
 	 */
 	@Deprecated( forRemoval = true, since = "6.5" )
 	protected AbstractSelectingDelegate(PostInsertIdentityPersister persister) {
@@ -47,8 +47,9 @@ public abstract class AbstractSelectingDelegate extends AbstractGeneratedValuesM
 			EntityPersister persister,
 			EventType timing,
 			boolean supportsArbitraryValues,
-			boolean supportsRowId) {
-		super( persister, timing, supportsArbitraryValues, supportsRowId );
+			boolean supportsRowId,
+			boolean supportsBatching) {
+		super( persister, timing, supportsArbitraryValues, supportsRowId, supportsBatching );
 	}
 
 	/**

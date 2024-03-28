@@ -60,7 +60,8 @@ public class InsertReturningDelegate extends AbstractReturningDelegate {
 				persister,
 				timing,
 				true,
-				persister.getFactory().getJdbcServices().getDialect().supportsInsertReturningRowId()
+				persister.getFactory().getJdbcServices().getDialect().supportsInsertReturningRowId(),
+				persister.getFactory().getJdbcServices().getDialect().supportsInsertReturningBatching()
 		);
 		this.tableReference = new MutatingTableReference( persister.getIdentifierTableMapping() );
 		final List<GeneratedValueBasicResultBuilder> resultBuilders = jdbcValuesMappingProducer.getResultBuilders();

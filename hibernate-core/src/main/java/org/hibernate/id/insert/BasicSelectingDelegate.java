@@ -32,7 +32,7 @@ public class BasicSelectingDelegate extends AbstractSelectingDelegate {
 	}
 
 	public BasicSelectingDelegate(EntityPersister persister) {
-		super( persister, EventType.INSERT, false, false );
+		super( persister, EventType.INSERT, false, false, true );
 		this.persister = persister;
 	}
 

@@ -76,7 +76,7 @@ public class InsertCoordinatorStandard extends AbstractMutationCoordinator imple
 			staticInsertGroup = null;
 		}
 		else {
-			staticInsertGroup = generateStaticOperationGroup();
+			staticInsertGroup = generateStaticOperationGroup( false );
 		}
 	}
 
@@ -86,7 +86,9 @@ public class InsertCoordinatorStandard extends AbstractMutationCoordinator imple
 			MutationOperationGroup staticInsertGroup,
 			BasicBatchKey batchKey) {
 		super( entityPersister, factory );
-		this.staticInsertGroup = staticInsertGroup;
+		this.staticInsertGroup = staticInsertGroup != null
+				? staticInsertGroup
+				: generateStaticOperationGroup( true );
 		this.batchKey = batchKey;
 	}
 
@@ -381,10 +383,10 @@ public class InsertCoordinatorStandard extends AbstractMutationCoordinator imple
 		return createOperationGroup( null, insertGroupBuilder.buildMutationGroup() );
 	}
 
-	public MutationOperationGroup generateStaticOperationGroup() {
+	public MutationOperationGroup generateStaticOperationGroup(boolean forceIdentifierBinding) {
 		final MutationGroupBuilder insertGroupBuilder = new MutationGroupBuilder( MutationType.INSERT, entityPersister() );
 		entityPersister().forEachMutableTable(
-				(tableMapping) -> insertGroupBuilder.addTableDetailsBuilder( createTableInsertBuilder( tableMapping, false ) )
+				(tableMapping) -> insertGroupBuilder.addTableDetailsBuilder( createTableInsertBuilder( tableMapping, forceIdentifierBinding ) )
 		);
 		applyTableInsertDetails( insertGroupBuilder, entityPersister().getPropertyInsertability(), null, null, false );
 		return createOperationGroup( null, insertGroupBuilder.buildMutationGroup() );

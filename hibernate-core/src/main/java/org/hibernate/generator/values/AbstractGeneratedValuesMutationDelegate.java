@@ -21,21 +21,24 @@ public abstract class AbstractGeneratedValuesMutationDelegate implements Generat
 	private final EventType timing;
 	private final boolean supportsArbitraryValues;
 	private final boolean supportsRowId;
+	private final boolean supportsBatching;
 	protected final GeneratedValuesMappingProducer jdbcValuesMappingProducer;
 
 	public AbstractGeneratedValuesMutationDelegate(EntityPersister persister, EventType timing) {
-		this( persister, timing, true, true );
+		this( persister, timing, true, true, true );
 	}
 
 	public AbstractGeneratedValuesMutationDelegate(
 			EntityPersister persister,
 			EventType timing,
 			boolean supportsArbitraryValues,
-			boolean supportsRowId) {
+			boolean supportsRowId,
+			boolean supportsBatching) {
 		this.persister = persister;
 		this.timing = timing;
 		this.supportsArbitraryValues = supportsArbitraryValues;
 		this.supportsRowId = supportsRowId;
+		this.supportsBatching = supportsBatching;
 		this.jdbcValuesMappingProducer = GeneratedValuesHelper.createMappingProducer(
 				persister,
 				timing,
@@ -57,6 +60,11 @@ public abstract class AbstractGeneratedValuesMutationDelegate implements Generat
 	@Override
 	public final boolean supportsRowId() {
 		return supportsRowId;
+	}
+
+	@Override
+	public boolean supportsBatching() {
+		return supportsBatching;
 	}
 
 	@Override

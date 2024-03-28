@@ -70,6 +70,9 @@ public interface GeneratedValuesMutationDelegate {
 	 */
 	boolean supportsRowId();
 
+	// todo marco : javadoc
+	boolean supportsBatching();
+
 	/**
 	 * Retrieve the {@linkplain JdbcValuesMappingProducer mapping producer} used to read the generated values.
 	 */
