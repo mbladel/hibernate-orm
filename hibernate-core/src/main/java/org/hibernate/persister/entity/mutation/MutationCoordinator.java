@@ -6,6 +6,8 @@
  */
 package org.hibernate.persister.entity.mutation;
 
+import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.sql.model.MutationOperationGroup;
 
 /**
@@ -24,4 +26,8 @@ public interface MutationCoordinator {
 	 * of dynamic mutation is necessary.
 	 */
 	MutationOperationGroup getStaticMutationOperationGroup();
+
+	AbstractEntityPersister entityPersister();
+
+	SessionFactoryImplementor factory();
 }

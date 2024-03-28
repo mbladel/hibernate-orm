@@ -80,6 +80,16 @@ public class InsertCoordinatorStandard extends AbstractMutationCoordinator imple
 		}
 	}
 
+	protected InsertCoordinatorStandard(
+			AbstractEntityPersister entityPersister,
+			SessionFactoryImplementor factory,
+			MutationOperationGroup staticInsertGroup,
+			BasicBatchKey batchKey) {
+		super( entityPersister, factory );
+		this.staticInsertGroup = staticInsertGroup;
+		this.batchKey = batchKey;
+	}
+
 	@Override
 	public MutationOperationGroup getStaticMutationOperationGroup() {
 		return staticInsertGroup;

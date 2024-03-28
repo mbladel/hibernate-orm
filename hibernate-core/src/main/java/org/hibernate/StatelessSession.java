@@ -71,6 +71,9 @@ public interface StatelessSession extends SharedSessionContract {
 	 */
 	Object insert(String entityName, Object entity);
 
+	// todo marco : jdoc
+	void batchInsert(Object entity);
+
 	/**
 	 * Update a row.
 	 *
