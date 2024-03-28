@@ -376,24 +376,26 @@ public class InsertCoordinatorStandard extends AbstractMutationCoordinator imple
 			SharedSessionContractImplementor session,
 			boolean forceIdentifierBinding) {
 		final MutationGroupBuilder insertGroupBuilder = new MutationGroupBuilder( MutationType.INSERT, entityPersister() );
-		entityPersister().forEachMutableTable(
-				(tableMapping) -> insertGroupBuilder.addTableDetailsBuilder( createTableInsertBuilder( tableMapping, forceIdentifierBinding ) )
-		);
+		final GeneratedValuesMutationDelegate delegate = entityPersister().getInsertDelegate();
+		entityPersister().forEachMutableTable( tableMapping -> insertGroupBuilder.addTableDetailsBuilder(
+				createTableInsertBuilder( tableMapping, delegate, forceIdentifierBinding ) ) );
 		applyTableInsertDetails( insertGroupBuilder, insertable, object, session, forceIdentifierBinding );
 		return createOperationGroup( null, insertGroupBuilder.buildMutationGroup() );
 	}
 
-	public MutationOperationGroup generateStaticOperationGroup(boolean forceIdentifierBinding) {
+	public MutationOperationGroup generateStaticOperationGroup(boolean ignoreDelegate) {
 		final MutationGroupBuilder insertGroupBuilder = new MutationGroupBuilder( MutationType.INSERT, entityPersister() );
-		entityPersister().forEachMutableTable(
-				(tableMapping) -> insertGroupBuilder.addTableDetailsBuilder( createTableInsertBuilder( tableMapping, forceIdentifierBinding ) )
-		);
+		final GeneratedValuesMutationDelegate delegate = ignoreDelegate ? null : entityPersister().getInsertDelegate();
+		entityPersister().forEachMutableTable( tableMapping -> insertGroupBuilder.addTableDetailsBuilder(
+				createTableInsertBuilder( tableMapping, delegate, ignoreDelegate ) ) );
 		applyTableInsertDetails( insertGroupBuilder, entityPersister().getPropertyInsertability(), null, null, false );
 		return createOperationGroup( null, insertGroupBuilder.buildMutationGroup() );
 	}
 
-	private TableMutationBuilder<?> createTableInsertBuilder(EntityTableMapping tableMapping, boolean forceIdentifierBinding) {
-		final GeneratedValuesMutationDelegate delegate = entityPersister().getInsertDelegate();
+	private TableMutationBuilder<?> createTableInsertBuilder(
+			EntityTableMapping tableMapping,
+			GeneratedValuesMutationDelegate delegate,
+			boolean forceIdentifierBinding) {
 		if ( tableMapping.isIdentifierTable() && delegate != null && !forceIdentifierBinding ) {
 			return delegate.createTableMutationBuilder( tableMapping.getInsertExpectation(), factory() );
 		}
