@@ -847,6 +847,11 @@ public class H2Dialect extends Dialect {
 	}
 
 	@Override
+	public boolean supportsInsertReturningBatching() {
+		return false;
+	}
+
+	@Override
 	public boolean supportsInsertReturningGeneratedKeys() {
 		return true;
 	}

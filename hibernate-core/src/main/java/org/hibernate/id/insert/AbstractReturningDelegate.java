@@ -31,7 +31,7 @@ import org.hibernate.pretty.MessageHelper;
 public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesMutationDelegate
 		implements InsertGeneratedIdentifierDelegate {
 	/**
-	 * @deprecated Use {@link #AbstractReturningDelegate(EntityPersister, EventType, boolean, boolean)} instead.
+	 * @deprecated Use {@link #AbstractReturningDelegate(EntityPersister, EventType, boolean, boolean, boolean)} instead.
 	 */
 	@Deprecated( forRemoval = true, since = "6.5" )
 	public AbstractReturningDelegate(PostInsertIdentityPersister persister) {
@@ -42,8 +42,9 @@ public abstract class AbstractReturningDelegate extends AbstractGeneratedValuesM
 			EntityPersister persister,
 			EventType timing,
 			boolean supportsArbitraryValues,
-			boolean supportsRowId) {
-		super( persister, timing, supportsArbitraryValues, supportsRowId );
+			boolean supportsRowId,
+			boolean supportsBatching) {
+		super( persister, timing, supportsArbitraryValues, supportsRowId, supportsBatching );
 	}
 
 	@Override

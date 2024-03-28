@@ -252,6 +252,11 @@ public class MariaDBDialect extends MySQLDialect {
 	}
 
 	@Override
+	public boolean supportsInsertReturningBatching() {
+		return false;
+	}
+
+	@Override
 	public boolean supportsUpdateReturning() {
 		return false;
 	}

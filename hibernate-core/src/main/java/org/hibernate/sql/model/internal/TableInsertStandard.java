@@ -9,6 +9,7 @@ package org.hibernate.sql.model.internal;
 import java.util.List;
 import java.util.function.BiConsumer;
 
+import org.hibernate.jdbc.Expectation;
 import org.hibernate.sql.ast.SqlAstWalker;
 import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.model.MutationTarget;
@@ -46,6 +47,15 @@ public class TableInsertStandard extends AbstractTableInsert {
 	@Override
 	public void forEachReturningColumn(BiConsumer<Integer,ColumnReference> consumer) {
 		forEachThing( returningColumns, consumer );
+	}
+
+	@Override
+	public Expectation getExpectation() {
+		// todo marco : maybe this is too much ?
+		if ( !returningColumns.isEmpty() ) {
+			return new Expectation.None();
+		}
+		return super.getExpectation();
 	}
 
 	@Override

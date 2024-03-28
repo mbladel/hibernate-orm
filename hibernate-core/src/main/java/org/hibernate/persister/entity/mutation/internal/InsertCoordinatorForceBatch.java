@@ -7,14 +7,10 @@
 package org.hibernate.persister.entity.mutation.internal;
 
 import org.hibernate.engine.jdbc.batch.internal.BasicBatchKey;
-import org.hibernate.engine.jdbc.batch.spi.BatchKey;
-import org.hibernate.engine.jdbc.mutation.internal.NoBatchKeyAccess;
-import org.hibernate.engine.jdbc.mutation.spi.BatchKeyAccess;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.persister.entity.AbstractEntityPersister;
+import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.persister.entity.mutation.InsertCoordinator;
 import org.hibernate.persister.entity.mutation.InsertCoordinatorStandard;
+import org.hibernate.sql.model.MutationOperationGroup;
 
 /**
  * @author Marco Belladelli
@@ -24,8 +20,22 @@ public class InsertCoordinatorForceBatch extends InsertCoordinatorStandard {
 		super(
 				delegate.entityPersister(),
 				delegate.factory(),
-				delegate.getStaticMutationOperationGroup(),
+				resolveStaticMutationOperationGroup( delegate ),
 				new BasicBatchKey( delegate.entityPersister().getEntityName() + "#INSERT", null )
 		);
+	}
+
+	private static MutationOperationGroup resolveStaticMutationOperationGroup(InsertCoordinator delegate) {
+		final GeneratedValuesMutationDelegate insertDelegate = delegate.entityPersister().getInsertDelegate();
+		if ( insertDelegate != null && !insertDelegate.supportsBatching() ) {
+			// todo marco : this is not efficient
+			// By returning null, we trigger creation of an ad-hoc mutation operation
+			// that ignored the mutation delegate. This is not efficient, but the
+			// only way to correctly support batching in this case
+			return null;
+		}
+		else {
+			return delegate.getStaticMutationOperationGroup();
+		}
 	}
 }

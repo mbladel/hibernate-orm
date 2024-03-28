@@ -59,7 +59,7 @@ public class GetGeneratedKeysDelegate extends AbstractReturningDelegate {
 			EntityPersister persister,
 			boolean inferredKeys,
 			EventType timing) {
-		super( persister, timing, !inferredKeys, false );
+		super( persister, timing, !inferredKeys, false, true );
 
 		if ( inferredKeys ) {
 			columnNames = null;
