@@ -27,7 +27,13 @@ public interface MutationCoordinator {
 	 */
 	MutationOperationGroup getStaticMutationOperationGroup();
 
-	AbstractEntityPersister entityPersister();
+	default AbstractEntityPersister entityPersister() {
+		// todo marco : would be nice to use interface here,
+		//  don't think it's easily doable though
+		return null;
+	}
 
-	SessionFactoryImplementor factory();
+	default SessionFactoryImplementor factory() {
+		return null;
+	}
 }

@@ -25,7 +25,7 @@ public class InsertCoordinatorForceBatch extends InsertCoordinatorStandard {
 				delegate.entityPersister(),
 				delegate.factory(),
 				delegate.getStaticMutationOperationGroup(),
-				new BasicBatchKey( delegate.entityPersister().getEntityName() + "#INSERT_FORCE_BATCH", null )
+				new BasicBatchKey( delegate.entityPersister().getEntityName() + "#INSERT", null )
 		);
 	}
 }
