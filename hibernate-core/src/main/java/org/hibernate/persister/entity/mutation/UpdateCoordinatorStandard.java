@@ -90,7 +90,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 
 		// NOTE : even given dynamic-update and/or dirty optimistic locking
 		// there are cases where we need the full static updates.
-		this.staticUpdateGroup = buildStaticUpdateGroup();
+		this.staticUpdateGroup = buildStaticUpdateGroup( false );
 		this.versionUpdateGroup = buildVersionUpdateGroup();
 		if ( entityPersister.hasUpdateGeneratedProperties() ) {
 			// disable batching in case of update generated properties
@@ -1043,6 +1043,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 			SharedSessionContractImplementor session) {
 		final MutationGroupBuilder updateGroupBuilder = new MutationGroupBuilder( MutationType.UPDATE, entityPersister() );
 
+		final GeneratedValuesMutationDelegate delegate = entityPersister().getUpdateDelegate();
 		entityPersister().forEachMutableTable( (tableMapping) -> {
 			final MutatingTableReference tableReference = new MutatingTableReference( tableMapping );
 			final TableMutationBuilder<?> tableUpdateBuilder;
@@ -1052,7 +1053,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 				tableUpdateBuilder = new TableUpdateBuilderSkipped( tableReference );
 			}
 			else {
-				tableUpdateBuilder = createTableUpdateBuilder( tableMapping );
+				tableUpdateBuilder = createTableUpdateBuilder( tableMapping, delegate );
 			}
 			updateGroupBuilder.addTableDetailsBuilder( tableUpdateBuilder );
 		} );
@@ -1070,11 +1071,10 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 		return createOperationGroup( valuesAnalysis, updateGroupBuilder.buildMutationGroup() );
 	}
 
-	private TableMutationBuilder<?> createTableUpdateBuilder(EntityTableMapping tableMapping) {
-		final GeneratedValuesMutationDelegate delegate = tableMapping.isIdentifierTable() ?
-				entityPersister().getUpdateDelegate() :
-				null;
-		if ( delegate != null ) {
+	private TableMutationBuilder<?> createTableUpdateBuilder(
+			EntityTableMapping tableMapping,
+			GeneratedValuesMutationDelegate delegate) {
+		if ( tableMapping.isIdentifierTable() && delegate != null ) {
 			return delegate.createTableMutationBuilder( tableMapping.getInsertExpectation(), factory() );
 		}
 		else {
@@ -1611,7 +1611,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 		}
 	}
 
-	private MutationOperationGroup buildStaticUpdateGroup() {
+	private MutationOperationGroup buildStaticUpdateGroup(boolean ignoreDelegate) {
 		final UpdateValuesAnalysisImpl valuesAnalysis = analyzeUpdateValues(
 				null,
 				null,
@@ -1639,9 +1639,10 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 
 		final MutationGroupBuilder updateGroupBuilder = new MutationGroupBuilder( MutationType.UPDATE, entityPersister() );
 
+		final GeneratedValuesMutationDelegate delegate = ignoreDelegate ? null : entityPersister().getUpdateDelegate();
 		entityPersister().forEachMutableTable( (tableMapping) -> {
 			// NOTE : TableUpdateBuilderStandard handles custom sql-update mappings
-			updateGroupBuilder.addTableDetailsBuilder( createTableUpdateBuilder( tableMapping ) );
+			updateGroupBuilder.addTableDetailsBuilder( createTableUpdateBuilder( tableMapping, delegate ) );
 		} );
 
 		// next, iterate each attribute and build the SET and WHERE clauses
