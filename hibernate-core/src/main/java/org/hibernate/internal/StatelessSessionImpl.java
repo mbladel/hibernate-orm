@@ -21,6 +21,7 @@ import org.hibernate.bytecode.spi.BytecodeEnhancementMetadata;
 import org.hibernate.cache.spi.access.EntityDataAccess;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.engine.internal.StatefulPersistenceContext;
+import org.hibernate.engine.jdbc.mutation.spi.BatchKeyAccess;
 import org.hibernate.engine.spi.EffectiveEntityGraph;
 import org.hibernate.engine.spi.EntityHolder;
 import org.hibernate.engine.spi.EntityKey;
@@ -38,7 +39,11 @@ import org.hibernate.graph.GraphSemantic;
 import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.loader.ast.spi.CascadingFetchProfile;
 import org.hibernate.persister.collection.CollectionPersister;
+import org.hibernate.persister.entity.AbstractEntityPersister;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.persister.entity.mutation.AbstractMutationCoordinator;
+import org.hibernate.persister.entity.mutation.InsertCoordinatorStandard;
+import org.hibernate.persister.entity.mutation.internal.InsertCoordinatorForceBatch;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.tuple.entity.EntityMetamodel;
 
@@ -121,6 +126,27 @@ public class StatelessSessionImpl extends AbstractSharedSessionContract implemen
 		return id;
 	}
 
+	@Override
+	public void batchInsert(Object entity) {
+		// todo marco : also String entityName sign?
+		checkOpen();
+		final EntityPersister persister = getEntityPersister( null, entity );
+		final Object id;
+		final Object[] state = persister.getValues( entity );
+		final Generator generator = persister.getGenerator();
+		if ( !generator.generatedOnExecution( entity, this ) ) {
+			id = ( (BeforeExecutionGenerator) generator).generate( this, entity, null, INSERT );
+			if ( persister.isVersioned() ) {
+				if ( seedVersion( entity, state, persister, this ) ) {
+					persister.setValues( entity, state );
+				}
+			}
+		}
+		else {
+			id = null;
+		}
+		new InsertCoordinatorForceBatch( persister.getInsertCoordinator() ).insert( entity, id, state, this );
+	}
 
 	// deletes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

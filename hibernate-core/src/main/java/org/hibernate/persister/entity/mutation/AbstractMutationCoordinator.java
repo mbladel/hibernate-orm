@@ -20,6 +20,7 @@ import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.AttributeMappingsList;
 import org.hibernate.persister.entity.AbstractEntityPersister;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.model.ModelMutationLogging;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.MutationOperationGroup;
@@ -39,7 +40,7 @@ import org.hibernate.sql.model.internal.MutationOperationGroupFactory;
  * @author Steve Ebersole
  */
 @Internal
-public abstract class AbstractMutationCoordinator {
+public abstract class AbstractMutationCoordinator implements MutationCoordinator {
 	protected final AbstractEntityPersister entityPersister;
 	protected final SessionFactoryImplementor factory;
 	protected final MutationExecutorService mutationExecutorService;
@@ -52,11 +53,13 @@ public abstract class AbstractMutationCoordinator {
 		this.mutationExecutorService = factory.getServiceRegistry().getService( MutationExecutorService.class );
 	}
 
-	protected AbstractEntityPersister entityPersister() {
+	@Override
+	public AbstractEntityPersister entityPersister() {
 		return entityPersister;
 	}
 
-	protected SessionFactoryImplementor factory() {
+	@Override
+	public SessionFactoryImplementor factory() {
 		return factory;
 	}
 
