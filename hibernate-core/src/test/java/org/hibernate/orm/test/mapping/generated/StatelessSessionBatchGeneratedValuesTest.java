@@ -7,6 +7,7 @@
 package org.hibernate.orm.test.mapping.generated;
 
 import java.util.Date;
+import java.util.List;
 
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.Generated;
@@ -43,13 +44,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Marco Belladelli
  */
 @DomainModel( annotatedClasses = {
-		BatchGeneratedValuesTest.IdentityOnly.class,
-		BatchGeneratedValuesTest.IdentityAndValues.class,
-		BatchGeneratedValuesTest.IdentityAndValuesAndNaturalId.class,
+		StatelessSessionBatchGeneratedValuesTest.IdentityOnly.class,
+		StatelessSessionBatchGeneratedValuesTest.IdentityAndValues.class,
+		StatelessSessionBatchGeneratedValuesTest.IdentityAndValuesAndNaturalId.class,
 } )
 @SessionFactory
 @ServiceRegistry( settings = @Setting( name = AvailableSettings.STATEMENT_BATCH_SIZE, value = "2" ) )
-public class BatchGeneratedValuesTest {
+public class StatelessSessionBatchGeneratedValuesTest {
 	@Test
 	public void testIdentityOnly(SessionFactoryScope scope) {
 		// insert
@@ -64,7 +65,6 @@ public class BatchGeneratedValuesTest {
 					null,
 					null
 			);
-			assertThat( batch ).isNotNull();
 			final JournalingBatchObserver observer = new JournalingBatchObserver();
 			batch.addObserver( observer );
 
@@ -76,15 +76,15 @@ public class BatchGeneratedValuesTest {
 				assertThat( observer.getImplicitExecutionCount() ).isEqualTo( i >> 1 );
 				assertThat( observer.getExplicitExecutionCount() ).isEqualTo( 0 );
 			}
+
+			assertThat( session.createQuery( "from IdentityOnly", IdentityOnly.class ).getResultList() ).hasSize( 10 )
+					.extracting( IdentityOnly::getId )
+					.doesNotHaveDuplicates();
 		} );
-		scope.inStatelessSession( session -> assertThat( session.createQuery(
-				"select id from IdentityOnly",
-				Long.class
-		).getResultList() ).hasSize( 10 ).doesNotHaveDuplicates() );
 	}
 
 	@Test
-	public void testInsertIdentityAndValues(SessionFactoryScope scope) {
+	public void testIdentityAndValues(SessionFactoryScope scope) {
 		// insert
 		scope.inStatelessTransaction( session -> {
 			// insert the first entity to initialize batch
@@ -97,7 +97,6 @@ public class BatchGeneratedValuesTest {
 					null,
 					null
 			);
-			assertThat( batch ).isNotNull();
 			final JournalingBatchObserver observer = new JournalingBatchObserver();
 			batch.addObserver( observer );
 
@@ -110,10 +109,48 @@ public class BatchGeneratedValuesTest {
 				assertThat( observer.getExplicitExecutionCount() ).isEqualTo( 0 );
 			}
 		} );
-		scope.inStatelessSession( session -> assertThat( session.createQuery(
-				"select id from IdentityAndValues",
-				Long.class
-		).getResultList() ).hasSize( 10 ).doesNotHaveDuplicates() );
+		// update
+		scope.inStatelessTransaction( session -> {
+			final List<IdentityAndValues> entityList = session.createQuery(
+					"from IdentityAndValues order by id",
+					IdentityAndValues.class
+			).getResultList();
+			assertThat( entityList ).hasSize( 10 )
+					.allMatch( e -> e.getId() != null && e.getName() != null && e.getUpdateDate() != null );
+			final Date max = entityList.stream()
+					.map( IdentityAndValues::getUpdateDate )
+					.max( Date::compareTo )
+					.orElseThrow();
+
+			// update the first entity to initialize batch
+			final IdentityAndValues first = entityList.get( 0 );
+			first.setData( "updated_1" );
+			session.batchUpdate( first );
+
+			final Batch batch = ( (SharedSessionContractImplementor) session ).getJdbcCoordinator().getBatch(
+					getBatchKey( scope, IdentityAndValues.class, MutationType.UPDATE ),
+					null,
+					null
+			);
+			final JournalingBatchObserver observer = new JournalingBatchObserver();
+			batch.addObserver( observer );
+
+			for ( int i = 2; i <= 10; i++ ) {
+				final IdentityAndValues object = entityList.get( i - 1 );
+				object.setData( "updated_" + i );
+				session.batchUpdate( object );
+				// implicit executions should happen once every 2 inserts
+				assertThat( observer.getImplicitExecutionCount() ).isEqualTo( i >> 1 );
+				assertThat( observer.getExplicitExecutionCount() ).isEqualTo( 0 );
+			}
+
+			// assert that all update timestamps were increased
+			assertThat( session.createQuery( "from IdentityAndValues order by id", IdentityAndValues.class )
+								.getResultList() ).hasSize( 10 )
+					.extracting( IdentityAndValues::getUpdateDate )
+					.allMatch( d -> d.compareTo( max ) > 0 );
+		} );
+		// deletes are always batched, no need to test
 	}
 
 	@Test
@@ -123,6 +160,7 @@ public class BatchGeneratedValuesTest {
 			// insert the first entity to initialize batch
 			final IdentityAndValuesAndNaturalId first = new IdentityAndValuesAndNaturalId();
 			first.setData( "object_1" );
+			first.setNaturalId( 1 );
 			session.batchInsert( first );
 
 			final Batch batch = ( (SharedSessionContractImplementor) session ).getJdbcCoordinator().getBatch(
@@ -137,16 +175,57 @@ public class BatchGeneratedValuesTest {
 			for ( int i = 2; i <= 10; i++ ) {
 				final IdentityAndValuesAndNaturalId object = new IdentityAndValuesAndNaturalId();
 				object.setData( "object_" + i );
+				object.setNaturalId( i );
 				session.batchInsert( object );
 				// implicit executions should happen once every 2 inserts
 				assertThat( observer.getImplicitExecutionCount() ).isEqualTo( i >> 1 );
 				assertThat( observer.getExplicitExecutionCount() ).isEqualTo( 0 );
 			}
 		} );
-		scope.inStatelessSession( session -> assertThat( session.createQuery(
-				"select id from IdentityAndValuesAndNaturalId",
-				Long.class
-		).getResultList() ).hasSize( 10 ).doesNotHaveDuplicates() );
+		// update
+		scope.inStatelessTransaction( session -> {
+			final List<IdentityAndValuesAndNaturalId> entityList = session.createQuery(
+					"from IdentityAndValuesAndNaturalId order by id",
+					IdentityAndValuesAndNaturalId.class
+			).getResultList();
+			assertThat( entityList ).hasSize( 10 )
+					.allMatch( e -> e.getId() != null && e.getName() != null && e.getUpdateDate() != null );
+			final Date max = entityList.stream()
+					.map( IdentityAndValuesAndNaturalId::getUpdateDate )
+					.max( Date::compareTo )
+					.orElseThrow();
+
+			// update the first entity to initialize batch
+			final IdentityAndValuesAndNaturalId first = entityList.get( 0 );
+			first.setData( "updated_1" );
+			session.batchUpdate( first );
+
+			final Batch batch = ( (SharedSessionContractImplementor) session ).getJdbcCoordinator().getBatch(
+					getBatchKey( scope, IdentityAndValuesAndNaturalId.class, MutationType.UPDATE ),
+					null,
+					null
+			);
+			final JournalingBatchObserver observer = new JournalingBatchObserver();
+			batch.addObserver( observer );
+
+			for ( int i = 2; i <= 10; i++ ) {
+				final IdentityAndValuesAndNaturalId object = entityList.get( i - 1 );
+				object.setData( "updated_" + i );
+				session.batchUpdate( object );
+				// implicit executions should happen once every 2 inserts
+				assertThat( observer.getImplicitExecutionCount() ).isEqualTo( i >> 1 );
+				assertThat( observer.getExplicitExecutionCount() ).isEqualTo( 0 );
+			}
+
+			// assert that all update timestamps were increased
+			assertThat( session.createQuery(
+					"from IdentityAndValuesAndNaturalId order by id",
+					IdentityAndValuesAndNaturalId.class
+			).getResultList() ).hasSize( 10 )
+					.extracting( IdentityAndValuesAndNaturalId::getUpdateDate )
+					.allMatch( d -> d.compareTo( max ) > 0 );
+		} );
+		// deletes are always batched, no need to test
 	}
 
 	private BatchKey getBatchKey(SessionFactoryScope scope, Class<?> entityClass, MutationType mutationType) {
@@ -221,7 +300,12 @@ public class BatchGeneratedValuesTest {
 		@ColumnDefault( "'default_name'" )
 		private String name;
 
+		@UpdateTimestamp( source = SourceType.DB )
+		private Date updateDate;
+
 		@NaturalId
+		private Integer naturalId;
+
 		private String data;
 
 		public Long getId() {
@@ -232,8 +316,16 @@ public class BatchGeneratedValuesTest {
 			return name;
 		}
 
+		public Date getUpdateDate() {
+			return updateDate;
+		}
+
 		public void setData(String data) {
 			this.data = data;
+		}
+
+		public void setNaturalId(Integer naturalId) {
+			this.naturalId = naturalId;
 		}
 	}
 }
