@@ -8,26 +8,30 @@ package org.hibernate.persister.entity.mutation.internal;
 
 import org.hibernate.engine.jdbc.batch.internal.BasicBatchKey;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
-import org.hibernate.persister.entity.mutation.InsertCoordinator;
-import org.hibernate.persister.entity.mutation.InsertCoordinatorStandard;
+import org.hibernate.persister.entity.mutation.UpdateCoordinatorStandard;
 import org.hibernate.sql.model.MutationOperationGroup;
 
 /**
  * @author Marco Belladelli
  */
-public class InsertCoordinatorForceBatch extends InsertCoordinatorStandard {
-	public InsertCoordinatorForceBatch(InsertCoordinatorStandard delegate) {
+public class UpdateCoordinatorForceBatch extends UpdateCoordinatorStandard {
+	public UpdateCoordinatorForceBatch(UpdateCoordinatorStandard delegate) {
 		super(
 				delegate.entityPersister(),
 				delegate.factory(),
 				resolveStaticMutationOperationGroup( delegate ),
-				new BasicBatchKey( delegate.entityPersister().getEntityName() + "#INSERT", null )
+				new BasicBatchKey( delegate.entityPersister().getEntityName() + "#UPDATE", null ),
+				delegate.getVersionUpdateGroup(),
+				new BasicBatchKey(
+						delegate.entityPersister().getEntityName() + "#UPDATE_VERSION",
+						null
+				)
 		);
 	}
 
-	private static MutationOperationGroup resolveStaticMutationOperationGroup(InsertCoordinatorStandard delegate) {
-		final GeneratedValuesMutationDelegate insertDelegate = delegate.entityPersister().getInsertDelegate();
-		if ( insertDelegate != null && !insertDelegate.supportsBatching() ) {
+	private static MutationOperationGroup resolveStaticMutationOperationGroup(UpdateCoordinatorStandard delegate) {
+		final GeneratedValuesMutationDelegate updateDelegate = delegate.entityPersister().getUpdateDelegate();
+		if ( updateDelegate != null && !updateDelegate.supportsBatching() ) {
 			// todo marco : this is not efficient
 			// By returning null, we trigger creation of an ad-hoc mutation operation
 			// that ignored the mutation delegate. This is not efficient, but the

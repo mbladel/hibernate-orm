@@ -53,12 +53,10 @@ public abstract class AbstractMutationCoordinator implements MutationCoordinator
 		this.mutationExecutorService = factory.getServiceRegistry().getService( MutationExecutorService.class );
 	}
 
-	@Override
 	public AbstractEntityPersister entityPersister() {
 		return entityPersister;
 	}
 
-	@Override
 	public SessionFactoryImplementor factory() {
 		return factory;
 	}

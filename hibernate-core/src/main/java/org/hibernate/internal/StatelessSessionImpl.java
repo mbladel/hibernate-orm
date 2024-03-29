@@ -38,7 +38,12 @@ import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.loader.ast.spi.CascadingFetchProfile;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.persister.entity.mutation.InsertCoordinator;
+import org.hibernate.persister.entity.mutation.InsertCoordinatorStandard;
+import org.hibernate.persister.entity.mutation.UpdateCoordinator;
+import org.hibernate.persister.entity.mutation.UpdateCoordinatorStandard;
 import org.hibernate.persister.entity.mutation.internal.InsertCoordinatorForceBatch;
+import org.hibernate.persister.entity.mutation.internal.UpdateCoordinatorForceBatch;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.tuple.entity.EntityMetamodel;
 
@@ -101,16 +106,12 @@ public class StatelessSessionImpl extends AbstractSharedSessionContract implemen
 	public Object insert(String entityName, Object entity) {
 		checkOpen();
 		final EntityPersister persister = getEntityPersister( entityName, entity );
-		final Object id;
 		final Object[] state = persister.getValues( entity );
+		seedVersionForInsert( entity, state, persister );
 		final Generator generator = persister.getGenerator();
+		final Object id;
 		if ( !generator.generatedOnExecution( entity, this ) ) {
 			id = ( (BeforeExecutionGenerator) generator).generate( this, entity, null, INSERT );
-			if ( persister.isVersioned() ) {
-				if ( seedVersion( entity, state, persister, this ) ) {
-					persister.setValues( entity, state );
-				}
-			}
 			persister.getInsertCoordinator().insert( entity, id, state, this );
 		}
 		else {
@@ -123,24 +124,42 @@ public class StatelessSessionImpl extends AbstractSharedSessionContract implemen
 
 	@Override
 	public void batchInsert(Object entity) {
-		// todo marco : also String entityName sign?
+		batchInsert( null, entity );
+	}
+
+	@Override
+	public void batchInsert(String entityName, Object entity) {
 		checkOpen();
-		final EntityPersister persister = getEntityPersister( null, entity );
-		final Object id;
+		final EntityPersister persister = getEntityPersister( entityName, entity );
+		final InsertCoordinator insertCoordinator = persister.getInsertCoordinator();
+		if ( !( insertCoordinator instanceof InsertCoordinatorStandard ) ) {
+			insert( entityName, entity );
+			return;
+		}
 		final Object[] state = persister.getValues( entity );
+		seedVersionForInsert( entity, state, persister );
 		final Generator generator = persister.getGenerator();
+		final Object id;
 		if ( !generator.generatedOnExecution( entity, this ) ) {
-			id = ( (BeforeExecutionGenerator) generator).generate( this, entity, null, INSERT );
-			if ( persister.isVersioned() ) {
-				if ( seedVersion( entity, state, persister, this ) ) {
-					persister.setValues( entity, state );
-				}
-			}
+			id = ( (BeforeExecutionGenerator) generator ).generate( this, entity, null, INSERT );
 		}
 		else {
 			id = null;
 		}
-		new InsertCoordinatorForceBatch( persister.getInsertCoordinator() ).insert( entity, id, state, this );
+		new InsertCoordinatorForceBatch( (InsertCoordinatorStandard) persister.getInsertCoordinator() ).insert(
+				entity,
+				id,
+				state,
+				this
+		);
+	}
+
+	private void seedVersionForInsert(Object entity, Object[] state, EntityPersister persister) {
+		if ( persister.isVersioned() ) {
+			if ( seedVersion( entity, state, persister, this ) ) {
+				persister.setValues( entity, state );
+			}
+		}
 	}
 
 	// deletes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -181,17 +200,51 @@ public class StatelessSessionImpl extends AbstractSharedSessionContract implemen
 		final EntityPersister persister = getEntityPersister( entityName, entity );
 		final Object id = persister.getIdentifier( entity, this );
 		final Object[] state = persister.getValues( entity );
-		final Object oldVersion;
+		final Object oldVersion = setVersionForUpdate( entity, state, persister );
+		persister.getUpdateCoordinator().update( entity, id, null, state, oldVersion, null, null, false, this );
+	}
+
+	@Override
+	public void batchUpdate(Object entity) {
+		batchUpdate( null, entity );
+	}
+
+	@Override
+	public void batchUpdate(String entityName, Object entity) {
+		checkOpen();
+		final EntityPersister persister = getEntityPersister( entityName, entity );
+		final UpdateCoordinator updateCoordinator = persister.getUpdateCoordinator();
+		if ( !( updateCoordinator instanceof UpdateCoordinatorStandard ) ) {
+			update( entityName, entity );
+			return;
+		}
+		final Object id = persister.getIdentifier( entity, this );
+		final Object[] state = persister.getValues( entity );
+		final Object oldVersion = setVersionForUpdate( entity, state, persister );
+		new UpdateCoordinatorForceBatch( (UpdateCoordinatorStandard) updateCoordinator ).update(
+				entity,
+				id,
+				null,
+				state,
+				oldVersion,
+				null,
+				null,
+				false,
+				this
+		);
+	}
+
+	private Object setVersionForUpdate(Object entity, Object[] state, EntityPersister persister) {
 		if ( persister.isVersioned() ) {
-			oldVersion = persister.getVersion( entity );
+			final Object oldVersion = persister.getVersion( entity );
 			final Object newVersion = incrementVersion( entity, oldVersion, persister, this );
 			setVersion( state, newVersion, persister );
 			persister.setValues( entity, state );
+			return oldVersion;
 		}
 		else {
-			oldVersion = null;
+			return null;
 		}
-		persister.getUpdateCoordinator().update( entity, id, null, state, oldVersion, null, null, false, this );
 	}
 
 	@Override
