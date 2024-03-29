@@ -125,6 +125,10 @@ public class TableUpdateStandard extends AbstractTableUpdate<JdbcMutationOperati
 		if ( expectation != null ) {
 			return expectation;
 		}
+		else if ( !returningColumns.isEmpty() ) {
+			// The affected row count is not set when returning columns are specified
+			return new Expectation.None();
+		}
 		return super.getExpectation();
 	}
 

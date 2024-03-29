@@ -51,8 +51,8 @@ public class TableInsertStandard extends AbstractTableInsert {
 
 	@Override
 	public Expectation getExpectation() {
-		// todo marco : maybe this is too much ?
 		if ( !returningColumns.isEmpty() ) {
+			// The affected row count is not set when returning columns are specified
 			return new Expectation.None();
 		}
 		return super.getExpectation();
