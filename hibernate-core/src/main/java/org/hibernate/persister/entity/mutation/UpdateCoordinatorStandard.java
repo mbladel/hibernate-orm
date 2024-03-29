@@ -118,7 +118,9 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 			MutationOperationGroup versionUpdateGroup,
 			BatchKey versionUpdateBatchkey) {
 		super( entityPersister, factory );
-		this.staticUpdateGroup = staticUpdateGroup;
+		this.staticUpdateGroup = staticUpdateGroup != null
+				? staticUpdateGroup
+				: buildStaticUpdateGroup( true );
 		this.batchKey = batchKey;
 		this.versionUpdateGroup = versionUpdateGroup;
 		this.versionUpdateBatchkey = versionUpdateBatchkey;
@@ -129,7 +131,7 @@ public class UpdateCoordinatorStandard extends AbstractMutationCoordinator imple
 		return staticUpdateGroup;
 	}
 
-	protected MutationOperationGroup getVersionUpdateGroup() {
+	public MutationOperationGroup getVersionUpdateGroup() {
 		return versionUpdateGroup;
 	}
 

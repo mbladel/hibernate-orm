@@ -26,14 +26,4 @@ public interface MutationCoordinator {
 	 * of dynamic mutation is necessary.
 	 */
 	MutationOperationGroup getStaticMutationOperationGroup();
-
-	default AbstractEntityPersister entityPersister() {
-		// todo marco : would be nice to use interface here,
-		//  don't think it's easily doable though
-		return null;
-	}
-
-	default SessionFactoryImplementor factory() {
-		return null;
-	}
 }
