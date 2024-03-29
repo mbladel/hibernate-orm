@@ -9,6 +9,7 @@ package org.hibernate.generator.values.internal;
 import java.util.List;
 
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.jdbc.Expectation;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.model.MutationOperation;
