@@ -2056,46 +2056,7 @@ public abstract class AbstractEntityPersister
 
 	@Override
 	public Object forceVersionIncrement(Object id, Object currentVersion, SharedSessionContractImplementor session) {
-		if ( superMappingType != null ) {
-			return superMappingType.getEntityPersister().forceVersionIncrement( id, currentVersion, session );
-		}
-
-		final Object nextVersion = calculateNextVersion( id, currentVersion, session );
-
-		updateCoordinator.forceVersionIncrement( id, currentVersion, nextVersion, session );
-
-//		// todo : cache this sql...
-//		String versionIncrementString = generateVersionIncrementUpdateString();
-//		PreparedStatement st;
-//		try {
-//			st = session
-//					.getJdbcCoordinator()
-//					.getStatementPreparer()
-//					.prepareStatement( versionIncrementString, false );
-//			try {
-//				getVersionType().nullSafeSet( st, nextVersion, 1, session );
-//				getIdentifierType().nullSafeSet( st, id, 2, session );
-//				getVersionType().nullSafeSet( st, currentVersion, 2 + getIdentifierColumnSpan(), session );
-//				int rows = session.getJdbcCoordinator().getResultSetReturn().executeUpdate( st );
-//				if ( rows != 1 ) {
-//					throw new StaleObjectStateException( getEntityName(), id );
-//				}
-//			}
-//			finally {
-//				session.getJdbcCoordinator().getLogicalConnection().getResourceRegistry().release( st );
-//				session.getJdbcCoordinator().afterStatementExecution();
-//			}
-//		}
-//		catch (SQLException sqle) {
-//			throw session.getJdbcServices().getSqlExceptionHelper().convert(
-//					sqle,
-//					"could not retrieve version: " +
-//							MessageHelper.infoString( this, id, getFactory() ),
-//					getVersionSelectString()
-//			);
-//		}
-
-		return nextVersion;
+		return doForceVersionIncrement( id, currentVersion, null, session );
 	}
 
 	@Override
@@ -2104,14 +2065,30 @@ public abstract class AbstractEntityPersister
 			Object currentVersion,
 			boolean batching,
 			SharedSessionContractImplementor session) throws HibernateException {
-		if ( superMappingType != null ) {
+		return doForceVersionIncrement( id, currentVersion, batching, session );
+	}
+
+	private Object doForceVersionIncrement(
+			Object id,
+			Object currentVersion,
+			Boolean batching,
+			SharedSessionContractImplementor session) throws HibernateException {
+		if ( getMappedTableDetails().getTableName().equals( getVersionedTableName() ) ) {
+			final Object nextVersion = calculateNextVersion( id, currentVersion, session );
+			if ( batching != null ) {
+				updateCoordinator.forceVersionIncrement( id, currentVersion, nextVersion, batching, session );
+			}
+			else {
+				updateCoordinator.forceVersionIncrement( id, currentVersion, nextVersion, session );
+			}
+			return nextVersion;
+		}
+		else if ( superMappingType != null ) {
 			return superMappingType.getEntityPersister().forceVersionIncrement( id, currentVersion, session );
 		}
-
-		final Object nextVersion = calculateNextVersion( id, currentVersion, session );
-
-		updateCoordinator.forceVersionIncrement( id, currentVersion, nextVersion, batching, session );
-		return nextVersion;
+		else {
+			throw new AssertionFailure( "Could not find versioned table mapping to force version increment" );
+		}
 	}
 
 	private Object calculateNextVersion(Object id, Object currentVersion, SharedSessionContractImplementor session) {
@@ -2145,17 +2122,6 @@ public abstract class AbstractEntityPersister
 		}
 		return nextVersion;
 	}
-
-	//	private String generateVersionIncrementUpdateString() {
-//		final Update update = new Update( getFactory().getJdbcServices().getDialect() ).setTableName( getTableName( 0 ) );
-//		if ( getFactory().getSessionFactoryOptions().isCommentsEnabled() ) {
-//			update.setComment( "forced version increment" );
-//		}
-//		update.addColumn( getVersionColumnName() );
-//		update.addPrimaryKeyColumns( rootTableKeyColumnNames );
-//		update.setVersionColumnName( getVersionColumnName() );
-//		return update.toStatementString();
-//	}
 
 	/**
 	 * Retrieve the version number
