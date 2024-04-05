@@ -67,6 +67,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.TableGenerator;
 import jakarta.persistence.TableGenerators;
 
+import static org.hibernate.boot.model.internal.AnnotatedClassType.EMBEDDABLE;
 import static org.hibernate.boot.model.internal.AnnotatedClassType.ENTITY;
 import static org.hibernate.boot.model.internal.FilterDefBinder.bindFilterDefs;
 import static org.hibernate.boot.model.internal.GeneratorBinder.buildGenerators;
@@ -697,7 +698,19 @@ public final class AnnotationBinder {
 				superclassState.setHasSiblings( true );
 				final InheritanceState superEntityState =
 						getInheritanceStateOfSuperEntity( clazz, inheritanceStatePerClass );
-				state.setHasParents( superEntityState != null );
+				if ( superEntityState != null ) {
+					state.setHasParents( true );
+					if ( buildingContext.getMetadataCollector().getClassType( clazz ) == EMBEDDABLE ) {
+						// todo marco : is this ok as a way to collect embeddable subtypes?
+						buildingContext.getMetadataCollector().registerEmbeddableSubclass(
+								clazz,
+								superEntityState.getClazz()
+						);
+					}
+				}
+				else {
+					state.setHasParents( false );
+				}
 				logMixedInheritance( clazz, superclassState, state );
 				if ( superclassState.getType() != null ) {
 					state.setType( superclassState.getType() );

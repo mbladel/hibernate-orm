@@ -368,6 +368,10 @@ public class EmbeddableBinder {
 		final XClass annotatedClass = inferredData.getPropertyClass();
 		final List<PropertyData> classElements =
 				collectClassElements( propertyAccessor, context, returnedClassOrElement, annotatedClass, isIdClass );
+		if ( !isIdClass ) {
+			// todo marco : I don't think we should support inheritance for id-classes, right?
+			collectSubclassElements( propertyAccessor, context, returnedClassOrElement, classElements );
+		}
 		final List<PropertyData> baseClassElements =
 				collectBaseClassElements( baseInferredData, propertyAccessor, context, annotatedClass );
 		if ( baseClassElements != null
@@ -409,14 +413,16 @@ public class EmbeddableBinder {
 		if ( compositeUserType != null ) {
 			processCompositeUserType( component, compositeUserType );
 		}
-
-		bindDiscriminator(
-				component,
-				inferredData.getClassOrElement(),
-				propertyHolder,
-				inheritanceStatePerClass,
-				context
-		);
+		else if ( !isIdClass ) {
+			// Embeddable inheritance is not supported for custom user types
+			bindDiscriminator(
+					component,
+					returnedClassOrElement,
+					propertyHolder,
+					inheritanceStatePerClass,
+					context
+			);
+		}
 
 		AggregateComponentBinder.processAggregate(
 				component,
@@ -435,7 +441,14 @@ public class EmbeddableBinder {
 			PropertyHolder holder,
 			Map<XClass, InheritanceState> inheritanceStatePerClass,
 			MetadataBuildingContext context) {
+		// todo marco : normal embeddables work even if they are not listed here
 		final InheritanceState inheritanceState = inheritanceStatePerClass.get( componentClass );
+		if ( inheritanceState == null ) {
+			// todo marco : this can happen if the embeddable is not listed in the annotated classes
+			//  though the property itself still works, so I think we can leave it
+			return;
+		}
+
 		final AnnotatedDiscriminatorColumn discriminatorColumn =
 				processSingleTableDiscriminatorProperties( componentClass, inheritanceState, context );
 		if ( !inheritanceState.hasParents() ) {
@@ -538,6 +551,18 @@ public class EmbeddableBinder {
 			superClass = superClass.getSuperclass();
 		}
 		return classElements;
+	}
+
+	private static void collectSubclassElements(
+			AccessType propertyAccessor,
+			MetadataBuildingContext context,
+			XClass superclass,
+			List<PropertyData> classElements) {
+		for ( final XClass subclass : context.getMetadataCollector().getEmbeddableSubclasses( superclass ) ) {
+			final PropertyContainer superContainer = new PropertyContainer( subclass, subclass, propertyAccessor );
+			addElementsOfClass( classElements, superContainer, context );
+			collectSubclassElements( propertyAccessor, context, subclass, classElements );
+		}
 	}
 
 	private static boolean isValidSuperclass(XClass superClass, boolean isIdClass) {

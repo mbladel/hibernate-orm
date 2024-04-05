@@ -8,6 +8,7 @@ package org.hibernate.boot.internal;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -109,6 +110,7 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.MapsId;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import static org.hibernate.boot.model.naming.Identifier.toIdentifier;
 
@@ -135,6 +137,7 @@ public class InFlightMetadataCollectorImpl implements InFlightMetadataCollector,
 	private final Map<String,PersistentClass> entityBindingMap = new HashMap<>();
 	private final List<Component> composites = new ArrayList<>();
 	private final Map<Class<?>, Component> genericComponentsMap = new HashMap<>();
+	private final Map<XClass, List<XClass>> embeddableSubtypes = new HashMap<>();
 	private final Map<String,Collection> collectionBindingMap = new HashMap<>();
 
 	private final Map<String, FilterDefinition> filterDefinitionMap = new HashMap<>();
@@ -282,6 +285,17 @@ public class InFlightMetadataCollectorImpl implements InFlightMetadataCollector,
 	@Override
 	public Component getGenericComponent(Class<?> componentClass) {
 		return genericComponentsMap.get( componentClass );
+	}
+
+	@Override
+	public void registerEmbeddableSubclass(XClass subclass, XClass superclass) {
+		embeddableSubtypes.computeIfAbsent( superclass, c -> new ArrayList<>() ).add( subclass );
+	}
+
+	@Override
+	public List<XClass> getEmbeddableSubclasses(XClass superclass) {
+		final List<XClass> subclasses = embeddableSubtypes.get( superclass );
+		return subclasses != null ? subclasses : List.of();
 	}
 
 	@Override
