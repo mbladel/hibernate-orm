@@ -21,6 +21,7 @@ import jakarta.persistence.Id;
  * @author Marco Belladelli
  */
 @DomainModel( annotatedClasses = {
+		// EmbeddableInheritanceTest.AnotherEntity.class,
 		EmbeddableInheritanceTest.TestEntity.class,
 		EmbeddableInheritanceTest.ParentEmbeddable.class,
 		EmbeddableInheritanceTest.ChildEmbeddable.class,
@@ -43,6 +44,23 @@ public class EmbeddableInheritanceTest {
 		scope.inTransaction( session -> {
 
 		} );
+	}
+
+	@Entity( name = "AnotherEntity" )
+	static class AnotherEntity {
+		@Id
+		private Long id;
+
+		@Embedded
+		private ParentEmbeddable embeddable;
+
+		public AnotherEntity() {
+		}
+
+		public AnotherEntity(Long id, ParentEmbeddable embeddable) {
+			this.id = id;
+			this.embeddable = embeddable;
+		}
 	}
 
 	@Entity( name = "TestEntity" )
