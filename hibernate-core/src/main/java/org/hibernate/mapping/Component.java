@@ -8,6 +8,7 @@ package org.hibernate.mapping;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -135,6 +136,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		this.isKey = original.isKey;
 		this.roleName = original.roleName;
 		this.discriminator = original.discriminator;
+		this.discriminatorValue = original.discriminatorValue;
 		this.customInstantiator = original.customInstantiator;
 		this.type = original.type;
 	}
@@ -188,9 +190,13 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 			return cachedColumns;
 		}
 		else {
-			this.cachedColumns = properties.stream()
+			final List<Column> columns = properties.stream()
 					.flatMap( p -> p.getValue().getColumns().stream() )
 					.collect( toList() );
+			if ( discriminator != null ) {
+				columns.addAll( discriminator.getColumns() );
+			}
+			this.cachedColumns = Collections.unmodifiableList( columns );
 			return cachedColumns;
 		}
 	}
@@ -236,6 +242,9 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 				aggregatedColumns.addAll( value.getColumns() );
 			}
 		}
+		if ( component.getDiscriminator() != null ) {
+			aggregatedColumns.addAll( component.getDiscriminator().getColumns() );
+		}
 	}
 
 	private void notifyPropertiesAboutAggregateColumn(AggregateColumn aggregateColumn, Component component) {
@@ -256,6 +265,9 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 					( (Component) value ).setParentAggregateColumn( aggregateColumn );
 				}
 			}
+		}
+		if ( component.getDiscriminator() != null ) {
+			( (BasicValue) component.getDiscriminator() ).setAggregateColumn( aggregateColumn );
 		}
 	}
 
@@ -539,6 +551,14 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 	public void setDiscriminator(Value discriminator) {
 		this.discriminator = discriminator;
+	}
+
+	public String getDiscriminatorValue() {
+		return discriminatorValue;
+	}
+
+	public void setDiscriminatorValue(String discriminatorValue) {
+		this.discriminatorValue = discriminatorValue;
 	}
 
 	@Override

@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.hibernate.AnnotationException;
+import org.hibernate.AssertionFailure;
+import org.hibernate.annotations.DiscriminatorFormula;
 import org.hibernate.annotations.Instantiator;
 import org.hibernate.annotations.TypeBinderType;
 import org.hibernate.annotations.common.reflection.XAnnotatedElement;
@@ -26,6 +28,7 @@ import org.hibernate.boot.spi.AccessType;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.boot.spi.PropertyData;
 import org.hibernate.internal.CoreMessageLogger;
+import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.SimpleValue;
@@ -40,6 +43,7 @@ import org.hibernate.usertype.CompositeUserType;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
+import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.EmbeddedId;
@@ -51,6 +55,8 @@ import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 
+import static org.hibernate.boot.model.internal.AnnotatedDiscriminatorColumn.buildDiscriminatorColumn;
+import static org.hibernate.boot.model.internal.BinderHelper.getOverridableAnnotation;
 import static org.hibernate.boot.model.internal.BinderHelper.getPath;
 import static org.hibernate.boot.model.internal.BinderHelper.getPropertyOverriddenByMapperOrMapsId;
 import static org.hibernate.boot.model.internal.BinderHelper.getRelativePath;
@@ -403,6 +409,15 @@ public class EmbeddableBinder {
 		if ( compositeUserType != null ) {
 			processCompositeUserType( component, compositeUserType );
 		}
+
+		bindDiscriminator(
+				component,
+				inferredData.getClassOrElement(),
+				propertyHolder,
+				inheritanceStatePerClass,
+				context
+		);
+
 		AggregateComponentBinder.processAggregate(
 				component,
 				propertyHolder,
@@ -412,6 +427,80 @@ public class EmbeddableBinder {
 				context
 		);
 		return component;
+	}
+
+	private static void bindDiscriminator(
+			Component component,
+			XClass componentClass,
+			PropertyHolder holder,
+			Map<XClass, InheritanceState> inheritanceStatePerClass,
+			MetadataBuildingContext context) {
+		final InheritanceState inheritanceState = inheritanceStatePerClass.get( componentClass );
+		final AnnotatedDiscriminatorColumn discriminatorColumn =
+				processSingleTableDiscriminatorProperties( componentClass, inheritanceState, context );
+		if ( !inheritanceState.hasParents() ) {
+			if ( inheritanceState.hasSiblings() || discriminatorColumn != null && !discriminatorColumn.isImplicit() ) {
+				bindDiscriminatorColumnToRootComponent( component, discriminatorColumn, holder, context );
+			}
+		}
+	}
+
+	private static AnnotatedDiscriminatorColumn processSingleTableDiscriminatorProperties(
+			XClass annotatedClass, InheritanceState inheritanceState, MetadataBuildingContext context) {
+		final DiscriminatorColumn discriminatorColumn = annotatedClass.getAnnotation( DiscriminatorColumn.class );
+
+		final DiscriminatorFormula discriminatorFormula = getOverridableAnnotation(
+				annotatedClass,
+				DiscriminatorFormula.class,
+				context
+		);
+
+		if ( !inheritanceState.hasParents() ) {
+			return buildDiscriminatorColumn( discriminatorColumn, discriminatorFormula, context );
+		}
+		else {
+			// not a root entity
+			if ( discriminatorColumn != null ) {
+				throw new AnnotationException( String.format(
+						"Embeddable class '%s' is annotated '@DiscriminatorColumn' but it is not the root of the inheritance hierarchy",
+						annotatedClass.getName()
+				) );
+			}
+			if ( discriminatorFormula != null ) {
+				throw new AnnotationException( String.format(
+						"Embeddable class '%s' is annotated '@DiscriminatorFormula' but it is not the root of the inheritance hierarchy",
+						annotatedClass.getName()
+				) );
+			}
+			return null;
+		}
+	}
+
+	private static void bindDiscriminatorColumnToRootComponent(
+			Component component,
+			AnnotatedDiscriminatorColumn discriminatorColumn,
+			PropertyHolder holder,
+			MetadataBuildingContext context) {
+		assert component.getDiscriminator() == null;
+		// todo marco : why would we need this check?
+		// if ( component.getDiscriminator() == null ) {
+		if ( discriminatorColumn == null ) {
+			throw new AssertionFailure( "discriminator column should have been built" );
+		}
+		LOG.tracev( "Setting discriminator for embedded {0}", component.getComponentClassName() );
+
+		final AnnotatedColumns columns = new AnnotatedColumns();
+		columns.setPropertyHolder( holder );
+		columns.setBuildingContext( context );
+		discriminatorColumn.setParent( columns );
+
+		final BasicValue discriminatorColumnBinding = new BasicValue( context, component.getTable() );
+		component.setDiscriminator( discriminatorColumnBinding );
+		discriminatorColumn.linkWithValue( discriminatorColumnBinding );
+		discriminatorColumnBinding.setTypeName( discriminatorColumn.getDiscriminatorTypeName() );
+		// todo marco : we're probably gonna need this flag, but maybe only in EmbeddableMappingType ?
+		// component.setPolymorphic( true );
+		// }
 	}
 
 	private static CompositeUserType<?> compositeUserType(
