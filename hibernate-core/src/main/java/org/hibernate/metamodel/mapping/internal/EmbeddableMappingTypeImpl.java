@@ -7,12 +7,14 @@
 package org.hibernate.metamodel.mapping.internal;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
 import org.hibernate.MappingException;
 import org.hibernate.SharedSessionContract;
+import org.hibernate.annotations.common.reflection.XClass;
 import org.hibernate.cfg.Environment;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.aggregate.AggregateSupport;
@@ -21,7 +23,6 @@ import org.hibernate.engine.config.spi.ConfigurationService;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.CascadeStyle;
-import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.mapping.AggregateColumn;
@@ -37,6 +38,7 @@ import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.DiscriminatorConverter;
 import org.hibernate.metamodel.mapping.DiscriminatorType;
+import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorConverter;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
@@ -644,8 +646,8 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		}
 
 		final DiscriminatorType<?> discriminatorType = buildDiscriminatorType(
-				DiscriminatorHelper.getDiscriminatorType(bootDescriptor ),
-				creationContext.getSessionFactory()
+				bootDescriptor,
+				creationContext
 		);
 
 		// todo marco : use proper class here
@@ -665,9 +667,9 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 	}
 
 	private @NonNull DiscriminatorType<?> buildDiscriminatorType(
-			BasicType<?> discriminatorJdbcMapping,
-			SessionFactoryImplementor factory) {
-		final JavaTypeRegistry javaTypeRegistry = factory.getTypeConfiguration().getJavaTypeRegistry();
+			Component bootDescriptor,
+			RuntimeModelCreationContext creationContext) {
+		final JavaTypeRegistry javaTypeRegistry = creationContext.getSessionFactory().getTypeConfiguration().getJavaTypeRegistry();
 
 		final JavaType<Object> domainJavaType;
 		if ( representationStrategy.getMode() == POJO ) {
@@ -677,19 +679,24 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			domainJavaType = javaTypeRegistry.resolveDescriptor( String.class );
 		}
 
-		// todo marco : we need to use a different discriminator converter type, maybe create one for embeddables
+		final Map<Object, Class<?>> valueMappings = new HashMap<>( bootDescriptor.getDiscriminatorValues().size() );
+		for ( Map.Entry<Object, XClass> entry : bootDescriptor.getDiscriminatorValues().entrySet() ) {
+			valueMappings.put(
+					entry.getKey(),
+					creationContext.getBootstrapContext().getReflectionManager().toClass( entry.getValue() )
+			);
+		}
 
-		//noinspection rawtypes
-		final DiscriminatorConverter converter = MappedDiscriminatorConverter.fromValueMappings(
+
+		final BasicType<?> discriminatorType = DiscriminatorHelper.getDiscriminatorType( bootDescriptor );
+		final DiscriminatorConverter<Object, ?> converter = EmbeddableDiscriminatorConverter.fromValueMappings(
 				getNavigableRole().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
 				domainJavaType,
-				discriminatorJdbcMapping,
-				Map.of(), // todo marco : build map of discriminated types
-				factory.getMappingMetamodel()
+				discriminatorType,
+				valueMappings
 		);
 
-		//noinspection unchecked,rawtypes
-		return new DiscriminatorTypeImpl( discriminatorJdbcMapping, converter );
+		return new DiscriminatorTypeImpl<>( discriminatorType, converter );
 	}
 
 	public EmbeddableValuedModelPart getEmbeddedValueMapping() {
