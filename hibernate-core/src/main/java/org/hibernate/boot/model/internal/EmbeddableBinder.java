@@ -39,11 +39,13 @@ import org.hibernate.property.access.internal.PropertyAccessStrategyMixedImpl;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
 import org.hibernate.resource.beans.internal.FallbackBeanInstanceProducer;
 import org.hibernate.resource.beans.spi.ManagedBeanRegistry;
+import org.hibernate.type.BasicType;
 import org.hibernate.usertype.CompositeUserType;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.EmbeddedId;
@@ -70,6 +72,8 @@ import static org.hibernate.boot.model.internal.PropertyBinder.addElementsOfClas
 import static org.hibernate.boot.model.internal.PropertyBinder.processElementAnnotations;
 import static org.hibernate.boot.model.internal.PropertyHolderBuilder.buildPropertyHolder;
 import static org.hibernate.internal.CoreLogging.messageLogger;
+import static org.hibernate.internal.util.StringHelper.isEmpty;
+import static org.hibernate.internal.util.StringHelper.unqualify;
 import static org.hibernate.mapping.SimpleValue.DEFAULT_ID_GEN_STRATEGY;
 
 /**
@@ -368,11 +372,28 @@ public class EmbeddableBinder {
 		final XClass annotatedClass = inferredData.getPropertyClass();
 		final List<PropertyData> classElements =
 				collectClassElements( propertyAccessor, context, returnedClassOrElement, annotatedClass, isIdClass );
-		if ( !isIdClass ) {
+		if ( !isIdClass && compositeUserType == null ) {
+			// Main entry point for embedded inheritance
 			// todo marco : I don't think we should support inheritance for id-classes, right?
 			// todo marco : move discriminator binding here, we should collect subclasses and
 			//  discriminator values from there
-			collectSubclassElements( propertyAccessor, context, returnedClassOrElement, classElements );
+			final Map<Object, XClass> discriminatorValues = new HashMap<>();
+			bindDiscriminator(
+					component,
+					returnedClassOrElement,
+					propertyHolder,
+					inheritanceStatePerClass,
+					context
+			);
+			collectSubclassElements(
+					propertyAccessor,
+					context,
+					returnedClassOrElement,
+					classElements,
+					(BasicType<?>) component.getDiscriminator().getType(),
+					discriminatorValues
+			);
+			component.setDiscriminatorValues( discriminatorValues );
 		}
 		final List<PropertyData> baseClassElements =
 				collectBaseClassElements( baseInferredData, propertyAccessor, context, annotatedClass );
@@ -414,16 +435,6 @@ public class EmbeddableBinder {
 
 		if ( compositeUserType != null ) {
 			processCompositeUserType( component, compositeUserType );
-		}
-		else if ( !isIdClass ) {
-			// Embeddable inheritance is not supported for custom user types
-			bindDiscriminator(
-					component,
-					returnedClassOrElement,
-					propertyHolder,
-					inheritanceStatePerClass,
-					context
-			);
 		}
 
 		AggregateComponentBinder.processAggregate(
@@ -559,13 +570,54 @@ public class EmbeddableBinder {
 			AccessType propertyAccessor,
 			MetadataBuildingContext context,
 			XClass superclass,
-			List<PropertyData> classElements) {
+			List<PropertyData> classElements,
+			BasicType<?> discriminatorType,
+			Map<Object, XClass> discriminatorValues) {
 		for ( final XClass subclass : context.getMetadataCollector().getEmbeddableSubclasses( superclass ) ) {
 			final PropertyContainer superContainer = new PropertyContainer( subclass, subclass, propertyAccessor );
 			addElementsOfClass( classElements, superContainer, context );
-			collectSubclassElements( propertyAccessor, context, subclass, classElements );
+			// collect the discriminator value details
+			discriminatorValues.put(
+					discriminatorType.getJavaTypeDescriptor()
+							.fromString( getDiscriminatorValue( subclass, discriminatorType ) ),
+					subclass
+			);
+			// recursively do that same for all subclasses
+			collectSubclassElements(
+					propertyAccessor,
+					context,
+					subclass,
+					classElements,
+					discriminatorType,
+					discriminatorValues
+			);
 		}
 	}
+
+	private static String getDiscriminatorValue(XClass annotatedClass, BasicType<?> discriminatorType) {
+		final String discriminatorValue = annotatedClass.isAnnotationPresent( DiscriminatorValue.class )
+				? annotatedClass.getAnnotation( DiscriminatorValue.class ).value()
+				: null;
+		if ( isEmpty( discriminatorValue ) ) {
+			final String name = unqualify( annotatedClass.getName() );
+			if ( "character".equals( discriminatorType.getName() ) ) {
+				throw new AnnotationException( String.format(
+						"Embeddable '%s' has a discriminator of character type and must specify its '@DiscriminatorValue'",
+						name
+				) );
+			}
+			else if ( "integer".equals( discriminatorType.getName() ) ) {
+				return String.valueOf( name.hashCode() );
+			}
+			else {
+				return name;
+			}
+		}
+		else {
+			return discriminatorValue;
+		}
+	}
+
 
 	private static boolean isValidSuperclass(XClass superClass, boolean isIdClass) {
 		if ( superClass == null ) {
