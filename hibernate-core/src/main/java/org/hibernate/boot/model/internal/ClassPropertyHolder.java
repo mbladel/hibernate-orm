@@ -380,7 +380,7 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 								component.getProperties().clear();
 							}
 							else {
-								final Iterator<Property> propertyIterator = component.getPropertyIterator();
+								final Iterator<Property> propertyIterator = component.getProperties().iterator();
 								while ( propertyIterator.hasNext() ) {
 									try {
 										propertyIterator.next().getGetter( componentClass );

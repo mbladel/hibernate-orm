@@ -30,6 +30,7 @@ import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.ArrayHelper;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.Property;
+import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.metamodel.mapping.SelectableMapping;
@@ -59,6 +60,8 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 	protected final int propertySpan;
 	private final CascadeStyle[] cascade;
 	private final FetchMode[] joinedFetch;
+	// todo marco : is it ok to store it here as well?
+	private final Value discriminator;
 
 	private final boolean isAggregate;
 	private final boolean isKey;
@@ -90,6 +93,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 		this.propertyNullability = new boolean[propertySpan];
 		this.cascade = new CascadeStyle[propertySpan];
 		this.joinedFetch = new FetchMode[propertySpan];
+		this.discriminator = component.getDiscriminator();
 
 		int i = 0;
 		for ( Property property : component.getProperties() ) {
@@ -121,6 +125,9 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 		int span = 0;
 		for ( int i = 0; i < propertySpan; i++ ) {
 			span += propertyTypes[i].getColumnSpan( mapping );
+		}
+		if ( discriminator != null ) {
+			span += discriminator.getColumnSpan();
 		}
 		return span;
 	}
