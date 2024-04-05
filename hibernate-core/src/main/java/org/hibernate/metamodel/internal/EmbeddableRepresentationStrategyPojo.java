@@ -309,7 +309,6 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 			assert instantiatorsByDiscriminator == null;
 			return instantiator;
 		}
-		assert instantiatorsByDiscriminator != null;
 		return instantiatorsByDiscriminator.get( discriminatorValue );
 	}
 
@@ -319,7 +318,6 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 			assert instantiatorsByClass == null;
 			return instantiator;
 		}
-		assert instantiatorsByClass != null;
 		return instantiatorsByClass.get( className );
 	}
 }
