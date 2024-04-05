@@ -33,8 +33,12 @@ import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.UnsupportedMappingException;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.AttributeMappingsList;
+import org.hibernate.metamodel.mapping.DiscriminatorConverter;
+import org.hibernate.metamodel.mapping.DiscriminatorType;
+import org.hibernate.metamodel.mapping.DiscriminatorValueDetails;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
+import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
 import org.hibernate.metamodel.mapping.JdbcMapping;
@@ -82,8 +86,10 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 
 	@Override
 	public Object[] getValues(Object compositeInstance) {
+		final EntityDiscriminatorMapping discriminator = getDiscriminatorMapping();
+		final int span = getNumberOfAttributeMappings() + ( discriminator != null ? 1 : 0 );
 		if ( compositeInstance == PropertyAccessStrategyBackRefImpl.UNKNOWN ) {
-			return new Object[getNumberOfAttributeMappings()];
+			return new Object[span];
 		}
 
 		final ReflectionOptimizer optimizer = getRepresentationStrategy().getReflectionOptimizer();
@@ -91,12 +97,22 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 			return optimizer.getAccessOptimizer().getPropertyValues( compositeInstance );
 		}
 
-		final Object[] results = new Object[getNumberOfAttributeMappings()];
-		for ( int i = 0; i < results.length; i++ ) {
+		final Object[] results = new Object[span];
+		int i = 0;
+		for ( ; i < getNumberOfAttributeMappings(); i++ ) {
 			final Getter getter = getAttributeMapping( i ).getAttributeMetadata()
 					.getPropertyAccess()
 					.getGetter();
 			results[i] = getter.get( compositeInstance );
+		}
+
+		if ( discriminator != null ) {
+			// we need to access the discriminator value corresponding to the instance class here
+			final DiscriminatorConverter<?, ?> discriminatorConverter = discriminator.getValueConverter();
+			final Object discriminatorValue = discriminatorConverter.getDetailsForEntityName(
+					compositeInstance.getClass().getName()
+			).getValue();
+			results[i] = discriminatorValue;
 		}
 		return results;
 	}
