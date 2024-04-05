@@ -77,7 +77,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	private Boolean isGeneric;
 	private String roleName;
 	private Value discriminator;
-	private String discriminatorValue;
+	private Map<Object, XClass> discriminatorValues;
 
 	private final ArrayList<Property> properties = new ArrayList<>();
 	private final Map<Property, Class<?>> declaringClasses = new IdentityHashMap<>();
@@ -139,7 +139,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		this.isKey = original.isKey;
 		this.roleName = original.roleName;
 		this.discriminator = original.discriminator;
-		this.discriminatorValue = original.discriminatorValue;
+		this.discriminatorValues = original.discriminatorValues;
 		this.customInstantiator = original.customInstantiator;
 		this.type = original.type;
 	}
@@ -576,12 +576,12 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		this.discriminator = discriminator;
 	}
 
-	public String getDiscriminatorValue() {
-		return discriminatorValue;
+	public Map<Object, XClass> getDiscriminatorValues() {
+		return discriminatorValues;
 	}
 
-	public void setDiscriminatorValue(String discriminatorValue) {
-		this.discriminatorValue = discriminatorValue;
+	public void setDiscriminatorValues(Map<Object, XClass> discriminatorValues) {
+		this.discriminatorValues = discriminatorValues;
 	}
 
 	@Override
