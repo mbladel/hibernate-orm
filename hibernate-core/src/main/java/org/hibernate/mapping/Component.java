@@ -80,7 +80,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	private Map<Object, XClass> discriminatorValues;
 
 	private final ArrayList<Property> properties = new ArrayList<>();
-	private final Map<Property, Class<?>> declaringClasses = new IdentityHashMap<>();
+	private final Map<Property, Class<?>> propertyDeclaringClasses = new IdentityHashMap<>();
 	private int[] originalPropertyOrder = ArrayHelper.EMPTY_INT_ARRAY;
 	private Map<String,MetaAttribute> metaAttributes;
 
@@ -165,7 +165,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	public void addProperty(Property p, XClass declaringClass) {
 		properties.add( p );
 		// todo marco : this is a temporary hack, let's see what happens
-		declaringClasses.put(
+		propertyDeclaringClasses.put(
 				p,
 				declaringClass == null ?
 						null :
@@ -179,7 +179,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	}
 
 	public Class<?> getPropertyDeclaringClass(Property p) {
-		final Class<?> declaringClass = declaringClasses.get( p );
+		final Class<?> declaringClass = propertyDeclaringClasses.get( p );
 		return declaringClass == null ? getComponentClass() : declaringClass;
 	}
 

@@ -47,13 +47,14 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 
 	public EmbeddableRepresentationStrategyPojo(
 			Component bootDescriptor,
+			Class<?> embeddableClass,
 			Supplier<EmbeddableMappingType> runtimeDescriptorAccess,
 			EmbeddableInstantiator customInstantiator,
 			CompositeUserType<Object> compositeUserType,
 			RuntimeModelCreationContext creationContext) {
 		super(
 				bootDescriptor,
-				resolveEmbeddableJavaType( bootDescriptor, compositeUserType, creationContext ),
+				resolveEmbeddableJavaType( embeddableClass, compositeUserType, creationContext ),
 				creationContext
 		);
 
@@ -70,12 +71,12 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 	}
 
 	private static <T> JavaType<T> resolveEmbeddableJavaType(
-			Component bootDescriptor,
+			Class<?> embeddableClass,
 			CompositeUserType<T> compositeUserType,
 			RuntimeModelCreationContext creationContext) {
 		final JavaTypeRegistry javaTypeRegistry = creationContext.getTypeConfiguration().getJavaTypeRegistry();
 		if ( compositeUserType == null ) {
-			return javaTypeRegistry.resolveDescriptor( bootDescriptor.getComponentClass() );
+			return javaTypeRegistry.resolveDescriptor( embeddableClass );
 		}
 		return javaTypeRegistry.resolveDescriptor(
 				compositeUserType.returnedClass(),

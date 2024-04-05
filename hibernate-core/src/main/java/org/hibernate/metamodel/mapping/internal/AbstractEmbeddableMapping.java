@@ -87,9 +87,8 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 	@Override
 	public Object[] getValues(Object compositeInstance) {
 		final EntityDiscriminatorMapping discriminator = getDiscriminatorMapping();
-		final int span = getNumberOfAttributeMappings() + ( discriminator != null ? 1 : 0 );
 		if ( compositeInstance == PropertyAccessStrategyBackRefImpl.UNKNOWN ) {
-			return new Object[span];
+			return new Object[getNumberOfAttributeMappings()];
 		}
 
 		final ReflectionOptimizer optimizer = getRepresentationStrategy().getReflectionOptimizer();
@@ -97,7 +96,7 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 			return optimizer.getAccessOptimizer().getPropertyValues( compositeInstance );
 		}
 
-		final Object[] results = new Object[span];
+		final Object[] results = new Object[getNumberOfAttributeMappings()];
 		int i = 0;
 		for ( ; i < getNumberOfAttributeMappings(); i++ ) {
 			final Getter getter = getAttributeMapping( i ).getAttributeMetadata()
@@ -106,14 +105,6 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 			results[i] = getter.get( compositeInstance );
 		}
 
-		if ( discriminator != null ) {
-			// we need to access the discriminator value corresponding to the instance class here
-			final DiscriminatorConverter<?, ?> discriminatorConverter = discriminator.getValueConverter();
-			final Object discriminatorValue = discriminatorConverter.getDetailsForEntityName(
-					compositeInstance.getClass().getName()
-			).getValue();
-			results[i] = discriminatorValue;
-		}
 		return results;
 	}
 
@@ -321,7 +312,7 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 					temporalPrecision = null;
 					nullable = true;
 					isLob = false;
-					selectablePath = new SelectablePath( determineEmbeddablePrefix() + bootPropertyDescriptor.getName() );
+					selectablePath = new SelectablePath( determineEmbeddablePrefix( this ) + bootPropertyDescriptor.getName() );
 				}
 
 				attributeMapping = MappingModelCreationHelper.buildBasicAttributeMapping(
@@ -473,12 +464,12 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 		return true;
 	}
 
-	protected String determineEmbeddablePrefix() {
-		NavigableRole root = getNavigableRole().getParent();
+	protected static String determineEmbeddablePrefix(EmbeddableMappingType embeddableType) {
+		NavigableRole root = embeddableType.getNavigableRole().getParent();
 		while ( !root.isRoot() ) {
 			root = root.getParent();
 		}
-		return getNavigableRole().getFullPath().substring( root.getFullPath().length() + 1 ) + ".";
+		return embeddableType.getNavigableRole().getFullPath().substring( root.getFullPath().length() + 1 ) + ".";
 	}
 
 	@Override
@@ -740,6 +731,10 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 						(columnIndex, selection) -> selectableMappings.add( selection )
 				)
 		);
+
+		if ( getDiscriminatorMapping() != null ) {
+			getDiscriminatorMapping().forEachSelectable( (index, selection) -> selectableMappings.add( selection ) );
+		}
 
 		this.selectableMappings = new SelectableMappingsImpl( selectableMappings.toArray( new SelectableMapping[0] ) );
 

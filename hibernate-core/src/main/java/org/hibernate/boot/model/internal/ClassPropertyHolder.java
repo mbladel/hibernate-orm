@@ -263,12 +263,18 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 				copy.setGeneric( false );
 				copy.getProperties().clear();
 				for ( Property prop : component.getProperties() ) {
+					final Class<?> declaringClass = component.getPropertyDeclaringClass( prop );
 					prepareActualProperty(
 							prop,
-							component.getComponentClass(),
+							declaringClass,
 							true,
 							context,
-							copy::addProperty
+							p -> copy.addProperty(
+									p,
+									context.getBootstrapContext()
+											.getReflectionManager()
+											.toXClass( declaringClass )
+							)
 					);
 				}
 				context.getMetadataCollector().registerGenericComponent( copy );
