@@ -650,7 +650,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 
 		// todo marco : use proper class here
 		return new ExplicitColumnDiscriminatorMappingImpl(
-				null,
+				this,
 				bootDescriptor.getTable().getName(),
 				discriminatorColumnExpression,
 				discriminatorColumnExpression != null,
