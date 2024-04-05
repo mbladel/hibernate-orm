@@ -22,11 +22,11 @@ import java.util.Objects;
 import org.hibernate.Internal;
 import org.hibernate.internal.util.CharSequenceHelper;
 import org.hibernate.internal.util.collections.ArrayHelper;
-import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.MappingType;
 import org.hibernate.metamodel.mapping.SelectableMapping;
+import org.hibernate.metamodel.mapping.ValuedModelPart;
 import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.type.BasicPluralType;
@@ -40,6 +40,10 @@ import org.hibernate.type.descriptor.java.JdbcTimestampJavaType;
 import org.hibernate.type.descriptor.java.OffsetDateTimeJavaType;
 import org.hibernate.type.descriptor.java.PrimitiveByteArrayJavaType;
 import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
+
+import static org.hibernate.dialect.StructHelper.getEmbeddedPart;
+import static org.hibernate.dialect.StructHelper.getValues;
+import static org.hibernate.dialect.StructHelper.instantiate;
 
 /**
  * A Helper for serializing and deserializing JSON, based on an {@link org.hibernate.metamodel.mapping.EmbeddableMappingType}.
@@ -57,8 +61,7 @@ public class JsonHelper {
 	}
 
 	private static void toString(EmbeddableMappingType embeddableMappingType, Object value, WrapperOptions options, JsonAppender appender) {
-		final Object[] values = embeddableMappingType.getValues( value );
-		toString( embeddableMappingType, options, appender, values, '{' );
+		toString( embeddableMappingType, options, appender, value, '{' );
 		appender.append( '}' );
 	}
 
@@ -66,10 +69,12 @@ public class JsonHelper {
 			EmbeddableMappingType embeddableMappingType,
 			WrapperOptions options,
 			JsonAppender appender,
-			Object[] values,
+			Object domainValue,
 			char separator) {
+		final Object[] values = getValues( embeddableMappingType, domainValue );
+		final int numberOfAttributes = embeddableMappingType.getNumberOfAttributeMappings();
 		for ( int i = 0; i < values.length; i++ ) {
-			final AttributeMapping attributeMapping = embeddableMappingType.getAttributeMapping( i );
+			final ValuedModelPart attributeMapping = getEmbeddedPart( embeddableMappingType, numberOfAttributes, i );
 			if ( attributeMapping instanceof SelectableMapping ) {
 				final String name = ( (SelectableMapping) attributeMapping ).getSelectableName();
 				appender.append( separator );
@@ -90,7 +95,7 @@ public class JsonHelper {
 							mappingType,
 							options,
 							appender,
-							mappingType.getValues( values[i] ),
+							values[i],
 							separator
 					);
 				}
@@ -295,20 +300,18 @@ public class JsonHelper {
 			return null;
 		}
 
-		final Object[] values = new Object[embeddableMappingType.getJdbcValueCount()];
+		final int jdbcValueCount = embeddableMappingType.getJdbcValueCount();
+		final Object[] values = new Object[jdbcValueCount + ( embeddableMappingType.isPolymorphic() ? 1 : 0 )];
 		final int end = fromString( embeddableMappingType, string, 0, string.length(), values, returnEmbeddable, options );
 		assert string.substring( end ).isBlank();
 		if ( returnEmbeddable ) {
-			final Object[] attributeValues = StructHelper.getAttributeValues(
+			final StructAttributeValues attributeValues = StructHelper.getAttributeValues(
 					embeddableMappingType,
 					values,
 					options
 			);
 			//noinspection unchecked
-			return (X) embeddableMappingType.getRepresentationStrategy().getInstantiator().instantiate(
-					() -> attributeValues,
-					options.getSessionFactory()
-			);
+			return (X) instantiate( embeddableMappingType, attributeValues, options.getSessionFactory() );
 		}
 		//noinspection unchecked
 		return (X) values;
@@ -440,17 +443,12 @@ public class JsonHelper {
 							i = fromString( subMappingType, string, i, end, subValues, returnEmbeddable, options ) - 1;
 							assert string.charAt( i ) == '}';
 							if ( returnEmbeddable ) {
-								final Object[] attributeValues = StructHelper.getAttributeValues(
+								final StructAttributeValues attributeValues = StructHelper.getAttributeValues(
 										subMappingType,
 										subValues,
 										options
 								);
-								values[selectableIndex] = embeddableMappingType.getRepresentationStrategy()
-										.getInstantiator()
-										.instantiate(
-												() -> attributeValues,
-												options.getSessionFactory()
-										);
+								values[selectableIndex] = instantiate( embeddableMappingType, attributeValues, options.getSessionFactory() );
 							}
 							else {
 								values[selectableIndex] = subValues;
@@ -1104,22 +1102,21 @@ public class JsonHelper {
 			default:
 				if ( jdbcMapping.getJdbcType() instanceof AggregateJdbcType ) {
 					final AggregateJdbcType aggregateJdbcType = (AggregateJdbcType) jdbcMapping.getJdbcType();
-					final Object[] subValues = aggregateJdbcType.extractJdbcValues(
-							CharSequenceHelper.subSequence(
-									string,
-									start,
-									end
+					final StructAttributeValues subValues = StructHelper.getAttributeValues(
+							aggregateJdbcType.getEmbeddableMappingType(),
+							aggregateJdbcType.extractJdbcValues(
+									CharSequenceHelper.subSequence(
+											string,
+											start,
+											end
+									),
+									options
 							),
 							options
 					);
 					if ( returnEmbeddable ) {
 						final EmbeddableMappingType embeddableMappingType = aggregateJdbcType.getEmbeddableMappingType();
-						return embeddableMappingType.getRepresentationStrategy()
-								.getInstantiator()
-								.instantiate(
-										() -> subValues,
-										options.getSessionFactory()
-								);
+						return instantiate( embeddableMappingType, subValues, options.getSessionFactory() ) ;
 					}
 					return subValues;
 				}
