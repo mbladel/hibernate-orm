@@ -35,7 +35,7 @@ public class EmbeddableInheritanceTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			session.persist( new TestEntity( 1L, new ChildEmbeddable() ) );
+			session.persist( new TestEntity( 1L, new ChildEmbeddable( "embeddable_1", 1 ) ) );
 		} );
 	}
 
@@ -83,10 +83,25 @@ public class EmbeddableInheritanceTest {
 	@Embeddable
 	static class ParentEmbeddable {
 		private String parentProp;
+
+		public ParentEmbeddable() {
+		}
+
+		public ParentEmbeddable(String parentProp) {
+			this.parentProp = parentProp;
+		}
 	}
 
 	@Embeddable
 	static class ChildEmbeddable extends ParentEmbeddable {
 		private Integer childProp;
+
+		public ChildEmbeddable() {
+		}
+
+		public ChildEmbeddable(String parentProp, Integer childProp) {
+			super( parentProp );
+			this.childProp = childProp;
+		}
 	}
 }

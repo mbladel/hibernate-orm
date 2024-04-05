@@ -405,7 +405,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 			return ((Object[]) component)[i];
 		}
 		else {
-			return embeddableTypeDescriptor().getValue( component, i );
+			return embeddableTypeDescriptor().getEmbeddableSubtype( component.getClass() ).getValue( component, i );
 		}
 	}
 
@@ -427,7 +427,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 			return (Object[]) component;
 		}
 		else {
-			return embeddableTypeDescriptor().getValues( component );
+			return embeddableTypeDescriptor().getEmbeddableSubtype( component.getClass() ).getValues( component );
 		}
 	}
 
@@ -487,7 +487,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 			values[i] = propertyTypes[i].deepCopy( values[i], factory );
 		}
 
-		final Object result = instantiator().instantiate( () -> values, factory );
+		final Object result = instantiator( component.getClass() ).instantiate( () -> values, factory );
 
 		//not absolutely necessary, but helps for some
 		//equals()/hashCode() implementations
@@ -523,7 +523,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 		);
 
 		if ( target == null || !isMutable() ) {
-			return instantiator().instantiate( () -> replacedValues, session.getSessionFactory() );
+			return instantiator( original.getClass() ).instantiate( () -> replacedValues, session.getSessionFactory() );
 		}
 		else {
 			setPropertyValues( target, replacedValues );
@@ -556,7 +556,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 		);
 
 		if ( target == null || !isMutable() ) {
-			return instantiator().instantiate( () -> replacedValues, session.getSessionFactory() );
+			return instantiator( original.getClass() ).instantiate( () -> replacedValues, session.getSessionFactory() );
 		}
 		else {
 			setPropertyValues( target, replacedValues );
@@ -620,7 +620,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 				assembled[i] = propertyTypes[i].assemble( (Serializable) values[i], session, owner );
 			}
 
-			final Object instance = instantiator().instantiate( () -> assembled, session.getFactory() );
+			final Object instance = instantiator( owner.getClass() ).instantiate( () -> assembled, session.getFactory() );
 
 			final PropertyAccess parentInjectionAccess = mappingModelPart.getParentInjectionAttributePropertyAccess();
 			if ( parentInjectionAccess != null ) {
@@ -752,7 +752,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 	}
 
 	private Object resolve(Object[] value, SharedSessionContractImplementor session) throws HibernateException {
-		return instantiator().instantiate( () -> value, session.getFactory() );
+		return instantiator( componentClass ).instantiate( () -> value, session.getFactory() );
 	}
 
 	private EmbeddableMappingType embeddableTypeDescriptor() {
@@ -763,8 +763,8 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 		return embeddableTypeDescriptor().getAggregateMapping().getJdbcMapping().getJdbcValueExtractor();
 	}
 
-	protected final EmbeddableInstantiator instantiator() {
-		return embeddableTypeDescriptor().getRepresentationStrategy().getInstantiator();
+	protected final EmbeddableInstantiator instantiator(Class<?> componentClass) {
+		return embeddableTypeDescriptor().getEmbeddableSubtype( componentClass ).getRepresentationStrategy().getInstantiator();
 	}
 
 	@Override
@@ -808,7 +808,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 	public Object replacePropertyValues(Object component, Object[] values, SharedSessionContractImplementor session)
 			throws HibernateException {
 		if ( !isMutable() ) {
-			return instantiator().instantiate( () -> values, session.getSessionFactory() );
+			return instantiator( component.getClass() ).instantiate( () -> values, session.getSessionFactory() );
 		}
 		return CompositeTypeImplementor.super.replacePropertyValues( component, values, session );
 	}
