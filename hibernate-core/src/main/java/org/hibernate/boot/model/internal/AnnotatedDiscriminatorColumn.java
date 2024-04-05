@@ -25,10 +25,10 @@ public class AnnotatedDiscriminatorColumn extends AnnotatedColumn {
 
 	private String discriminatorTypeName;
 
-	public AnnotatedDiscriminatorColumn() {
+	public AnnotatedDiscriminatorColumn(String defaultColumnName) {
 		//discriminator default value
 		super();
-		setLogicalColumnName( DEFAULT_DISCRIMINATOR_COLUMN_NAME );
+		setLogicalColumnName( defaultColumnName );
 		setNullable( false );
 		setDiscriminatorTypeName( DEFAULT_DISCRIMINATOR_TYPE );
 		setLength( DEFAULT_DISCRIMINATOR_LENGTH );
@@ -45,10 +45,11 @@ public class AnnotatedDiscriminatorColumn extends AnnotatedColumn {
 	public static AnnotatedDiscriminatorColumn buildDiscriminatorColumn(
 			DiscriminatorColumn discriminatorColumn,
 			DiscriminatorFormula discriminatorFormula,
+			String defaultColumnName,
 			MetadataBuildingContext context) {
 		final AnnotatedColumns parent = new AnnotatedColumns();
 		parent.setBuildingContext( context );
-		final AnnotatedDiscriminatorColumn column = new AnnotatedDiscriminatorColumn();
+		final AnnotatedDiscriminatorColumn column = new AnnotatedDiscriminatorColumn( defaultColumnName );
 		final DiscriminatorType discriminatorType;
 		if ( discriminatorFormula != null ) {
 			final DiscriminatorType type = discriminatorFormula.discriminatorType();

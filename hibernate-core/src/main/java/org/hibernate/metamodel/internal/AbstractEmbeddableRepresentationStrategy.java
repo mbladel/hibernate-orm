@@ -39,22 +39,23 @@ public abstract class AbstractEmbeddableRepresentationStrategy implements Embedd
 		this.attributeNameToPositionMap = new ConcurrentHashMap<>( propertySpan );
 
 		boolean foundCustomAccessor = false;
-		int i = 0;
-		for ( Property property : bootDescriptor.getProperties() ) {
-			propertyAccesses[i] = buildPropertyAccess( property );
+		for ( int i = 0; i < bootDescriptor.getProperties().size(); i++ ) {
+			final Property property = bootDescriptor.getProperty( i );
+			final Class<?> embeddableClass = bootDescriptor.isPolymorphic() ?
+					bootDescriptor.getPropertyDeclaringClass( property ) :
+					getEmbeddableJavaType().getJavaTypeClass();
+			propertyAccesses[i] = buildPropertyAccess( property, embeddableClass );
 			attributeNameToPositionMap.put( property.getName(), i );
 
 			if ( !property.isBasicPropertyAccessor() ) {
 				foundCustomAccessor = true;
 			}
-
-			i++;
 		}
 
 		hasCustomAccessors = foundCustomAccessor;
 	}
 
-	protected abstract PropertyAccess buildPropertyAccess(Property bootAttributeDescriptor);
+	protected abstract PropertyAccess buildPropertyAccess(Property bootAttributeDescriptor, Class<?> embeddableClass);
 
 	public JavaType<?> getEmbeddableJavaType() {
 		return embeddableJavaType;

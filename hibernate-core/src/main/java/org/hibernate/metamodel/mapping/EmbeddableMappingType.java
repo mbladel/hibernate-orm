@@ -6,6 +6,7 @@
  */
 package org.hibernate.metamodel.mapping;
 
+import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.hibernate.internal.util.IndexedConsumer;
@@ -35,6 +36,38 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 	EmbeddableRepresentationStrategy getRepresentationStrategy();
 
 	boolean isCreateEmptyCompositesEnabled();
+
+	/**
+	 * Returns the {@linkplain EmbeddableDiscriminatorMapping discriminator mapping}
+	 * if this discriminator type is polymorphic, {@code null} otherwise.
+	 */
+	default EmbeddableDiscriminatorMapping getDiscriminatorMapping() {
+		return null;
+	}
+
+	/**
+	 * Returns {@code true} if this embeddable mapping type defines a
+	 * discriminator-based inheritance hierarchy, {@code false} otherwise.
+	 */
+	default boolean isPolymorphic() {
+		return getDiscriminatorMapping() != null;
+	}
+
+	/**
+	 * Returns {@code true} if the provided embeddable class contains the
+	 * specified attribute mapping, {@code false} otherwise.
+	 * @implNote This method always returns {@code true} for non-polymorphic embeddable types
+	 *
+	 * @param embeddableClass the embeddable subclass in which the attribute must be declared
+	 * @param attributeMapping the attribute to check
+	 */
+	default boolean declaresAttribute(Class<?> embeddableClass, AttributeMapping attributeMapping) {
+		return true;
+	}
+
+	default EmbeddableMappingType getSuperMappingType() {
+		return null;
+	}
 
 	default SelectableMapping getAggregateMapping() {
 		return null;

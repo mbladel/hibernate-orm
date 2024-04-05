@@ -24,10 +24,10 @@ public class EmbeddableInstantiatorPojoOptimized extends AbstractPojoInstantiato
 	private final InstantiationOptimizer instantiationOptimizer;
 
 	public EmbeddableInstantiatorPojoOptimized(
-			JavaType<?> javaType,
+			Class<?> embeddableClass,
 			Supplier<EmbeddableMappingType> embeddableMappingAccess,
 			InstantiationOptimizer instantiationOptimizer) {
-		super( javaType.getJavaTypeClass() );
+		super( embeddableClass );
 		this.embeddableMappingAccess = embeddableMappingAccess;
 		this.instantiationOptimizer = instantiationOptimizer;
 	}

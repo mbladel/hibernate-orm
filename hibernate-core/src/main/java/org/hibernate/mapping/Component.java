@@ -8,9 +8,11 @@ package org.hibernate.mapping;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +22,7 @@ import java.util.Set;
 import org.hibernate.Internal;
 import org.hibernate.MappingException;
 import org.hibernate.Remove;
+import org.hibernate.annotations.common.reflection.XClass;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.model.relational.ExportableProducer;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
@@ -73,8 +76,11 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	private boolean isKey;
 	private Boolean isGeneric;
 	private String roleName;
+	private Value discriminator;
+	private Map<Object, Class<?>> discriminatorValues;
 
 	private final ArrayList<Property> properties = new ArrayList<>();
+	private Map<Property, Class<?>> propertyDeclaringClasses;
 	private int[] originalPropertyOrder = ArrayHelper.EMPTY_INT_ARRAY;
 	private Map<String,MetaAttribute> metaAttributes;
 
@@ -123,6 +129,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		super( original );
 		this.properties.addAll( original.properties );
 		this.originalPropertyOrder = original.originalPropertyOrder == null ? null : original.originalPropertyOrder.clone();
+		this.propertyDeclaringClasses = original.propertyDeclaringClasses;
 		this.componentClassName = original.componentClassName;
 		this.embedded = original.embedded;
 		this.parentProperty = original.parentProperty;
@@ -132,6 +139,8 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		this.metaAttributes = original.metaAttributes == null ? null : new HashMap<>( original.metaAttributes );
 		this.isKey = original.isKey;
 		this.roleName = original.roleName;
+		this.discriminator = original.discriminator;
+		this.discriminatorValues = original.discriminatorValues;
 		this.customInstantiator = original.customInstantiator;
 		this.type = original.type;
 	}
@@ -154,9 +163,32 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		return properties;
 	}
 
-	public void addProperty(Property p) {
+	public void addProperty(Property p, XClass declaringClass) {
 		properties.add( p );
+		if ( isPolymorphic() && declaringClass != null ) {
+			if ( propertyDeclaringClasses == null ) {
+				propertyDeclaringClasses = new HashMap<>();
+			}
+			propertyDeclaringClasses.put(
+					p,
+					getBuildingContext().getBootstrapContext()
+							.getReflectionManager()
+							.toClass( declaringClass )
+			);
+		}
 		propertiesListModified();
+	}
+
+	public void addProperty(Property p) {
+		addProperty( p, null );
+	}
+
+	public Class<?> getPropertyDeclaringClass(Property p) {
+		if ( propertyDeclaringClasses != null ) {
+			final Class<?> declaringClass = propertyDeclaringClasses.get( p );
+			return declaringClass == null ? getComponentClass() : declaringClass;
+		}
+		return getComponentClass();
 	}
 
 	private void propertiesListModified() {
@@ -172,9 +204,13 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	@Override
 	public List<Selectable> getSelectables() {
 		if ( cachedSelectables == null ) {
-			cachedSelectables = properties.stream()
+			final List<Selectable> selectables = properties.stream()
 					.flatMap( p -> p.getSelectables().stream() )
 					.collect( toList() );
+			if ( discriminator != null ) {
+				selectables.addAll( discriminator.getSelectables() );
+			}
+			cachedSelectables = selectables;
 		}
 		return cachedSelectables;
 	}
@@ -185,9 +221,13 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 			return cachedColumns;
 		}
 		else {
-			this.cachedColumns = properties.stream()
+			final List<Column> columns = properties.stream()
 					.flatMap( p -> p.getValue().getColumns().stream() )
 					.collect( toList() );
+			if ( discriminator != null ) {
+				columns.addAll( discriminator.getColumns() );
+			}
+			this.cachedColumns = Collections.unmodifiableList( columns );
 			return cachedColumns;
 		}
 	}
@@ -233,6 +273,9 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 				aggregatedColumns.addAll( value.getColumns() );
 			}
 		}
+		if ( component.isPolymorphic() ) {
+			aggregatedColumns.addAll( component.getDiscriminator().getColumns() );
+		}
 	}
 
 	private void notifyPropertiesAboutAggregateColumn(AggregateColumn aggregateColumn, Component component) {
@@ -253,6 +296,9 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 					( (Component) value ).setParentAggregateColumn( aggregateColumn );
 				}
 			}
+		}
+		if ( component.isPolymorphic() ) {
+			( (BasicValue) component.getDiscriminator() ).setAggregateColumn( aggregateColumn );
 		}
 	}
 
@@ -528,6 +574,26 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 	public void setRoleName(String roleName) {
 		this.roleName = roleName;
+	}
+
+	public Value getDiscriminator() {
+		return discriminator;
+	}
+
+	public void setDiscriminator(Value discriminator) {
+		this.discriminator = discriminator;
+	}
+
+	public boolean isPolymorphic() {
+		return discriminator != null;
+	}
+
+	public Map<Object, Class<?>> getDiscriminatorValues() {
+		return discriminatorValues;
+	}
+
+	public void setDiscriminatorValues(Map<Object, Class<?>> discriminatorValues) {
+		this.discriminatorValues = discriminatorValues;
 	}
 
 	@Override
