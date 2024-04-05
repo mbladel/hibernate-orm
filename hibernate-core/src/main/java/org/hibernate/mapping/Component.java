@@ -73,6 +73,8 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	private boolean isKey;
 	private Boolean isGeneric;
 	private String roleName;
+	private Value discriminator;
+	private String discriminatorValue;
 
 	private final ArrayList<Property> properties = new ArrayList<>();
 	private int[] originalPropertyOrder = ArrayHelper.EMPTY_INT_ARRAY;
@@ -132,6 +134,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		this.metaAttributes = original.metaAttributes == null ? null : new HashMap<>( original.metaAttributes );
 		this.isKey = original.isKey;
 		this.roleName = original.roleName;
+		this.discriminator = original.discriminator;
 		this.customInstantiator = original.customInstantiator;
 		this.type = original.type;
 	}
@@ -528,6 +531,14 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 	public void setRoleName(String roleName) {
 		this.roleName = roleName;
+	}
+
+	public Value getDiscriminator() {
+		return discriminator;
+	}
+
+	public void setDiscriminator(Value discriminator) {
+		this.discriminator = discriminator;
 	}
 
 	@Override
