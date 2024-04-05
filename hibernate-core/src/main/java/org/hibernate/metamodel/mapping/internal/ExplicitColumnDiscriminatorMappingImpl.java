@@ -7,10 +7,9 @@
 package org.hibernate.metamodel.mapping.internal;
 
 import org.hibernate.metamodel.mapping.DiscriminatorConverter;
-import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.DiscriminatorType;
-import org.hibernate.metamodel.mapping.MappingType;
+import org.hibernate.metamodel.mapping.ManagedMappingType;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.spi.SqlAstCreationState;
 import org.hibernate.sql.ast.spi.SqlExpressionResolver;
@@ -36,7 +35,7 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 	private final Integer scale;
 
 	public ExplicitColumnDiscriminatorMappingImpl(
-			EntityMappingType entityDescriptor,
+			ManagedMappingType mappingType,
 			String tableExpression,
 			String columnExpression,
 			boolean isFormula,
@@ -48,7 +47,7 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 			DiscriminatorType<?> discriminatorType,
 			MappingModelCreationProcess creationProcess) {
 		//noinspection unchecked
-		super( entityDescriptor, (DiscriminatorType<Object>) discriminatorType, (BasicType<Object>) discriminatorType.getUnderlyingJdbcMapping() );
+		super( mappingType, (DiscriminatorType<Object>) discriminatorType, (BasicType<Object>) discriminatorType.getUnderlyingJdbcMapping() );
 		this.tableExpression = tableExpression;
 		this.isPhysical = isPhysical;
 		this.columnDefinition = columnDefinition;

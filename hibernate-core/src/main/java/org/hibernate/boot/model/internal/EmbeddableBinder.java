@@ -370,6 +370,8 @@ public class EmbeddableBinder {
 				collectClassElements( propertyAccessor, context, returnedClassOrElement, annotatedClass, isIdClass );
 		if ( !isIdClass ) {
 			// todo marco : I don't think we should support inheritance for id-classes, right?
+			// todo marco : move discriminator binding here, we should collect subclasses and
+			//  discriminator values from there
 			collectSubclassElements( propertyAccessor, context, returnedClassOrElement, classElements );
 		}
 		final List<PropertyData> baseClassElements =
