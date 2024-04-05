@@ -36,6 +36,11 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 
 	boolean isCreateEmptyCompositesEnabled();
 
+	// todo marco : change type to embedded discriminator once we have it
+	default EntityDiscriminatorMapping getDiscriminatorMapping() {
+		return null;
+	}
+
 	default SelectableMapping getAggregateMapping() {
 		return null;
 	}

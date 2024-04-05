@@ -8,6 +8,7 @@ package org.hibernate.metamodel.mapping.internal;
 
 import java.io.Serializable;
 import java.util.Locale;
+import java.util.Map;
 import java.util.function.Function;
 
 import org.hibernate.MappingException;
@@ -20,6 +21,7 @@ import org.hibernate.engine.config.spi.ConfigurationService;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.CascadeStyle;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.mapping.AggregateColumn;
@@ -28,14 +30,19 @@ import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.DependantValue;
+import org.hibernate.mapping.Formula;
 import org.hibernate.mapping.Property;
 import org.hibernate.mapping.Selectable;
 import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.mapping.AttributeMapping;
+import org.hibernate.metamodel.mapping.DiscriminatorConverter;
+import org.hibernate.metamodel.mapping.DiscriminatorType;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
+import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.metamodel.mapping.MappedDiscriminatorConverter;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.metamodel.mapping.SelectableConsumer;
 import org.hibernate.metamodel.mapping.SelectableMapping;
@@ -44,6 +51,7 @@ import org.hibernate.metamodel.mapping.SelectablePath;
 import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.metamodel.spi.EmbeddableRepresentationStrategy;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
+import org.hibernate.persister.entity.DiscriminatorHelper;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.spi.NavigablePath;
@@ -63,8 +71,13 @@ import org.hibernate.type.Type;
 import org.hibernate.type.descriptor.java.ImmutableMutabilityPlan;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.java.MutabilityPlan;
+import org.hibernate.type.descriptor.java.spi.JavaTypeRegistry;
 import org.hibernate.type.spi.CompositeTypeImplementor;
 import org.hibernate.type.spi.TypeConfiguration;
+
+import org.checkerframework.checker.nullness.qual.NonNull;
+
+import static org.hibernate.metamodel.RepresentationMode.POJO;
 
 /**
  * Describes a "normal" embeddable.
@@ -143,6 +156,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 	private final EmbeddableRepresentationStrategy representationStrategy;
 
 	private final EmbeddableValuedModelPart valueMapping;
+	private final EntityDiscriminatorMapping discriminatorMapping;
 
 	private final boolean createEmptyCompositesEnabled;
 	private final SelectableMapping aggregateMapping;
@@ -163,6 +177,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 
 		this.embeddableJtd = representationStrategy.getMappedJavaType();
 		this.valueMapping = embeddedPartBuilder.apply( this );
+		this.discriminatorMapping = generateDiscriminatorMapping( bootDescriptor, creationContext );
 
 		this.createEmptyCompositesEnabled = ConfigurationHelper.getBoolean(
 				Environment.CREATE_EMPTY_COMPOSITES_ENABLED,
@@ -255,6 +270,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		this.embeddableJtd = inverseMappingType.getJavaType();
 		this.representationStrategy = inverseMappingType.getRepresentationStrategy();
 		this.valueMapping = valueMapping;
+		this.discriminatorMapping = inverseMappingType.getDiscriminatorMapping();
 		this.createEmptyCompositesEnabled = inverseMappingType.isCreateEmptyCompositesEnabled();
 		this.aggregateMapping = null;
 		this.aggregateMappingRequiresColumnWriter = false;
@@ -590,10 +606,97 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		}
 	}
 
+	private EntityDiscriminatorMapping generateDiscriminatorMapping(
+			Component bootDescriptor,
+			RuntimeModelCreationContext creationContext) {
+		// todo marco : add discriminator value to boot descriptor (and remove cast)
+		final Value discriminator = bootDescriptor.getDiscriminator();
+		if ( discriminator == null ) {
+			return null;
+		}
 
+		final Selectable selectable = discriminator.getSelectables().get( 0 );
+		final String discriminatorColumnExpression;
+		final String columnDefinition;
+		final Long length;
+		final Integer precision;
+		final Integer scale;
+		if ( discriminator.hasFormula() ) {
+			final Formula formula = (Formula) selectable;
+			discriminatorColumnExpression = formula.getTemplate(
+					creationContext.getDialect(),
+					creationContext.getTypeConfiguration(),
+					creationContext.getFunctionRegistry()
+			);
+			columnDefinition = null;
+			length = null;
+			precision = null;
+			scale = null;
+		}
+		else {
+			final Column column = discriminator.getColumns().get( 0 );
+			discriminatorColumnExpression = null;
+			assert column != null : "Embeddable discriminators require a column";
+			columnDefinition = column.getSqlType();
+			length = column.getLength();
+			precision = column.getPrecision();
+			scale = column.getScale();
+		}
+
+		final DiscriminatorType<?> discriminatorType = buildDiscriminatorType(
+				DiscriminatorHelper.getDiscriminatorType(bootDescriptor ),
+				creationContext.getSessionFactory()
+		);
+
+		// todo marco : use proper class here
+		return new ExplicitColumnDiscriminatorMappingImpl(
+				null,
+				bootDescriptor.getTable().getName(),
+				discriminatorColumnExpression,
+				discriminatorColumnExpression != null,
+				true,
+				columnDefinition,
+				length,
+				precision,
+				scale,
+				discriminatorType,
+				null //todo marco : this is not used, remove it in embedded discriminator mapping
+		);
+	}
+
+	private @NonNull DiscriminatorType<?> buildDiscriminatorType(
+			BasicType<?> discriminatorJdbcMapping,
+			SessionFactoryImplementor factory) {
+		final JavaTypeRegistry javaTypeRegistry = factory.getTypeConfiguration().getJavaTypeRegistry();
+
+		final JavaType<Object> domainJavaType;
+		if ( representationStrategy.getMode() == POJO ) {
+			domainJavaType = javaTypeRegistry.resolveDescriptor( Class.class );
+		}
+		else {
+			domainJavaType = javaTypeRegistry.resolveDescriptor( String.class );
+		}
+
+		//noinspection rawtypes
+		final DiscriminatorConverter converter = MappedDiscriminatorConverter.fromValueMappings(
+				getNavigableRole().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
+				domainJavaType,
+				discriminatorJdbcMapping,
+				Map.of(), // todo marco : build map of discriminated types
+				factory.getMappingMetamodel()
+		);
+
+		//noinspection unchecked,rawtypes
+		return new DiscriminatorTypeImpl( discriminatorJdbcMapping, converter );
+	}
 
 	public EmbeddableValuedModelPart getEmbeddedValueMapping() {
 		return valueMapping;
+	}
+
+	@Override
+	public EntityDiscriminatorMapping getDiscriminatorMapping() {
+		return discriminatorMapping;
 	}
 
 	@Override
