@@ -630,10 +630,14 @@ public class AttributeFactory {
 			// we will not create a model part for the component, but we still need the representation strategy here,
 			// in order to discover the property members to expose on the JPA metamodel
 			return ownerBootDescriptor.getBuildingContext()
-							.getBootstrapContext()
-							.getRepresentationStrategySelector()
-							.resolveStrategy(ownerBootDescriptor, null,
-									metadataContext.getRuntimeModelCreationContext() );
+					.getBootstrapContext()
+					.getRepresentationStrategySelector()
+					.resolveStrategy(
+							ownerBootDescriptor,
+							ownerBootDescriptor.getComponentClass(),
+							null,
+							metadataContext.getRuntimeModelCreationContext()
+					);
 		}
 		else {
 			return ownerMappingModelDescriptor

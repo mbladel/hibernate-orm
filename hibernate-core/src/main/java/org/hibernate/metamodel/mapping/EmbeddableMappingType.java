@@ -6,6 +6,7 @@
  */
 package org.hibernate.metamodel.mapping;
 
+import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.hibernate.internal.util.IndexedConsumer;
@@ -39,6 +40,15 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 	// todo marco : change type to embedded discriminator once we have it
 	default EntityDiscriminatorMapping getDiscriminatorMapping() {
 		return null;
+	}
+
+	default Map<Class<?>, EmbeddableMappingType> getSubtypesByClass() {
+		return null;
+	}
+
+	// todo marco : jdoc and is ok?
+	default EmbeddableMappingType getEmbeddableSubtype(Class<?> embeddableClass) {
+		return this;
 	}
 
 	default SelectableMapping getAggregateMapping() {

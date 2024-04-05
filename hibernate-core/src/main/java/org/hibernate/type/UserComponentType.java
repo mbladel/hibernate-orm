@@ -91,6 +91,6 @@ public class UserComponentType<T> extends ComponentType {
 	@Override
 	public Object replacePropertyValues(Object component, Object[] values, SharedSessionContractImplementor session)
 			throws HibernateException {
-		return instantiator().instantiate( () -> values, session.getSessionFactory() );
+		return instantiator( component.getClass() ).instantiate( () -> values, session.getSessionFactory() );
 	}
 }
