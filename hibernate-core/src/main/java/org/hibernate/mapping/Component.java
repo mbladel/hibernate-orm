@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import java.util.Set;
 import org.hibernate.Internal;
 import org.hibernate.MappingException;
 import org.hibernate.Remove;
+import org.hibernate.annotations.common.reflection.XClass;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.model.relational.ExportableProducer;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
@@ -78,6 +80,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	private String discriminatorValue;
 
 	private final ArrayList<Property> properties = new ArrayList<>();
+	private final Map<Property, Class<?>> declaringClasses = new IdentityHashMap<>();
 	private int[] originalPropertyOrder = ArrayHelper.EMPTY_INT_ARRAY;
 	private Map<String,MetaAttribute> metaAttributes;
 
@@ -159,9 +162,25 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		return properties;
 	}
 
-	public void addProperty(Property p) {
+	public void addProperty(Property p, XClass declaringClass) {
 		properties.add( p );
+		// todo marco : this is a temporary hack, let's see what happens
+		declaringClasses.put(
+				p,
+				declaringClass == null ?
+						null :
+						getBuildingContext().getBootstrapContext().getReflectionManager().toClass( declaringClass )
+		);
 		propertiesListModified();
+	}
+
+	public void addProperty(Property p) {
+		addProperty( p, null );
+	}
+
+	public Class<?> getPropertyDeclaringClass(Property p) {
+		final Class<?> declaringClass = declaringClasses.get( p );
+		return declaringClass == null ? getComponentClass() : declaringClass;
 	}
 
 	private void propertiesListModified() {
@@ -177,9 +196,13 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	@Override
 	public List<Selectable> getSelectables() {
 		if ( cachedSelectables == null ) {
-			cachedSelectables = properties.stream()
+			final List<Selectable> selectables = properties.stream()
 					.flatMap( p -> p.getSelectables().stream() )
 					.collect( toList() );
+			if ( discriminator != null ) {
+				selectables.addAll( discriminator.getSelectables() );
+			}
+			cachedSelectables = selectables;
 		}
 		return cachedSelectables;
 	}
