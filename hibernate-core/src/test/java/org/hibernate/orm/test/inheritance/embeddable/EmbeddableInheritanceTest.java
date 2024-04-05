@@ -8,24 +8,44 @@ package org.hibernate.orm.test.inheritance.embeddable;
 
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
+import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 
 /**
  * @author Marco Belladelli
  */
 @DomainModel( annotatedClasses = {
-	EmbeddableInheritanceTest.TestEntity.class,
-	EmbeddableInheritanceTest.ParentEmbeddable.class,
-	EmbeddableInheritanceTest.ChildEmbeddable.class,
+		EmbeddableInheritanceTest.TestEntity.class,
+		EmbeddableInheritanceTest.ParentEmbeddable.class,
+		EmbeddableInheritanceTest.ChildEmbeddable.class,
 } )
 @SessionFactory
 public class EmbeddableInheritanceTest {
 	// todo marco : test same embeddable (or maybe even subtype) used in different entities
+	// todo marco : test nested embeddable inheritance (?)
+	// todo marco : also test aggregate embeddables (in another test class)
 
+	@BeforeAll
+	public void setUp(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			session.persist( new TestEntity( 1L, new ChildEmbeddable() ) );
+		} );
+	}
 
+	@Test
+	public void test(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+
+		} );
+	}
+
+	@Entity( name = "TestEntity" )
 	static class TestEntity {
 		@Id
 		private Long id;
@@ -39,14 +59,6 @@ public class EmbeddableInheritanceTest {
 		public TestEntity(Long id, ParentEmbeddable embeddable) {
 			this.id = id;
 			this.embeddable = embeddable;
-		}
-
-		public Long getId() {
-			return id;
-		}
-
-		public ParentEmbeddable getEmbeddable() {
-			return embeddable;
 		}
 	}
 
