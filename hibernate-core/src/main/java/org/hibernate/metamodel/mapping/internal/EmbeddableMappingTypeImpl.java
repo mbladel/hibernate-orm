@@ -677,6 +677,8 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			domainJavaType = javaTypeRegistry.resolveDescriptor( String.class );
 		}
 
+		// todo marco : we need to use a different discriminator converter type, maybe create one for embeddables
+
 		//noinspection rawtypes
 		final DiscriminatorConverter converter = MappedDiscriminatorConverter.fromValueMappings(
 				getNavigableRole().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
