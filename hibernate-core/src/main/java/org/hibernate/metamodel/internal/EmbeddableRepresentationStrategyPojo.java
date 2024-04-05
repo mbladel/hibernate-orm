@@ -115,7 +115,7 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 	}
 
 	@Override
-	protected PropertyAccess buildPropertyAccess(Property bootAttributeDescriptor) {
+	protected PropertyAccess buildPropertyAccess(Property bootAttributeDescriptor, Class<?> declaringClass) {
 		PropertyAccessStrategy strategy = bootAttributeDescriptor.getPropertyAccessStrategy( getEmbeddableJavaType().getJavaTypeClass() );
 
 		if ( strategy == null ) {
@@ -160,7 +160,7 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 		}
 
 		return strategy.buildPropertyAccess(
-				getEmbeddableJavaType().getJavaTypeClass(),
+				declaringClass,
 				bootAttributeDescriptor.getName(),
 				instantiator instanceof StandardEmbeddableInstantiator
 		);
