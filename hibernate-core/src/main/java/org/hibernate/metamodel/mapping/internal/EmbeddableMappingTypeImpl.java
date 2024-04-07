@@ -8,6 +8,7 @@ package org.hibernate.metamodel.mapping.internal;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -15,11 +16,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
-import javax.imageio.plugins.tiff.TIFFDirectory;
-
 import org.hibernate.MappingException;
 import org.hibernate.SharedSessionContract;
-import org.hibernate.annotations.common.reflection.XClass;
 import org.hibernate.cfg.Environment;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.aggregate.AggregateSupport;
@@ -59,6 +57,7 @@ import org.hibernate.metamodel.spi.EmbeddableRepresentationStrategy;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.persister.entity.DiscriminatorHelper;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.tree.from.TableGroup;
@@ -191,6 +190,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 	private final EntityDiscriminatorMapping discriminatorMapping;
 	private final Map<Class<?>, EmbeddableMappingType> subtypesByClass;
 	private final List<Class<?>> orderedSubclasses;
+	private final BitSet declaredAttributes;
 
 	private final boolean createEmptyCompositesEnabled;
 	private final SelectableMapping aggregateMapping;
@@ -222,6 +222,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			this.orderedSubclasses = null;
 		}
 		this.discriminatorMapping = generateDiscriminatorMapping( bootDescriptor, creationContext );
+		this.declaredAttributes = new BitSet();
 
 		this.createEmptyCompositesEnabled = ConfigurationHelper.getBoolean(
 				Environment.CREATE_EMPTY_COMPOSITES_ENABLED,
@@ -316,6 +317,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		this.valueMapping = valueMapping;
 		// todo marco : do we need to handle inheritance for inverse mappings ?
 		this.discriminatorMapping = null;
+		this.declaredAttributes = null;
 		this.subtypesByClass = null;
 		this.orderedSubclasses = null;
 		this.createEmptyCompositesEnabled = inverseMappingType.isCreateEmptyCompositesEnabled();
@@ -405,12 +407,6 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		container.attributeMappings.clear();
 
 		for ( Property bootPropertyDescriptor : bootDescriptor.getProperties() ) {
-			if ( !bootDescriptor.getPropertyDeclaringClass( bootPropertyDescriptor )
-					.isAssignableFrom( container.getJavaType().getJavaTypeClass() ) ) {
-				// skip all properties for subtypes
-				continue;
-			}
-
 			final AttributeMapping attributeMapping;
 
 			final Type subtype = subtypes[attributeIndex];
@@ -621,6 +617,16 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 
 			container.addAttribute( attributeMapping );
 
+			if ( bootDescriptor.getPropertyDeclaringClass( bootPropertyDescriptor )
+					.isAssignableFrom( container.getJavaType().getJavaTypeClass() ) ) {
+				// skip all properties for subtypes
+				// todo marco : we should keep a separate list of all attribute mappings
+				//  of all subtypes here, so we know e.g. what columns to export;
+				//  then, each subypte should be able to only set the values it's interested in
+				container.markDeclaredAttribute( attributeIndex );
+				continue;
+			}
+
 			attributeIndex++;
 		}
 
@@ -737,16 +743,25 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		}
 
 		final Map<Object, Class<?>> valueMappings = new HashMap<>( bootDescriptor.getDiscriminatorValues().size() );
-		for ( Map.Entry<Object, XClass> entry : bootDescriptor.getDiscriminatorValues().entrySet() ) {
-			final Class<?> embeddableSubclass = creationContext.getBootstrapContext().getReflectionManager()
-					.toClass( entry.getValue() );
+		for ( Map.Entry<Object, Class<?>> entry : bootDescriptor.getDiscriminatorValues().entrySet() ) {
+			final Class<?> embeddableSubclass = entry.getValue();
 			valueMappings.put( entry.getKey(), embeddableSubclass );
+			// determine the direct supertype embeddable mapping
+			final EmbeddableMappingType superType;
+			final Class<?> superclass = embeddableSubclass.getSuperclass();
+			if ( superclass != null && subtypesByClass.containsKey( superclass ) ) {
+				superType = subtypesByClass.get( superclass );
+			}
+			else {
+				superType = this;
+			}
+			assert superType != null;
 			subtypesByClass.put(
 					embeddableSubclass,
 					new EmbeddableMappingSubTypeImpl(
 							bootDescriptor,
 							embeddableSubclass,
-							this,
+							superType,
 							creationContext
 					)
 			);
@@ -814,6 +829,40 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 				resultVariable,
 				creationState
 		);
+	}
+
+	@Override
+	protected void markDeclaredAttribute(int attributeIndex) {
+		declaredAttributes.set( attributeIndex );
+	}
+
+	@Override
+	protected Object[] getAttributeValues(Object compositeInstance) {
+		final Object[] results = new Object[getNumberOfAttributeMappings()];
+		for ( int i = 0; i < getNumberOfAttributeMappings(); i++ ) {
+			if ( declaredAttributes.get( i ) ) {
+				final Getter getter = getAttributeMapping( i ).getAttributeMetadata()
+						.getPropertyAccess()
+						.getGetter();
+				results[i] = getter.get( compositeInstance );
+			}
+			else {
+				results[i] = null;
+			}
+		}
+		return results;
+	}
+
+	@Override
+	protected void setAttributeValues(Object component, Object[] values) {
+		for ( int i = 0; i < values.length; i++ ) {
+			if ( declaredAttributes.get( i ) ) {
+				getAttributeMapping( i ).getPropertyAccess().getSetter().set( component, values[i] );
+			}
+			else {
+				assert values[i] == null : "Unexpected non-null value for embeddable type " + getJavaType().getJavaTypeClass();
+			}
+		}
 	}
 
 	@Override

@@ -377,7 +377,7 @@ public class EmbeddableBinder {
 			// todo marco : I don't think we should support inheritance for id-classes, right?
 			// todo marco : move discriminator binding here, we should collect subclasses and
 			//  discriminator values from there
-			final Map<Object, XClass> discriminatorValues = new HashMap<>();
+			final Map<Object, Class<?>> discriminatorValues = new HashMap<>();
 			bindDiscriminator(
 					component,
 					returnedClassOrElement,
@@ -572,7 +572,7 @@ public class EmbeddableBinder {
 			XClass superclass,
 			List<PropertyData> classElements,
 			BasicType<?> discriminatorType,
-			Map<Object, XClass> discriminatorValues) {
+			Map<Object, Class<?>> discriminatorValues) {
 		for ( final XClass subclass : context.getMetadataCollector().getEmbeddableSubclasses( superclass ) ) {
 			final PropertyContainer superContainer = new PropertyContainer( subclass, subclass, propertyAccessor );
 			addElementsOfClass( classElements, superContainer, context );
@@ -580,7 +580,7 @@ public class EmbeddableBinder {
 			discriminatorValues.put(
 					discriminatorType.getJavaTypeDescriptor()
 							.fromString( getDiscriminatorValue( subclass, discriminatorType ) ),
-					subclass
+					context.getBootstrapContext().getReflectionManager().toClass( subclass )
 			);
 			// recursively do that same for all subclasses
 			collectSubclassElements(
