@@ -86,7 +86,6 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 
 	@Override
 	public Object[] getValues(Object compositeInstance) {
-		final EntityDiscriminatorMapping discriminator = getDiscriminatorMapping();
 		if ( compositeInstance == PropertyAccessStrategyBackRefImpl.UNKNOWN ) {
 			return new Object[getNumberOfAttributeMappings()];
 		}
@@ -96,6 +95,10 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 			return optimizer.getAccessOptimizer().getPropertyValues( compositeInstance );
 		}
 
+		return getAttributeValues( compositeInstance );
+	}
+
+	protected Object[] getAttributeValues(Object compositeInstance) {
 		final Object[] results = new Object[getNumberOfAttributeMappings()];
 		int i = 0;
 		for ( ; i < getNumberOfAttributeMappings(); i++ ) {
@@ -104,8 +107,10 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 					.getGetter();
 			results[i] = getter.get( compositeInstance );
 		}
-
 		return results;
+	}
+
+	protected void markDeclaredAttribute(int attributeIndex) {
 	}
 
 	@Override
@@ -115,9 +120,13 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 			optimizer.getAccessOptimizer().setPropertyValues( component, values );
 		}
 		else {
-			for ( int i = 0; i < values.length; i++ ) {
-				getAttributeMapping( i ).getPropertyAccess().getSetter().set( component, values[i] );
-			}
+			setAttributeValues( component, values );
+		}
+	}
+
+	protected void setAttributeValues(Object component, Object[] values) {
+		for ( int i = 0; i < values.length; i++ ) {
+			getAttributeMapping( i ).getPropertyAccess().getSetter().set( component, values[i] );
 		}
 	}
 

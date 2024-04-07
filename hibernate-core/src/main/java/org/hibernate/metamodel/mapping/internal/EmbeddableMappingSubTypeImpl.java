@@ -6,6 +6,8 @@
  */
 package org.hibernate.metamodel.mapping.internal;
 
+import java.util.BitSet;
+
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.DependantValue;
 import org.hibernate.mapping.Property;
@@ -17,6 +19,7 @@ import org.hibernate.metamodel.mapping.SelectableMappings;
 import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.metamodel.spi.EmbeddableRepresentationStrategy;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
+import org.hibernate.property.access.spi.Getter;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroupProducer;
@@ -32,6 +35,7 @@ public class EmbeddableMappingSubTypeImpl extends AbstractEmbeddableMapping {
 	private final EmbeddableMappingType superMappingType;
 	private final EmbeddableRepresentationStrategy representationStrategy;
 	private final JavaType<?> embeddableJtd;
+	private final BitSet declaredAttributes;
 
 	public EmbeddableMappingSubTypeImpl(
 			Component bootDescriptor,
@@ -45,6 +49,7 @@ public class EmbeddableMappingSubTypeImpl extends AbstractEmbeddableMapping {
 				.getRepresentationStrategySelector()
 				.resolveStrategy( bootDescriptor, embeddableSubclass, () -> this, creationContext );
 		this.embeddableJtd = representationStrategy.getMappedJavaType();
+		this.declaredAttributes = new BitSet();
 	}
 
 	public void finishInitialization(
@@ -75,6 +80,40 @@ public class EmbeddableMappingSubTypeImpl extends AbstractEmbeddableMapping {
 						creationProcess
 				)
 		);
+	}
+
+	@Override
+	protected void markDeclaredAttribute(int attributeIndex) {
+		declaredAttributes.set( attributeIndex );
+	}
+
+	@Override
+	protected Object[] getAttributeValues(Object compositeInstance) {
+		final Object[] results = new Object[getNumberOfAttributeMappings()];
+		for ( int i = 0; i < getNumberOfAttributeMappings(); i++ ) {
+			if ( declaredAttributes.get( i ) ) {
+				final Getter getter = getAttributeMapping( i ).getAttributeMetadata()
+						.getPropertyAccess()
+						.getGetter();
+				results[i] = getter.get( compositeInstance );
+			}
+			else {
+				results[i] = null;
+			}
+		}
+		return results;
+	}
+
+	@Override
+	protected void setAttributeValues(Object component, Object[] values) {
+		for ( int i = 0; i < values.length; i++ ) {
+			if ( declaredAttributes.get( i ) ) {
+				getAttributeMapping( i ).getPropertyAccess().getSetter().set( component, values[i] );
+			}
+			else {
+				assert values[i] == null : "Unexpected non-null value for embeddable type " + getJavaType().getJavaTypeClass();
+			}
+		}
 	}
 
 	@Override
