@@ -36,7 +36,6 @@ public interface ManagedTypeRepresentationResolver {
 	 */
 	EmbeddableRepresentationStrategy resolveStrategy(
 			Component bootDescriptor,
-			Class<?> embeddableClass,
 			Supplier<EmbeddableMappingType> runtimeDescriptor,
 			RuntimeModelCreationContext creationContext);
 }

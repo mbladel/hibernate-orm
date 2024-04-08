@@ -634,7 +634,6 @@ public class AttributeFactory {
 					.getRepresentationStrategySelector()
 					.resolveStrategy(
 							ownerBootDescriptor,
-							ownerBootDescriptor.getComponentClass(),
 							null,
 							metadataContext.getRuntimeModelCreationContext()
 					);
