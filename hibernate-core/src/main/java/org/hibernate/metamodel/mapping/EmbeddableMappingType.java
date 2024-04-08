@@ -37,18 +37,8 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 
 	boolean isCreateEmptyCompositesEnabled();
 
-	// todo marco : change type to embedded discriminator once we have it
-	default EntityDiscriminatorMapping getDiscriminatorMapping() {
+	default EmbeddableDiscriminatorMapping getDiscriminatorMapping() {
 		return null;
-	}
-
-//	default Map<Class<?>, EmbeddableMappingType> getSubtypesByClass() {
-//		return null;
-//	}
-
-	// todo marco : jdoc and is ok?
-	default EmbeddableMappingType getEmbeddableSubtype(Class<?> embeddableClass) {
-		return this;
 	}
 
 	default EmbeddableMappingType getSuperMappingType() {

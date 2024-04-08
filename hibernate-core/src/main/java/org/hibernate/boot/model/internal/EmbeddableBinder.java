@@ -57,6 +57,7 @@ import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 
+import static org.hibernate.boot.model.internal.AnnotatedDiscriminatorColumn.DEFAULT_DISCRIMINATOR_COLUMN_NAME;
 import static org.hibernate.boot.model.internal.AnnotatedDiscriminatorColumn.buildDiscriminatorColumn;
 import static org.hibernate.boot.model.internal.BinderHelper.getOverridableAnnotation;
 import static org.hibernate.boot.model.internal.BinderHelper.getPath;
@@ -380,15 +381,16 @@ public class EmbeddableBinder {
 					component,
 					returnedClassOrElement,
 					propertyHolder,
+					inferredData.getPropertyName(),
 					inheritanceStatePerClass,
 					context
 			);
 			final BasicType<?> discriminatorType = (BasicType<?>) component.getDiscriminator().getType();
-			final Map<Class<?>, Object> discriminatorValues = new HashMap<>();
+			final Map<Object, Class<?>> discriminatorValues = new HashMap<>();
 			discriminatorValues.put(
-					context.getBootstrapContext().getReflectionManager().toClass( returnedClassOrElement ),
 					discriminatorType.getJavaTypeDescriptor()
-							.fromString( getDiscriminatorValue( returnedClassOrElement, discriminatorType ) )
+							.fromString( getDiscriminatorValue( returnedClassOrElement, discriminatorType ) ),
+					context.getBootstrapContext().getReflectionManager().toClass( returnedClassOrElement )
 			);
 			collectSubclassElements(
 					propertyAccessor,
@@ -457,6 +459,7 @@ public class EmbeddableBinder {
 			Component component,
 			XClass componentClass,
 			PropertyHolder holder,
+			String componentPropertyName,
 			Map<XClass, InheritanceState> inheritanceStatePerClass,
 			MetadataBuildingContext context) {
 		// todo marco : normal embeddables work even if they are not listed here
@@ -467,8 +470,16 @@ public class EmbeddableBinder {
 			return;
 		}
 
-		final AnnotatedDiscriminatorColumn discriminatorColumn =
-				processSingleTableDiscriminatorProperties( componentClass, inheritanceState, context );
+		final DiscriminatorColumn columnAnnotation = componentClass.getAnnotation( DiscriminatorColumn.class );
+		if ( columnAnnotation == null ) {
+		}
+
+		final AnnotatedDiscriminatorColumn discriminatorColumn = processEmbeddableDiscriminatorProperties(
+				componentClass,
+				componentPropertyName,
+				inheritanceState,
+				context
+		);
 		if ( !inheritanceState.hasParents() ) {
 			if ( inheritanceState.hasSiblings() || discriminatorColumn != null && !discriminatorColumn.isImplicit() ) {
 				bindDiscriminatorColumnToRootComponent( component, discriminatorColumn, holder, context );
@@ -476,8 +487,11 @@ public class EmbeddableBinder {
 		}
 	}
 
-	private static AnnotatedDiscriminatorColumn processSingleTableDiscriminatorProperties(
-			XClass annotatedClass, InheritanceState inheritanceState, MetadataBuildingContext context) {
+	private static AnnotatedDiscriminatorColumn processEmbeddableDiscriminatorProperties(
+			XClass annotatedClass,
+			String componentPropertyName,
+			InheritanceState inheritanceState,
+			MetadataBuildingContext context) {
 		final DiscriminatorColumn discriminatorColumn = annotatedClass.getAnnotation( DiscriminatorColumn.class );
 
 		final DiscriminatorFormula discriminatorFormula = getOverridableAnnotation(
@@ -487,7 +501,12 @@ public class EmbeddableBinder {
 		);
 
 		if ( !inheritanceState.hasParents() ) {
-			return buildDiscriminatorColumn( discriminatorColumn, discriminatorFormula, context );
+			return buildDiscriminatorColumn(
+					discriminatorColumn,
+					discriminatorFormula,
+					componentPropertyName + "_" + DEFAULT_DISCRIMINATOR_COLUMN_NAME,
+					context
+			);
 		}
 		else {
 			// not a root entity
@@ -519,13 +538,6 @@ public class EmbeddableBinder {
 			throw new AssertionFailure( "discriminator column should have been built" );
 		}
 		LOG.tracev( "Setting discriminator for embedded {0}", component.getComponentClassName() );
-
-		if ( discriminatorColumn.getLogicalColumnName()
-				.equals( AnnotatedDiscriminatorColumn.DEFAULT_DISCRIMINATOR_COLUMN_NAME ) ) {
-			discriminatorColumn.setLogicalColumnName(
-					component.getParentProperty() + "_" + AnnotatedDiscriminatorColumn.DEFAULT_DISCRIMINATOR_COLUMN_NAME
-			);
-		}
 
 		final AnnotatedColumns columns = new AnnotatedColumns();
 		columns.setPropertyHolder( holder );
@@ -584,15 +596,15 @@ public class EmbeddableBinder {
 			XClass superclass,
 			List<PropertyData> classElements,
 			BasicType<?> discriminatorType,
-			Map<Class<?>, Object> discriminatorValues) {
+			Map<Object, Class<?>> discriminatorValues) {
 		for ( final XClass subclass : context.getMetadataCollector().getEmbeddableSubclasses( superclass ) ) {
 			final PropertyContainer superContainer = new PropertyContainer( subclass, subclass, propertyAccessor );
 			addElementsOfClass( classElements, superContainer, context );
 			// collect the discriminator value details
 			discriminatorValues.put(
-					context.getBootstrapContext().getReflectionManager().toClass( subclass ),
 					discriminatorType.getJavaTypeDescriptor()
-							.fromString( getDiscriminatorValue( subclass, discriminatorType ) )
+							.fromString( getDiscriminatorValue( subclass, discriminatorType ) ),
+					context.getBootstrapContext().getReflectionManager().toClass( subclass )
 			);
 			// recursively do that same for all subclasses
 			collectSubclassElements(
