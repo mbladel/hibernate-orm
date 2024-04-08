@@ -376,15 +376,19 @@ public class EmbeddableBinder {
 		if ( !isIdClass && compositeUserType == null ) {
 			// Main entry point for embedded inheritance
 			// todo marco : I don't think we should support inheritance for id-classes, right?
-			// todo marco : move discriminator binding here, we should collect subclasses and
-			//  discriminator values from there
-			final Map<Object, Class<?>> discriminatorValues = new HashMap<>();
 			bindDiscriminator(
 					component,
 					returnedClassOrElement,
 					propertyHolder,
 					inheritanceStatePerClass,
 					context
+			);
+			final BasicType<?> discriminatorType = (BasicType<?>) component.getDiscriminator().getType();
+			final Map<Class<?>, Object> discriminatorValues = new HashMap<>();
+			discriminatorValues.put(
+					context.getBootstrapContext().getReflectionManager().toClass( returnedClassOrElement ),
+					discriminatorType.getJavaTypeDescriptor()
+							.fromString( getDiscriminatorValue( returnedClassOrElement, discriminatorType ) )
 			);
 			collectSubclassElements(
 					propertyAccessor,
@@ -465,13 +469,6 @@ public class EmbeddableBinder {
 
 		final AnnotatedDiscriminatorColumn discriminatorColumn =
 				processSingleTableDiscriminatorProperties( componentClass, inheritanceState, context );
-		if ( castNonNull( discriminatorColumn.getLogicalColumnName() )
-				.equals( AnnotatedDiscriminatorColumn.DEFAULT_DISCRIMINATOR_COLUMN_NAME ) ) {
-			discriminatorColumn.setLogicalColumnName(
-					component.getParentProperty() + "_" + AnnotatedDiscriminatorColumn.DEFAULT_DISCRIMINATOR_COLUMN_NAME
-			);
-		}
-
 		if ( !inheritanceState.hasParents() ) {
 			if ( inheritanceState.hasSiblings() || discriminatorColumn != null && !discriminatorColumn.isImplicit() ) {
 				bindDiscriminatorColumnToRootComponent( component, discriminatorColumn, holder, context );
@@ -522,6 +519,13 @@ public class EmbeddableBinder {
 			throw new AssertionFailure( "discriminator column should have been built" );
 		}
 		LOG.tracev( "Setting discriminator for embedded {0}", component.getComponentClassName() );
+
+		if ( discriminatorColumn.getLogicalColumnName()
+				.equals( AnnotatedDiscriminatorColumn.DEFAULT_DISCRIMINATOR_COLUMN_NAME ) ) {
+			discriminatorColumn.setLogicalColumnName(
+					component.getParentProperty() + "_" + AnnotatedDiscriminatorColumn.DEFAULT_DISCRIMINATOR_COLUMN_NAME
+			);
+		}
 
 		final AnnotatedColumns columns = new AnnotatedColumns();
 		columns.setPropertyHolder( holder );
@@ -580,15 +584,15 @@ public class EmbeddableBinder {
 			XClass superclass,
 			List<PropertyData> classElements,
 			BasicType<?> discriminatorType,
-			Map<Object, Class<?>> discriminatorValues) {
+			Map<Class<?>, Object> discriminatorValues) {
 		for ( final XClass subclass : context.getMetadataCollector().getEmbeddableSubclasses( superclass ) ) {
 			final PropertyContainer superContainer = new PropertyContainer( subclass, subclass, propertyAccessor );
 			addElementsOfClass( classElements, superContainer, context );
 			// collect the discriminator value details
 			discriminatorValues.put(
+					context.getBootstrapContext().getReflectionManager().toClass( subclass ),
 					discriminatorType.getJavaTypeDescriptor()
-							.fromString( getDiscriminatorValue( subclass, discriminatorType ) ),
-					context.getBootstrapContext().getReflectionManager().toClass( subclass )
+							.fromString( getDiscriminatorValue( subclass, discriminatorType ) )
 			);
 			// recursively do that same for all subclasses
 			collectSubclassElements(

@@ -113,6 +113,10 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 	protected void markDeclaredAttribute(String attributeName) {
 	}
 
+	protected boolean declaresAttribute(String attributeName) {
+		return true;
+	}
+
 	@Override
 	public void setValues(Object component, Object[] values) {
 		final ReflectionOptimizer optimizer = getRepresentationStrategy().getReflectionOptimizer();
@@ -322,7 +326,7 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 					temporalPrecision = null;
 					nullable = true;
 					isLob = false;
-					selectablePath = new SelectablePath( determineEmbeddablePrefix( this ) + bootPropertyDescriptor.getName() );
+					selectablePath = new SelectablePath( determineEmbeddablePrefix() + bootPropertyDescriptor.getName() );
 				}
 
 				attributeMapping = MappingModelCreationHelper.buildBasicAttributeMapping(
@@ -474,12 +478,12 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 		return true;
 	}
 
-	protected static String determineEmbeddablePrefix(EmbeddableMappingType embeddableType) {
-		NavigableRole root = embeddableType.getNavigableRole().getParent();
+	protected String determineEmbeddablePrefix() {
+		NavigableRole root = getNavigableRole().getParent();
 		while ( !root.isRoot() ) {
 			root = root.getParent();
 		}
-		return embeddableType.getNavigableRole().getFullPath().substring( root.getFullPath().length() + 1 ) + ".";
+		return getNavigableRole().getFullPath().substring( root.getFullPath().length() + 1 ) + ".";
 	}
 
 	@Override
@@ -737,9 +741,13 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 		final List<SelectableMapping> selectableMappings = CollectionHelper.arrayList( propertySpan );
 
 		attributeMappings.indexedForEach(
-				(index, attributeMapping) -> attributeMapping.forEachSelectable(
-						(columnIndex, selection) -> selectableMappings.add( selection )
-				)
+				(index, attributeMapping) -> {
+					if ( declaresAttribute( attributeMapping.getAttributeName() ) ) {
+						attributeMapping.forEachSelectable(
+								(columnIndex, selection) -> selectableMappings.add( selection )
+						);
+					}
+				}
 		);
 
 		if ( getDiscriminatorMapping() != null ) {
