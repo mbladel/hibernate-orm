@@ -110,7 +110,7 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 		return results;
 	}
 
-	protected void markDeclaredAttribute(int attributeIndex) {
+	protected void markDeclaredAttribute(String attributeName) {
 	}
 
 	@Override

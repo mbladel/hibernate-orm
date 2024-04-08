@@ -42,13 +42,17 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 		return null;
 	}
 
-	default Map<Class<?>, EmbeddableMappingType> getSubtypesByClass() {
-		return null;
-	}
+//	default Map<Class<?>, EmbeddableMappingType> getSubtypesByClass() {
+//		return null;
+//	}
 
 	// todo marco : jdoc and is ok?
 	default EmbeddableMappingType getEmbeddableSubtype(Class<?> embeddableClass) {
 		return this;
+	}
+
+	default EmbeddableMappingType getSuperMappingType() {
+		return null;
 	}
 
 	default SelectableMapping getAggregateMapping() {
