@@ -33,7 +33,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class EmbeddableInheritanceTest {
 	// todo marco : test same embeddable (or maybe even subtype) used in different entities
 	// todo marco : test nested embeddable inheritance (?)
-	// todo marco : also test aggregate embeddables (in another test class)
+	// todo marco : test embeddable inheritance with composite identifiers
+	// todo marco : test embeddable inheritance with foreign keys (will need some work)
+	// todo marco : also test aggregate embeddables (will need some work)
 
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {

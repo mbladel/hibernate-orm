@@ -7,7 +7,6 @@
 package org.hibernate.metamodel.mapping.internal;
 
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Locale;
@@ -41,6 +40,7 @@ import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.DiscriminatorConverter;
 import org.hibernate.metamodel.mapping.DiscriminatorType;
 import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorConverter;
+import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
@@ -156,8 +156,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 	private final EmbeddableRepresentationStrategy representationStrategy;
 
 	private final EmbeddableValuedModelPart valueMapping;
-	private final EntityDiscriminatorMapping discriminatorMapping;
-	private final Map<Class<?>, Object> discriminatorValues;
+	private final EmbeddableDiscriminatorMapping discriminatorMapping;
 	private final Map<Class<?>, Set<String>> declaredAttributesBySubclass;
 
 	private final boolean createEmptyCompositesEnabled;
@@ -180,8 +179,6 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		this.embeddableJtd = representationStrategy.getMappedJavaType();
 		this.valueMapping = embeddedPartBuilder.apply( this );
 		this.discriminatorMapping = generateDiscriminatorMapping( bootDescriptor, creationContext );
-		this.discriminatorValues = bootDescriptor.getDiscriminatorValues();
-		assert discriminatorMapping == null || discriminatorValues != null;
 		this.declaredAttributesBySubclass = discriminatorMapping != null ? new IdentityHashMap<>() : null;
 
 		this.createEmptyCompositesEnabled = ConfigurationHelper.getBoolean(
@@ -277,7 +274,6 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		this.valueMapping = valueMapping;
 		// todo marco : do we need to handle inheritance for inverse mappings ?
 		this.discriminatorMapping = null;
-		this.discriminatorValues = null;
 		this.declaredAttributesBySubclass = null;
 //		this.subtypesByClass = null;
 		this.createEmptyCompositesEnabled = inverseMappingType.isCreateEmptyCompositesEnabled();
@@ -572,8 +568,8 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 				);
 			}
 
-			if ( discriminatorValues != null ) {
-				for ( final Class<?> subclass : discriminatorValues.keySet() ) {
+			if ( discriminatorMapping != null ) {
+				for ( final Class<?> subclass : discriminatorMapping.getEmbeddableValueConverter().getEmbeddableClassToDetailsMap().keySet() ) {
 					final Class<?> declaringClass = bootDescriptor.getPropertyDeclaringClass( bootPropertyDescriptor );
 					if ( declaringClass.isAssignableFrom( subclass ) ) {
 						declaredAttributesBySubclass.computeIfAbsent( subclass, k -> new HashSet<>() )
@@ -630,7 +626,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 				|| declaredAttributesBySubclass.get( embeddableClass ).contains( attributeMapping.getAttributeName() );
 	}
 
-	private EntityDiscriminatorMapping generateDiscriminatorMapping(
+	private EmbeddableDiscriminatorMapping generateDiscriminatorMapping(
 			Component bootDescriptor,
 			RuntimeModelCreationContext creationContext) {
 		// todo marco : add discriminator value to boot descriptor (and remove cast)
@@ -704,39 +700,12 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			domainJavaType = javaTypeRegistry.resolveDescriptor( String.class );
 		}
 
-		final Map<Object, Class<?>> valueMappings = new HashMap<>( bootDescriptor.getDiscriminatorValues().size() );
-		for ( Map.Entry<Class<?>, Object> entry : bootDescriptor.getDiscriminatorValues().entrySet() ) {
-			final Class<?> embeddableSubclass = entry.getKey();
-			valueMappings.put( entry.getKey(), embeddableSubclass );
-			// determine the direct supertype embeddable mapping
-			final EmbeddableMappingType superType;
-			final Class<?> superclass = embeddableSubclass.getSuperclass();
-			/*
-			if ( superclass != null && subtypesByClass.containsKey( superclass ) ) {
-				superType = subtypesByClass.get( superclass );
-			}
-			else {
-				superType = this;
-			}
-			assert superType != null;
-			subtypesByClass.put(
-					embeddableSubclass,
-					new EmbeddableMappingSubTypeImpl(
-							bootDescriptor,
-							embeddableSubclass,
-							superType,
-							creationContext
-					)
-			);
-			*/
-		}
-
 		final BasicType<?> discriminatorType = DiscriminatorHelper.getDiscriminatorType( bootDescriptor );
 		final DiscriminatorConverter<Object, ?> converter = EmbeddableDiscriminatorConverter.fromValueMappings(
 				getNavigableRole().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
 				domainJavaType,
 				discriminatorType,
-				valueMappings
+				bootDescriptor.getDiscriminatorValues()
 		);
 
 		return new DiscriminatorTypeImpl<>( discriminatorType, converter );
@@ -747,14 +716,8 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 	}
 
 	@Override
-	public EntityDiscriminatorMapping getDiscriminatorMapping() {
+	public EmbeddableDiscriminatorMapping getDiscriminatorMapping() {
 		return discriminatorMapping;
-	}
-
-	@Override
-	public EmbeddableMappingType getEmbeddableSubtype(Class<?> embeddableClass) {
-//		return subtypesByClass == null ? this : subtypesByClass.get( embeddableClass );
-		return null;
 	}
 
 	@Override
@@ -824,8 +787,11 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			if ( declaresAttribute( component.getClass(), attributeMapping ) ) {
 				attributeMapping.getPropertyAccess().getSetter().set( component, values[i] );
 			}
-			else {
-				assert values[i] == null : "Unexpected non-null value for embeddable type " + getJavaType().getJavaTypeClass();
+			else if ( values[i] != null ) {
+				throw new IllegalArgumentException( String.format(
+						"Unexpected non-null value for embeddable subtype '%s'",
+						component.getClass().getName()
+				) );
 			}
 		}
 	}
@@ -915,7 +881,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			}
 			if ( discriminatorMapping != null ) {
 				span += discriminatorMapping.decompose(
-						domainValue == null ? null : discriminatorValues.get( domainValue.getClass() ),
+						domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( domainValue.getClass() ),
 						offset + span,
 						x,
 						y,

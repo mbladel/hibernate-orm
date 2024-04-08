@@ -6,6 +6,7 @@
  */
 package org.hibernate.metamodel.internal;
 
+import java.util.Collection;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -96,7 +97,7 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 			ReflectionOptimizer reflectionOptimizer,
 			Supplier<EmbeddableMappingType> runtimeDescriptorAccess,
 			RuntimeModelCreationContext creationContext) {
-		final Set<Class<?>> embeddableClasses = bootDescriptor.getDiscriminatorValues().keySet();
+		final Collection<Class<?>> embeddableClasses = bootDescriptor.getDiscriminatorValues().values();
 		final Map<Class<?>, EmbeddableInstantiator> result = new IdentityHashMap<>( embeddableClasses.size() );
 		for ( final Class<?> embeddableClass : embeddableClasses ) {
 			final EmbeddableInstantiator instantiator;
