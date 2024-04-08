@@ -105,7 +105,6 @@ public class EntityRepresentationStrategyPojoStandard implements EntityRepresent
 				if ( bootDescriptor.getIdentifierMapper() != null ) {
 					mapsIdRepresentationStrategy = new EmbeddableRepresentationStrategyPojo(
 							bootDescriptor.getIdentifierMapper(),
-							bootDescriptor.getIdentifierMapper().getComponentClass(),
 							() -> ( ( CompositeTypeImplementor) bootDescriptor.getIdentifierMapper().getType() )
 									.getMappingModelPart().getEmbeddableTypeDescriptor(),
 							// we currently do not support custom instantiators for identifiers
@@ -118,7 +117,6 @@ public class EntityRepresentationStrategyPojoStandard implements EntityRepresent
 					final Component componentDescriptorIdentifier = (Component) bootDescriptorIdentifier;
 					mapsIdRepresentationStrategy = new EmbeddableRepresentationStrategyPojo(
 							componentDescriptorIdentifier,
-							componentDescriptorIdentifier.getComponentClass(),
 							() -> ( ( CompositeTypeImplementor) bootDescriptor.getIdentifierMapper().getType() )
 									.getMappingModelPart().getEmbeddableTypeDescriptor(),
 							// we currently do not support custom instantiators for identifiers

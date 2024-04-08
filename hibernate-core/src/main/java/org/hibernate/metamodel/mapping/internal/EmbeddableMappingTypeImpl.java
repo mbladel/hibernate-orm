@@ -174,7 +174,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		this.representationStrategy = creationContext
 				.getBootstrapContext()
 				.getRepresentationStrategySelector()
-				.resolveStrategy( bootDescriptor, bootDescriptor.getComponentClass(), () -> this, creationContext );
+				.resolveStrategy( bootDescriptor, () -> this, creationContext );
 
 		this.embeddableJtd = representationStrategy.getMappedJavaType();
 		this.valueMapping = embeddedPartBuilder.apply( this );

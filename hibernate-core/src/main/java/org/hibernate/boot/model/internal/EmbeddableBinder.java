@@ -385,22 +385,24 @@ public class EmbeddableBinder {
 					inheritanceStatePerClass,
 					context
 			);
-			final BasicType<?> discriminatorType = (BasicType<?>) component.getDiscriminator().getType();
-			final Map<Object, Class<?>> discriminatorValues = new HashMap<>();
-			discriminatorValues.put(
-					discriminatorType.getJavaTypeDescriptor()
-							.fromString( getDiscriminatorValue( returnedClassOrElement, discriminatorType ) ),
-					context.getBootstrapContext().getReflectionManager().toClass( returnedClassOrElement )
-			);
-			collectSubclassElements(
-					propertyAccessor,
-					context,
-					returnedClassOrElement,
-					classElements,
-					(BasicType<?>) component.getDiscriminator().getType(),
-					discriminatorValues
-			);
-			component.setDiscriminatorValues( discriminatorValues );
+			if ( component.getDiscriminator() != null ) {
+				final BasicType<?> discriminatorType = (BasicType<?>) component.getDiscriminator().getType();
+				final Map<Object, Class<?>> discriminatorValues = new HashMap<>();
+				discriminatorValues.put(
+						discriminatorType.getJavaTypeDescriptor()
+								.fromString( getDiscriminatorValue( returnedClassOrElement, discriminatorType ) ),
+						context.getBootstrapContext().getReflectionManager().toClass( returnedClassOrElement )
+				);
+				collectSubclassElements(
+						propertyAccessor,
+						context,
+						returnedClassOrElement,
+						classElements,
+						discriminatorType,
+						discriminatorValues
+				);
+				component.setDiscriminatorValues( discriminatorValues );
+			}
 		}
 		final List<PropertyData> baseClassElements =
 				collectBaseClassElements( baseInferredData, propertyAccessor, context, annotatedClass );
