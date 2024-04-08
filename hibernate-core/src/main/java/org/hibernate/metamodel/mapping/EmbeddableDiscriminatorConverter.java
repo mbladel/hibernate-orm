@@ -8,6 +8,7 @@ package org.hibernate.metamodel.mapping;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -22,36 +23,6 @@ import org.hibernate.type.descriptor.java.JavaType;
  * @author Marco Belladelli
  */
 public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConverter<O, R> {
-	// todo marco : this is a very rough and quick draft, clean this up
-	public static class EmbeddableDiscriminatorValueDetails implements DiscriminatorValueDetails {
-		final Object value;
-		final Class<?> embeddableClass;
-
-		public EmbeddableDiscriminatorValueDetails(Object value, Class<?> embeddableClass) {
-			this.value = value;
-			this.embeddableClass = embeddableClass;
-		}
-
-		@Override
-		public Object getValue() {
-			return value;
-		}
-
-		@Override
-		public String getIndicatedEntityName() {
-			return embeddableClass.getName();
-		}
-
-		@Override
-		public EntityMappingType getIndicatedEntity() {
-			throw new UnsupportedOperationException();
-		}
-
-		public Class<?> getEmbeddableClass() {
-			return embeddableClass;
-		}
-	}
-
 	public static <O, R> EmbeddableDiscriminatorConverter<O, R> fromValueMappings(
 			NavigableRole role,
 			JavaType<O> domainJavaType,
@@ -122,7 +93,7 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 
 	public EmbeddableDiscriminatorValueDetails getDetailsForEmbeddableClass(Class<?> embeddableClass) {
 		EmbeddableDiscriminatorValueDetails valueDetails = embeddableClassToDetailsMap.get( embeddableClass );
-		if ( valueDetails!= null) {
+		if ( valueDetails != null ) {
 			return valueDetails;
 		}
 
@@ -164,5 +135,9 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 			}
 		}
 		return null;
+	}
+
+	public Map<Class<?>, EmbeddableDiscriminatorValueDetails> getEmbeddableClassToDetailsMap() {
+		return embeddableClassToDetailsMap;
 	}
 }

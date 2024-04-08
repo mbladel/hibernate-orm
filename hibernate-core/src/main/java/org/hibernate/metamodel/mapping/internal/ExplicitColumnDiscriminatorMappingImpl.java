@@ -6,7 +6,12 @@
  */
 package org.hibernate.metamodel.mapping.internal;
 
+import java.util.Set;
+
 import org.hibernate.metamodel.mapping.DiscriminatorConverter;
+import org.hibernate.metamodel.mapping.DiscriminatorValueDetails;
+import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorMapping;
+import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorValueDetails;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.DiscriminatorType;
 import org.hibernate.metamodel.mapping.ManagedMappingType;
@@ -24,7 +29,8 @@ import static org.hibernate.sql.ast.spi.SqlExpressionResolver.createColumnRefere
 /**
  * @author Steve Ebersole
  */
-public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminatorMapping {
+public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminatorMapping
+		implements EmbeddableDiscriminatorMapping {
 	private final String tableExpression;
 	private final String columnName;
 	private final String columnFormula;
@@ -91,6 +97,16 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 				),
 				processingState -> new ColumnReference( tableReference, this )
 		);
+	}
+
+	@Override
+	public EmbeddableDiscriminatorValueDetails resolveEmbeddableDiscriminatorValue(Object value) {
+		return (EmbeddableDiscriminatorValueDetails) resolveDiscriminatorValue( value );
+	}
+
+	@Override
+	public Set<Class<?>> getEmbeddableClasses() {
+		return getEmbeddableValueConverter().getEmbeddableClassToDetailsMap().keySet();
 	}
 
 	@Override

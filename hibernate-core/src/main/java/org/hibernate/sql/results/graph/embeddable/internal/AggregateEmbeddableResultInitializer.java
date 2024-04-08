@@ -29,7 +29,7 @@ public class AggregateEmbeddableResultInitializer extends AbstractEmbeddableInit
 			FetchParentAccess fetchParentAccess,
 			EmbeddableResultGraphNode resultDescriptor,
 			AssemblerCreationState creationState, SqlSelection structSelection) {
-		super( resultDescriptor, fetchParentAccess, creationState );
+		super( resultDescriptor, fetchParentAccess, null, creationState );
 		this.aggregateValuesArrayPositions = AggregateEmbeddableInitializer.determineAggregateValuesArrayPositions(
 				fetchParentAccess,
 				structSelection
