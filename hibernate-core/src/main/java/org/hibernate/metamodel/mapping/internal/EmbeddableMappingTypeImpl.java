@@ -10,10 +10,12 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.hibernate.MappingException;
@@ -142,43 +144,27 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		//  the declaring class' type
 		creationProcess.registerInitializationCallback(
 				"EmbeddableMappingType(" + mappingType.getNavigableRole().getFullPath() + ")#finishInitialization",
-				() -> finishInitialization(
-						mappingType,
-						mappingType.getEmbeddedValueMapping(),
-						mappingType.getRepresentationStrategy(),
-						bootDescriptor,
-						compositeType,
-						rootTableExpression,
-						rootTableKeyColumnNames,
-						dependantValue,
-						dependantColumnIndex,
-						insertability,
-						updateability,
-						creationProcess
-				)
-		);
-
-		// todo marco : this is really ugly, can we do anything about it?
-		if ( mappingType.getSubtypesByClass() != null ) {
-			mappingType.getSubtypesByClass()
-					.values()
-					.forEach( t -> {
-						if ( t != mappingType ) {
-							( (EmbeddableMappingSubTypeImpl) t ).finishInitialization(
-									creationProcess,
+				() -> {
+					mappingType.subtypesByClass
+							.values()
+							.forEach( t -> EmbeddableMappingTypeImpl.finishInitialization(
+									(AbstractEmbeddableMapping) t,
+									t.getSuperMappingType(),
+									t.getEmbeddedValueMapping(),
+									t.getRepresentationStrategy(),
 									bootDescriptor,
 									compositeType,
 									rootTableExpression,
 									rootTableKeyColumnNames,
-									componentProperty,
 									dependantValue,
 									dependantColumnIndex,
 									insertability,
-									updateability
-							);
-						}
-					} );
-		}
+									updateability,
+									creationProcess
+							) );
+					return true;
+				}
+		);
 
 		return mappingType;
 	}
@@ -190,7 +176,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 	private final EntityDiscriminatorMapping discriminatorMapping;
 	private final Map<Class<?>, EmbeddableMappingType> subtypesByClass;
 	private final List<Class<?>> orderedSubclasses;
-	private final BitSet declaredAttributes;
+	private final HashSet<String> declaredAttributes;
 
 	private final boolean createEmptyCompositesEnabled;
 	private final SelectableMapping aggregateMapping;
@@ -222,7 +208,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			this.orderedSubclasses = null;
 		}
 		this.discriminatorMapping = generateDiscriminatorMapping( bootDescriptor, creationContext );
-		this.declaredAttributes = new BitSet();
+		this.declaredAttributes = new HashSet<>();
 
 		this.createEmptyCompositesEnabled = ConfigurationHelper.getBoolean(
 				Environment.CREATE_EMPTY_COMPOSITES_ENABLED,
@@ -353,8 +339,9 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		);
 	}
 
-	public static boolean finishInitialization(
+	private static void finishInitialization(
 			AbstractEmbeddableMapping container,
+			EmbeddableMappingType superMappingType,
 			EmbeddableValuedModelPart valueMapping,
 			EmbeddableRepresentationStrategy representationStrategy,
 			Component bootDescriptor,
@@ -406,7 +393,22 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		// Reset the attribute mappings that were added in previous attempts
 		container.attributeMappings.clear();
 
-		for ( Property bootPropertyDescriptor : bootDescriptor.getProperties() ) {
+
+		if ( superMappingType != null ) {
+			for ( ; attributeIndex < superMappingType.getAttributeMappings().size(); attributeIndex++ ) {
+				final AttributeMapping attribute = superMappingType.getAttributeMapping( attributeIndex );
+				container.addAttribute( attribute );
+				container.markDeclaredAttribute( attribute.getAttributeName() );
+			}
+		}
+
+		for ( ; attributeIndex < bootDescriptor.getProperties().size(); attributeIndex++ ) {
+			final Property bootPropertyDescriptor = bootDescriptor.getProperty( attributeIndex );
+			if ( !bootDescriptor.getPropertyDeclaringClass( bootPropertyDescriptor )
+					.isAssignableFrom( container.getJavaType().getJavaTypeClass() ) ) {
+				// All subsequent properties should be defined in subtypes, we can skip them
+				break;
+			}
 			final AttributeMapping attributeMapping;
 
 			final Type subtype = subtypes[attributeIndex];
@@ -616,18 +618,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			}
 
 			container.addAttribute( attributeMapping );
-
-			if ( bootDescriptor.getPropertyDeclaringClass( bootPropertyDescriptor )
-					.isAssignableFrom( container.getJavaType().getJavaTypeClass() ) ) {
-				// skip all properties for subtypes
-				// todo marco : we should keep a separate list of all attribute mappings
-				//  of all subtypes here, so we know e.g. what columns to export;
-				//  then, each subypte should be able to only set the values it's interested in
-				container.markDeclaredAttribute( attributeIndex );
-				continue;
-			}
-
-			attributeIndex++;
+			container.markDeclaredAttribute( attributeMapping.getAttributeName() );
 		}
 
 		// We need the attribute mapping types to finish initialization first before we can build the column mappings
@@ -635,8 +626,6 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 				"EmbeddableMappingType(" + valueMapping.getNavigableRole().getFullPath() + ")#initColumnMappings",
 				container::initColumnMappings
 		);
-
-		return true;
 	}
 
 	private static MutabilityPlan<?> getMutabilityPlan(boolean updateable) {
@@ -789,11 +778,6 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 	}
 
 	@Override
-	public Map<Class<?>, EmbeddableMappingType> getSubtypesByClass() {
-		return subtypesByClass;
-	}
-
-	@Override
 	public EmbeddableMappingType getEmbeddableSubtype(Class<?> embeddableClass) {
 		return subtypesByClass == null ? this : subtypesByClass.get( embeddableClass );
 	}
@@ -832,16 +816,17 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 	}
 
 	@Override
-	protected void markDeclaredAttribute(int attributeIndex) {
-		declaredAttributes.set( attributeIndex );
+	protected void markDeclaredAttribute(String attributeName) {
+		declaredAttributes.add( attributeName );
 	}
 
 	@Override
 	protected Object[] getAttributeValues(Object compositeInstance) {
 		final Object[] results = new Object[getNumberOfAttributeMappings()];
 		for ( int i = 0; i < getNumberOfAttributeMappings(); i++ ) {
-			if ( declaredAttributes.get( i ) ) {
-				final Getter getter = getAttributeMapping( i ).getAttributeMetadata()
+			final AttributeMapping attributeMapping = getAttributeMapping( i );
+			if ( declaredAttributes.contains( attributeMapping.getAttributeName() ) ) {
+				final Getter getter = attributeMapping.getAttributeMetadata()
 						.getPropertyAccess()
 						.getGetter();
 				results[i] = getter.get( compositeInstance );
@@ -856,8 +841,9 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 	@Override
 	protected void setAttributeValues(Object component, Object[] values) {
 		for ( int i = 0; i < values.length; i++ ) {
-			if ( declaredAttributes.get( i ) ) {
-				getAttributeMapping( i ).getPropertyAccess().getSetter().set( component, values[i] );
+			final AttributeMapping attributeMapping = getAttributeMapping( i );
+			if ( declaredAttributes.contains( attributeMapping.getAttributeName() ) ) {
+				attributeMapping.getPropertyAccess().getSetter().set( component, values[i] );
 			}
 			else {
 				assert values[i] == null : "Unexpected non-null value for embeddable type " + getJavaType().getJavaTypeClass();

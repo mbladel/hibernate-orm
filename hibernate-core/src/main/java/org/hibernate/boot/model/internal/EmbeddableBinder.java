@@ -72,6 +72,7 @@ import static org.hibernate.boot.model.internal.PropertyBinder.addElementsOfClas
 import static org.hibernate.boot.model.internal.PropertyBinder.processElementAnnotations;
 import static org.hibernate.boot.model.internal.PropertyHolderBuilder.buildPropertyHolder;
 import static org.hibernate.internal.CoreLogging.messageLogger;
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 import static org.hibernate.internal.util.StringHelper.isEmpty;
 import static org.hibernate.internal.util.StringHelper.unqualify;
 import static org.hibernate.mapping.SimpleValue.DEFAULT_ID_GEN_STRATEGY;
@@ -464,6 +465,13 @@ public class EmbeddableBinder {
 
 		final AnnotatedDiscriminatorColumn discriminatorColumn =
 				processSingleTableDiscriminatorProperties( componentClass, inheritanceState, context );
+		if ( castNonNull( discriminatorColumn.getLogicalColumnName() )
+				.equals( AnnotatedDiscriminatorColumn.DEFAULT_DISCRIMINATOR_COLUMN_NAME ) ) {
+			discriminatorColumn.setLogicalColumnName(
+					component.getParentProperty() + "_" + AnnotatedDiscriminatorColumn.DEFAULT_DISCRIMINATOR_COLUMN_NAME
+			);
+		}
+
 		if ( !inheritanceState.hasParents() ) {
 			if ( inheritanceState.hasSiblings() || discriminatorColumn != null && !discriminatorColumn.isImplicit() ) {
 				bindDiscriminatorColumnToRootComponent( component, discriminatorColumn, holder, context );

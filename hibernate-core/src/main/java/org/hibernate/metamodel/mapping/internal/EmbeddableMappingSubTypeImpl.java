@@ -7,10 +7,13 @@
 package org.hibernate.metamodel.mapping.internal;
 
 import java.util.BitSet;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.DependantValue;
 import org.hibernate.mapping.Property;
+import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
@@ -35,7 +38,7 @@ public class EmbeddableMappingSubTypeImpl extends AbstractEmbeddableMapping {
 	private final EmbeddableMappingType superMappingType;
 	private final EmbeddableRepresentationStrategy representationStrategy;
 	private final JavaType<?> embeddableJtd;
-	private final BitSet declaredAttributes;
+	private final Set<String> declaredAttributes;
 
 	public EmbeddableMappingSubTypeImpl(
 			Component bootDescriptor,
@@ -49,50 +52,26 @@ public class EmbeddableMappingSubTypeImpl extends AbstractEmbeddableMapping {
 				.getRepresentationStrategySelector()
 				.resolveStrategy( bootDescriptor, embeddableSubclass, () -> this, creationContext );
 		this.embeddableJtd = representationStrategy.getMappedJavaType();
-		this.declaredAttributes = new BitSet();
-	}
-
-	public void finishInitialization(
-			MappingModelCreationProcess creationProcess,
-			Component bootDescriptor,
-			CompositeType compositeType,
-			String rootTableExpression,
-			String[] rootTableKeyColumnNames,
-			Property componentProperty,
-			DependantValue dependantValue,
-			int dependantColumnIndex,
-			boolean[] insertability,
-			boolean[] updateability) {
-		creationProcess.registerInitializationCallback(
-				"EmbeddableMappingType(" + getNavigableRole().getFullPath() + ")#finishInitialization",
-				() -> EmbeddableMappingTypeImpl.finishInitialization(
-						this,
-						getEmbeddedValueMapping(),
-						getRepresentationStrategy(),
-						bootDescriptor,
-						compositeType,
-						rootTableExpression,
-						rootTableKeyColumnNames,
-						dependantValue,
-						dependantColumnIndex,
-						insertability,
-						updateability,
-						creationProcess
-				)
-		);
+		this.declaredAttributes = new HashSet<>();
 	}
 
 	@Override
-	protected void markDeclaredAttribute(int attributeIndex) {
-		declaredAttributes.set( attributeIndex );
+	public EmbeddableMappingType getSuperMappingType() {
+		return superMappingType;
+	}
+
+	@Override
+	protected void markDeclaredAttribute(String attributeName) {
+		declaredAttributes.add( attributeName );
 	}
 
 	@Override
 	protected Object[] getAttributeValues(Object compositeInstance) {
 		final Object[] results = new Object[getNumberOfAttributeMappings()];
 		for ( int i = 0; i < getNumberOfAttributeMappings(); i++ ) {
-			if ( declaredAttributes.get( i ) ) {
-				final Getter getter = getAttributeMapping( i ).getAttributeMetadata()
+			final AttributeMapping attributeMapping = getAttributeMapping( i );
+			if ( declaredAttributes.contains( attributeMapping.getAttributeName() ) ) {
+				final Getter getter = attributeMapping.getAttributeMetadata()
 						.getPropertyAccess()
 						.getGetter();
 				results[i] = getter.get( compositeInstance );
@@ -107,8 +86,9 @@ public class EmbeddableMappingSubTypeImpl extends AbstractEmbeddableMapping {
 	@Override
 	protected void setAttributeValues(Object component, Object[] values) {
 		for ( int i = 0; i < values.length; i++ ) {
-			if ( declaredAttributes.get( i ) ) {
-				getAttributeMapping( i ).getPropertyAccess().getSetter().set( component, values[i] );
+			final AttributeMapping attributeMapping = getAttributeMapping( i );
+			if ( declaredAttributes.contains( attributeMapping.getAttributeName() ) ) {
+				attributeMapping.getPropertyAccess().getSetter().set( component, values[i] );
 			}
 			else {
 				assert values[i] == null : "Unexpected non-null value for embeddable type " + getJavaType().getJavaTypeClass();
