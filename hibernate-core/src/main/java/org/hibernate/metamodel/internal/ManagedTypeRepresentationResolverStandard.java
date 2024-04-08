@@ -66,7 +66,6 @@ public class ManagedTypeRepresentationResolverStandard implements ManagedTypeRep
 	@Override
 	public EmbeddableRepresentationStrategy resolveStrategy(
 			Component bootDescriptor,
-			Class<?> embeddableClass,
 			Supplier<EmbeddableMappingType> runtimeDescriptorAccess,
 			RuntimeModelCreationContext creationContext) {
 //		RepresentationMode representation = bootDescriptor.getExplicitRepresentationMode();
@@ -156,7 +155,6 @@ public class ManagedTypeRepresentationResolverStandard implements ManagedTypeRep
 			//noinspection unchecked
 			return new EmbeddableRepresentationStrategyPojo(
 					bootDescriptor,
-					embeddableClass,
 					runtimeDescriptorAccess,
 					customInstantiator,
 					(CompositeUserType<Object>) compositeUserType,

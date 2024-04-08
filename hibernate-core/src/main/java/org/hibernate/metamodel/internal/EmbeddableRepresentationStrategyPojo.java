@@ -9,9 +9,9 @@ package org.hibernate.metamodel.internal;
 import java.util.Collection;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Supplier;
 
 import org.hibernate.HibernateException;
@@ -50,14 +50,13 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 
 	public EmbeddableRepresentationStrategyPojo(
 			Component bootDescriptor,
-			Class<?> embeddableClass,
 			Supplier<EmbeddableMappingType> runtimeDescriptorAccess,
 			EmbeddableInstantiator customInstantiator,
 			CompositeUserType<Object> compositeUserType,
 			RuntimeModelCreationContext creationContext) {
 		super(
 				bootDescriptor,
-				resolveEmbeddableJavaType( embeddableClass, compositeUserType, creationContext ),
+				resolveEmbeddableJavaType( bootDescriptor.getComponentClass(), compositeUserType, creationContext ),
 				creationContext
 		);
 
@@ -97,7 +96,9 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 			ReflectionOptimizer reflectionOptimizer,
 			Supplier<EmbeddableMappingType> runtimeDescriptorAccess,
 			RuntimeModelCreationContext creationContext) {
-		final Collection<Class<?>> embeddableClasses = bootDescriptor.getDiscriminatorValues().values();
+		final Collection<Class<?>> embeddableClasses = bootDescriptor.getDiscriminatorValues() != null ?
+				bootDescriptor.getDiscriminatorValues().values() :
+				List.of( bootDescriptor.getComponentClass() );
 		final Map<Class<?>, EmbeddableInstantiator> result = new IdentityHashMap<>( embeddableClasses.size() );
 		for ( final Class<?> embeddableClass : embeddableClasses ) {
 			final EmbeddableInstantiator instantiator;
@@ -236,6 +237,11 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 
 	@Override
 	public EmbeddableInstantiator getInstantiatorForSubclass(Class<?> embeddableClass) {
-		return instantiators.get( embeddableClass );
+		final EmbeddableInstantiator instantiator = instantiators.get( embeddableClass );
+		if ( instantiator == null ) {
+			assert instantiators.size() == 1;
+			return instantiators.values().iterator().next();
+		}
+		return instantiator;
 	}
 }
