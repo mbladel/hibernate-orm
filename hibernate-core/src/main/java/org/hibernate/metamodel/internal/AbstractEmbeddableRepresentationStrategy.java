@@ -41,7 +41,10 @@ public abstract class AbstractEmbeddableRepresentationStrategy implements Embedd
 		boolean foundCustomAccessor = false;
 		for ( int i = 0; i < bootDescriptor.getProperties().size(); i++ ) {
 			final Property property = bootDescriptor.getProperty( i );
-			propertyAccesses[i] = buildPropertyAccess( property, bootDescriptor.getPropertyDeclaringClass( property ) );
+			final Class<?> embeddableClass = bootDescriptor.isPolymorphic() ?
+					bootDescriptor.getPropertyDeclaringClass( property ) :
+					getEmbeddableJavaType().getJavaTypeClass();
+			propertyAccesses[i] = buildPropertyAccess( property, embeddableClass );
 			attributeNameToPositionMap.put( property.getName(), i );
 
 			if ( !property.isBasicPropertyAccessor() ) {
@@ -52,7 +55,7 @@ public abstract class AbstractEmbeddableRepresentationStrategy implements Embedd
 		hasCustomAccessors = foundCustomAccessor;
 	}
 
-	protected abstract PropertyAccess buildPropertyAccess(Property bootAttributeDescriptor, Class<?> declaringClass);
+	protected abstract PropertyAccess buildPropertyAccess(Property bootAttributeDescriptor, Class<?> embeddableClass);
 
 	public JavaType<?> getEmbeddableJavaType() {
 		return embeddableJavaType;
