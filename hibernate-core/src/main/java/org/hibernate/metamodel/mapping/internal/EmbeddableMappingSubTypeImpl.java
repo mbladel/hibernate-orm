@@ -10,6 +10,7 @@ import java.util.BitSet;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.DependantValue;
 import org.hibernate.mapping.Property;
@@ -18,6 +19,8 @@ import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
+import org.hibernate.metamodel.mapping.PluralAttributeMapping;
+import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.SelectableMappings;
 import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.metamodel.spi.EmbeddableRepresentationStrategy;
@@ -37,6 +40,7 @@ import org.hibernate.type.descriptor.java.JavaType;
 public class EmbeddableMappingSubTypeImpl extends AbstractEmbeddableMapping {
 	private final EmbeddableMappingType superMappingType;
 	private final EmbeddableRepresentationStrategy representationStrategy;
+	private final Object discriminatorValue;
 	private final JavaType<?> embeddableJtd;
 	private final Set<String> declaredAttributes;
 
@@ -51,6 +55,7 @@ public class EmbeddableMappingSubTypeImpl extends AbstractEmbeddableMapping {
 				.getBootstrapContext()
 				.getRepresentationStrategySelector()
 				.resolveStrategy( bootDescriptor, embeddableSubclass, () -> this, creationContext );
+		this.discriminatorValue = bootDescriptor.getDiscriminatorValues().get( embeddableSubclass );
 		this.embeddableJtd = representationStrategy.getMappedJavaType();
 		this.declaredAttributes = new HashSet<>();
 	}
@@ -63,6 +68,11 @@ public class EmbeddableMappingSubTypeImpl extends AbstractEmbeddableMapping {
 	@Override
 	protected void markDeclaredAttribute(String attributeName) {
 		declaredAttributes.add( attributeName );
+	}
+
+	@Override
+	protected boolean declaresAttribute(String attributeName) {
+		return declaredAttributes.contains( attributeName );
 	}
 
 	@Override
@@ -97,6 +107,48 @@ public class EmbeddableMappingSubTypeImpl extends AbstractEmbeddableMapping {
 	}
 
 	@Override
+	public <X, Y> int decompose(
+			Object domainValue,
+			int offset,
+			X x,
+			Y y,
+			JdbcValueBiConsumer<X, Y> valueConsumer,
+			SharedSessionContractImplementor session) {
+		// todo marco : support inheritance for aggregates?
+		if ( shouldBindAggregateMapping() ) {
+			valueConsumer.consume( offset, x, y, domainValue, getAggregateMapping() );
+			return 1;
+		}
+		int span = 0;
+		if ( domainValue instanceof Object[] ) {
+			final Object[] values = (Object[]) domainValue;
+			assert values.length == attributeMappings.size();
+
+			for ( int i = 0; i < attributeMappings.size(); i++ ) {
+				final AttributeMapping attributeMapping = attributeMappings.get( i );
+				if ( declaredAttributes.contains( attributeMapping.getAttributeName() ) ) {
+					final Object attributeValue = values[i];
+					span += attributeMapping.decompose( attributeValue, offset + span, x, y, valueConsumer, session );
+				}
+			}
+		}
+		else {
+			for ( int i = 0; i < attributeMappings.size(); i++ ) {
+				final AttributeMapping attributeMapping = attributeMappings.get( i );
+				if ( declaredAttributes.contains( attributeMapping.getAttributeName() ) &&
+						!( attributeMapping instanceof PluralAttributeMapping ) ) {
+					final Object attributeValue = domainValue == null
+							? null
+							: attributeMapping.getPropertyAccess().getGetter().get( domainValue );
+					span += attributeMapping.decompose( attributeValue, offset + span, x, y, valueConsumer, session );
+				}
+			}
+			span += getDiscriminatorMapping().decompose( discriminatorValue, offset + span, x, y, valueConsumer, session );
+		}
+		return span;
+	}
+
+	@Override
 	public JavaType<?> getMappedJavaType() {
 		return embeddableJtd;
 	}
@@ -119,6 +171,11 @@ public class EmbeddableMappingSubTypeImpl extends AbstractEmbeddableMapping {
 	@Override
 	public boolean isCreateEmptyCompositesEnabled() {
 		return superMappingType.isCreateEmptyCompositesEnabled();
+	}
+
+	@Override
+	public SelectableMapping getAggregateMapping() {
+		return superMappingType.getAggregateMapping();
 	}
 
 	@Override
