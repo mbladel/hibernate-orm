@@ -59,8 +59,8 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 			List<EmbeddableDiscriminatorValueDetails> valueMappings) {
 		super( discriminatorRole, domainJavaType, relationalJavaType );
 
-		this.discriminatorValueToDetailsMap = new IdentityHashMap<>( valueMappings.size() );
-		this.embeddableClassToDetailsMap = new IdentityHashMap<>( valueMappings.size() );
+		this.discriminatorValueToDetailsMap = CollectionHelper.concurrentMap( valueMappings.size() );
+		this.embeddableClassToDetailsMap = CollectionHelper.concurrentMap( valueMappings.size() );
 		valueMappings.forEach( (valueDetails) -> {
 			discriminatorValueToDetailsMap.put( valueDetails.getValue(), valueDetails );
 			embeddableClassToDetailsMap.put( valueDetails.getEmbeddableClass(), valueDetails );

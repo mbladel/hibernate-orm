@@ -37,16 +37,6 @@ public class BasicEmbeddableInheritanceTest {
 	// todo marco : test embeddable inheritance with foreign keys (will need some work)
 	// todo marco : also test aggregate embeddables (will need some work)
 
-	@BeforeAll
-	public void setUp(SessionFactoryScope scope) {
-		scope.inTransaction( session -> {
-			session.persist( new TestEntity( 1L, new ChildEmbeddableOne( "embeddable_1", 1 ) ) );
-			session.persist( new TestEntity( 2L, new ChildEmbeddableTwo( "embeddable_2", 2L ) ) );
-			session.persist( new TestEntity( 3L, new ParentEmbeddable( "embeddable_3" ) ) );
-			session.persist( new TestEntity( 4L, new SubChildEmbeddableOne( "embeddable_4", 4, 4.0 ) ) );
-		} );
-	}
-
 	@Test
 	public void testFind(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
@@ -99,6 +89,16 @@ public class BasicEmbeddableInheritanceTest {
 			assertThat( result.getParentProp() ).isEqualTo( "embeddable_2" );
 			assertThat( result ).isExactlyInstanceOf( ChildEmbeddableTwo.class );
 			assertThat( ( (ChildEmbeddableTwo) result ).getChildTwoProp() ).isEqualTo( 2L );
+		} );
+	}
+
+	@BeforeAll
+	public void setUp(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			session.persist( new TestEntity( 1L, new ChildEmbeddableOne( "embeddable_1", 1 ) ) );
+			session.persist( new TestEntity( 2L, new ChildEmbeddableTwo( "embeddable_2", 2L ) ) );
+			session.persist( new TestEntity( 3L, new ParentEmbeddable( "embeddable_3" ) ) );
+			session.persist( new TestEntity( 4L, new SubChildEmbeddableOne( "embeddable_4", 4, 4.0 ) ) );
 		} );
 	}
 

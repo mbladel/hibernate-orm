@@ -153,7 +153,7 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 	}
 
 	@Override
-	protected PropertyAccess buildPropertyAccess(Property bootAttributeDescriptor, Class<?> declaringClass) {
+	protected PropertyAccess buildPropertyAccess(Property bootAttributeDescriptor, Class<?> embeddableClass) {
 		PropertyAccessStrategy strategy = bootAttributeDescriptor.getPropertyAccessStrategy( getEmbeddableJavaType().getJavaTypeClass() );
 
 		if ( strategy == null ) {
@@ -198,7 +198,7 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 		}
 
 		return strategy.buildPropertyAccess(
-				declaringClass,
+				embeddableClass,
 				bootAttributeDescriptor.getName(),
 				false // todo marco : I believe the instanceof that was here before always checked against null
 		);

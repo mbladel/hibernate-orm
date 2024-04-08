@@ -385,7 +385,7 @@ public class EmbeddableBinder {
 					inheritanceStatePerClass,
 					context
 			);
-			if ( component.getDiscriminator() != null ) {
+			if ( component.isPolymorphic() ) {
 				final BasicType<?> discriminatorType = (BasicType<?>) component.getDiscriminator().getType();
 				final Map<Object, Class<?>> discriminatorValues = new HashMap<>();
 				discriminatorValues.put(
