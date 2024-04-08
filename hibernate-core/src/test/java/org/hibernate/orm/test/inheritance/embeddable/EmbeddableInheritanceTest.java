@@ -12,19 +12,22 @@ import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 /**
  * @author Marco Belladelli
  */
 @DomainModel( annotatedClasses = {
-		// EmbeddableInheritanceTest.AnotherEntity.class,
 		EmbeddableInheritanceTest.TestEntity.class,
 		EmbeddableInheritanceTest.ParentEmbeddable.class,
-		EmbeddableInheritanceTest.ChildEmbeddable.class,
+		EmbeddableInheritanceTest.ChildEmbeddableOne.class,
+		EmbeddableInheritanceTest.ChildEmbeddableTwo.class,
 } )
 @SessionFactory
 public class EmbeddableInheritanceTest {
@@ -35,32 +38,26 @@ public class EmbeddableInheritanceTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			session.persist( new TestEntity( 1L, new ChildEmbeddable( "embeddable_1", 1 ) ) );
+			session.persist( new TestEntity( 1L, new ChildEmbeddableOne( "embeddable_1", 1 ) ) );
+			session.persist( new TestEntity( 2L, new ChildEmbeddableTwo( "embeddable_2", 2L ) ) );
 		} );
 	}
 
 	@Test
-	public void test(SessionFactoryScope scope) {
+	public void testFind(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-
+			final TestEntity result = session.find( TestEntity.class, 1L );
+			assertThat( result.embeddable.parentProp ).isEqualTo( "embeddable_1" );
 		} );
 	}
 
-	@Entity( name = "AnotherEntity" )
-	static class AnotherEntity {
-		@Id
-		private Long id;
-
-		@Embedded
-		private ParentEmbeddable embeddable;
-
-		public AnotherEntity() {
-		}
-
-		public AnotherEntity(Long id, ParentEmbeddable embeddable) {
-			this.id = id;
-			this.embeddable = embeddable;
-		}
+	@Test
+	public void testQuery(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final TestEntity result = session.createQuery( "from TestEntity where id = 2", TestEntity.class )
+					.getSingleResult();
+			assertThat( result.embeddable.parentProp ).isEqualTo( "embeddable_2" );
+		} );
 	}
 
 	@Entity( name = "TestEntity" )
@@ -81,6 +78,7 @@ public class EmbeddableInheritanceTest {
 	}
 
 	@Embeddable
+	@DiscriminatorValue( "parent" )
 	static class ParentEmbeddable {
 		private String parentProp;
 
@@ -93,15 +91,30 @@ public class EmbeddableInheritanceTest {
 	}
 
 	@Embeddable
-	static class ChildEmbeddable extends ParentEmbeddable {
-		private Integer childProp;
+	@DiscriminatorValue( "child_one" )
+	static class ChildEmbeddableOne extends ParentEmbeddable {
+		private Integer childOneProp;
 
-		public ChildEmbeddable() {
+		public ChildEmbeddableOne() {
 		}
 
-		public ChildEmbeddable(String parentProp, Integer childProp) {
+		public ChildEmbeddableOne(String parentProp, Integer childOneProp) {
 			super( parentProp );
-			this.childProp = childProp;
+			this.childOneProp = childOneProp;
+		}
+	}
+
+	@Embeddable
+	@DiscriminatorValue( "child_two" )
+	static class ChildEmbeddableTwo extends ParentEmbeddable {
+		private Long childTwoProp;
+
+		public ChildEmbeddableTwo() {
+		}
+
+		public ChildEmbeddableTwo(String parentProp, Long childTwoProp) {
+			super( parentProp );
+			this.childTwoProp = childTwoProp;
 		}
 	}
 }

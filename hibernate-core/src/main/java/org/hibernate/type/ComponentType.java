@@ -405,7 +405,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 			return ((Object[]) component)[i];
 		}
 		else {
-			return embeddableTypeDescriptor().getEmbeddableSubtype( component.getClass() ).getValue( component, i );
+			return embeddableTypeDescriptor().getValue( component, i );
 		}
 	}
 
@@ -427,7 +427,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 			return (Object[]) component;
 		}
 		else {
-			return embeddableTypeDescriptor().getEmbeddableSubtype( component.getClass() ).getValues( component );
+			return embeddableTypeDescriptor().getValues( component );
 		}
 	}
 
@@ -764,7 +764,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 	}
 
 	protected final EmbeddableInstantiator instantiator(Class<?> componentClass) {
-		return embeddableTypeDescriptor().getEmbeddableSubtype( componentClass ).getRepresentationStrategy().getInstantiator();
+		return embeddableTypeDescriptor().getRepresentationStrategy().getInstantiatorForSubclass( componentClass );
 	}
 
 	@Override
