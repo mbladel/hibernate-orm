@@ -6,14 +6,11 @@
  */
 package org.hibernate.metamodel.mapping.internal;
 
-import java.util.Set;
-
 import org.hibernate.metamodel.mapping.DiscriminatorConverter;
-import org.hibernate.metamodel.mapping.DiscriminatorValueDetails;
+import org.hibernate.metamodel.mapping.DiscriminatorType;
 import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorValueDetails;
 import org.hibernate.metamodel.mapping.JdbcMapping;
-import org.hibernate.metamodel.mapping.DiscriminatorType;
 import org.hibernate.metamodel.mapping.ManagedMappingType;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.spi.SqlAstCreationState;
@@ -97,16 +94,6 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 				),
 				processingState -> new ColumnReference( tableReference, this )
 		);
-	}
-
-	@Override
-	public EmbeddableDiscriminatorValueDetails resolveEmbeddableDiscriminatorValue(Object value) {
-		return (EmbeddableDiscriminatorValueDetails) resolveDiscriminatorValue( value );
-	}
-
-	@Override
-	public Set<Class<?>> getEmbeddableClasses() {
-		return getEmbeddableValueConverter().getEmbeddableClassToDetailsMap().keySet();
 	}
 
 	@Override

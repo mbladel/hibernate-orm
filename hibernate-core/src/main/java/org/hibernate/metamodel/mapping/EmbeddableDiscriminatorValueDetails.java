@@ -7,8 +7,12 @@
 package org.hibernate.metamodel.mapping;
 
 /**
+ * Specialization of {@link DiscriminatorValueDetails} used for embeddable inheritance.
+ *
  * @author Marco Belladelli
- */ // todo marco : this is a very rough and quick draft, clean this up
+ * @see EmbeddableDiscriminatorConverter
+ * @see EmbeddableDiscriminatorMapping
+ */
 public class EmbeddableDiscriminatorValueDetails implements DiscriminatorValueDetails {
 	final Object value;
 	final Class<?> embeddableClass;

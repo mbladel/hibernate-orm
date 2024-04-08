@@ -37,6 +37,10 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 
 	boolean isCreateEmptyCompositesEnabled();
 
+	/**
+	 * Returns the {@linkplain EmbeddableDiscriminatorMapping discriminator mapping}
+	 * if this discriminator type is polymorphic, {@code null} otherwise.
+	 */
 	default EmbeddableDiscriminatorMapping getDiscriminatorMapping() {
 		return null;
 	}

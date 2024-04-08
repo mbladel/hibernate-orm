@@ -6,9 +6,9 @@
  */
 package org.hibernate.metamodel.mapping;
 
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -20,7 +20,11 @@ import org.hibernate.type.BasicType;
 import org.hibernate.type.descriptor.java.JavaType;
 
 /**
+ * Handles conversion of discriminator values for embeddable subtype classes
+ * to their domain typed form.
+ *
  * @author Marco Belladelli
+ * @see EmbeddableDiscriminatorMapping
  */
 public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConverter<O, R> {
 	public static <O, R> EmbeddableDiscriminatorConverter<O, R> fromValueMappings(
@@ -55,8 +59,8 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 			List<EmbeddableDiscriminatorValueDetails> valueMappings) {
 		super( discriminatorRole, domainJavaType, relationalJavaType );
 
-		this.discriminatorValueToDetailsMap = CollectionHelper.concurrentMap( valueMappings.size() );
-		this.embeddableClassToDetailsMap = CollectionHelper.concurrentMap( valueMappings.size() );
+		this.discriminatorValueToDetailsMap = new IdentityHashMap<>( valueMappings.size() );
+		this.embeddableClassToDetailsMap = new IdentityHashMap<>( valueMappings.size() );
 		valueMappings.forEach( (valueDetails) -> {
 			discriminatorValueToDetailsMap.put( valueDetails.getValue(), valueDetails );
 			embeddableClassToDetailsMap.put( valueDetails.getEmbeddableClass(), valueDetails );
@@ -86,9 +90,8 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 
 		final Class<?> embeddableClass = (Class<?>) domainForm;
 
-		final EmbeddableDiscriminatorValueDetails discriminatorValueDetails = getDetailsForEmbeddableClass( embeddableClass );
 		//noinspection unchecked
-		return (R) discriminatorValueDetails.getValue();
+		return (R) getDetailsForEmbeddableClass( embeddableClass ).getValue();
 	}
 
 	public EmbeddableDiscriminatorValueDetails getDetailsForEmbeddableClass(Class<?> embeddableClass) {
@@ -113,12 +116,12 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 	@Override
 	public DiscriminatorValueDetails getDetailsForEntityName(String entityName) {
 		for ( Map.Entry<Class<?>, EmbeddableDiscriminatorValueDetails> entry : embeddableClassToDetailsMap.entrySet() ) {
-			if ( entry.getKey().getName().equals( entityName )) {
+			if ( entry.getKey().getName().equals( entityName ) ) {
 				return entry.getValue();
 			}
 		}
 
-		throw new AssertionFailure( "Unrecognized embeddable class name: " + entityName );
+		throw new HibernateException( "Unrecognized embeddable class name: " + entityName );
 	}
 
 	@Override
@@ -127,7 +130,7 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 	}
 
 	@Override
-	public <X> X fromValueDetails(Function<DiscriminatorValueDetails,X> handler) {
+	public <X> X fromValueDetails(Function<DiscriminatorValueDetails, X> handler) {
 		for ( DiscriminatorValueDetails detail : discriminatorValueToDetailsMap.values() ) {
 			final X result = handler.apply( detail );
 			if ( result != null ) {

@@ -6,44 +6,33 @@
  */
 package org.hibernate.metamodel.mapping;
 
-import java.util.Set;
-
-import org.hibernate.AssertionFailure;
-import org.hibernate.engine.FetchStyle;
+import org.hibernate.HibernateException;
 import org.hibernate.engine.FetchTiming;
 import org.hibernate.spi.NavigablePath;
-import org.hibernate.sql.ast.spi.SqlAstCreationState;
-import org.hibernate.sql.ast.tree.expression.Expression;
-import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.results.graph.DomainResultCreationState;
 import org.hibernate.sql.results.graph.FetchOptions;
 import org.hibernate.sql.results.graph.FetchParent;
 import org.hibernate.sql.results.graph.basic.BasicFetch;
 
 /**
- * Details about the discriminator for an embeddable hierarchy
- *
- * @see jakarta.persistence.DiscriminatorColumn
- * @see jakarta.persistence.DiscriminatorValue
+ * Details about the discriminator for an embeddable hierarchy.
  *
  * @author Marco Belladelli
+ * @see EmbeddableMappingType#getDiscriminatorMapping()
+ * @see EmbeddableDiscriminatorConverter
  */
 public interface EmbeddableDiscriminatorMapping extends DiscriminatorMapping, FetchOptions {
-	default EmbeddableDiscriminatorConverter<?,?> getEmbeddableValueConverter() {
+	default EmbeddableDiscriminatorConverter<?, ?> getEmbeddableValueConverter() {
 		return (EmbeddableDiscriminatorConverter<?, ?>) getValueConverter();
 	}
 
 	/**
-	 * Retrieve the details for a particular discriminator value.
-	 * <p>
-	 * Returns {@code null} if there is no match.
+	 * Retrieve the {@linkplain EmbeddableDiscriminatorValueDetails details} for a particular discriminator value.
+	 * @throws HibernateException if there is no match
 	 */
-	EmbeddableDiscriminatorValueDetails resolveEmbeddableDiscriminatorValue(Object value);
-
-	/**
-	 * Retrieve a {@link Set} of all subclasses represented by this discriminator mapping.
-	 */
-	Set<Class<?>> getEmbeddableClasses();
+	default EmbeddableDiscriminatorValueDetails resolveEmbeddableDiscriminatorValue(Object value) {
+		return getEmbeddableValueConverter().getDetailsForDiscriminatorValue( value );
+	}
 
 	default Object getDiscriminatorValue(Class<?> embeddableClass) {
 		return getEmbeddableValueConverter().getDetailsForEmbeddableClass( embeddableClass ).getValue();
