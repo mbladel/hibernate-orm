@@ -265,7 +265,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 				aggregatedColumns.addAll( value.getColumns() );
 			}
 		}
-		if ( component.getDiscriminator() != null ) {
+		if ( component.isPolymorphic() ) {
 			aggregatedColumns.addAll( component.getDiscriminator().getColumns() );
 		}
 	}
@@ -289,7 +289,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 				}
 			}
 		}
-		if ( component.getDiscriminator() != null ) {
+		if ( component.isPolymorphic() ) {
 			( (BasicValue) component.getDiscriminator() ).setAggregateColumn( aggregateColumn );
 		}
 	}
@@ -574,6 +574,10 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 	public void setDiscriminator(Value discriminator) {
 		this.discriminator = discriminator;
+	}
+
+	public boolean isPolymorphic() {
+		return discriminator != null;
 	}
 
 	public Map<Object, Class<?>> getDiscriminatorValues() {

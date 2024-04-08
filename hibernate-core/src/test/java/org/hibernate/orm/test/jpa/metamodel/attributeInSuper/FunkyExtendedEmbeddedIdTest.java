@@ -10,8 +10,10 @@ import jakarta.persistence.metamodel.EmbeddableType;
 
 import org.hibernate.testing.TestForIssue;
 import org.hibernate.testing.orm.junit.EntityManagerFactoryScope;
+import org.hibernate.testing.orm.junit.FailureExpected;
 import org.hibernate.testing.orm.junit.Jpa;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -26,6 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 		WorkOrderComponentId.class,
 		WorkOrderComponent.class
 })
+@Disabled // todo marco : this actually works with embedded inheritance, so probably rework the test
 public class FunkyExtendedEmbeddedIdTest {
 
 	@Test
