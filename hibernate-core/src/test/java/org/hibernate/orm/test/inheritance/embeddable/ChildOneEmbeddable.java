@@ -14,13 +14,13 @@ import jakarta.persistence.Embeddable;
  */
 @Embeddable
 @DiscriminatorValue( "child_one" )
-class ChildEmbeddableOne extends ParentEmbeddable {
+class ChildOneEmbeddable extends ParentEmbeddable {
 	private Integer childOneProp;
 
-	public ChildEmbeddableOne() {
+	public ChildOneEmbeddable() {
 	}
 
-	public ChildEmbeddableOne(String parentProp, Integer childOneProp) {
+	public ChildOneEmbeddable(String parentProp, Integer childOneProp) {
 		super( parentProp );
 		this.childOneProp = childOneProp;
 	}

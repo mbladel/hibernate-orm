@@ -6,21 +6,24 @@
  */
 package org.hibernate.orm.test.inheritance.embeddable;
 
+import java.util.List;
+
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.ManyToMany;
 
 /**
  * @author Marco Belladelli
  */
 @Embeddable
 @DiscriminatorValue( "sub_child_one" )
-class SubChildEmbeddableOne extends ChildEmbeddableOne {
+class SubChildOneEmbeddable extends ChildOneEmbeddable {
 	private Double subChildOneProp;
 
-	public SubChildEmbeddableOne() {
+	public SubChildOneEmbeddable() {
 	}
 
-	public SubChildEmbeddableOne(String parentProp, Integer childOneProp, Double subChildOneProp) {
+	public SubChildOneEmbeddable(String parentProp, Integer childOneProp, Double subChildOneProp) {
 		super( parentProp, childOneProp );
 		this.subChildOneProp = subChildOneProp;
 	}

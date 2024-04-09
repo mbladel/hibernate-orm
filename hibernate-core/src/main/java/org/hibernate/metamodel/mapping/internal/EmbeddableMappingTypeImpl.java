@@ -743,9 +743,13 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		);
 	}
 
-	private boolean declaresAttribute(Class<?> embeddableClass, AttributeMapping attributeMapping) {
-		return declaredAttributesBySubclass == null
-				|| declaredAttributesBySubclass.get( embeddableClass ).contains( attributeMapping );
+	@Override
+	public boolean declaresAttribute(Class<?> embeddableClass, AttributeMapping attributeMapping) {
+		if ( declaredAttributesBySubclass == null ) {
+			return true;
+		}
+		final Set<AttributeMapping> declaredAttributes = declaredAttributesBySubclass.get( embeddableClass );
+		return declaredAttributes != null && declaredAttributes.contains( attributeMapping );
 	}
 
 	@Override
