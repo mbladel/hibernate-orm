@@ -32,6 +32,7 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 	private final String columnName;
 	private final String columnFormula;
 	private final boolean isPhysical;
+	private final boolean isUpdateable;
 	private final String columnDefinition;
 	private final Long length;
 	private final Integer precision;
@@ -43,12 +44,12 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 			String columnExpression,
 			boolean isFormula,
 			boolean isPhysical,
+			boolean isUpdateable,
 			String columnDefinition,
 			Long length,
 			Integer precision,
 			Integer scale,
-			DiscriminatorType<?> discriminatorType,
-			MappingModelCreationProcess creationProcess) {
+			DiscriminatorType<?> discriminatorType) {
 		//noinspection unchecked
 		super( mappingType, (DiscriminatorType<Object>) discriminatorType, (BasicType<Object>) discriminatorType.getUnderlyingJdbcMapping() );
 		this.tableExpression = tableExpression;
@@ -60,10 +61,12 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 		if ( isFormula ) {
 			columnName = null;
 			columnFormula = columnExpression;
+			this.isUpdateable = false;
 		}
 		else {
 			columnName = columnExpression;
 			columnFormula = null;
+			this.isUpdateable = isUpdateable;
 		}
 	}
 
@@ -158,7 +161,7 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 
 	@Override
 	public boolean isUpdateable() {
-		return false;
+		return isUpdateable;
 	}
 
 	@Override

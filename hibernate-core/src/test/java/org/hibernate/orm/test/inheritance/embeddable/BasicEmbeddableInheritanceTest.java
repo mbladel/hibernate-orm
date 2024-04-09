@@ -92,6 +92,32 @@ public class BasicEmbeddableInheritanceTest {
 		} );
 	}
 
+	@Test
+	public void testUpdate(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final TestEntity result = session.find( TestEntity.class, 5L );
+			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_5" );
+			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildEmbeddableOne.class );
+			assertThat( ( (ChildEmbeddableOne) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 5 );
+			// update values
+			result.getEmbeddable().setParentProp( "embeddable_5_new" );
+			( (ChildEmbeddableOne) result.getEmbeddable() ).setChildOneProp( 55 );
+		} );
+		scope.inTransaction( session -> {
+			final TestEntity result = session.find( TestEntity.class, 5L );
+			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_5_new" );
+			assertThat( ( (ChildEmbeddableOne) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 55 );
+			result.setEmbeddable( new SubChildEmbeddableOne( "embeddable_6", 6, 6.0 ) );
+		} );
+		scope.inTransaction( session -> {
+			final TestEntity result = session.find( TestEntity.class, 5L );
+			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_6" );
+			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( SubChildEmbeddableOne.class );
+			assertThat( ( (SubChildEmbeddableOne) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 6 );
+			assertThat( ( (SubChildEmbeddableOne) result.getEmbeddable() ).getSubChildOneProp() ).isEqualTo( 6.0 );
+		} );
+	}
+
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
@@ -99,6 +125,7 @@ public class BasicEmbeddableInheritanceTest {
 			session.persist( new TestEntity( 2L, new ChildEmbeddableTwo( "embeddable_2", 2L ) ) );
 			session.persist( new TestEntity( 3L, new ParentEmbeddable( "embeddable_3" ) ) );
 			session.persist( new TestEntity( 4L, new SubChildEmbeddableOne( "embeddable_4", 4, 4.0 ) ) );
+			session.persist( new TestEntity( 5L, new ChildEmbeddableOne( "embeddable_5", 5 ) ) );
 		} );
 	}
 
@@ -121,6 +148,10 @@ public class BasicEmbeddableInheritanceTest {
 		public ParentEmbeddable getEmbeddable() {
 			return embeddable;
 		}
+
+		public void setEmbeddable(ParentEmbeddable embeddable) {
+			this.embeddable = embeddable;
+		}
 	}
 
 	@Embeddable
@@ -137,6 +168,10 @@ public class BasicEmbeddableInheritanceTest {
 
 		public String getParentProp() {
 			return parentProp;
+		}
+
+		public void setParentProp(String parentProp) {
+			this.parentProp = parentProp;
 		}
 	}
 
@@ -155,6 +190,10 @@ public class BasicEmbeddableInheritanceTest {
 
 		public Integer getChildOneProp() {
 			return childOneProp;
+		}
+
+		public void setChildOneProp(Integer childOneProp) {
+			this.childOneProp = childOneProp;
 		}
 	}
 

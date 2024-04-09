@@ -8,7 +8,6 @@ package org.hibernate.boot.internal;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -110,7 +109,6 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.MapsId;
-import org.checkerframework.checker.nullness.qual.Nullable;
 
 import static org.hibernate.boot.model.naming.Identifier.toIdentifier;
 
