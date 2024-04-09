@@ -6,6 +6,8 @@
  */
 package org.hibernate.sql.results.graph;
 
+import java.util.function.Supplier;
+
 import org.hibernate.Incubating;
 import org.hibernate.engine.FetchTiming;
 import org.hibernate.metamodel.mapping.AssociationKey;
@@ -127,10 +129,7 @@ public interface DomainResultCreationState {
 		final EmbeddableDiscriminatorMapping discriminatorMapping = embeddableType.getDiscriminatorMapping();
 		if ( discriminatorMapping != null ) {
 			// todo marco : this cast might be problematic, also not sure about the interface changes
-			final SqlAstQueryPartProcessingState processingState = (SqlAstQueryPartProcessingState) getSqlAstCreationState().getCurrentProcessingState();
-			final FetchParent nestingFetchParent = processingState.getNestingFetchParent();
-			processingState.setNestingFetchParent( fetchParent );
-			final BasicFetch<?> basicFetch = discriminatorMapping.generateFetch(
+			final Supplier<BasicFetch<?>> fetchSupplier = () -> discriminatorMapping.generateFetch(
 					fetchParent,
 					fetchParent.getNavigablePath().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
 					FetchTiming.IMMEDIATE,
@@ -138,8 +137,17 @@ public interface DomainResultCreationState {
 					null,
 					this
 			);
-			processingState.setNestingFetchParent( nestingFetchParent );
-			return basicFetch;
+			if ( nested ) {
+				final SqlAstQueryPartProcessingState processingState = (SqlAstQueryPartProcessingState) getSqlAstCreationState().getCurrentProcessingState();
+				final FetchParent nestingFetchParent = processingState.getNestingFetchParent();
+				processingState.setNestingFetchParent( fetchParent );
+				final BasicFetch<?> basicFetch = fetchSupplier.get();
+				processingState.setNestingFetchParent( nestingFetchParent );
+				return basicFetch;
+			}
+			else {
+				return fetchSupplier.get();
+			}
 		}
 		else {
 			return null;
