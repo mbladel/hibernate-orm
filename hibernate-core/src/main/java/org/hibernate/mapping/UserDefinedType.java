@@ -256,6 +256,7 @@ public class UserDefinedType implements Serializable, ContributableDatabaseObjec
 		// todo marco : apparently this method is called multiple times
 		//  and if we cache the orderedMapping array the first time
 		//  when we get to actually binding the attribute values it's not correct
+		// todo marco : without the check a test is failing -> StructComponentInstantiatorTest
 //		if ( orderMapping != null ) {
 //			return;
 //		}
