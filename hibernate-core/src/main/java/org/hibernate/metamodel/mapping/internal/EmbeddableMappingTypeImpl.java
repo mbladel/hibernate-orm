@@ -7,8 +7,8 @@
 package org.hibernate.metamodel.mapping.internal;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -157,7 +157,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 
 	private final EmbeddableValuedModelPart valueMapping;
 	private final EmbeddableDiscriminatorMapping discriminatorMapping;
-	private final Map<Class<?>, Set<String>> declaredAttributesBySubclass;
+	private final Map<Class<?>, Set<AttributeMapping>> declaredAttributesBySubclass;
 
 	private final boolean createEmptyCompositesEnabled;
 	private final SelectableMapping aggregateMapping;
@@ -179,7 +179,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		this.embeddableJtd = representationStrategy.getMappedJavaType();
 		this.valueMapping = embeddedPartBuilder.apply( this );
 		this.discriminatorMapping = generateDiscriminatorMapping( bootDescriptor, creationContext );
-		this.declaredAttributesBySubclass = discriminatorMapping != null ? new IdentityHashMap<>() : null;
+		this.declaredAttributesBySubclass = bootDescriptor.isPolymorphic() ? new HashMap<>() : null;
 
 		this.createEmptyCompositesEnabled = ConfigurationHelper.getBoolean(
 				Environment.CREATE_EMPTY_COMPOSITES_ENABLED,
@@ -569,11 +569,10 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			}
 
 			if ( discriminatorMapping != null ) {
+				final Class<?> declaringClass = bootDescriptor.getPropertyDeclaringClass( bootPropertyDescriptor );
 				for ( final Class<?> subclass : discriminatorMapping.getEmbeddableValueConverter().getEmbeddableClassToDetailsMap().keySet() ) {
-					final Class<?> declaringClass = bootDescriptor.getPropertyDeclaringClass( bootPropertyDescriptor );
 					if ( declaringClass.isAssignableFrom( subclass ) ) {
-						declaredAttributesBySubclass.computeIfAbsent( subclass, k -> new HashSet<>() )
-								.add( attributeMapping.getAttributeName() );
+						declaredAttributesBySubclass.computeIfAbsent( subclass, k -> new HashSet<>() ).add( attributeMapping );
 					}
 				}
 			}
@@ -624,7 +623,6 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 	private EmbeddableDiscriminatorMapping generateDiscriminatorMapping(
 			Component bootDescriptor,
 			RuntimeModelCreationContext creationContext) {
-		// todo marco : add discriminator value to boot descriptor (and remove cast)
 		final Value discriminator = bootDescriptor.getDiscriminator();
 		if ( discriminator == null ) {
 			return null;
@@ -636,8 +634,8 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		final Long length;
 		final Integer precision;
 		final Integer scale;
-		final boolean isFormula;
-		if ( discriminator.hasFormula() ) {
+		final boolean isFormula = discriminator.hasFormula();
+		if ( isFormula ) {
 			final Formula formula = (Formula) selectable;
 			discriminatorColumnExpression = formula.getTemplate(
 					creationContext.getDialect(),
@@ -648,7 +646,6 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			length = null;
 			precision = null;
 			scale = null;
-			isFormula = true;
 		}
 		else {
 			final Column column = discriminator.getColumns().get( 0 );
@@ -658,7 +655,6 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			length = column.getLength();
 			precision = column.getPrecision();
 			scale = column.getScale();
-			isFormula = false;
 		}
 
 		final DiscriminatorType<?> discriminatorType = buildDiscriminatorType(
@@ -666,19 +662,18 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 				creationContext
 		);
 
-		// todo marco : use proper class here
 		return new ExplicitColumnDiscriminatorMappingImpl(
 				this,
 				bootDescriptor.getTable().getName(),
 				discriminatorColumnExpression,
 				isFormula,
 				true,
+				true,
 				columnDefinition,
 				length,
 				precision,
 				scale,
-				discriminatorType,
-				null //todo marco : this is not used, remove it in embedded discriminator mapping
+				discriminatorType
 		);
 	}
 
@@ -750,7 +745,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 
 	private boolean declaresAttribute(Class<?> embeddableClass, AttributeMapping attributeMapping) {
 		return declaredAttributesBySubclass == null
-				|| declaredAttributesBySubclass.get( embeddableClass ).contains( attributeMapping.getAttributeName() );
+				|| declaredAttributesBySubclass.get( embeddableClass ).contains( attributeMapping );
 	}
 
 	@Override

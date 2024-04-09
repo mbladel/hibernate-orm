@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.hibernate.AnnotationException;
-import org.hibernate.AssertionFailure;
 import org.hibernate.annotations.DiscriminatorFormula;
 import org.hibernate.annotations.Instantiator;
 import org.hibernate.annotations.TypeBinderType;
@@ -73,7 +72,6 @@ import static org.hibernate.boot.model.internal.PropertyBinder.addElementsOfClas
 import static org.hibernate.boot.model.internal.PropertyBinder.processElementAnnotations;
 import static org.hibernate.boot.model.internal.PropertyHolderBuilder.buildPropertyHolder;
 import static org.hibernate.internal.CoreLogging.messageLogger;
-import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 import static org.hibernate.internal.util.StringHelper.isEmpty;
 import static org.hibernate.internal.util.StringHelper.unqualify;
 import static org.hibernate.mapping.SimpleValue.DEFAULT_ID_GEN_STRATEGY;
@@ -375,8 +373,7 @@ public class EmbeddableBinder {
 		final List<PropertyData> classElements =
 				collectClassElements( propertyAccessor, context, returnedClassOrElement, annotatedClass, isIdClass );
 		if ( !isIdClass && compositeUserType == null ) {
-			// Main entry point for embedded inheritance
-			// todo marco : I don't think we should support inheritance for id-classes, right?
+			// Main entry point for binding embeddable inheritance
 			bindDiscriminator(
 					component,
 					returnedClassOrElement,
@@ -464,16 +461,9 @@ public class EmbeddableBinder {
 			String componentPropertyName,
 			Map<XClass, InheritanceState> inheritanceStatePerClass,
 			MetadataBuildingContext context) {
-		// todo marco : normal embeddables work even if they are not listed here
 		final InheritanceState inheritanceState = inheritanceStatePerClass.get( componentClass );
 		if ( inheritanceState == null ) {
-			// todo marco : this can happen if the embeddable is not listed in the annotated classes
-			//  though the property itself still works, so I think we can leave it
 			return;
-		}
-
-		final DiscriminatorColumn columnAnnotation = componentClass.getAnnotation( DiscriminatorColumn.class );
-		if ( columnAnnotation == null ) {
 		}
 
 		final AnnotatedDiscriminatorColumn discriminatorColumn = processEmbeddableDiscriminatorProperties(
@@ -482,10 +472,8 @@ public class EmbeddableBinder {
 				inheritanceState,
 				context
 		);
-		if ( !inheritanceState.hasParents() ) {
-			if ( inheritanceState.hasSiblings() || discriminatorColumn != null && !discriminatorColumn.isImplicit() ) {
-				bindDiscriminatorColumnToRootComponent( component, discriminatorColumn, holder, context );
-			}
+		if ( discriminatorColumn != null ) {
+			bindDiscriminatorColumnToComponent( component, discriminatorColumn, holder, context );
 		}
 	}
 
@@ -503,12 +491,14 @@ public class EmbeddableBinder {
 		);
 
 		if ( !inheritanceState.hasParents() ) {
-			return buildDiscriminatorColumn(
-					discriminatorColumn,
-					discriminatorFormula,
-					componentPropertyName + "_" + DEFAULT_DISCRIMINATOR_COLUMN_NAME,
-					context
-			);
+			if ( inheritanceState.hasSiblings() ) {
+				return buildDiscriminatorColumn(
+						discriminatorColumn,
+						discriminatorFormula,
+						componentPropertyName + "_" + DEFAULT_DISCRIMINATOR_COLUMN_NAME,
+						context
+				);
+			}
 		}
 		else {
 			// not a root entity
@@ -524,35 +514,25 @@ public class EmbeddableBinder {
 						annotatedClass.getName()
 				) );
 			}
-			return null;
 		}
+		return null;
 	}
 
-	private static void bindDiscriminatorColumnToRootComponent(
+	private static void bindDiscriminatorColumnToComponent(
 			Component component,
 			AnnotatedDiscriminatorColumn discriminatorColumn,
 			PropertyHolder holder,
 			MetadataBuildingContext context) {
 		assert component.getDiscriminator() == null;
-		// todo marco : why would we need this check?
-		// if ( component.getDiscriminator() == null ) {
-		if ( discriminatorColumn == null ) {
-			throw new AssertionFailure( "discriminator column should have been built" );
-		}
-		LOG.tracev( "Setting discriminator for embedded {0}", component.getComponentClassName() );
-
+		LOG.tracev( "Setting discriminator for embeddable {0}", component.getComponentClassName() );
 		final AnnotatedColumns columns = new AnnotatedColumns();
 		columns.setPropertyHolder( holder );
 		columns.setBuildingContext( context );
 		discriminatorColumn.setParent( columns );
-
 		final BasicValue discriminatorColumnBinding = new BasicValue( context, component.getTable() );
 		component.setDiscriminator( discriminatorColumnBinding );
 		discriminatorColumn.linkWithValue( discriminatorColumnBinding );
 		discriminatorColumnBinding.setTypeName( discriminatorColumn.getDiscriminatorTypeName() );
-		// todo marco : we're probably gonna need this flag, but maybe only in EmbeddableMappingType ?
-		// component.setPolymorphic( true );
-		// }
 	}
 
 	private static CompositeUserType<?> compositeUserType(
