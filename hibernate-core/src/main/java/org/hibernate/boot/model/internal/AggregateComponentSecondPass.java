@@ -221,6 +221,9 @@ public class AggregateComponentSecondPass implements SecondPass {
 				for ( Property property : properties ) {
 					addColumns( orderedColumns, property.getValue() );
 				}
+				if ( component.isPolymorphic() ) {
+					addColumns( orderedColumns, component.getDiscriminator() );
+				}
 				userDefinedType.reorderColumns( orderedColumns );
 			}
 			else {
@@ -281,6 +284,15 @@ public class AggregateComponentSecondPass implements SecondPass {
 						orderedColumns.add( (Column) selectable );
 						return true;
 					}
+				}
+			}
+		}
+		if ( component.isPolymorphic() ) {
+			final Value discriminator = component.getDiscriminator();
+			for ( Selectable selectable : discriminator.getSelectables() ) {
+				if ( selectable instanceof Column && structColumnName.equals( ( (Column) selectable ).getName() ) ) {
+					orderedColumns.add( (Column) selectable );
+					return true;
 				}
 			}
 		}

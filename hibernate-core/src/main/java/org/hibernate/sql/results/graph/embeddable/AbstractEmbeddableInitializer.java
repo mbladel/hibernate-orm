@@ -161,11 +161,15 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 
 	@Override
 	public void resolveKey(RowProcessingState processingState) {
+		// We need to possibly wrap the processing state if the embeddable is within an aggregate
+		if ( wrappedProcessingState == null ) {
+			wrappedProcessingState = wrapProcessingState( processingState );
+		}
 		if ( discriminatorAssembler != null ) {
 			final EmbeddableDiscriminatorMapping discriminatorMapping = embedded.getEmbeddableTypeDescriptor()
 					.getDiscriminatorMapping();
 			assert discriminatorMapping != null;
-			final Object discriminator = discriminatorAssembler.extractRawValue( processingState );
+			final Object discriminator = discriminatorAssembler.extractRawValue( wrappedProcessingState );
 			final EmbeddableDiscriminatorValueDetails details = discriminatorMapping.resolveEmbeddableDiscriminatorValue(
 					discriminator
 			);
@@ -213,10 +217,6 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 					return;
 				}
 
-				// We need to possibly wrap the processing state if the embeddable is within an aggregate
-				if ( wrappedProcessingState == null ) {
-					wrappedProcessingState = wrapProcessingState( processingState );
-				}
 				extractRowState( wrappedProcessingState );
 				prepareCompositeInstance( wrappedProcessingState );
 				if ( state == State.NULL ) {

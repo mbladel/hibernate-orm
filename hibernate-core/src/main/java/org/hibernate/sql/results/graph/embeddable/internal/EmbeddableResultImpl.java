@@ -77,7 +77,7 @@ public class EmbeddableResultImpl<T> extends AbstractFetchParent implements Embe
 				}
 		);
 
-		this.discriminatorFetch = creationState.visitEmbeddableDiscriminatorFetch( this );
+		this.discriminatorFetch = creationState.visitEmbeddableDiscriminatorFetch( this, false );
 
 		afterInitialize( this, creationState );
 

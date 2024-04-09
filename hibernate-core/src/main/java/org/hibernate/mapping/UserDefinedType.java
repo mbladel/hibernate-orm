@@ -253,13 +253,16 @@ public class UserDefinedType implements Serializable, ContributableDatabaseObjec
 
 	@Internal
 	public void reorderColumns(List<Column> columns) {
-		if ( orderMapping != null ) {
-			return;
-		}
+		// todo marco : apparently this method is called multiple times
+		//  and if we cache the orderedMapping array the first time
+		//  when we get to actually binding the attribute values it's not correct
+//		if ( orderMapping != null ) {
+//			return;
+//		}
 		orderMapping = new int[columns.size()];
 		int i = 0;
 		for ( Column column : this.columns.values() ) {
-			orderMapping[columns.indexOf( column )] = i++;
+			 orderMapping[columns.indexOf( column )] = i++;
 		}
 		this.columns.clear();
 		for ( Column column : columns ) {
