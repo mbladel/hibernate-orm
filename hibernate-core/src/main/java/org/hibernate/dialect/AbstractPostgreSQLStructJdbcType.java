@@ -42,6 +42,7 @@ import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.spi.TypeConfiguration;
 
+import static org.hibernate.dialect.StructHelper.getValues;
 import static org.hibernate.type.descriptor.DateTimeUtils.appendAsDate;
 import static org.hibernate.type.descriptor.DateTimeUtils.appendAsLocalTime;
 import static org.hibernate.type.descriptor.DateTimeUtils.appendAsTime;
@@ -681,8 +682,7 @@ public abstract class AbstractPostgreSQLStructJdbcType implements AggregateJdbcT
 	}
 
 	private void serializeStructTo(PostgreSQLAppender appender, Object value, WrapperOptions options) {
-		final Object[] array = embeddableMappingType.getValues( value );
-		serializeValuesTo( appender, options, embeddableMappingType, array, '(' );
+		serializeValuesTo( appender, options, embeddableMappingType, value, '(' );
 		appender.append( ')' );
 	}
 
@@ -690,8 +690,9 @@ public abstract class AbstractPostgreSQLStructJdbcType implements AggregateJdbcT
 			PostgreSQLAppender appender,
 			WrapperOptions options,
 			EmbeddableMappingType embeddableMappingType,
-			Object[] array,
+			Object domainValue,
 			char separator) {
+		final Object[] array = getValues( embeddableMappingType, domainValue );
 		final int end = embeddableMappingType.getNumberOfAttributeMappings();
 		for ( int i = 0; i < end; i++ ) {
 			final AttributeMapping attributeMapping;
@@ -721,7 +722,7 @@ public abstract class AbstractPostgreSQLStructJdbcType implements AggregateJdbcT
 							appender,
 							options,
 							mappingType,
-							attributeValue == null ? null : mappingType.getValues( attributeValue ),
+							attributeValue,
 							separator
 					);
 					separator = ',';

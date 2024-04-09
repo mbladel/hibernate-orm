@@ -44,26 +44,26 @@ public class AggregateEmbeddableInheritanceTest {
 			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildOneEmbeddable.class );
 			assertThat( ( (ChildOneEmbeddable) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 1 );
 		} );
-//		scope.inTransaction( session -> {
-//			final TestEntity result = session.find( TestEntity.class, 3L );
-//			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_3" );
-//			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ParentEmbeddable.class );
-//		} );
+		scope.inTransaction( session -> {
+			final TestEntity result = session.find( TestEntity.class, 3L );
+			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_3" );
+			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ParentEmbeddable.class );
+		} );
 	}
 
-//	@Test
-//	public void testQueryEntity(SessionFactoryScope scope) {
-//		scope.inTransaction( session -> {
-//			final TestEntity result = session.createQuery(
-//					"from TestEntity where id = 2",
-//					TestEntity.class
-//			).getSingleResult();
-//			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_2" );
-//			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildTwoEmbeddable.class );
-//			assertThat( ( (ChildTwoEmbeddable) result.getEmbeddable() ).getChildTwoProp() ).isEqualTo( 2L );
-//		} );
-//	}
-//
+	@Test
+	public void testQueryEntity(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final TestEntity result = session.createQuery(
+					"from TestEntity where id = 2",
+					TestEntity.class
+			).getSingleResult();
+			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_2" );
+			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildTwoEmbeddable.class );
+			assertThat( ( (ChildTwoEmbeddable) result.getEmbeddable() ).getChildTwoProp() ).isEqualTo( 2L );
+		} );
+	}
+
 //	@Test
 //	public void testQueryEmbeddable(SessionFactoryScope scope) {
 //		scope.inTransaction( session -> {
@@ -121,10 +121,10 @@ public class AggregateEmbeddableInheritanceTest {
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			session.persist( new TestEntity( 1L, new ChildOneEmbeddable( "embeddable_1", 1 ) ) );
-//			session.persist( new TestEntity( 2L, new ChildTwoEmbeddable( "embeddable_2", 2L ) ) );
-//			session.persist( new TestEntity( 3L, new ParentEmbeddable( "embeddable_3" ) ) );
-//			session.persist( new TestEntity( 4L, new SubChildOneEmbeddable( "embeddable_4", 4, 4.0 ) ) );
-//			session.persist( new TestEntity( 5L, new ChildOneEmbeddable( "embeddable_5", 5 ) ) );
+			session.persist( new TestEntity( 2L, new ChildTwoEmbeddable( "embeddable_2", 2L ) ) );
+			session.persist( new TestEntity( 3L, new ParentEmbeddable( "embeddable_3" ) ) );
+			session.persist( new TestEntity( 4L, new SubChildOneEmbeddable( "embeddable_4", 4, 4.0 ) ) );
+			session.persist( new TestEntity( 5L, new ChildOneEmbeddable( "embeddable_5", 5 ) ) );
 		} );
 	}
 
@@ -139,15 +139,7 @@ public class AggregateEmbeddableInheritanceTest {
 		private Long id;
 
 		@Embedded
-		@Struct( name = "inheritance_embeddable"
-//				, attributes = {
-//				"childOneProp",
-//				"childTwoProp",
-//				"parentProp",
-//				"subChildOneProp",
-//				"embeddable_DTYPE",
-//		}
-		)
+		@Struct( name = "inheritance_embeddable" )
 		private ParentEmbeddable embeddable;
 
 		public TestEntity() {
