@@ -80,7 +80,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	private Map<Object, Class<?>> discriminatorValues;
 
 	private final ArrayList<Property> properties = new ArrayList<>();
-	private final Map<Property, Class<?>> propertyDeclaringClasses = new IdentityHashMap<>();
+	private Map<Property, Class<?>> propertyDeclaringClasses;
 	private int[] originalPropertyOrder = ArrayHelper.EMPTY_INT_ARRAY;
 	private Map<String,MetaAttribute> metaAttributes;
 
@@ -129,6 +129,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		super( original );
 		this.properties.addAll( original.properties );
 		this.originalPropertyOrder = original.originalPropertyOrder == null ? null : original.originalPropertyOrder.clone();
+		this.propertyDeclaringClasses = original.propertyDeclaringClasses;
 		this.componentClassName = original.componentClassName;
 		this.embedded = original.embedded;
 		this.parentProperty = original.parentProperty;
@@ -164,13 +165,17 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 	public void addProperty(Property p, XClass declaringClass) {
 		properties.add( p );
-		// todo marco : this is a temporary hack, let's see what happens
-		propertyDeclaringClasses.put(
-				p,
-				declaringClass == null ?
-						null :
-						getBuildingContext().getBootstrapContext().getReflectionManager().toClass( declaringClass )
-		);
+		if ( isPolymorphic() && declaringClass != null ) {
+			if ( propertyDeclaringClasses == null ) {
+				propertyDeclaringClasses = new HashMap<>();
+			}
+			propertyDeclaringClasses.put(
+					p,
+					getBuildingContext().getBootstrapContext()
+							.getReflectionManager()
+							.toClass( declaringClass )
+			);
+		}
 		propertiesListModified();
 	}
 
@@ -179,8 +184,11 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	}
 
 	public Class<?> getPropertyDeclaringClass(Property p) {
-		final Class<?> declaringClass = propertyDeclaringClasses.get( p );
-		return declaringClass == null ? getComponentClass() : declaringClass;
+		if ( propertyDeclaringClasses != null ) {
+			final Class<?> declaringClass = propertyDeclaringClasses.get( p );
+			return declaringClass == null ? getComponentClass() : declaringClass;
+		}
+		return getComponentClass();
 	}
 
 	private void propertiesListModified() {

@@ -110,13 +110,6 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 		return results;
 	}
 
-	protected void markDeclaredAttribute(String attributeName) {
-	}
-
-	protected boolean declaresAttribute(String attributeName) {
-		return true;
-	}
-
 	@Override
 	public void setValues(Object component, Object[] values) {
 		final ReflectionOptimizer optimizer = getRepresentationStrategy().getReflectionOptimizer();
@@ -740,13 +733,9 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 		final List<SelectableMapping> selectableMappings = CollectionHelper.arrayList( propertySpan );
 
 		attributeMappings.indexedForEach(
-				(index, attributeMapping) -> {
-					if ( declaresAttribute( attributeMapping.getAttributeName() ) ) {
-						attributeMapping.forEachSelectable(
-								(columnIndex, selection) -> selectableMappings.add( selection )
-						);
-					}
-				}
+				(index, attributeMapping) -> attributeMapping.forEachSelectable(
+						(columnIndex, selection) -> selectableMappings.add( selection )
+				)
 		);
 
 		if ( getDiscriminatorMapping() != null ) {
