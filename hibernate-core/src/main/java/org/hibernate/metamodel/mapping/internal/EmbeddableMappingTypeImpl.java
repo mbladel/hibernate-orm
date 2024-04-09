@@ -803,9 +803,9 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		int span = 0;
 		if ( domainValue instanceof Object[] ) {
 			final Object[] values = (Object[]) domainValue;
-			assert values.length == size;
-
-			for ( int i = 0; i < size; i++ ) {
+			assert values.length == size + ( discriminatorMapping != null ? 1 : 0 );
+			int i = 0;
+			for ( ; i < size; i++ ) {
 				final AttributeMapping attributeMapping = attributeMappings.get( i );
 				if ( !attributeMapping.isPluralAttributeMapping() ) {
 					final Object attributeValue = values[i];
@@ -818,6 +818,9 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 							session
 					);
 				}
+			}
+			if ( discriminatorMapping != null ) {
+				span += discriminatorMapping.breakDownJdbcValues( values[i], offset + span, x, y, valueConsumer, session );
 			}
 		}
 		else {
@@ -838,14 +841,8 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 				}
 			}
 			if ( discriminatorMapping != null ) {
-				span += discriminatorMapping.breakDownJdbcValues(
-						domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( domainValue.getClass() ),
-						offset + span,
-						x,
-						y,
-						valueConsumer,
-						session
-				);
+				final Object d = domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( domainValue.getClass() );
+				span += discriminatorMapping.breakDownJdbcValues( d, offset + span, x, y, valueConsumer, session );
 			}
 		}
 		return span;
@@ -863,19 +860,23 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			valueConsumer.consume( offset, x, y, domainValue, aggregateMapping );
 			return 1;
 		}
+		final int size = attributeMappings.size();
 		int span = 0;
 		if ( domainValue instanceof Object[] ) {
 			final Object[] values = (Object[]) domainValue;
-			assert values.length == attributeMappings.size();
-
-			for ( int i = 0; i < attributeMappings.size(); i++ ) {
+			assert values.length == size + ( discriminatorMapping != null ? 1 : 0 );
+			int i = 0;
+			for ( ; i < size; i++ ) {
 				final AttributeMapping attributeMapping = attributeMappings.get( i );
 				final Object attributeValue = values[ i ];
 				span += attributeMapping.decompose( attributeValue, offset + span, x, y, valueConsumer, session );
 			}
+			if ( discriminatorMapping != null ) {
+				span += discriminatorMapping.decompose( values[i], offset + span, x, y, valueConsumer, session );
+			}
 		}
 		else {
-			for ( int i = 0; i < attributeMappings.size(); i++ ) {
+			for ( int i = 0; i < size; i++ ) {
 				final AttributeMapping attributeMapping = attributeMappings.get( i );
 				if ( !attributeMapping.isPluralAttributeMapping() ) {
 					final Object attributeValue = domainValue == null || !declaresAttribute( domainValue.getClass(), attributeMapping )
@@ -885,14 +886,8 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 				}
 			}
 			if ( discriminatorMapping != null ) {
-				span += discriminatorMapping.decompose(
-						domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( domainValue.getClass() ),
-						offset + span,
-						x,
-						y,
-						valueConsumer,
-						session
-				);
+				final Object d = domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( domainValue.getClass() );
+				span += discriminatorMapping.decompose( d, offset + span, x, y, valueConsumer, session );
 			}
 		}
 		return span;

@@ -344,7 +344,7 @@ public class EmbeddableBinder {
 
 		final String subpath = getPath( propertyHolder, inferredData );
 		LOG.tracev( "Binding component with path: {0}", subpath );
-		final PropertyHolder subholder = buildPropertyHolder(
+		final ComponentPropertyHolder subholder = buildPropertyHolder(
 				component,
 				subpath,
 				inferredData,
@@ -372,7 +372,7 @@ public class EmbeddableBinder {
 		final XClass annotatedClass = inferredData.getPropertyClass();
 		final List<PropertyData> classElements =
 				collectClassElements( propertyAccessor, context, returnedClassOrElement, annotatedClass, isIdClass );
-		if ( !isIdClass && compositeUserType == null ) {
+//		if ( !isIdClass && compositeUserType == null ) {
 			// Main entry point for binding embeddable inheritance
 			bindDiscriminator(
 					component,
@@ -382,7 +382,9 @@ public class EmbeddableBinder {
 					inheritanceStatePerClass,
 					context
 			);
+			// todo marco : disallow inheritance for @IdClass, @EmbeddedId and user types
 			if ( component.isPolymorphic() ) {
+				ensureInheritanceSupported( subholder, compositeUserType );
 				final BasicType<?> discriminatorType = (BasicType<?>) component.getDiscriminator().getType();
 				final Map<Object, Class<?>> discriminatorValues = new HashMap<>();
 				discriminatorValues.put(
@@ -400,7 +402,7 @@ public class EmbeddableBinder {
 				);
 				component.setDiscriminatorValues( discriminatorValues );
 			}
-		}
+//		}
 		final List<PropertyData> baseClassElements =
 				collectBaseClassElements( baseInferredData, propertyAccessor, context, annotatedClass );
 		if ( baseClassElements != null
@@ -454,6 +456,20 @@ public class EmbeddableBinder {
 		return component;
 	}
 
+	private static CompositeUserType<?> compositeUserType(
+			Class<? extends CompositeUserType<?>> compositeUserTypeClass,
+			MetadataBuildingContext context) {
+		if ( !context.getBuildingOptions().isAllowExtensionsInCdi() ) {
+			FallbackBeanInstanceProducer.INSTANCE.produceBeanInstance( compositeUserTypeClass );
+		}
+
+		return context.getBootstrapContext()
+				.getServiceRegistry()
+				.requireService( ManagedBeanRegistry.class )
+				.getBean( compositeUserTypeClass )
+				.getBeanInstance();
+	}
+
 	private static void bindDiscriminator(
 			Component component,
 			XClass componentClass,
@@ -483,13 +499,11 @@ public class EmbeddableBinder {
 			InheritanceState inheritanceState,
 			MetadataBuildingContext context) {
 		final DiscriminatorColumn discriminatorColumn = annotatedClass.getAnnotation( DiscriminatorColumn.class );
-
 		final DiscriminatorFormula discriminatorFormula = getOverridableAnnotation(
 				annotatedClass,
 				DiscriminatorFormula.class,
 				context
 		);
-
 		if ( !inheritanceState.hasParents() ) {
 			if ( inheritanceState.hasSiblings() ) {
 				return buildDiscriminatorColumn(
@@ -535,18 +549,27 @@ public class EmbeddableBinder {
 		discriminatorColumnBinding.setTypeName( discriminatorColumn.getDiscriminatorTypeName() );
 	}
 
-	private static CompositeUserType<?> compositeUserType(
-			Class<? extends CompositeUserType<?>> compositeUserTypeClass,
-			MetadataBuildingContext context) {
-		if ( !context.getBuildingOptions().isAllowExtensionsInCdi() ) {
-			FallbackBeanInstanceProducer.INSTANCE.produceBeanInstance( compositeUserTypeClass );
+	private static void ensureInheritanceSupported(
+			ComponentPropertyHolder holder,
+			CompositeUserType<?> compositeUserType) {
+		if ( holder.isOrWithinEmbeddedId() ) {
+			throw new AnnotationException( String.format(
+					"Embeddable class '%s' defines an inheritance hierarchy and cannot be used in an '@EmbeddedId'",
+					holder.getClassName()
+			) );
 		}
-
-		return context.getBootstrapContext()
-				.getServiceRegistry()
-				.requireService( ManagedBeanRegistry.class )
-				.getBean( compositeUserTypeClass )
-				.getBeanInstance();
+		else if ( holder.isInIdClass() ) {
+			throw new AnnotationException( String.format(
+					"Embeddable class '%s' defines an inheritance hierarchy and cannot be used in an '@IdClass'",
+					holder.getClassName()
+			) );
+		}
+		else if ( compositeUserType != null ) {
+			throw new AnnotationException( String.format(
+					"Embeddable class '%s' defines an inheritance hierarchy and cannot be used with a custom '@CompositeType'",
+					holder.getClassName()
+			) );
+		}
 	}
 
 	private static List<PropertyData> collectClassElements(

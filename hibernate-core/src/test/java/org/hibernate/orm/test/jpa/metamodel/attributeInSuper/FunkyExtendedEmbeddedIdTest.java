@@ -28,7 +28,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 		WorkOrderComponentId.class,
 		WorkOrderComponent.class
 })
-@Disabled // todo marco : this actually works with embedded inheritance, so probably rework the test
 public class FunkyExtendedEmbeddedIdTest {
 
 	@Test
