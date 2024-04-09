@@ -77,8 +77,10 @@ public interface FetchParentAccess extends Initializer {
 			ModelPart modelPart,
 			@Nullable FetchParentAccess parentAccess,
 			@Nullable FetchParentAccess owningParent) {
-		final EntityInitializer entityInitializer;
-		if ( owningParent == null || ( entityInitializer = owningParent.asEntityInitializer() ) == null ) {
+		final EntityInitializer entityInitializer = owningParent != null ?
+				owningParent.findFirstEntityInitializer() :
+				null;
+		if ( entityInitializer == null ) {
 			return null;
 		}
 
