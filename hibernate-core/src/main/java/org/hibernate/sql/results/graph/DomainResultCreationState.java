@@ -16,10 +16,12 @@ import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
 import org.hibernate.metamodel.mapping.ModelPart;
+import org.hibernate.query.sqm.sql.internal.SqlAstQueryPartProcessingStateImpl;
 import org.hibernate.spi.EntityIdentifierNavigablePath;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.spi.SqlAliasBaseManager;
 import org.hibernate.sql.ast.spi.SqlAstCreationState;
+import org.hibernate.sql.ast.spi.SqlAstQueryPartProcessingState;
 import org.hibernate.sql.results.graph.basic.BasicFetch;
 import org.hibernate.sql.results.graph.embeddable.EmbeddableResultGraphNode;
 import org.hibernate.sql.results.graph.entity.EntityResultGraphNode;
@@ -120,11 +122,14 @@ public interface DomainResultCreationState {
 		}
 	}
 
-	default BasicFetch<?> visitEmbeddableDiscriminatorFetch(EmbeddableResultGraphNode fetchParent) {
+	default BasicFetch<?> visitEmbeddableDiscriminatorFetch(EmbeddableResultGraphNode fetchParent, boolean nested) {
 		final EmbeddableMappingType embeddableType = fetchParent.getReferencedMappingType();
 		final EmbeddableDiscriminatorMapping discriminatorMapping = embeddableType.getDiscriminatorMapping();
 		if ( discriminatorMapping != null ) {
-			return discriminatorMapping.generateFetch(
+			final SqlAstQueryPartProcessingState processingState = (SqlAstQueryPartProcessingState) getSqlAstCreationState().getCurrentProcessingState();
+			final FetchParent nestingFetchParent = processingState.getNestingFetchParent();
+			processingState.setNestingFetchParent( fetchParent );
+			final BasicFetch<?> basicFetch = discriminatorMapping.generateFetch(
 					fetchParent,
 					fetchParent.getNavigablePath().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
 					FetchTiming.IMMEDIATE,
@@ -132,6 +137,8 @@ public interface DomainResultCreationState {
 					null,
 					this
 			);
+			processingState.setNestingFetchParent( nestingFetchParent );
+			return basicFetch;
 		}
 		else {
 			return null;

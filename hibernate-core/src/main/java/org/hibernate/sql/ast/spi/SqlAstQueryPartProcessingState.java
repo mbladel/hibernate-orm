@@ -12,6 +12,7 @@ import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.query.sqm.tree.from.SqmFrom;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.select.QueryPart;
+import org.hibernate.sql.results.graph.FetchParent;
 
 /**
  * SqlAstProcessingState specialization for query parts
@@ -24,4 +25,8 @@ public interface SqlAstQueryPartProcessingState extends SqlAstQueryNodeProcessin
 	 * considered in-flight as it is probably still being built.
 	 */
 	QueryPart getInflightQueryPart();
+
+	FetchParent getNestingFetchParent();
+
+	void setNestingFetchParent(FetchParent nestedParent);
 }

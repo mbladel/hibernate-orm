@@ -17,6 +17,7 @@ import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.MappingType;
+import org.hibernate.metamodel.mapping.ValueMapping;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.descriptor.ValueBinder;
@@ -121,7 +122,7 @@ public class StructJdbcType implements AggregateJdbcType {
 		final Object[] jdbcValues = StructHelper.getJdbcValues(
 				embeddableMappingType,
 				orderMapping,
-				embeddableMappingType.getValues( domainValue ),
+				domainValue,
 				options
 		);
 		return options.getSession()
@@ -344,13 +345,17 @@ public class StructJdbcType implements AggregateJdbcType {
 			targetJdbcValues = jdbcValues.clone();
 		}
 		final int numberOfAttributeMappings = embeddableMappingType.getNumberOfAttributeMappings();
-		for ( int i = 0; i < numberOfAttributeMappings; i++ ) {
-			final AttributeMapping attributeMapping;
+		for ( int i = 0; i < numberOfAttributeMappings + ( embeddableMappingType.isPolymorphic() ? 1 : 0 ); i++ ) {
+			final ValueMapping attributeMapping;
 			if ( orderMapping == null ) {
-				attributeMapping = embeddableMappingType.getAttributeMapping( i );
+				attributeMapping = i == numberOfAttributeMappings ?
+						embeddableMappingType.getDiscriminatorMapping() :
+						embeddableMappingType.getAttributeMapping( i );
 			}
 			else {
-				attributeMapping = embeddableMappingType.getAttributeMapping( orderMapping[i] );
+				attributeMapping = orderMapping[i] == numberOfAttributeMappings ?
+						embeddableMappingType.getDiscriminatorMapping() :
+						embeddableMappingType.getAttributeMapping( orderMapping[i] );
 			}
 			final MappingType mappedType = attributeMapping.getMappedType();
 

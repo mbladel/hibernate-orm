@@ -164,11 +164,21 @@ public class LoaderSqlAstCreationState
 
 	@Override
 	public ImmutableFetchList visitNestedFetches(FetchParent fetchParent) {
-		final FetchParent nestingFetchParent = processingState.getNestingFetchParent();
-		processingState.setNestingFetchParent( fetchParent );
+		final FetchParent nestingFetchParent = getNestingFetchParent();
+		setNestingFetchParent( fetchParent );
 		final ImmutableFetchList fetches = fetchProcessor.visitFetches( fetchParent, this );
-		processingState.setNestingFetchParent( nestingFetchParent );
+		setNestingFetchParent( nestingFetchParent );
 		return fetches;
+	}
+
+	@Override
+	public FetchParent getNestingFetchParent() {
+		return processingState.getNestingFetchParent();
+	}
+
+	@Override
+	public void setNestingFetchParent(FetchParent nestedParent) {
+		processingState.setNestingFetchParent( nestedParent );
 	}
 
 	@Override

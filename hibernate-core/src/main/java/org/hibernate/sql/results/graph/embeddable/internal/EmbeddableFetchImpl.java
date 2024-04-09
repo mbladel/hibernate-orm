@@ -80,7 +80,7 @@ public class EmbeddableFetchImpl extends AbstractFetchParent
 				}
 		);
 
-		this.discriminatorFetch = creationState.visitEmbeddableDiscriminatorFetch( this );
+		this.discriminatorFetch = creationState.visitEmbeddableDiscriminatorFetch( this, false );
 
 		afterInitialize( this, creationState );
 	}
