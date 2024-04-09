@@ -9,11 +9,10 @@ package org.hibernate.orm.test.inheritance.embeddable;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import jakarta.persistence.DiscriminatorValue;
-import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -25,10 +24,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DomainModel( annotatedClasses = {
 		BasicEmbeddableInheritanceTest.TestEntity.class,
-		BasicEmbeddableInheritanceTest.ParentEmbeddable.class,
-		BasicEmbeddableInheritanceTest.ChildEmbeddableOne.class,
-		BasicEmbeddableInheritanceTest.SubChildEmbeddableOne.class,
-		BasicEmbeddableInheritanceTest.ChildEmbeddableTwo.class,
+		ParentEmbeddable.class,
+		ChildEmbeddableOne.class,
+		SubChildEmbeddableOne.class,
+		ChildEmbeddableTwo.class,
 } )
 @SessionFactory
 public class BasicEmbeddableInheritanceTest {
@@ -129,6 +128,11 @@ public class BasicEmbeddableInheritanceTest {
 		} );
 	}
 
+	@AfterAll
+	public void tearDown(SessionFactoryScope scope) {
+		scope.inTransaction( session -> session.createMutationQuery( "delete from TestEntity" ).executeUpdate() );
+	}
+
 	@Entity( name = "TestEntity" )
 	static class TestEntity {
 		@Id
@@ -151,85 +155,6 @@ public class BasicEmbeddableInheritanceTest {
 
 		public void setEmbeddable(ParentEmbeddable embeddable) {
 			this.embeddable = embeddable;
-		}
-	}
-
-	@Embeddable
-	@DiscriminatorValue( "parent" )
-	static class ParentEmbeddable {
-		private String parentProp;
-
-		public ParentEmbeddable() {
-		}
-
-		public ParentEmbeddable(String parentProp) {
-			this.parentProp = parentProp;
-		}
-
-		public String getParentProp() {
-			return parentProp;
-		}
-
-		public void setParentProp(String parentProp) {
-			this.parentProp = parentProp;
-		}
-	}
-
-	@Embeddable
-	@DiscriminatorValue( "child_one" )
-	static class ChildEmbeddableOne extends ParentEmbeddable {
-		private Integer childOneProp;
-
-		public ChildEmbeddableOne() {
-		}
-
-		public ChildEmbeddableOne(String parentProp, Integer childOneProp) {
-			super( parentProp );
-			this.childOneProp = childOneProp;
-		}
-
-		public Integer getChildOneProp() {
-			return childOneProp;
-		}
-
-		public void setChildOneProp(Integer childOneProp) {
-			this.childOneProp = childOneProp;
-		}
-	}
-
-	@Embeddable
-	@DiscriminatorValue( "sub_child_one" )
-	static class SubChildEmbeddableOne extends ChildEmbeddableOne {
-		private Double subChildOneProp;
-
-		public SubChildEmbeddableOne() {
-		}
-
-		public SubChildEmbeddableOne(String parentProp, Integer childOneProp, Double subChildOneProp) {
-			super( parentProp, childOneProp );
-			this.subChildOneProp = subChildOneProp;
-		}
-
-		public Double getSubChildOneProp() {
-			return subChildOneProp;
-		}
-	}
-
-	@Embeddable
-	@DiscriminatorValue( "child_two" )
-	static class ChildEmbeddableTwo extends ParentEmbeddable {
-		private Long childTwoProp;
-
-		public ChildEmbeddableTwo() {
-		}
-
-		public ChildEmbeddableTwo(String parentProp, Long childTwoProp) {
-			super( parentProp );
-			this.childTwoProp = childTwoProp;
-		}
-
-		public Long getChildTwoProp() {
-			return childTwoProp;
 		}
 	}
 }
