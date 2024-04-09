@@ -606,11 +606,18 @@ public class EmbeddableBinder {
 			final PropertyContainer superContainer = new PropertyContainer( subclass, subclass, propertyAccessor );
 			addElementsOfClass( classElements, superContainer, context );
 			// collect the discriminator value details
-			discriminatorValues.put(
+			final Class<?> old = discriminatorValues.put(
 					discriminatorType.getJavaTypeDescriptor()
 							.fromString( getDiscriminatorValue( subclass, discriminatorType ) ),
 					context.getBootstrapContext().getReflectionManager().toClass( subclass )
 			);
+			if ( old != null ) {
+				throw new AnnotationException( String.format(
+						"Embeddable subclass '%s' defines the same discriminator value as '%s",
+						subclass.getName(),
+						old.getName()
+				) );
+			}
 			// recursively do that same for all subclasses
 			collectSubclassElements(
 					propertyAccessor,

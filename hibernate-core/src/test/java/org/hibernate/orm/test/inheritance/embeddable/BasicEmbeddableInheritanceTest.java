@@ -25,15 +25,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DomainModel( annotatedClasses = {
 		BasicEmbeddableInheritanceTest.TestEntity.class,
 		ParentEmbeddable.class,
-		ChildEmbeddableOne.class,
-		SubChildEmbeddableOne.class,
-		ChildEmbeddableTwo.class,
+		ChildOneEmbeddable.class,
+		SubChildOneEmbeddable.class,
+		ChildTwoEmbeddable.class,
 } )
 @SessionFactory
 public class BasicEmbeddableInheritanceTest {
-	// todo marco : test nested embeddable inheritance (?)
-	// todo marco : test embeddable inheritance with composite identifiers
-	// todo marco : test embeddable inheritance with foreign keys (will need some work)
 	// todo marco : also test aggregate embeddables (will need some work)
 
 	@Test
@@ -41,8 +38,8 @@ public class BasicEmbeddableInheritanceTest {
 		scope.inTransaction( session -> {
 			final TestEntity result = session.find( TestEntity.class, 1L );
 			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_1" );
-			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildEmbeddableOne.class );
-			assertThat( ( (ChildEmbeddableOne) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 1 );
+			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildOneEmbeddable.class );
+			assertThat( ( (ChildOneEmbeddable) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 1 );
 		} );
 		scope.inTransaction( session -> {
 			final TestEntity result = session.find( TestEntity.class, 3L );
@@ -59,8 +56,8 @@ public class BasicEmbeddableInheritanceTest {
 					TestEntity.class
 			).getSingleResult();
 			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_2" );
-			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildEmbeddableTwo.class );
-			assertThat( ( (ChildEmbeddableTwo) result.getEmbeddable() ).getChildTwoProp() ).isEqualTo( 2L );
+			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildTwoEmbeddable.class );
+			assertThat( ( (ChildTwoEmbeddable) result.getEmbeddable() ).getChildTwoProp() ).isEqualTo( 2L );
 		} );
 	}
 
@@ -72,9 +69,9 @@ public class BasicEmbeddableInheritanceTest {
 					ParentEmbeddable.class
 			).getSingleResult();
 			assertThat( result.getParentProp() ).isEqualTo( "embeddable_4" );
-			assertThat( result ).isExactlyInstanceOf( SubChildEmbeddableOne.class );
-			assertThat( ( (SubChildEmbeddableOne) result ).getChildOneProp() ).isEqualTo( 4 );
-			assertThat( ( (SubChildEmbeddableOne) result ).getSubChildOneProp() ).isEqualTo( 4.0 );
+			assertThat( result ).isExactlyInstanceOf( SubChildOneEmbeddable.class );
+			assertThat( ( (SubChildOneEmbeddable) result ).getChildOneProp() ).isEqualTo( 4 );
+			assertThat( ( (SubChildOneEmbeddable) result ).getSubChildOneProp() ).isEqualTo( 4.0 );
 		} );
 	}
 
@@ -86,8 +83,8 @@ public class BasicEmbeddableInheritanceTest {
 					ParentEmbeddable.class
 			).getSingleResult();
 			assertThat( result.getParentProp() ).isEqualTo( "embeddable_2" );
-			assertThat( result ).isExactlyInstanceOf( ChildEmbeddableTwo.class );
-			assertThat( ( (ChildEmbeddableTwo) result ).getChildTwoProp() ).isEqualTo( 2L );
+			assertThat( result ).isExactlyInstanceOf( ChildTwoEmbeddable.class );
+			assertThat( ( (ChildTwoEmbeddable) result ).getChildTwoProp() ).isEqualTo( 2L );
 		} );
 	}
 
@@ -96,35 +93,35 @@ public class BasicEmbeddableInheritanceTest {
 		scope.inTransaction( session -> {
 			final TestEntity result = session.find( TestEntity.class, 5L );
 			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_5" );
-			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildEmbeddableOne.class );
-			assertThat( ( (ChildEmbeddableOne) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 5 );
+			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildOneEmbeddable.class );
+			assertThat( ( (ChildOneEmbeddable) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 5 );
 			// update values
 			result.getEmbeddable().setParentProp( "embeddable_5_new" );
-			( (ChildEmbeddableOne) result.getEmbeddable() ).setChildOneProp( 55 );
+			( (ChildOneEmbeddable) result.getEmbeddable() ).setChildOneProp( 55 );
 		} );
 		scope.inTransaction( session -> {
 			final TestEntity result = session.find( TestEntity.class, 5L );
 			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_5_new" );
-			assertThat( ( (ChildEmbeddableOne) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 55 );
-			result.setEmbeddable( new SubChildEmbeddableOne( "embeddable_6", 6, 6.0 ) );
+			assertThat( ( (ChildOneEmbeddable) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 55 );
+			result.setEmbeddable( new SubChildOneEmbeddable( "embeddable_6", 6, 6.0 ) );
 		} );
 		scope.inTransaction( session -> {
 			final TestEntity result = session.find( TestEntity.class, 5L );
 			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_6" );
-			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( SubChildEmbeddableOne.class );
-			assertThat( ( (SubChildEmbeddableOne) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 6 );
-			assertThat( ( (SubChildEmbeddableOne) result.getEmbeddable() ).getSubChildOneProp() ).isEqualTo( 6.0 );
+			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( SubChildOneEmbeddable.class );
+			assertThat( ( (SubChildOneEmbeddable) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 6 );
+			assertThat( ( (SubChildOneEmbeddable) result.getEmbeddable() ).getSubChildOneProp() ).isEqualTo( 6.0 );
 		} );
 	}
 
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			session.persist( new TestEntity( 1L, new ChildEmbeddableOne( "embeddable_1", 1 ) ) );
-			session.persist( new TestEntity( 2L, new ChildEmbeddableTwo( "embeddable_2", 2L ) ) );
+			session.persist( new TestEntity( 1L, new ChildOneEmbeddable( "embeddable_1", 1 ) ) );
+			session.persist( new TestEntity( 2L, new ChildTwoEmbeddable( "embeddable_2", 2L ) ) );
 			session.persist( new TestEntity( 3L, new ParentEmbeddable( "embeddable_3" ) ) );
-			session.persist( new TestEntity( 4L, new SubChildEmbeddableOne( "embeddable_4", 4, 4.0 ) ) );
-			session.persist( new TestEntity( 5L, new ChildEmbeddableOne( "embeddable_5", 5 ) ) );
+			session.persist( new TestEntity( 4L, new SubChildOneEmbeddable( "embeddable_4", 4, 4.0 ) ) );
+			session.persist( new TestEntity( 5L, new ChildOneEmbeddable( "embeddable_5", 5 ) ) );
 		} );
 	}
 

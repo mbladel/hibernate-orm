@@ -45,6 +45,26 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 		return null;
 	}
 
+	/**
+	 * Returns {@code true} if this embeddable mapping type defines a
+	 * discriminator-based inheritance hierarchy, {@code false} otherwise.
+	 */
+	default boolean isPolymorphic() {
+		return getDiscriminatorMapping() != null;
+	}
+
+	/**
+	 * Returns {@code true} if the provided embeddable class contains the
+	 * specified attribute mapping, {@code false} otherwise.
+	 * @implNote This method always returns {@code true} for non-polymorphic embeddable types
+	 *
+	 * @param embeddableClass the embeddable subclass in which the attribute must be declared
+	 * @param attributeMapping the attribute to check
+	 */
+	default boolean declaresAttribute(Class<?> embeddableClass, AttributeMapping attributeMapping) {
+		return true;
+	}
+
 	default EmbeddableMappingType getSuperMappingType() {
 		return null;
 	}

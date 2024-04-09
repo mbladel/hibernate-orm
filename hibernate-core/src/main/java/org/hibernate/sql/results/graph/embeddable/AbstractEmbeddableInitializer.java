@@ -61,6 +61,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 	private final Object[] rowState;
 	private State state = State.INITIAL;
 	protected Object compositeInstance;
+	private Class<?> embeddableClass;
 	private RowProcessingState wrappedProcessingState;
 
 	public AbstractEmbeddableInitializer(
@@ -160,7 +161,19 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 
 	@Override
 	public void resolveKey(RowProcessingState processingState) {
-		// nothing to do
+		if ( discriminatorAssembler != null ) {
+			final EmbeddableDiscriminatorMapping discriminatorMapping = embedded.getEmbeddableTypeDescriptor()
+					.getDiscriminatorMapping();
+			assert discriminatorMapping != null;
+			final Object discriminator = discriminatorAssembler.extractRawValue( processingState );
+			final EmbeddableDiscriminatorValueDetails details = discriminatorMapping.resolveEmbeddableDiscriminatorValue(
+					discriminator
+			);
+			embeddableClass = details.getEmbeddableClass();
+		}
+		else {
+			embeddableClass = embedded.getEmbeddableTypeDescriptor().getJavaType().getJavaTypeClass();
+		}
 	}
 
 	@Override
@@ -283,20 +296,6 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 		}
 
 		if ( compositeInstance == null ) {
-			final Class<?> embeddableClass;
-			if ( discriminatorAssembler != null ) {
-				final EmbeddableDiscriminatorMapping discriminatorMapping = embedded.getEmbeddableTypeDescriptor()
-						.getDiscriminatorMapping();
-				assert discriminatorMapping != null;
-				final Object discriminator = discriminatorAssembler.extractRawValue( processingState );
-				final EmbeddableDiscriminatorValueDetails details = discriminatorMapping.resolveEmbeddableDiscriminatorValue(
-						discriminator
-				);
-				embeddableClass = details.getEmbeddableClass();
-			}
-			else {
-				embeddableClass = embedded.getEmbeddableTypeDescriptor().getJavaType().getJavaTypeClass();
-			}
 			compositeInstance = createCompositeInstance(
 					embeddableClass,
 					navigablePath,
@@ -394,6 +393,11 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 	@Override
 	public Object getOwner() {
 		return fetchParentAccess.getInitializedInstance();
+	}
+
+	@Override
+	public Class<?> getEmbeddableClass() {
+		return embeddableClass;
 	}
 
 	private void handleParentInjection() {
@@ -494,6 +498,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 	@Override
 	public void finishUpRow(RowProcessingState rowProcessingState) {
 		compositeInstance = null;
+		embeddableClass = null;
 		state = State.INITIAL;
 		wrappedProcessingState = null;
 
