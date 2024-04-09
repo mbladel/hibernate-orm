@@ -62,10 +62,12 @@ public class SqlAstQueryPartProcessingStateImpl
 		this.deduplicateSelectionItems = deduplicateSelectionItems;
 	}
 
+	@Override
 	public FetchParent getNestingFetchParent() {
 		return nestingFetchParent;
 	}
 
+	@Override
 	public void setNestingFetchParent(FetchParent nestedParent) {
 		this.nestingFetchParent = nestedParent;
 	}

@@ -208,6 +208,9 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 				offset += jdbcTypeCount;
 			}
 		}
+		if ( isPolymorphic() && getDiscriminatorMapping().getSelectableName().equals( selectableName ) ) {
+			return offset;
+		}
 		return -1;
 	}
 
