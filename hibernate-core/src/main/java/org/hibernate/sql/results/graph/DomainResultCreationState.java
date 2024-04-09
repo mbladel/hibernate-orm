@@ -126,6 +126,7 @@ public interface DomainResultCreationState {
 		final EmbeddableMappingType embeddableType = fetchParent.getReferencedMappingType();
 		final EmbeddableDiscriminatorMapping discriminatorMapping = embeddableType.getDiscriminatorMapping();
 		if ( discriminatorMapping != null ) {
+			// todo marco : this cast might be problematic, also not sure about the interface changes
 			final SqlAstQueryPartProcessingState processingState = (SqlAstQueryPartProcessingState) getSqlAstCreationState().getCurrentProcessingState();
 			final FetchParent nestingFetchParent = processingState.getNestingFetchParent();
 			processingState.setNestingFetchParent( fetchParent );
