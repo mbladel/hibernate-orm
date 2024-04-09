@@ -6,29 +6,25 @@
  */
 package org.hibernate.orm.test.inheritance.embeddable;
 
-import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.ManyToOne;
 
 /**
  * @author Marco Belladelli
  */
 @Embeddable
-class ChildEmbeddableTwo extends ParentEmbeddable {
+class ChildTwoEmbeddable extends ParentEmbeddable {
 	private Long childTwoProp;
 
-	public ChildEmbeddableTwo() {
+	public ChildTwoEmbeddable() {
 	}
 
-	public ChildEmbeddableTwo(String parentProp, Long childTwoProp) {
+	public ChildTwoEmbeddable(String parentProp, Long childTwoProp) {
 		super( parentProp );
 		this.childTwoProp = childTwoProp;
 	}
 
 	public Long getChildTwoProp() {
 		return childTwoProp;
-	}
-
-	public void setChildTwoProp(Long childTwoProp) {
-		this.childTwoProp = childTwoProp;
 	}
 }
