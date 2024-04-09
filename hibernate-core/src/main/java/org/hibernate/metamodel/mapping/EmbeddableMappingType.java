@@ -53,10 +53,6 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 		return getDiscriminatorMapping() != null;
 	}
 
-	default int getDiscriminatorJdbcCount() {
-		return isPolymorphic() ? getDiscriminatorMapping().getJdbcTypeCount() : 0;
-	}
-
 	/**
 	 * Returns {@code true} if the provided embeddable class contains the
 	 * specified attribute mapping, {@code false} otherwise.
