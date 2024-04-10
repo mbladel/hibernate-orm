@@ -34,6 +34,7 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 	private final boolean isPhysical;
 	private final boolean isUpdateable;
 	private final String columnDefinition;
+	private final String customReadExpression;
 	private final Long length;
 	private final Integer precision;
 	private final Integer scale;
@@ -46,6 +47,7 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 			boolean isPhysical,
 			boolean isUpdateable,
 			String columnDefinition,
+			String customReadExpression,
 			Long length,
 			Integer precision,
 			Integer scale,
@@ -55,6 +57,7 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 		this.tableExpression = tableExpression;
 		this.isPhysical = isPhysical;
 		this.columnDefinition = columnDefinition;
+		this.customReadExpression = customReadExpression;
 		this.length = length;
 		this.precision = precision;
 		this.scale = scale;
@@ -111,7 +114,7 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 
 	@Override
 	public String getCustomReadExpression() {
-		return null;
+		return customReadExpression;
 	}
 
 	@Override

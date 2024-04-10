@@ -224,7 +224,7 @@ public class AggregateComponentSecondPass implements SecondPass {
 				if ( component.isPolymorphic() ) {
 					addColumns( orderedColumns, component.getDiscriminator() );
 				}
-				userDefinedType.reorderColumns( orderedColumns );
+				userDefinedType.reorderColumns( orderedColumns, false );
 			}
 			else {
 				final ArrayList<Column> orderedColumns = new ArrayList<>( userDefinedType.getColumnSpan() );
@@ -232,7 +232,7 @@ public class AggregateComponentSecondPass implements SecondPass {
 				for ( final int propertyIndex : propertyMappingIndex ) {
 					addColumns( orderedColumns, properties.get( propertyIndex ).getValue() );
 				}
-				userDefinedType.reorderColumns( orderedColumns );
+				userDefinedType.reorderColumns( orderedColumns, false );
 			}
 		}
 		else {
@@ -242,7 +242,7 @@ public class AggregateComponentSecondPass implements SecondPass {
 					throw new MappingException( "Couldn't find column [" + structColumnName + "] that was defined in @Struct(attributes) in the component [" + component.getComponentClassName() + "]" );
 				}
 			}
-			userDefinedType.reorderColumns( orderedColumns );
+			userDefinedType.reorderColumns( orderedColumns, true );
 		}
 	}
 

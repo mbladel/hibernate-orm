@@ -5397,7 +5397,11 @@ public abstract class AbstractEntityPersister
 					getDiscriminatorFormulaTemplate() != null,
 					isPhysicalDiscriminator(),
 					false,
-					columnDefinition, length, precision, scale,
+					columnDefinition,
+					null,
+					length,
+					precision,
+					scale,
 					(DiscriminatorType<?>) getTypeDiscriminatorMetadata().getResolutionType()
 			);
 		}

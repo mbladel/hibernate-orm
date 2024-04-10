@@ -6,6 +6,7 @@
  */
 package org.hibernate.sql.results.graph;
 
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.hibernate.Incubating;
@@ -18,7 +19,6 @@ import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
 import org.hibernate.metamodel.mapping.ModelPart;
-import org.hibernate.query.sqm.sql.internal.SqlAstQueryPartProcessingStateImpl;
 import org.hibernate.spi.EntityIdentifierNavigablePath;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.spi.SqlAliasBaseManager;
@@ -128,25 +128,19 @@ public interface DomainResultCreationState {
 		final EmbeddableMappingType embeddableType = fetchParent.getReferencedMappingType();
 		final EmbeddableDiscriminatorMapping discriminatorMapping = embeddableType.getDiscriminatorMapping();
 		if ( discriminatorMapping != null ) {
-			// todo marco : this cast might be problematic, also not sure about the interface changes
-			final Supplier<BasicFetch<?>> fetchSupplier = () -> discriminatorMapping.generateFetch(
-					fetchParent,
-					fetchParent.getNavigablePath().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
+			final Function<FetchParent, BasicFetch<?>> fetchSupplier = fp -> discriminatorMapping.generateFetch(
+					fp,
+					fp.getNavigablePath().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
 					FetchTiming.IMMEDIATE,
 					true,
 					null,
 					this
 			);
 			if ( nested ) {
-				final SqlAstQueryPartProcessingState processingState = (SqlAstQueryPartProcessingState) getSqlAstCreationState().getCurrentProcessingState();
-				final FetchParent nestingFetchParent = processingState.getNestingFetchParent();
-				processingState.setNestingFetchParent( fetchParent );
-				final BasicFetch<?> basicFetch = fetchSupplier.get();
-				processingState.setNestingFetchParent( nestingFetchParent );
-				return basicFetch;
+				return withNestedFetchParent( fetchParent, fetchSupplier );
 			}
 			else {
-				return fetchSupplier.get();
+				return fetchSupplier.apply( fetchParent );
 			}
 		}
 		else {
@@ -187,7 +181,11 @@ public interface DomainResultCreationState {
  	 */
 	ImmutableFetchList visitFetches(FetchParent fetchParent);
 
-	ImmutableFetchList visitNestedFetches(FetchParent fetchParent);
+	default ImmutableFetchList visitNestedFetches(FetchParent fetchParent) {
+		return withNestedFetchParent( fetchParent, this::visitFetches );
+	}
+
+	<R> R withNestedFetchParent(FetchParent fetchParent, Function<FetchParent, R> action);
 
 	boolean isResolvingCircularFetch();
 

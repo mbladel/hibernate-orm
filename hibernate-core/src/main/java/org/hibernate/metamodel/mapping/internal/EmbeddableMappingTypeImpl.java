@@ -673,6 +673,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 				true,
 				true,
 				columnDefinition,
+				selectable.getCustomReadExpression(),
 				length,
 				precision,
 				scale,

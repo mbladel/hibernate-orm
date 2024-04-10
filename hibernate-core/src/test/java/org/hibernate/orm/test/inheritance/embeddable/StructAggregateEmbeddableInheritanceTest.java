@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Marco Belladelli
  */
 @DomainModel( annotatedClasses = {
-		AggregateEmbeddableInheritanceTest.TestEntity.class,
+		StructAggregateEmbeddableInheritanceTest.TestEntity.class,
 		ParentEmbeddable.class,
 		ChildOneEmbeddable.class,
 		SubChildOneEmbeddable.class,
@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 } )
 @SessionFactory
 @RequiresDialectFeature( feature = DialectFeatureChecks.SupportsStructAggregate.class )
-public class AggregateEmbeddableInheritanceTest {
+public class StructAggregateEmbeddableInheritanceTest {
 	@Test
 	public void testFind(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
@@ -64,58 +64,58 @@ public class AggregateEmbeddableInheritanceTest {
 		} );
 	}
 
-//	@Test
-//	public void testQueryEmbeddable(SessionFactoryScope scope) {
-//		scope.inTransaction( session -> {
-//			final ParentEmbeddable result = session.createQuery(
-//					"select embeddable from TestEntity where id = 4",
-//					ParentEmbeddable.class
-//			).getSingleResult();
-//			assertThat( result.getParentProp() ).isEqualTo( "embeddable_4" );
-//			assertThat( result ).isExactlyInstanceOf( SubChildOneEmbeddable.class );
-//			assertThat( ( (SubChildOneEmbeddable) result ).getChildOneProp() ).isEqualTo( 4 );
-//			assertThat( ( (SubChildOneEmbeddable) result ).getSubChildOneProp() ).isEqualTo( 4.0 );
-//		} );
-//	}
-//
-//	@Test
-//	public void testQueryJoinedEmbeddable(SessionFactoryScope scope) {
-//		scope.inTransaction( session -> {
-//			final ParentEmbeddable result = session.createQuery(
-//					"select e from TestEntity t join t.embeddable e where t.id = 2",
-//					ParentEmbeddable.class
-//			).getSingleResult();
-//			assertThat( result.getParentProp() ).isEqualTo( "embeddable_2" );
-//			assertThat( result ).isExactlyInstanceOf( ChildTwoEmbeddable.class );
-//			assertThat( ( (ChildTwoEmbeddable) result ).getChildTwoProp() ).isEqualTo( 2L );
-//		} );
-//	}
-//
-//	@Test
-//	public void testUpdate(SessionFactoryScope scope) {
-//		scope.inTransaction( session -> {
-//			final TestEntity result = session.find( TestEntity.class, 5L );
-//			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_5" );
-//			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildOneEmbeddable.class );
-//			assertThat( ( (ChildOneEmbeddable) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 5 );
-//			// update values
-//			result.getEmbeddable().setParentProp( "embeddable_5_new" );
-//			( (ChildOneEmbeddable) result.getEmbeddable() ).setChildOneProp( 55 );
-//		} );
-//		scope.inTransaction( session -> {
-//			final TestEntity result = session.find( TestEntity.class, 5L );
-//			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_5_new" );
-//			assertThat( ( (ChildOneEmbeddable) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 55 );
-//			result.setEmbeddable( new SubChildOneEmbeddable( "embeddable_6", 6, 6.0 ) );
-//		} );
-//		scope.inTransaction( session -> {
-//			final TestEntity result = session.find( TestEntity.class, 5L );
-//			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_6" );
-//			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( SubChildOneEmbeddable.class );
-//			assertThat( ( (SubChildOneEmbeddable) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 6 );
-//			assertThat( ( (SubChildOneEmbeddable) result.getEmbeddable() ).getSubChildOneProp() ).isEqualTo( 6.0 );
-//		} );
-//	}
+	@Test
+	public void testQueryEmbeddable(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final ParentEmbeddable result = session.createQuery(
+					"select embeddable from TestEntity where id = 4",
+					ParentEmbeddable.class
+			).getSingleResult();
+			assertThat( result.getParentProp() ).isEqualTo( "embeddable_4" );
+			assertThat( result ).isExactlyInstanceOf( SubChildOneEmbeddable.class );
+			assertThat( ( (SubChildOneEmbeddable) result ).getChildOneProp() ).isEqualTo( 4 );
+			assertThat( ( (SubChildOneEmbeddable) result ).getSubChildOneProp() ).isEqualTo( 4.0 );
+		} );
+	}
+
+	@Test
+	public void testQueryJoinedEmbeddable(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final ParentEmbeddable result = session.createQuery(
+					"select e from TestEntity t join t.embeddable e where t.id = 2",
+					ParentEmbeddable.class
+			).getSingleResult();
+			assertThat( result.getParentProp() ).isEqualTo( "embeddable_2" );
+			assertThat( result ).isExactlyInstanceOf( ChildTwoEmbeddable.class );
+			assertThat( ( (ChildTwoEmbeddable) result ).getChildTwoProp() ).isEqualTo( 2L );
+		} );
+	}
+
+	@Test
+	public void testUpdate(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final TestEntity result = session.find( TestEntity.class, 5L );
+			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_5" );
+			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildOneEmbeddable.class );
+			assertThat( ( (ChildOneEmbeddable) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 5 );
+			// update values
+			result.getEmbeddable().setParentProp( "embeddable_5_new" );
+			( (ChildOneEmbeddable) result.getEmbeddable() ).setChildOneProp( 55 );
+		} );
+		scope.inTransaction( session -> {
+			final TestEntity result = session.find( TestEntity.class, 5L );
+			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_5_new" );
+			assertThat( ( (ChildOneEmbeddable) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 55 );
+			result.setEmbeddable( new SubChildOneEmbeddable( "embeddable_6", 6, 6.0 ) );
+		} );
+		scope.inTransaction( session -> {
+			final TestEntity result = session.find( TestEntity.class, 5L );
+			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_6" );
+			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( SubChildOneEmbeddable.class );
+			assertThat( ( (SubChildOneEmbeddable) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 6 );
+			assertThat( ( (SubChildOneEmbeddable) result.getEmbeddable() ).getSubChildOneProp() ).isEqualTo( 6.0 );
+		} );
+	}
 
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
