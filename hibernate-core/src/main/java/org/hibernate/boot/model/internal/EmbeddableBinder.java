@@ -376,8 +376,8 @@ public class EmbeddableBinder {
 		bindDiscriminator(
 				component,
 				returnedClassOrElement,
-				propertyHolder,
-				inferredData.getPropertyName(),
+				subholder,
+				inferredData,
 				inheritanceStatePerClass,
 				context
 		);
@@ -471,7 +471,7 @@ public class EmbeddableBinder {
 			Component component,
 			XClass componentClass,
 			PropertyHolder holder,
-			String componentPropertyName,
+			PropertyData propertyData,
 			Map<XClass, InheritanceState> inheritanceStatePerClass,
 			MetadataBuildingContext context) {
 		final InheritanceState inheritanceState = inheritanceStatePerClass.get( componentClass );
@@ -481,7 +481,7 @@ public class EmbeddableBinder {
 
 		final AnnotatedDiscriminatorColumn discriminatorColumn = processEmbeddableDiscriminatorProperties(
 				componentClass,
-				componentPropertyName,
+				propertyData,
 				inheritanceState,
 				context
 		);
@@ -492,7 +492,7 @@ public class EmbeddableBinder {
 
 	private static AnnotatedDiscriminatorColumn processEmbeddableDiscriminatorProperties(
 			XClass annotatedClass,
-			String componentPropertyName,
+			PropertyData propertyData,
 			InheritanceState inheritanceState,
 			MetadataBuildingContext context) {
 		final DiscriminatorColumn discriminatorColumn = annotatedClass.getAnnotation( DiscriminatorColumn.class );
@@ -503,10 +503,13 @@ public class EmbeddableBinder {
 		);
 		if ( !inheritanceState.hasParents() ) {
 			if ( inheritanceState.hasSiblings() ) {
+				final String columnPrefix = propertyData.getProperty() != null ?
+						propertyData.getPropertyName() + "_" :
+						"";
 				return buildDiscriminatorColumn(
 						discriminatorColumn,
 						discriminatorFormula,
-						componentPropertyName + "_" + DEFAULT_DISCRIMINATOR_COLUMN_NAME,
+						columnPrefix + DEFAULT_DISCRIMINATOR_COLUMN_NAME,
 						context
 				);
 			}

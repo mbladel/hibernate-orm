@@ -31,8 +31,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 } )
 @SessionFactory
 public class BasicEmbeddableInheritanceTest {
-	// todo marco : also test aggregate embeddables (will need some work)
-
 	@Test
 	public void testFind(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
