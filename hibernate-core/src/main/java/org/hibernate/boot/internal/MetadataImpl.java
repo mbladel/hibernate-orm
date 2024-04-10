@@ -454,7 +454,7 @@ public class MetadataImpl implements MetadataImplementor, Serializable {
 							this
 					);
 					if ( userDefinedTypeColumns != null ) {
-						userDefinedType.reorderColumns( userDefinedTypeColumns );
+						userDefinedType.reorderColumns( userDefinedTypeColumns, false );
 					}
 				}
 			}
