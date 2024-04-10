@@ -251,15 +251,18 @@ public class UserDefinedType implements Serializable, ContributableDatabaseObjec
 		return qualifiedName.append( name.render() ).toString();
 	}
 
+	private boolean orderMappingDefinitive;
+
 	@Internal
-	public void reorderColumns(List<Column> columns) {
+	public void reorderColumns(List<Column> columns, boolean definitive) {
 		// todo marco : apparently this method is called multiple times
 		//  and if we cache the orderedMapping array the first time
 		//  when we get to actually binding the attribute values it's not correct
 		// todo marco : without the check a test is failing -> StructComponentInstantiatorTest
-//		if ( orderMapping != null ) {
-//			return;
-//		}
+		if ( orderMapping != null && orderMappingDefinitive ) {
+			return;
+		}
+		orderMappingDefinitive = definitive;
 		orderMapping = new int[columns.size()];
 		int i = 0;
 		for ( Column column : this.columns.values() ) {

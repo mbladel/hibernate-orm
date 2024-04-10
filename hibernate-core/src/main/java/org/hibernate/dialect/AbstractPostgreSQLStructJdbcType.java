@@ -29,6 +29,7 @@ import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.MappingType;
 import org.hibernate.metamodel.mapping.SelectableMapping;
+import org.hibernate.metamodel.mapping.ValuedModelPart;
 import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.ast.spi.StringBuilderSqlAppender;
@@ -42,6 +43,7 @@ import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.spi.TypeConfiguration;
 
+import static org.hibernate.dialect.StructHelper.getValuedModelPart;
 import static org.hibernate.dialect.StructHelper.getValues;
 import static org.hibernate.type.descriptor.DateTimeUtils.appendAsDate;
 import static org.hibernate.type.descriptor.DateTimeUtils.appendAsLocalTime;
@@ -693,17 +695,17 @@ public abstract class AbstractPostgreSQLStructJdbcType implements AggregateJdbcT
 			Object domainValue,
 			char separator) {
 		final Object[] array = getValues( embeddableMappingType, domainValue );
-		final int end = embeddableMappingType.getNumberOfAttributeMappings();
-		for ( int i = 0; i < end; i++ ) {
-			final AttributeMapping attributeMapping;
+		final int numberOfAttributes = embeddableMappingType.getNumberOfAttributeMappings();
+		for ( int i = 0; i < array.length; i++ ) {
+			final ValuedModelPart attributeMapping;
 			final Object attributeValue;
 			if ( orderMapping == null ) {
-				attributeMapping = embeddableMappingType.getAttributeMapping( i );
-				attributeValue = array == null ? null : array[i];
+				attributeMapping = getValuedModelPart( embeddableMappingType, numberOfAttributes, i );
+				attributeValue = array[i];
 			}
 			else {
-				attributeMapping = embeddableMappingType.getAttributeMapping( orderMapping[i] );
-				attributeValue = array == null ? null : array[orderMapping[i]];
+				attributeMapping = getValuedModelPart( embeddableMappingType, numberOfAttributes, orderMapping[i] );
+				attributeValue = array[orderMapping[i]];
 			}
 			if ( attributeMapping instanceof BasicValuedMapping ) {
 				appender.append( separator );

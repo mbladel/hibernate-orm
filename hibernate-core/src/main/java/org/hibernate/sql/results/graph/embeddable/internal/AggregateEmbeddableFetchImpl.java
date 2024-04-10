@@ -101,9 +101,7 @@ public class AggregateEmbeddableFetchImpl extends AbstractFetchParent
 				fetchParent,
 				typeConfiguration
 		);
-
 		this.discriminatorFetch = creationState.visitEmbeddableDiscriminatorFetch( this, true );
-
 		resetFetches( creationState.visitNestedFetches( this ) );
 	}
 
