@@ -344,7 +344,7 @@ public class EmbeddableBinder {
 
 		final String subpath = getPath( propertyHolder, inferredData );
 		LOG.tracev( "Binding component with path: {0}", subpath );
-		final ComponentPropertyHolder subholder = buildPropertyHolder(
+		final PropertyHolder subholder = buildPropertyHolder(
 				component,
 				subpath,
 				inferredData,
@@ -550,7 +550,7 @@ public class EmbeddableBinder {
 	}
 
 	private static void ensureInheritanceSupported(
-			ComponentPropertyHolder holder,
+			PropertyHolder holder,
 			CompositeUserType<?> compositeUserType) {
 		if ( holder.isOrWithinEmbeddedId() ) {
 			throw new AnnotationException( String.format(

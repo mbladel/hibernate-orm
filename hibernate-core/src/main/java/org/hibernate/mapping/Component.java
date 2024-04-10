@@ -171,9 +171,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 			}
 			propertyDeclaringClasses.put(
 					p,
-					getBuildingContext().getBootstrapContext()
-							.getReflectionManager()
-							.toClass( declaringClass )
+					getBuildingContext().getBootstrapContext().getReflectionManager().toClass( declaringClass )
 			);
 		}
 		propertiesListModified();
@@ -185,10 +183,9 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 	public Class<?> getPropertyDeclaringClass(Property p) {
 		if ( propertyDeclaringClasses != null ) {
-			final Class<?> declaringClass = propertyDeclaringClasses.get( p );
-			return declaringClass == null ? getComponentClass() : declaringClass;
+			return propertyDeclaringClasses.get( p );
 		}
-		return getComponentClass();
+		return null;
 	}
 
 	private void propertiesListModified() {
@@ -493,7 +490,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 	@Override
 	public boolean hasAnyInsertableColumns() {
- 		for ( Property property : properties ) {
+		for ( Property property : properties ) {
 			if ( property.getValue().hasAnyInsertableColumns() ) {
 				return true;
 			}

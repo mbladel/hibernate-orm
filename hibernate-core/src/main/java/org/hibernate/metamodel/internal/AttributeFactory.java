@@ -632,11 +632,8 @@ public class AttributeFactory {
 			return ownerBootDescriptor.getBuildingContext()
 					.getBootstrapContext()
 					.getRepresentationStrategySelector()
-					.resolveStrategy(
-							ownerBootDescriptor,
-							null,
-							metadataContext.getRuntimeModelCreationContext()
-					);
+					.resolveStrategy(ownerBootDescriptor, null,
+									 metadataContext.getRuntimeModelCreationContext() );
 		}
 		else {
 			return ownerMappingModelDescriptor
