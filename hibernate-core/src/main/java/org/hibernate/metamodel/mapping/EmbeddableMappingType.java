@@ -58,10 +58,10 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 	 * specified attribute mapping, {@code false} otherwise.
 	 * @implNote This method always returns {@code true} for non-polymorphic embeddable types
 	 *
-	 * @param embeddableClass the embeddable subclass in which the attribute must be declared
+	 * @param embeddableClassName the embeddable subclass in which the attribute must be declared
 	 * @param attributeMapping the attribute to check
 	 */
-	default boolean declaresAttribute(Class<?> embeddableClass, AttributeMapping attributeMapping) {
+	default boolean declaresAttribute(String embeddableClassName, AttributeMapping attributeMapping) {
 		return true;
 	}
 

@@ -61,7 +61,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 	private final Object[] rowState;
 	private State state = State.INITIAL;
 	protected Object compositeInstance;
-	private Class<?> embeddableClass;
+	private String embeddableClassName;
 	private RowProcessingState wrappedProcessingState;
 
 	public AbstractEmbeddableInitializer(
@@ -173,10 +173,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 			final EmbeddableDiscriminatorValueDetails details = discriminatorMapping.resolveEmbeddableDiscriminatorValue(
 					discriminator
 			);
-			embeddableClass = details.getEmbeddableClass();
-		}
-		else {
-			embeddableClass = embedded.getEmbeddableTypeDescriptor().getJavaType().getJavaTypeClass();
+			embeddableClassName = details.getIndicatedEntityName();
 		}
 	}
 
@@ -297,7 +294,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 
 		if ( compositeInstance == null ) {
 			compositeInstance = createCompositeInstance(
-					embeddableClass,
+					embeddableClassName,
 					navigablePath,
 					sessionFactory
 			);
@@ -358,7 +355,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 	}
 
 	private Object createCompositeInstance(
-			Class<?> embeddableClass,
+			String embeddableClassName,
 			NavigablePath navigablePath,
 			SessionFactoryImplementor sessionFactory) {
 		if ( state == State.NULL ) {
@@ -371,7 +368,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 
 		final Object instance = embedded.getEmbeddableTypeDescriptor()
 				.getRepresentationStrategy()
-				.getInstantiatorForSubclass( embeddableClass )
+				.getInstantiatorForSubclass( embeddableClassName )
 				.instantiate( this, sessionFactory );
 		state = State.EXTRACTED;
 
@@ -396,8 +393,8 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 	}
 
 	@Override
-	public Class<?> getEmbeddableClass() {
-		return embeddableClass;
+	public String getEmbeddableClassName() {
+		return embeddableClassName;
 	}
 
 	private void handleParentInjection() {
@@ -498,7 +495,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 	@Override
 	public void finishUpRow(RowProcessingState rowProcessingState) {
 		compositeInstance = null;
-		embeddableClass = null;
+		embeddableClassName = null;
 		state = State.INITIAL;
 		wrappedProcessingState = null;
 

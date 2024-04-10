@@ -34,8 +34,8 @@ public interface EmbeddableDiscriminatorMapping extends DiscriminatorMapping, Fe
 		return getEmbeddableValueConverter().getDetailsForDiscriminatorValue( value );
 	}
 
-	default Object getDiscriminatorValue(Class<?> embeddableClass) {
-		return getEmbeddableValueConverter().getDetailsForEmbeddableClass( embeddableClass ).getValue();
+	default Object getDiscriminatorValue(String embeddableClassName) {
+		return getEmbeddableValueConverter().getDetailsForEntityName( embeddableClassName ).getValue();
 	}
 
 	@Override
