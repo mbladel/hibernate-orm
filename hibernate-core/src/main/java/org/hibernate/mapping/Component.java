@@ -472,21 +472,28 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 	@Override
 	public boolean[] getColumnInsertability() {
-		final boolean[] result = new boolean[ getColumnSpan() ];
+		final boolean[] result = new boolean[getColumnSpan()];
 		int i = 0;
 		for ( Property prop : getProperties() ) {
-			final boolean[] chunk = prop.getValue().getColumnInsertability();
-			if ( prop.isInsertable() ) {
-				System.arraycopy( chunk, 0, result, i, chunk.length );
-			}
-			i += chunk.length;
+			i += copyFlags( prop.getValue().getColumnInsertability(), result, i, prop.isInsertable() );
 		}
+		if ( isPolymorphic() ) {
+			i += copyFlags( getDiscriminator().getColumnInsertability(), result, i, true );
+		}
+		assert i == getColumnSpan();
 		return result;
+	}
+
+	private static int copyFlags(boolean[] chunk, boolean[] result, int i, boolean doCopy) {
+		if ( doCopy ) {
+			System.arraycopy( chunk, 0, result, i, chunk.length );
+		}
+		return chunk.length;
 	}
 
 	@Override
 	public boolean hasAnyInsertableColumns() {
-		for ( Property property : properties ) {
+ 		for ( Property property : properties ) {
 			if ( property.getValue().hasAnyInsertableColumns() ) {
 				return true;
 			}
@@ -497,15 +504,15 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 	@Override
 	public boolean[] getColumnUpdateability() {
-		boolean[] result = new boolean[ getColumnSpan() ];
-		int i=0;
+		boolean[] result = new boolean[getColumnSpan()];
+		int i = 0;
 		for ( Property prop : getProperties() ) {
-			boolean[] chunk = prop.getValue().getColumnUpdateability();
-			if ( prop.isUpdateable() ) {
-				System.arraycopy(chunk, 0, result, i, chunk.length);
-			}
-			i+=chunk.length;
+			i += copyFlags( prop.getValue().getColumnUpdateability(), result, i, prop.isUpdateable() );
 		}
+		if ( isPolymorphic() ) {
+			i += copyFlags( getDiscriminator().getColumnUpdateability(), result, i, true );
+		}
+		assert i == getColumnSpan();
 		return result;
 	}
 
