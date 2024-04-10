@@ -372,37 +372,34 @@ public class EmbeddableBinder {
 		final XClass annotatedClass = inferredData.getPropertyClass();
 		final List<PropertyData> classElements =
 				collectClassElements( propertyAccessor, context, returnedClassOrElement, annotatedClass, isIdClass );
-//		if ( !isIdClass && compositeUserType == null ) {
-			// Main entry point for binding embeddable inheritance
-			bindDiscriminator(
-					component,
-					returnedClassOrElement,
-					propertyHolder,
-					inferredData.getPropertyName(),
-					inheritanceStatePerClass,
-					context
+		// Main entry point for binding embeddable inheritance
+		bindDiscriminator(
+				component,
+				returnedClassOrElement,
+				propertyHolder,
+				inferredData.getPropertyName(),
+				inheritanceStatePerClass,
+				context
+		);
+		if ( component.isPolymorphic() ) {
+			ensureInheritanceSupported( subholder, compositeUserType );
+			final BasicType<?> discriminatorType = (BasicType<?>) component.getDiscriminator().getType();
+			final Map<Object, Class<?>> discriminatorValues = new HashMap<>();
+			discriminatorValues.put(
+					discriminatorType.getJavaTypeDescriptor()
+							.fromString( getDiscriminatorValue( returnedClassOrElement, discriminatorType ) ),
+					context.getBootstrapContext().getReflectionManager().toClass( returnedClassOrElement )
 			);
-			// todo marco : disallow inheritance for @IdClass, @EmbeddedId and user types
-			if ( component.isPolymorphic() ) {
-				ensureInheritanceSupported( subholder, compositeUserType );
-				final BasicType<?> discriminatorType = (BasicType<?>) component.getDiscriminator().getType();
-				final Map<Object, Class<?>> discriminatorValues = new HashMap<>();
-				discriminatorValues.put(
-						discriminatorType.getJavaTypeDescriptor()
-								.fromString( getDiscriminatorValue( returnedClassOrElement, discriminatorType ) ),
-						context.getBootstrapContext().getReflectionManager().toClass( returnedClassOrElement )
-				);
-				collectSubclassElements(
-						propertyAccessor,
-						context,
-						returnedClassOrElement,
-						classElements,
-						discriminatorType,
-						discriminatorValues
-				);
-				component.setDiscriminatorValues( discriminatorValues );
-			}
-//		}
+			collectSubclassElements(
+					propertyAccessor,
+					context,
+					returnedClassOrElement,
+					classElements,
+					discriminatorType,
+					discriminatorValues
+			);
+			component.setDiscriminatorValues( discriminatorValues );
+		}
 		final List<PropertyData> baseClassElements =
 				collectBaseClassElements( baseInferredData, propertyAccessor, context, annotatedClass );
 		if ( baseClassElements != null
