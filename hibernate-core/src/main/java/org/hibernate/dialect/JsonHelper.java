@@ -238,7 +238,8 @@ public class JsonHelper {
 			return null;
 		}
 
-		final Object[] values = new Object[embeddableMappingType.getJdbcValueCount()];
+		final int jdbcValueCount = embeddableMappingType.getJdbcValueCount();
+		final Object[] values = new Object[jdbcValueCount + ( embeddableMappingType.isPolymorphic() ? 1 : 0 )];
 		final int end = fromString( embeddableMappingType, string, 0, string.length(), values, returnEmbeddable, options );
 		assert string.substring( end ).isBlank();
 		if ( returnEmbeddable ) {
