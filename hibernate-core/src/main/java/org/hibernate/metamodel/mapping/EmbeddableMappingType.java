@@ -160,6 +160,9 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 				count += attributeMapping.getJdbcTypeCount();
 			}
 		}
+		if ( isPolymorphic() && columnIndex == count ) {
+			return getDiscriminatorMapping();
+		}
 		return null;
 	}
 
