@@ -6,7 +6,6 @@
  */
 package org.hibernate.metamodel.mapping;
 
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -36,7 +35,7 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 		valueMappings.forEach( (value, embeddableClass) -> {
 			final EmbeddableDiscriminatorValueDetails valueDetails = new EmbeddableDiscriminatorValueDetails(
 					value,
-					embeddableClass
+					embeddableClass.getName()
 			);
 			valueDetailsList.add( valueDetails );
 		} );
@@ -50,7 +49,7 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 	}
 
 	private final Map<Object, EmbeddableDiscriminatorValueDetails> discriminatorValueToDetailsMap;
-	private final Map<Class<?>, EmbeddableDiscriminatorValueDetails> embeddableClassToDetailsMap;
+	private final Map<String, EmbeddableDiscriminatorValueDetails> embeddableClassNameToDetailsMap;
 
 	public EmbeddableDiscriminatorConverter(
 			NavigableRole discriminatorRole,
@@ -60,10 +59,10 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 		super( discriminatorRole, domainJavaType, relationalJavaType );
 
 		this.discriminatorValueToDetailsMap = CollectionHelper.concurrentMap( valueMappings.size() );
-		this.embeddableClassToDetailsMap = CollectionHelper.concurrentMap( valueMappings.size() );
+		this.embeddableClassNameToDetailsMap = CollectionHelper.concurrentMap( valueMappings.size() );
 		valueMappings.forEach( (valueDetails) -> {
 			discriminatorValueToDetailsMap.put( valueDetails.getValue(), valueDetails );
-			embeddableClassToDetailsMap.put( valueDetails.getEmbeddableClass(), valueDetails );
+			embeddableClassNameToDetailsMap.put( valueDetails.getIndicatedEntityName(), valueDetails );
 		} );
 	}
 
@@ -77,30 +76,21 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 		}
 
 		//noinspection unchecked
-		return (O) matchingValueDetails.getEmbeddableClass();
+		return (O) matchingValueDetails.getIndicatedEntityName();
 	}
 
 	@Override
 	public R toRelationalValue(O domainForm) {
-		assert domainForm == null || domainForm instanceof Class;
+		assert domainForm == null || domainForm instanceof String;
 
 		if ( domainForm == null ) {
 			return null;
 		}
 
-		final Class<?> embeddableClass = (Class<?>) domainForm;
+		final String embeddableClassName = (String) domainForm;
 
 		//noinspection unchecked
-		return (R) getDetailsForEmbeddableClass( embeddableClass ).getValue();
-	}
-
-	public EmbeddableDiscriminatorValueDetails getDetailsForEmbeddableClass(Class<?> embeddableClass) {
-		EmbeddableDiscriminatorValueDetails valueDetails = embeddableClassToDetailsMap.get( embeddableClass );
-		if ( valueDetails != null ) {
-			return valueDetails;
-		}
-
-		throw new AssertionFailure( "Unrecognized embeddable class: " + embeddableClass );
+		return (R) getDetailsForEntityName( embeddableClassName ).getValue();
 	}
 
 	@Override
@@ -114,14 +104,13 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 	}
 
 	@Override
-	public DiscriminatorValueDetails getDetailsForEntityName(String entityName) {
-		for ( Map.Entry<Class<?>, EmbeddableDiscriminatorValueDetails> entry : embeddableClassToDetailsMap.entrySet() ) {
-			if ( entry.getKey().getName().equals( entityName ) ) {
-				return entry.getValue();
-			}
+	public DiscriminatorValueDetails getDetailsForEntityName(String embeddableClassName) {
+		final EmbeddableDiscriminatorValueDetails valueDetails = embeddableClassNameToDetailsMap.get( embeddableClassName );
+		if ( valueDetails != null ) {
+			return valueDetails;
 		}
 
-		throw new HibernateException( "Unrecognized embeddable class name: " + entityName );
+		throw new AssertionFailure( "Unrecognized embeddable class: " + embeddableClassName );
 	}
 
 	@Override
@@ -138,9 +127,5 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 			}
 		}
 		return null;
-	}
-
-	public Map<Class<?>, EmbeddableDiscriminatorValueDetails> getEmbeddableClassToDetailsMap() {
-		return embeddableClassToDetailsMap;
 	}
 }

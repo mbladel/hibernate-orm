@@ -160,7 +160,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 
 	private final EmbeddableValuedModelPart valueMapping;
 	private final EmbeddableDiscriminatorMapping discriminatorMapping;
-	private final Map<Class<?>, Set<AttributeMapping>> declaredAttributesBySubclass;
+	private final Map<String, Set<AttributeMapping>> declaredAttributesBySubclass;
 
 	private final boolean createEmptyCompositesEnabled;
 	private final SelectableMapping aggregateMapping;
@@ -571,9 +571,12 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 
 			if ( isPolymorphic() ) {
 				final Class<?> declaringClass = bootDescriptor.getPropertyDeclaringClass( bootPropertyDescriptor );
-				for ( final Class<?> subclass : discriminatorMapping.getEmbeddableValueConverter().getEmbeddableClassToDetailsMap().keySet() ) {
+				for ( final Class<?> subclass : bootDescriptor.getDiscriminatorValues().values() ) {
 					if ( declaringClass.isAssignableFrom( subclass ) ) {
-						declaredAttributesBySubclass.computeIfAbsent( subclass, k -> new HashSet<>() ).add( attributeMapping );
+						declaredAttributesBySubclass.computeIfAbsent(
+								subclass.getName(),
+								k -> new HashSet<>()
+						).add( attributeMapping );
 					}
 				}
 			}
@@ -683,15 +686,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			Component bootDescriptor,
 			RuntimeModelCreationContext creationContext) {
 		final JavaTypeRegistry javaTypeRegistry = creationContext.getSessionFactory().getTypeConfiguration().getJavaTypeRegistry();
-
-		final JavaType<Object> domainJavaType;
-		if ( representationStrategy.getMode() == POJO ) {
-			domainJavaType = javaTypeRegistry.resolveDescriptor( Class.class );
-		}
-		else {
-			domainJavaType = javaTypeRegistry.resolveDescriptor( String.class );
-		}
-
+		final JavaType<Object> domainJavaType = javaTypeRegistry.resolveDescriptor( String.class );
 		final BasicType<?> discriminatorType = DiscriminatorHelper.getDiscriminatorType( bootDescriptor );
 		final DiscriminatorConverter<Object, ?> converter = EmbeddableDiscriminatorConverter.fromValueMappings(
 				getNavigableRole().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
@@ -699,7 +694,6 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 				discriminatorType,
 				bootDescriptor.getDiscriminatorValues()
 		);
-
 		return new DiscriminatorTypeImpl<>( discriminatorType, converter );
 	}
 
@@ -746,18 +740,18 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 	}
 
 	@Override
-	public boolean declaresAttribute(Class<?> embeddableClass, AttributeMapping attributeMapping) {
+	public boolean declaresAttribute(String embeddableClassName, AttributeMapping attributeMapping) {
 		if ( declaredAttributesBySubclass == null ) {
 			return true;
 		}
-		final Set<AttributeMapping> declaredAttributes = declaredAttributesBySubclass.get( embeddableClass );
+		final Set<AttributeMapping> declaredAttributes = declaredAttributesBySubclass.get( embeddableClassName );
 		return declaredAttributes != null && declaredAttributes.contains( attributeMapping );
 	}
 
 	@Override
 	public Object getValue(Object instance, int position) {
 		final AttributeMapping attributeMapping = getAttributeMapping( position );
-		if ( declaresAttribute( instance.getClass(), attributeMapping ) ) {
+		if ( declaresAttribute( instance.getClass().getName(), attributeMapping ) ) {
 			return attributeMapping.getValue( instance );
 		}
 		return null;
@@ -768,7 +762,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		final Object[] results = new Object[getNumberOfAttributeMappings()];
 		for ( int i = 0; i < getNumberOfAttributeMappings(); i++ ) {
 			final AttributeMapping attributeMapping = getAttributeMapping( i );
-			if ( declaresAttribute( compositeInstance.getClass(), attributeMapping ) ) {
+			if ( declaresAttribute( compositeInstance.getClass().getName(), attributeMapping ) ) {
 				final Getter getter = attributeMapping.getAttributeMetadata()
 						.getPropertyAccess()
 						.getGetter();
@@ -785,7 +779,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 	protected void setAttributeValues(Object component, Object[] values) {
 		for ( int i = 0; i < values.length; i++ ) {
 			final AttributeMapping attributeMapping = getAttributeMapping( i );
-			if ( declaresAttribute( component.getClass(), attributeMapping ) ) {
+			if ( declaresAttribute( component.getClass().getName(), attributeMapping ) ) {
 				attributeMapping.getPropertyAccess().getSetter().set( component, values[i] );
 			}
 			else if ( values[i] != null ) {
@@ -833,7 +827,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			for ( int i = 0; i < size; i++ ) {
 				final AttributeMapping attributeMapping = attributeMappings.get( i );
 				if ( !attributeMapping.isPluralAttributeMapping() ) {
-					final Object attributeValue = domainValue == null || !declaresAttribute( domainValue.getClass(), attributeMapping )
+					final Object attributeValue = domainValue == null || !declaresAttribute( domainValue.getClass().getName(), attributeMapping )
 							? null
 							: attributeMapping.getPropertyAccess().getGetter().get( domainValue );
 					span += attributeMapping.breakDownJdbcValues(
@@ -847,7 +841,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 				}
 			}
 			if ( isPolymorphic() ) {
-				final Object d = domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( domainValue.getClass() );
+				final Object d = domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( domainValue.getClass().getName() );
 				span += discriminatorMapping.breakDownJdbcValues( d, offset + span, x, y, valueConsumer, session );
 			}
 		}
@@ -885,14 +879,14 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			for ( int i = 0; i < size; i++ ) {
 				final AttributeMapping attributeMapping = attributeMappings.get( i );
 				if ( !attributeMapping.isPluralAttributeMapping() ) {
-					final Object attributeValue = domainValue == null || !declaresAttribute( domainValue.getClass(), attributeMapping )
+					final Object attributeValue = domainValue == null || !declaresAttribute( domainValue.getClass().getName(), attributeMapping )
 							? null
 							: attributeMapping.getPropertyAccess().getGetter().get( domainValue );
 					span += attributeMapping.decompose( attributeValue, offset + span, x, y, valueConsumer, session );
 				}
 			}
 			if ( isPolymorphic() ) {
-				final Object d = domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( domainValue.getClass() );
+				final Object d = domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( domainValue.getClass().getName() );
 				span += discriminatorMapping.decompose( d, offset + span, x, y, valueConsumer, session );
 			}
 		}
