@@ -7,6 +7,8 @@
 package org.hibernate.metamodel.internal;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,7 +48,7 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 	private final StrategySelector strategySelector;
 
 	private final ReflectionOptimizer reflectionOptimizer;
-	private final Map<Class<?>, EmbeddableInstantiator> instantiators;
+	private final Map<String, EmbeddableInstantiator> instantiators;
 
 	public EmbeddableRepresentationStrategyPojo(
 			Component bootDescriptor,
@@ -90,33 +92,47 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 		);
 	}
 
-	private static Map<Class<?>, EmbeddableInstantiator> resolveInstantiators(
+	private static Map<String, EmbeddableInstantiator> resolveInstantiators(
 			Component bootDescriptor,
 			EmbeddableInstantiator customInstantiator,
 			ReflectionOptimizer reflectionOptimizer,
 			Supplier<EmbeddableMappingType> runtimeDescriptorAccess,
 			RuntimeModelCreationContext creationContext) {
-		final Collection<Class<?>> embeddableClasses = bootDescriptor.getDiscriminatorValues() != null ?
-				bootDescriptor.getDiscriminatorValues().values() :
-				List.of( bootDescriptor.getComponentClass() );
-		final Map<Class<?>, EmbeddableInstantiator> result = new IdentityHashMap<>( embeddableClasses.size() );
-		for ( final Class<?> embeddableClass : embeddableClasses ) {
-			final EmbeddableInstantiator instantiator;
-			if ( embeddableClass == bootDescriptor.getComponentClass() && customInstantiator != null ) {
-				instantiator = customInstantiator;
+		if ( bootDescriptor.isPolymorphic() ) {
+			final Collection<Class<?>> embeddableClasses = bootDescriptor.getDiscriminatorValues().values();
+			final Map<String, EmbeddableInstantiator> result = new HashMap<>( embeddableClasses.size() );
+			for ( final Class<?> embeddableClass : embeddableClasses ) {
+				final EmbeddableInstantiator instantiator;
+				if ( embeddableClass == bootDescriptor.getComponentClass() && customInstantiator != null ) {
+					instantiator = customInstantiator;
+				}
+				else {
+					instantiator = determineInstantiator(
+							bootDescriptor,
+							embeddableClass,
+							reflectionOptimizer,
+							runtimeDescriptorAccess,
+							creationContext
+					);
+				}
+				result.put( embeddableClass.getName(), instantiator );
 			}
-			else {
-				instantiator = determineInstantiator(
-						bootDescriptor,
-						embeddableClass,
-						reflectionOptimizer,
-						runtimeDescriptorAccess,
-						creationContext
-				);
-			}
-			result.put( embeddableClass, instantiator );
+			return Collections.unmodifiableMap( result );
 		}
-		return result;
+		else {
+			return Map.of(
+					bootDescriptor.getComponentClassName(),
+					customInstantiator != null ?
+							customInstantiator :
+							determineInstantiator(
+									bootDescriptor,
+									bootDescriptor.getComponentClass(),
+									reflectionOptimizer,
+									runtimeDescriptorAccess,
+									creationContext
+							)
+			);
+		}
 	}
 
 	private static EmbeddableInstantiator determineInstantiator(
@@ -232,12 +248,14 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 
 	@Override
 	public EmbeddableInstantiator getInstantiator() {
-		return getInstantiatorForSubclass( getEmbeddableJavaType().getJavaTypeClass() );
+		return getInstantiatorForSubclass( null );
 	}
 
 	@Override
-	public EmbeddableInstantiator getInstantiatorForSubclass(Class<?> embeddableClass) {
-		final EmbeddableInstantiator instantiator = instantiators.get( embeddableClass );
+	public EmbeddableInstantiator getInstantiatorForSubclass(String embeddableClassName) {
+		final EmbeddableInstantiator instantiator = embeddableClassName != null ?
+				instantiators.get( embeddableClassName ) :
+				null;
 		if ( instantiator == null ) {
 			assert instantiators.size() == 1;
 			return instantiators.values().iterator().next();

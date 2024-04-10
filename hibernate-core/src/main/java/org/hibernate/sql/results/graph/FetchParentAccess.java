@@ -121,7 +121,7 @@ public interface FetchParentAccess extends Initializer {
 					final AttributeMapping attribute = getInitializedPart().asAttributeMapping();
 					if ( attribute != null ) {
 						embeddableInitializer.resolveKey( rowProcessingState );
-						if ( !descriptor.declaresAttribute( embeddableInitializer.getEmbeddableClass(), attribute ) ) {
+						if ( !descriptor.declaresAttribute( embeddableInitializer.getEmbeddableClassName(), attribute ) ) {
 							return true;
 						}
 					}

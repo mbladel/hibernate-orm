@@ -51,7 +51,7 @@ public interface EmbeddableInitializer extends FetchParentAccess {
 
 	void resolveState(RowProcessingState rowProcessingState);
 
-	default Class<?> getEmbeddableClass() {
-		return getInitializedPart().getEmbeddableTypeDescriptor().getJavaType().getJavaTypeClass();
+	default String getEmbeddableClassName() {
+		return null;
 	}
 }

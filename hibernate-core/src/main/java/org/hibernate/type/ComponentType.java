@@ -764,7 +764,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 
 	protected final EmbeddableInstantiator instantiator(Object compositeInstance) {
 		return embeddableTypeDescriptor().getRepresentationStrategy().getInstantiatorForSubclass(
-				compositeInstance != null ? compositeInstance.getClass() : componentClass
+				compositeInstance != null ? compositeInstance.getClass().getName() : componentClass.getName()
 		);
 	}
 
