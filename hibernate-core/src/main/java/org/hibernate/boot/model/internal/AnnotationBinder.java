@@ -701,10 +701,9 @@ public final class AnnotationBinder {
 				if ( superEntityState != null ) {
 					state.setHasParents( true );
 					if ( buildingContext.getMetadataCollector().getClassType( clazz ) == EMBEDDABLE ) {
-						// todo marco : is this ok as a way to collect embeddable subtypes?
 						buildingContext.getMetadataCollector().registerEmbeddableSubclass(
-								clazz,
-								superEntityState.getClazz()
+								superEntityState.getClazz(),
+								clazz
 						);
 					}
 				}

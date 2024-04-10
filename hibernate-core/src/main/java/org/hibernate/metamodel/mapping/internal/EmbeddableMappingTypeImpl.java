@@ -569,7 +569,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 				);
 			}
 
-			if ( discriminatorMapping != null ) {
+			if ( isPolymorphic() ) {
 				final Class<?> declaringClass = bootDescriptor.getPropertyDeclaringClass( bootPropertyDescriptor );
 				for ( final Class<?> subclass : discriminatorMapping.getEmbeddableValueConverter().getEmbeddableClassToDetailsMap().keySet() ) {
 					if ( declaringClass.isAssignableFrom( subclass ) ) {
@@ -809,7 +809,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		int span = 0;
 		if ( domainValue instanceof Object[] ) {
 			final Object[] values = (Object[]) domainValue;
-			assert values.length == size + ( discriminatorMapping != null ? 1 : 0 );
+			assert values.length == size + ( isPolymorphic() ? 1 : 0 );
 			int i = 0;
 			for ( ; i < size; i++ ) {
 				final AttributeMapping attributeMapping = attributeMappings.get( i );
@@ -825,7 +825,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 					);
 				}
 			}
-			if ( discriminatorMapping != null ) {
+			if ( isPolymorphic() ) {
 				span += discriminatorMapping.breakDownJdbcValues( values[i], offset + span, x, y, valueConsumer, session );
 			}
 		}
@@ -846,7 +846,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 					);
 				}
 			}
-			if ( discriminatorMapping != null ) {
+			if ( isPolymorphic() ) {
 				final Object d = domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( domainValue.getClass() );
 				span += discriminatorMapping.breakDownJdbcValues( d, offset + span, x, y, valueConsumer, session );
 			}
@@ -870,14 +870,14 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		int span = 0;
 		if ( domainValue instanceof Object[] ) {
 			final Object[] values = (Object[]) domainValue;
-			assert values.length == size + ( discriminatorMapping != null ? 1 : 0 );
+			assert values.length == size + ( isPolymorphic() ? 1 : 0 );
 			int i = 0;
 			for ( ; i < size; i++ ) {
 				final AttributeMapping attributeMapping = attributeMappings.get( i );
 				final Object attributeValue = values[ i ];
 				span += attributeMapping.decompose( attributeValue, offset + span, x, y, valueConsumer, session );
 			}
-			if ( discriminatorMapping != null ) {
+			if ( isPolymorphic() ) {
 				span += discriminatorMapping.decompose( values[i], offset + span, x, y, valueConsumer, session );
 			}
 		}
@@ -891,7 +891,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 					span += attributeMapping.decompose( attributeValue, offset + span, x, y, valueConsumer, session );
 				}
 			}
-			if ( discriminatorMapping != null ) {
+			if ( isPolymorphic() ) {
 				final Object d = domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( domainValue.getClass() );
 				span += discriminatorMapping.decompose( d, offset + span, x, y, valueConsumer, session );
 			}

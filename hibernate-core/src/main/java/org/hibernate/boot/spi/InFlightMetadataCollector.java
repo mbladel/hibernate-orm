@@ -84,7 +84,7 @@ public interface InFlightMetadataCollector extends MetadataImplementor {
 
 	void registerGenericComponent(Component component);
 
-	void registerEmbeddableSubclass(XClass subclass, XClass superclass);
+	void registerEmbeddableSubclass(XClass superclass, XClass subclass);
 
 	List<XClass> getEmbeddableSubclasses(XClass superclass);
 

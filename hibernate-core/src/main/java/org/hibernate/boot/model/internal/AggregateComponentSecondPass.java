@@ -16,7 +16,6 @@ import org.hibernate.MappingException;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.common.reflection.XClass;
 import org.hibernate.boot.model.naming.Identifier;
-import org.hibernate.boot.model.relational.ColumnOrderingStrategy;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.model.relational.Namespace;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
@@ -69,8 +68,8 @@ public class AggregateComponentSecondPass implements SecondPass {
 		final Dialect dialect = database.getDialect();
 		final AggregateSupport aggregateSupport = dialect.getAggregateSupport();
 
-		// Sort the component properties early to ensure the custom write expression
-		// uses the same order as the component's property value bindings
+		// Sort the component properties early to ensure the aggregated
+		// columns respect the same order as the component's properties
 		final int[] originalOrder = component.sortProperties();
 		// Compute aggregated columns since we have to replace them in the table with the aggregate column
 		final List<Column> aggregatedColumns = component.getAggregatedColumns();
@@ -292,12 +291,10 @@ public class AggregateComponentSecondPass implements SecondPass {
 			}
 		}
 		if ( component.isPolymorphic() ) {
-			final Value discriminator = component.getDiscriminator();
-			for ( Selectable selectable : discriminator.getSelectables() ) {
-				if ( selectable instanceof Column && structColumnName.equals( ( (Column) selectable ).getName() ) ) {
-					orderedColumns.add( (Column) selectable );
-					return true;
-				}
+			final Column column = component.getDiscriminator().getColumns().get( 0 );
+			if ( structColumnName.equals( column.getName() ) ) {
+				orderedColumns.add( column );
+				return true;
 			}
 		}
 		return false;

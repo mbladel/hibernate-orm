@@ -286,7 +286,7 @@ public class InFlightMetadataCollectorImpl implements InFlightMetadataCollector,
 	}
 
 	@Override
-	public void registerEmbeddableSubclass(XClass subclass, XClass superclass) {
+	public void registerEmbeddableSubclass(XClass superclass, XClass subclass) {
 		embeddableSubtypes.computeIfAbsent( superclass, c -> new ArrayList<>() ).add( subclass );
 	}
 
