@@ -275,10 +275,8 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		this.embeddableJtd = inverseMappingType.getJavaType();
 		this.representationStrategy = inverseMappingType.getRepresentationStrategy();
 		this.valueMapping = valueMapping;
-		// todo marco : do we need to handle inheritance for inverse mappings ?
 		this.discriminatorMapping = null;
 		this.declaredAttributesBySubclass = null;
-//		this.subtypesByClass = null;
 		this.createEmptyCompositesEnabled = inverseMappingType.isCreateEmptyCompositesEnabled();
 		this.aggregateMapping = null;
 		this.aggregateMappingRequiresColumnWriter = false;
