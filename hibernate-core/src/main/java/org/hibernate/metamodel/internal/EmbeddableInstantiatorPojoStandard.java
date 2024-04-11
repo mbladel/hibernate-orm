@@ -17,7 +17,6 @@ import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.spi.ValueAccess;
-import org.hibernate.type.descriptor.java.JavaType;
 
 /**
  * Support for instantiating embeddables as POJO representation

@@ -9,7 +9,6 @@ package org.hibernate.metamodel.mapping.internal;
 import org.hibernate.metamodel.mapping.DiscriminatorConverter;
 import org.hibernate.metamodel.mapping.DiscriminatorType;
 import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorMapping;
-import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorValueDetails;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.ManagedMappingType;
 import org.hibernate.spi.NavigablePath;

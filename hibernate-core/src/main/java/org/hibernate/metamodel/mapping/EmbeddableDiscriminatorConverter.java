@@ -14,6 +14,7 @@ import java.util.function.Function;
 import org.hibernate.AssertionFailure;
 import org.hibernate.HibernateException;
 import org.hibernate.internal.util.collections.CollectionHelper;
+import org.hibernate.metamodel.mapping.internal.EmbeddableDiscriminatorValueDetailsImpl;
 import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.type.BasicType;
 import org.hibernate.type.descriptor.java.JavaType;
@@ -30,16 +31,12 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 			NavigableRole role,
 			JavaType<O> domainJavaType,
 			BasicType<R> underlyingJdbcMapping,
-			Map<Object, Class<?>> valueMappings) {
-		final List<EmbeddableDiscriminatorValueDetails> valueDetailsList = CollectionHelper.arrayList( valueMappings.size() );
-		valueMappings.forEach( (value, embeddableClass) -> {
-			final EmbeddableDiscriminatorValueDetails valueDetails = new EmbeddableDiscriminatorValueDetails(
-					value,
-					embeddableClass.getName()
-			);
-			valueDetailsList.add( valueDetails );
-		} );
-
+			Map<Object, String> valueMappings) {
+		final List<DiscriminatorValueDetails> valueDetailsList = CollectionHelper.arrayList( valueMappings.size() );
+		valueMappings.forEach( (value, embeddableClass) -> valueDetailsList.add( new EmbeddableDiscriminatorValueDetailsImpl(
+				value,
+				embeddableClass
+		) ) );
 		return new EmbeddableDiscriminatorConverter<>(
 				role,
 				domainJavaType,
@@ -48,14 +45,14 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 		);
 	}
 
-	private final Map<Object, EmbeddableDiscriminatorValueDetails> discriminatorValueToDetailsMap;
-	private final Map<String, EmbeddableDiscriminatorValueDetails> embeddableClassNameToDetailsMap;
+	private final Map<Object, DiscriminatorValueDetails> discriminatorValueToDetailsMap;
+	private final Map<String, DiscriminatorValueDetails> embeddableClassNameToDetailsMap;
 
 	public EmbeddableDiscriminatorConverter(
 			NavigableRole discriminatorRole,
 			JavaType<O> domainJavaType,
 			JavaType<R> relationalJavaType,
-			List<EmbeddableDiscriminatorValueDetails> valueMappings) {
+			List<DiscriminatorValueDetails> valueMappings) {
 		super( discriminatorRole, domainJavaType, relationalJavaType );
 
 		this.discriminatorValueToDetailsMap = CollectionHelper.concurrentMap( valueMappings.size() );
@@ -70,7 +67,7 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 	public O toDomainValue(R relationalForm) {
 		assert relationalForm == null || getRelationalJavaType().isInstance( relationalForm );
 
-		final EmbeddableDiscriminatorValueDetails matchingValueDetails = getDetailsForDiscriminatorValue( relationalForm );
+		final DiscriminatorValueDetails matchingValueDetails = getDetailsForDiscriminatorValue( relationalForm );
 		if ( matchingValueDetails == null ) {
 			throw new IllegalStateException( "Could not resolve discriminator value" );
 		}
@@ -94,8 +91,8 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 	}
 
 	@Override
-	public EmbeddableDiscriminatorValueDetails getDetailsForDiscriminatorValue(Object value) {
-		final EmbeddableDiscriminatorValueDetails valueMatch = discriminatorValueToDetailsMap.get( value );
+	public DiscriminatorValueDetails getDetailsForDiscriminatorValue(Object value) {
+		final DiscriminatorValueDetails valueMatch = discriminatorValueToDetailsMap.get( value );
 		if ( valueMatch != null ) {
 			return valueMatch;
 		}
@@ -105,7 +102,7 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 
 	@Override
 	public DiscriminatorValueDetails getDetailsForEntityName(String embeddableClassName) {
-		final EmbeddableDiscriminatorValueDetails valueDetails = embeddableClassNameToDetailsMap.get( embeddableClassName );
+		final DiscriminatorValueDetails valueDetails = embeddableClassNameToDetailsMap.get( embeddableClassName );
 		if ( valueDetails != null ) {
 			return valueDetails;
 		}
