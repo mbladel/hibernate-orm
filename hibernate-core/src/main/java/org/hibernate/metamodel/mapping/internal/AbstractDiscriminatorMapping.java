@@ -88,8 +88,8 @@ public abstract class AbstractDiscriminatorMapping implements EntityDiscriminato
 	}
 
 	@Override
-	public DiscriminatorValueDetails resolveDiscriminatorValue(Object value) {
-		return discriminatorType.getValueConverter().getDetailsForDiscriminatorValue( value );
+	public DiscriminatorValueDetails resolveDiscriminatorValue(Object discriminatorValue) {
+		return discriminatorType.getValueConverter().getDetailsForDiscriminatorValue( discriminatorValue );
 	}
 
 	@Override

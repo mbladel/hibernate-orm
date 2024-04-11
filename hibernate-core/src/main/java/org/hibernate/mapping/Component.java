@@ -77,10 +77,11 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	private Boolean isGeneric;
 	private String roleName;
 	private Value discriminator;
-	private Map<Object, Class<?>> discriminatorValues;
+	private Map<Object, String> discriminatorValues;
+	private Map<String, String> subclassToSuperclass;
 
 	private final ArrayList<Property> properties = new ArrayList<>();
-	private Map<Property, Class<?>> propertyDeclaringClasses;
+	private Map<Property, String> propertyDeclaringClasses;
 	private int[] originalPropertyOrder = ArrayHelper.EMPTY_INT_ARRAY;
 	private Map<String,MetaAttribute> metaAttributes;
 
@@ -95,6 +96,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	private AggregateColumn parentAggregateColumn;
 	private String structName;
 	private String[] structColumnNames;
+	private transient Class<?> componentClass;
 	// lazily computed based on 'properties' field: invalidate by setting to null when properties are modified
 	private transient List<Selectable> cachedSelectables;
 	// lazily computed based on 'properties' field: invalidate by setting to null when properties are modified
@@ -169,10 +171,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 			if ( propertyDeclaringClasses == null ) {
 				propertyDeclaringClasses = new HashMap<>();
 			}
-			propertyDeclaringClasses.put(
-					p,
-					getBuildingContext().getBootstrapContext().getReflectionManager().toClass( declaringClass )
-			);
+			propertyDeclaringClasses.put( p, declaringClass.getName() );
 		}
 		propertiesListModified();
 	}
@@ -181,7 +180,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		addProperty( p, null );
 	}
 
-	public Class<?> getPropertyDeclaringClass(Property p) {
+	public String getPropertyDeclaringClass(Property p) {
 		if ( propertyDeclaringClasses != null ) {
 			return propertyDeclaringClasses.get( p );
 		}
@@ -331,21 +330,24 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	}
 
 	public Class<?> getComponentClass() throws MappingException {
-		if ( componentClassName == null ) {
-			return null;
-		}
-		else {
-			final ClassLoaderService classLoaderService = getMetadata()
-					.getMetadataBuildingOptions()
-					.getServiceRegistry()
-					.requireService( ClassLoaderService.class );
-			try {
-				return classLoaderService.classForName( componentClassName );
+		Class<?> result = componentClass;
+		if ( result == null ) {
+			if ( componentClassName == null ) {
+				return null;
 			}
-			catch (ClassLoadingException e) {
-				throw new MappingException("component class not found: " + componentClassName, e);
+			else {
+				try {
+					result = componentClass = getMetadata()
+							.getMetadataBuildingOptions()
+							.getServiceRegistry()
+							.requireService( ClassLoaderService.class ).classForName( componentClassName );
+				}
+				catch (ClassLoadingException e) {
+					throw new MappingException( "component class not found: " + componentClassName, e );
+				}
 			}
 		}
+		return result;
 	}
 
 	public PersistentClass getOwner() {
@@ -358,6 +360,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 
 	public void setComponentClassName(String componentClass) {
 		this.componentClassName = componentClass;
+		this.componentClass = null;
 	}
 
 	public void setEmbedded(boolean embedded) {
@@ -592,12 +595,20 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		return discriminator != null;
 	}
 
-	public Map<Object, Class<?>> getDiscriminatorValues() {
+	public Map<Object, String> getDiscriminatorValues() {
 		return discriminatorValues;
 	}
 
-	public void setDiscriminatorValues(Map<Object, Class<?>> discriminatorValues) {
+	public void setDiscriminatorValues(Map<Object, String> discriminatorValues) {
 		this.discriminatorValues = discriminatorValues;
+	}
+
+	public String getSuperclass(String subclass) {
+		return subclassToSuperclass.get( subclass );
+	}
+
+	public void setSubclassToSuperclass(Map<String, String> subclassToSuperclass) {
+		this.subclassToSuperclass = subclassToSuperclass;
 	}
 
 	@Override

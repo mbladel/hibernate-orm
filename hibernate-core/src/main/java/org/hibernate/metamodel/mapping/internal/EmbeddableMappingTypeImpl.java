@@ -12,7 +12,6 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.hibernate.MappingException;
@@ -26,7 +25,6 @@ import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.CascadeStyle;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.internal.util.IndexedConsumer;
 import org.hibernate.internal.util.config.ConfigurationHelper;
 import org.hibernate.mapping.AggregateColumn;
 import org.hibernate.mapping.Any;
@@ -64,7 +62,6 @@ import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroupProducer;
 import org.hibernate.sql.results.graph.DomainResult;
 import org.hibernate.sql.results.graph.DomainResultCreationState;
-import org.hibernate.sql.results.graph.Fetchable;
 import org.hibernate.sql.results.graph.embeddable.internal.EmbeddableResultImpl;
 import org.hibernate.type.AnyType;
 import org.hibernate.type.BasicType;
@@ -570,11 +567,11 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			}
 
 			if ( isPolymorphic() ) {
-				final Class<?> declaringClass = bootDescriptor.getPropertyDeclaringClass( bootPropertyDescriptor );
-				for ( final Class<?> subclass : bootDescriptor.getDiscriminatorValues().values() ) {
-					if ( declaringClass.isAssignableFrom( subclass ) ) {
+				final String declaringClass = bootDescriptor.getPropertyDeclaringClass( bootPropertyDescriptor );
+				for ( final String subclass : bootDescriptor.getDiscriminatorValues().values() ) {
+					if ( isDefinedInClassOrSuperclass( bootDescriptor, declaringClass, subclass ) ) {
 						declaredAttributesBySubclass.computeIfAbsent(
-								subclass.getName(),
+								subclass,
 								k -> new HashSet<>()
 						).add( attributeMapping );
 					}
@@ -593,6 +590,16 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		);
 
 		return true;
+	}
+
+	private boolean isDefinedInClassOrSuperclass(Component bootDescriptor, String declaringClass, String subclass) {
+		while ( subclass != null ) {
+			if ( declaringClass.equals( subclass ) ) {
+				return true;
+			}
+			subclass = bootDescriptor.getSuperclass( subclass );
+		}
+		return false;
 	}
 
 	private static MutabilityPlan<?> getMutabilityPlan(boolean updateable) {
@@ -686,9 +693,9 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			Component bootDescriptor,
 			RuntimeModelCreationContext creationContext) {
 		final JavaTypeRegistry javaTypeRegistry = creationContext.getSessionFactory().getTypeConfiguration().getJavaTypeRegistry();
-		final JavaType<Object> domainJavaType = javaTypeRegistry.resolveDescriptor( String.class );
+		final JavaType<String> domainJavaType = javaTypeRegistry.resolveDescriptor( String.class );
 		final BasicType<?> discriminatorType = DiscriminatorHelper.getDiscriminatorType( bootDescriptor );
-		final DiscriminatorConverter<Object, ?> converter = EmbeddableDiscriminatorConverter.fromValueMappings(
+		final DiscriminatorConverter<String, ?> converter = EmbeddableDiscriminatorConverter.fromValueMappings(
 				getNavigableRole().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
 				domainJavaType,
 				discriminatorType,

@@ -11,8 +11,10 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.hibernate.AnnotationException;
 import org.hibernate.annotations.DiscriminatorFormula;
@@ -384,11 +386,12 @@ public class EmbeddableBinder {
 		if ( component.isPolymorphic() ) {
 			ensureInheritanceSupported( subholder, compositeUserType );
 			final BasicType<?> discriminatorType = (BasicType<?>) component.getDiscriminator().getType();
-			final Map<Object, Class<?>> discriminatorValues = new HashMap<>();
+			final Map<Object, String> discriminatorValues = new HashMap<>();
+			final Map<String, String> subclassToSuperclass = new HashMap<>();
 			discriminatorValues.put(
 					discriminatorType.getJavaTypeDescriptor()
 							.fromString( getDiscriminatorValue( returnedClassOrElement, discriminatorType ) ),
-					context.getBootstrapContext().getReflectionManager().toClass( returnedClassOrElement )
+					returnedClassOrElement.getName()
 			);
 			collectSubclassElements(
 					propertyAccessor,
@@ -396,9 +399,11 @@ public class EmbeddableBinder {
 					returnedClassOrElement,
 					classElements,
 					discriminatorType,
-					discriminatorValues
+					discriminatorValues,
+					subclassToSuperclass
 			);
 			component.setDiscriminatorValues( discriminatorValues );
+			component.setSubclassToSuperclass( subclassToSuperclass );
 		}
 		final List<PropertyData> baseClassElements =
 				collectBaseClassElements( baseInferredData, propertyAccessor, context, annotatedClass );
@@ -601,23 +606,27 @@ public class EmbeddableBinder {
 			XClass superclass,
 			List<PropertyData> classElements,
 			BasicType<?> discriminatorType,
-			Map<Object, Class<?>> discriminatorValues) {
+			Map<Object, String> discriminatorValues,
+			Map<String, String> subclassToSuperclass) {
 		for ( final XClass subclass : context.getMetadataCollector().getEmbeddableSubclasses( superclass ) ) {
-			final PropertyContainer superContainer = new PropertyContainer( subclass, subclass, propertyAccessor );
-			addElementsOfClass( classElements, superContainer, context );
 			// collect the discriminator value details
-			final Class<?> old = discriminatorValues.put(
+			final String old = discriminatorValues.put(
 					discriminatorType.getJavaTypeDescriptor()
 							.fromString( getDiscriminatorValue( subclass, discriminatorType ) ),
-					context.getBootstrapContext().getReflectionManager().toClass( subclass )
+					subclass.getName()
 			);
 			if ( old != null ) {
 				throw new AnnotationException( String.format(
 						"Embeddable subclass '%s' defines the same discriminator value as '%s",
 						subclass.getName(),
-						old.getName()
+						old
 				) );
 			}
+			final String put = subclassToSuperclass.put( subclass.getName(), superclass.getName() );
+			assert put == null;
+			// collect property of subclass
+			final PropertyContainer superContainer = new PropertyContainer( subclass, subclass, propertyAccessor );
+			addElementsOfClass( classElements, superContainer, context );
 			// recursively do that same for all subclasses
 			collectSubclassElements(
 					propertyAccessor,
@@ -625,7 +634,8 @@ public class EmbeddableBinder {
 					subclass,
 					classElements,
 					discriminatorType,
-					discriminatorValues
+					discriminatorValues,
+					subclassToSuperclass
 			);
 		}
 	}
