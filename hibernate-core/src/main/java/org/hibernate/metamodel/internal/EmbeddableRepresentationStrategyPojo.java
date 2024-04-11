@@ -14,9 +14,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import org.hibernate.HibernateException;
+import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
 import org.hibernate.boot.registry.selector.spi.StrategySelector;
 import org.hibernate.bytecode.spi.BytecodeProvider;
 import org.hibernate.bytecode.spi.ProxyFactoryFactory;
@@ -30,6 +32,7 @@ import org.hibernate.mapping.Property;
 import org.hibernate.metamodel.RepresentationMode;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.spi.EmbeddableInstantiator;
+import org.hibernate.metamodel.spi.EmbeddableRepresentationStrategy;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.property.access.internal.PropertyAccessStrategyBackRefImpl;
 import org.hibernate.property.access.internal.PropertyAccessStrategyIndexBackRefImpl;
@@ -41,12 +44,17 @@ import org.hibernate.type.descriptor.java.spi.JavaTypeRegistry;
 import org.hibernate.type.internal.CompositeUserTypeJavaTypeWrapper;
 import org.hibernate.usertype.CompositeUserType;
 
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
+
 /**
  * @author Steve Ebersole
  */
-public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepresentationStrategy {
-	private final StrategySelector strategySelector;
+public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresentationStrategy {
+	private final JavaType<?> embeddableJavaType;
+	private final PropertyAccess[] propertyAccesses;
+	private final Map<String,Integer> attributeNameToPositionMap;
 
+	private final StrategySelector strategySelector;
 	private final ReflectionOptimizer reflectionOptimizer;
 	private final Map<String, EmbeddableInstantiator> instantiators;
 
@@ -56,35 +64,53 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 			EmbeddableInstantiator customInstantiator,
 			CompositeUserType<Object> compositeUserType,
 			RuntimeModelCreationContext creationContext) {
-		super(
+		this.embeddableJavaType = resolveEmbeddableJavaType( bootDescriptor, compositeUserType, creationContext );
+
+		final int propertySpan = bootDescriptor.getPropertySpan();
+		this.propertyAccesses = new PropertyAccess[propertySpan];
+		this.attributeNameToPositionMap = new ConcurrentHashMap<>( propertySpan );
+
+		final Map<String, Class<?>> subclassNamesMap = getSubclassNamesMap( bootDescriptor, creationContext );
+		boolean foundCustomAccessor = false;
+		for ( int i = 0; i < bootDescriptor.getProperties().size(); i++ ) {
+			final Property property = bootDescriptor.getProperty( i );
+			final Class<?> embeddableClass = bootDescriptor.isPolymorphic() ?
+					castNonNull( subclassNamesMap ).get( bootDescriptor.getPropertyDeclaringClass( property ) ) :
+					getEmbeddableJavaType().getJavaTypeClass();
+			propertyAccesses[i] = buildPropertyAccess( property, embeddableClass );
+			attributeNameToPositionMap.put( property.getName(), i );
+
+			if ( !property.isBasicPropertyAccessor() ) {
+				foundCustomAccessor = true;
+			}
+		}
+
+		boolean hasCustomAccessors = foundCustomAccessor;
+		this.strategySelector = creationContext.getServiceRegistry().getService( StrategySelector.class );
+		this.reflectionOptimizer = buildReflectionOptimizer(
 				bootDescriptor,
-				resolveEmbeddableJavaType( bootDescriptor.getComponentClass(), compositeUserType, creationContext ),
+				hasCustomAccessors,
+				propertyAccesses,
 				creationContext
 		);
-
-
-		assert bootDescriptor.getComponentClass() != null;
-
-		this.strategySelector = creationContext.getServiceRegistry().getService( StrategySelector.class );
-
-		this.reflectionOptimizer = buildReflectionOptimizer( bootDescriptor, creationContext );
 
 		this.instantiators = resolveInstantiators(
 				bootDescriptor,
 				customInstantiator,
 				reflectionOptimizer,
+				subclassNamesMap,
 				runtimeDescriptorAccess,
 				creationContext
 		);
 	}
 
 	private static <T> JavaType<T> resolveEmbeddableJavaType(
-			Class<?> embeddableClass,
+			Component bootDescriptor,
 			CompositeUserType<T> compositeUserType,
 			RuntimeModelCreationContext creationContext) {
 		final JavaTypeRegistry javaTypeRegistry = creationContext.getTypeConfiguration().getJavaTypeRegistry();
 		if ( compositeUserType == null ) {
-			return javaTypeRegistry.resolveDescriptor( embeddableClass );
+			return javaTypeRegistry.resolveDescriptor( bootDescriptor.getComponentClass() );
 		}
 		return javaTypeRegistry.resolveDescriptor(
 				compositeUserType.returnedClass(),
@@ -96,26 +122,20 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 			Component bootDescriptor,
 			EmbeddableInstantiator customInstantiator,
 			ReflectionOptimizer reflectionOptimizer,
+			Map<String, Class<?>> subclassNamesMap,
 			Supplier<EmbeddableMappingType> runtimeDescriptorAccess,
 			RuntimeModelCreationContext creationContext) {
 		if ( bootDescriptor.isPolymorphic() ) {
-			final Collection<Class<?>> embeddableClasses = bootDescriptor.getDiscriminatorValues().values();
-			final Map<String, EmbeddableInstantiator> result = new HashMap<>( embeddableClasses.size() );
-			for ( final Class<?> embeddableClass : embeddableClasses ) {
-				final EmbeddableInstantiator instantiator;
-				if ( embeddableClass == bootDescriptor.getComponentClass() && customInstantiator != null ) {
-					instantiator = customInstantiator;
-				}
-				else {
-					instantiator = determineInstantiator(
-							bootDescriptor,
-							embeddableClass,
-							reflectionOptimizer,
-							runtimeDescriptorAccess,
-							creationContext
-					);
-				}
-				result.put( embeddableClass.getName(), instantiator );
+			final Collection<String> embeddableClassNames = bootDescriptor.getDiscriminatorValues().values();
+			final Map<String, EmbeddableInstantiator> result = new HashMap<>( embeddableClassNames.size() );
+			for ( final String embeddableClassName : embeddableClassNames ) {
+				result.put( embeddableClassName, determineInstantiator(
+						bootDescriptor,
+						subclassNamesMap.get( embeddableClassName ),
+						reflectionOptimizer,
+						runtimeDescriptorAccess,
+						creationContext
+				) );
 			}
 			return Collections.unmodifiableMap( result );
 		}
@@ -163,13 +183,7 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 		return new EmbeddableInstantiatorPojoStandard( embeddableClass, runtimeDescriptorAccess );
 	}
 
-	@Override
-	public ReflectionOptimizer getReflectionOptimizer() {
-		return reflectionOptimizer;
-	}
-
-	@Override
-	protected PropertyAccess buildPropertyAccess(Property bootAttributeDescriptor, Class<?> embeddableClass) {
+	private PropertyAccess buildPropertyAccess(Property bootAttributeDescriptor, Class<?> embeddableClass) {
 		PropertyAccessStrategy strategy = bootAttributeDescriptor.getPropertyAccessStrategy( getEmbeddableJavaType().getJavaTypeClass() );
 
 		if ( strategy == null ) {
@@ -220,11 +234,13 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 		);
 	}
 
-	private ReflectionOptimizer buildReflectionOptimizer(
+	private static ReflectionOptimizer buildReflectionOptimizer(
 			Component bootDescriptor,
+			boolean hasCustomAccessors,
+			PropertyAccess[] propertyAccesses,
 			RuntimeModelCreationContext creationContext) {
 
-		if ( hasCustomAccessors() || bootDescriptor.getCustomInstantiator() != null || bootDescriptor.getInstantiator() != null ) {
+		if ( hasCustomAccessors || bootDescriptor.getCustomInstantiator() != null || bootDescriptor.getInstantiator() != null ) {
 			return null;
 		}
 
@@ -232,13 +248,59 @@ public class EmbeddableRepresentationStrategyPojo extends AbstractEmbeddableRepr
 
 		int i = 0;
 		for ( Property property : bootDescriptor.getProperties() ) {
-			propertyAccessMap.put( property.getName(), getPropertyAccesses()[i] );
+			propertyAccessMap.put( property.getName(), propertyAccesses[i] );
 			i++;
 		}
 
 		return creationContext.getServiceRegistry()
 				.requireService( BytecodeProvider.class )
 				.getReflectionOptimizer( bootDescriptor.getComponentClass(), propertyAccessMap );
+	}
+
+	private static Map<String, Class<?>> getSubclassNamesMap(
+			Component bootDescriptor,
+			RuntimeModelCreationContext creationContext) {
+		final ClassLoaderService classLoaderService = creationContext.getMetadata()
+				.getMetadataBuildingOptions()
+				.getServiceRegistry()
+				.requireService( ClassLoaderService.class );
+		if ( bootDescriptor.isPolymorphic() ) {
+			final Collection<String> subclassNames = bootDescriptor.getDiscriminatorValues().values();
+			final Map<String, Class<?>> result = new HashMap<>( subclassNames.size() );
+			for ( final String subclassName : subclassNames ) {
+				final Class<?> embeddableClass;
+				if ( subclassName.equals( bootDescriptor.getComponentClassName() ) ) {
+					embeddableClass = bootDescriptor.getComponentClass();
+				}
+				else {
+					embeddableClass = classLoaderService.classForName( subclassName );
+				}
+				result.put( subclassName, embeddableClass );
+			}
+			return result;
+		}
+		else {
+			return null;
+		}
+	}
+
+	public JavaType<?> getEmbeddableJavaType() {
+		return embeddableJavaType;
+	}
+
+	@Override
+	public JavaType<?> getMappedJavaType() {
+		return getEmbeddableJavaType();
+	}
+
+	@Override
+	public ReflectionOptimizer getReflectionOptimizer() {
+		return reflectionOptimizer;
+	}
+
+	@Override
+	public PropertyAccess resolvePropertyAccess(Property bootAttributeDescriptor) {
+		return propertyAccesses[ attributeNameToPositionMap.get( bootAttributeDescriptor.getName() ) ];
 	}
 
 	@Override

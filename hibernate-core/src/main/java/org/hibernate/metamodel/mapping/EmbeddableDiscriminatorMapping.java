@@ -19,23 +19,24 @@ import org.hibernate.sql.results.graph.basic.BasicFetch;
  *
  * @author Marco Belladelli
  * @see EmbeddableMappingType#getDiscriminatorMapping()
- * @see EmbeddableDiscriminatorConverter
  */
 public interface EmbeddableDiscriminatorMapping extends DiscriminatorMapping, FetchOptions {
-	default EmbeddableDiscriminatorConverter<?, ?> getEmbeddableValueConverter() {
-		return (EmbeddableDiscriminatorConverter<?, ?>) getValueConverter();
+	/**
+	 * Retrieve the {@linkplain DiscriminatorValueDetails details} for a particular discriminator value.
+	 *
+	 * @throws HibernateException if there is value matching the provided one
+	 */
+	default DiscriminatorValueDetails resolveDiscriminatorValue(Object discriminatorValue) {
+		return getValueConverter().getDetailsForDiscriminatorValue( discriminatorValue );
 	}
 
 	/**
-	 * Retrieve the {@linkplain EmbeddableDiscriminatorValueDetails details} for a particular discriminator value.
-	 * @throws HibernateException if there is no match
+	 * Retrieve the relational discriminator value corresponding to the provided embeddable class name.
+	 *
+	 * @throws HibernateException if the embeddable class name is not handled by this discriminator
 	 */
-	default EmbeddableDiscriminatorValueDetails resolveEmbeddableDiscriminatorValue(Object value) {
-		return getEmbeddableValueConverter().getDetailsForDiscriminatorValue( value );
-	}
-
 	default Object getDiscriminatorValue(String embeddableClassName) {
-		return getEmbeddableValueConverter().getDetailsForEntityName( embeddableClassName ).getValue();
+		return getValueConverter().getDetailsForEntityName( embeddableClassName ).getValue();
 	}
 
 	@Override

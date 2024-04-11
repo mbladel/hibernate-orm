@@ -131,7 +131,7 @@ public class StructHelper {
 		if ( embeddableMappingType.isPolymorphic() ) {
 			final Object[] result = new Object[attributeValues.length + 1];
 			System.arraycopy( attributeValues, 0, result, 0, attributeValues.length );
-			result[attributeValues.length] = domainValue.getClass();
+			result[attributeValues.length] = domainValue.getClass().getName();
 			return result;
 		}
 		else {
