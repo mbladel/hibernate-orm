@@ -93,6 +93,23 @@ public class LazyOptionalOneToOneConcreteProxyTest {
 		} );
 	}
 
+	@Test
+	public void testGetBusinessContactReference(SessionFactoryScope scope) {
+		final SQLStatementInspector inspector = scope.getCollectingStatementInspector();
+		inspector.clear();
+		scope.inTransaction( session -> {
+			// We somehow already know the class of the instance
+			final BusinessContact businessContact = session.getReference( BusinessContact.class, 3L );
+
+			assertThat( businessContact )
+					.isInstanceOf( BusinessContact.class )
+					.matches( contact -> !Hibernate.isInitialized( contact ) );
+			
+			// BusinessContact does not have any subclass so it isn't necessary to query the discriminator
+			inspector.assertExecutedCount( 0 );
+		} );
+	}
+
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
