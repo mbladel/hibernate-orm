@@ -22,7 +22,6 @@ import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.CascadeStyle;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.IndexedConsumer;
-import org.hibernate.internal.util.MutableInteger;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.mapping.Any;
 import org.hibernate.mapping.BasicValue;
@@ -34,12 +33,8 @@ import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.UnsupportedMappingException;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.AttributeMappingsList;
-import org.hibernate.metamodel.mapping.DiscriminatorConverter;
-import org.hibernate.metamodel.mapping.DiscriminatorType;
-import org.hibernate.metamodel.mapping.DiscriminatorValueDetails;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
-import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
 import org.hibernate.metamodel.mapping.JdbcMapping;
@@ -101,8 +96,7 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 
 	protected Object[] getAttributeValues(Object compositeInstance) {
 		final Object[] results = new Object[getNumberOfAttributeMappings()];
-		int i = 0;
-		for ( ; i < getNumberOfAttributeMappings(); i++ ) {
+		for ( int i = 0; i < getNumberOfAttributeMappings(); i++ ) {
 			final Getter getter = getAttributeMapping( i ).getAttributeMetadata()
 					.getPropertyAccess()
 					.getGetter();

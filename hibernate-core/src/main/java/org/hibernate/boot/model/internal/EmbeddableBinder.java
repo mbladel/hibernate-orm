@@ -11,10 +11,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.hibernate.AnnotationException;
 import org.hibernate.annotations.DiscriminatorFormula;
@@ -377,26 +375,22 @@ public class EmbeddableBinder {
 		// Main entry point for binding embeddable inheritance
 		bindDiscriminator(
 				component,
-				returnedClassOrElement,
+				annotatedClass,
 				subholder,
 				inferredData,
 				inheritanceStatePerClass,
 				context
 		);
 		if ( component.isPolymorphic() ) {
-			ensureInheritanceSupported( subholder, compositeUserType );
+			validateInheritanceIsSupported( subholder, compositeUserType );
 			final BasicType<?> discriminatorType = (BasicType<?>) component.getDiscriminator().getType();
 			final Map<Object, String> discriminatorValues = new HashMap<>();
 			final Map<String, String> subclassToSuperclass = new HashMap<>();
-			discriminatorValues.put(
-					discriminatorType.getJavaTypeDescriptor()
-							.fromString( getDiscriminatorValue( returnedClassOrElement, discriminatorType ) ),
-					returnedClassOrElement.getName()
-			);
+			collectDiscriminatorValue( annotatedClass, discriminatorType, discriminatorValues );
 			collectSubclassElements(
 					propertyAccessor,
 					context,
-					returnedClassOrElement,
+					annotatedClass,
 					classElements,
 					discriminatorType,
 					discriminatorValues,
@@ -554,7 +548,7 @@ public class EmbeddableBinder {
 		discriminatorColumnBinding.setTypeName( discriminatorColumn.getDiscriminatorTypeName() );
 	}
 
-	private static void ensureInheritanceSupported(
+	private static void validateInheritanceIsSupported(
 			PropertyHolder holder,
 			CompositeUserType<?> compositeUserType) {
 		if ( holder.isOrWithinEmbeddedId() ) {
@@ -610,11 +604,7 @@ public class EmbeddableBinder {
 			Map<String, String> subclassToSuperclass) {
 		for ( final XClass subclass : context.getMetadataCollector().getEmbeddableSubclasses( superclass ) ) {
 			// collect the discriminator value details
-			final String old = discriminatorValues.put(
-					discriminatorType.getJavaTypeDescriptor()
-							.fromString( getDiscriminatorValue( subclass, discriminatorType ) ),
-					subclass.getName()
-			);
+			final String old = collectDiscriminatorValue( subclass, discriminatorType, discriminatorValues );
 			if ( old != null ) {
 				throw new AnnotationException( String.format(
 						"Embeddable subclass '%s' defines the same discriminator value as '%s",
@@ -622,10 +612,10 @@ public class EmbeddableBinder {
 						old
 				) );
 			}
-			final String put = subclassToSuperclass.put( subclass.getName(), superclass.getName() );
+			final String put = subclassToSuperclass.put( subclass.getName().intern(), superclass.getName().intern() );
 			assert put == null;
 			// collect property of subclass
-			final PropertyContainer superContainer = new PropertyContainer( subclass, subclass, propertyAccessor );
+			final PropertyContainer superContainer = new PropertyContainer( subclass, superclass, propertyAccessor );
 			addElementsOfClass( classElements, superContainer, context );
 			// recursively do that same for all subclasses
 			collectSubclassElements(
@@ -640,11 +630,15 @@ public class EmbeddableBinder {
 		}
 	}
 
-	private static String getDiscriminatorValue(XClass annotatedClass, BasicType<?> discriminatorType) {
-		final String discriminatorValue = annotatedClass.isAnnotationPresent( DiscriminatorValue.class )
+	private static String collectDiscriminatorValue(
+			XClass annotatedClass,
+			BasicType<?> discriminatorType,
+			Map<Object, String> discriminatorValues) {
+		final String explicitValue = annotatedClass.isAnnotationPresent( DiscriminatorValue.class )
 				? annotatedClass.getAnnotation( DiscriminatorValue.class ).value()
 				: null;
-		if ( isEmpty( discriminatorValue ) ) {
+		final String discriminatorValue;
+		if ( isEmpty( explicitValue ) ) {
 			final String name = unqualify( annotatedClass.getName() );
 			if ( "character".equals( discriminatorType.getName() ) ) {
 				throw new AnnotationException( String.format(
@@ -653,15 +647,19 @@ public class EmbeddableBinder {
 				) );
 			}
 			else if ( "integer".equals( discriminatorType.getName() ) ) {
-				return String.valueOf( name.hashCode() );
+				discriminatorValue = String.valueOf( name.hashCode() );
 			}
 			else {
-				return name;
+				discriminatorValue = name;
 			}
 		}
 		else {
-			return discriminatorValue;
+			discriminatorValue = explicitValue;
 		}
+		return discriminatorValues.put(
+				discriminatorType.getJavaTypeDescriptor().fromString( discriminatorValue ),
+				annotatedClass.getName().intern()
+		);
 	}
 
 

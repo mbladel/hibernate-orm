@@ -33,9 +33,9 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 			BasicType<R> underlyingJdbcMapping,
 			Map<Object, String> valueMappings) {
 		final List<DiscriminatorValueDetails> valueDetailsList = CollectionHelper.arrayList( valueMappings.size() );
-		valueMappings.forEach( (value, embeddableClass) -> valueDetailsList.add( new EmbeddableDiscriminatorValueDetailsImpl(
+		valueMappings.forEach( (value, embeddableClassName) -> valueDetailsList.add( new EmbeddableDiscriminatorValueDetailsImpl(
 				value,
-				embeddableClass
+				embeddableClassName
 		) ) );
 		return new EmbeddableDiscriminatorConverter<>(
 				role,
@@ -57,7 +57,7 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 
 		this.discriminatorValueToDetailsMap = CollectionHelper.concurrentMap( valueMappings.size() );
 		this.embeddableClassNameToDetailsMap = CollectionHelper.concurrentMap( valueMappings.size() );
-		valueMappings.forEach( (valueDetails) -> {
+		valueMappings.forEach( valueDetails -> {
 			discriminatorValueToDetailsMap.put( valueDetails.getValue(), valueDetails );
 			embeddableClassNameToDetailsMap.put( valueDetails.getIndicatedEntityName(), valueDetails );
 		} );
