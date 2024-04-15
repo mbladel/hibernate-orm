@@ -6,7 +6,6 @@
  */
 package org.hibernate.metamodel.mapping;
 
-import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.hibernate.internal.util.IndexedConsumer;
@@ -63,10 +62,6 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 	 */
 	default boolean declaresAttribute(String embeddableClassName, AttributeMapping attributeMapping) {
 		return true;
-	}
-
-	default EmbeddableMappingType getSuperMappingType() {
-		return null;
 	}
 
 	default SelectableMapping getAggregateMapping() {

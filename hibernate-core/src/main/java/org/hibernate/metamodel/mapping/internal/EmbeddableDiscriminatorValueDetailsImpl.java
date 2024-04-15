@@ -12,7 +12,7 @@ import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 
 /**
- * Specialization of {@link DiscriminatorValueDetails} used for embeddable inheritance.
+ * Implementation of {@link DiscriminatorValueDetails} used for embeddable inheritance.
  *
  * @author Marco Belladelli
  * @see EmbeddableDiscriminatorConverter

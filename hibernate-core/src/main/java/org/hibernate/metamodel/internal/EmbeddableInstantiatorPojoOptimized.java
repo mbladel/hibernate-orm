@@ -11,7 +11,6 @@ import java.util.function.Supplier;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.spi.ValueAccess;
-import org.hibernate.type.descriptor.java.JavaType;
 
 import static org.hibernate.bytecode.spi.ReflectionOptimizer.InstantiationOptimizer;
 

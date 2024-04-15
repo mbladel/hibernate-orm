@@ -707,9 +707,6 @@ public final class AnnotationBinder {
 						);
 					}
 				}
-				else {
-					state.setHasParents( false );
-				}
 				logMixedInheritance( clazz, superclassState, state );
 				if ( superclassState.getType() != null ) {
 					state.setType( superclassState.getType() );

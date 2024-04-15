@@ -132,7 +132,6 @@ public interface FetchParentAccess extends Initializer {
 					return false;
 				}
 				else if ( ( entityInitializer = embeddableInitializer.findFirstEntityInitializer() ) == null ) {
-					// we might be inside a nested embeddable result initializer
 					return false;
 				}
 			}

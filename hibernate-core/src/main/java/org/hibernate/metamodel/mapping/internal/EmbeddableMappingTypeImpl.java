@@ -78,7 +78,7 @@ import org.hibernate.type.descriptor.java.spi.JavaTypeRegistry;
 import org.hibernate.type.spi.CompositeTypeImplementor;
 import org.hibernate.type.spi.TypeConfiguration;
 
-import static org.hibernate.metamodel.RepresentationMode.POJO;
+import static org.hibernate.persister.entity.DiscriminatorHelper.getDiscriminatorType;
 
 /**
  * Describes a "normal" embeddable.
@@ -136,17 +136,18 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 
 		creationProcess.registerInitializationCallback(
 				"EmbeddableMappingType(" + mappingType.getNavigableRole().getFullPath() + ")#finishInitialization",
-				() -> mappingType.finishInitialization(
-						bootDescriptor,
-						compositeType,
-						rootTableExpression,
-						rootTableKeyColumnNames,
-						dependantValue,
-						dependantColumnIndex,
-						insertability,
-						updateability,
-						creationProcess
-				)
+				() ->
+						mappingType.finishInitialization(
+								bootDescriptor,
+								compositeType,
+								rootTableExpression,
+								rootTableKeyColumnNames,
+								dependantValue,
+								dependantColumnIndex,
+								insertability,
+								updateability,
+								creationProcess
+						)
 		);
 
 		return mappingType;
@@ -694,7 +695,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			RuntimeModelCreationContext creationContext) {
 		final JavaTypeRegistry javaTypeRegistry = creationContext.getSessionFactory().getTypeConfiguration().getJavaTypeRegistry();
 		final JavaType<String> domainJavaType = javaTypeRegistry.resolveDescriptor( String.class );
-		final BasicType<?> discriminatorType = DiscriminatorHelper.getDiscriminatorType( bootDescriptor );
+		final BasicType<?> discriminatorType = getDiscriminatorType( bootDescriptor );
 		final DiscriminatorConverter<String, ?> converter = EmbeddableDiscriminatorConverter.fromValueMappings(
 				getNavigableRole().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
 				domainJavaType,

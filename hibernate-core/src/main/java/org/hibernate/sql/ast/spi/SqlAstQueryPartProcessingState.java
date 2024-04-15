@@ -25,8 +25,4 @@ public interface SqlAstQueryPartProcessingState extends SqlAstQueryNodeProcessin
 	 * considered in-flight as it is probably still being built.
 	 */
 	QueryPart getInflightQueryPart();
-
-	FetchParent getNestingFetchParent();
-
-	void setNestingFetchParent(FetchParent nestedParent);
 }
