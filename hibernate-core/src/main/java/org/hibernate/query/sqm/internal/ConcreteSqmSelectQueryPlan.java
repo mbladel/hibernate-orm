@@ -237,7 +237,7 @@ public class ConcreteSqmSelectQueryPlan<R> implements SelectQueryPlan<R> {
 				return RowTransformerSingularReturnImpl.instance();
 			}
 			else if ( resultType.isArray() ) {
-				return (RowTransformer<T>) RowTransformerArrayImpl.instance();
+				return (RowTransformer<T>) RowTransformerArrayImpl.instance( resultType.getComponentType() );
 			}
 			else if ( List.class.equals( resultType ) ) {
 				return (RowTransformer<T>) RowTransformerListImpl.instance();
