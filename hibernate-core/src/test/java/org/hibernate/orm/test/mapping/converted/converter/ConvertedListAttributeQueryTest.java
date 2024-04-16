@@ -31,13 +31,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DomainModel( annotatedClasses = ConvertedListAttributeQueryTest.Employee.class )
 @SessionFactory
-@Jira( "https://hibernate.atlassian.net/browse/HHH-17393" )
 public class ConvertedListAttributeQueryTest {
 	private final static List<String> PHONE_NUMBERS = List.of( "0911 111 111", "0922 222 222" );
 
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
-		scope.inTransaction( session -> session.persist( new Employee( 1, PHONE_NUMBERS ) ) );
+		scope.inTransaction( session -> session.persist( new Employee( 1, "employee_1", PHONE_NUMBERS ) ) );
 	}
 
 	@AfterAll
@@ -47,6 +46,7 @@ public class ConvertedListAttributeQueryTest {
 
 	@Test
 	@SuppressWarnings( "rawtypes" )
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-17393" )
 	public void testListHQL(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final List resultList = session.createQuery(
@@ -59,6 +59,7 @@ public class ConvertedListAttributeQueryTest {
 
 	@Test
 	@SuppressWarnings( "rawtypes" )
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-17393" )
 	public void testListCriteria(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final CriteriaBuilder cb = session.getCriteriaBuilder();
@@ -72,7 +73,23 @@ public class ConvertedListAttributeQueryTest {
 	}
 
 	@Test
-	public void testArrayCriteria(SessionFactoryScope scope) {
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-17598" )
+	public void testObjectArrayCriteria(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final CriteriaBuilder cb = session.getCriteriaBuilder();
+			final CriteriaQuery<Object[]> q = cb.createQuery( Object[].class );
+			final Root<Employee> r = q.from( Employee.class );
+			q.multiselect( r.get( "id" ), r.get( "name" ) );
+			q.where( cb.equal( r.get( "id" ), 1 ) );
+			final Object result = session.createQuery( q ).getSingleResult();
+			assertThat( result ).isInstanceOf( Object[].class );
+			assertThat( ( (Object[]) result ) ).containsExactly( 1, "employee_1" );
+		} );
+	}
+
+	@Test
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-17956" )
+	public void testTypedArrayCriteria(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final CriteriaBuilder cb = session.getCriteriaBuilder();
 			final CriteriaQuery<Integer[]> q = cb.createQuery( Integer[].class );
@@ -80,8 +97,8 @@ public class ConvertedListAttributeQueryTest {
 			q.multiselect( r.get( "id" ), r.get( "id" ) );
 			q.where( cb.equal( r.get( "id" ), 1 ) );
 			final Object result = session.createQuery( q ).getSingleResult();
-			assertThat( result ).isInstanceOf( Object[].class );
-			assertThat( ( (Object[]) result ) ).containsExactly( 1, 1 );
+			assertThat( result ).isInstanceOf( Integer[].class );
+			assertThat( ( (Integer[]) result ) ).containsExactly( 1, 1 );
 		} );
 	}
 
@@ -90,19 +107,26 @@ public class ConvertedListAttributeQueryTest {
 		@Id
 		private Integer id;
 
+		private String name;
+
 		@Convert( converter = StringListConverter.class )
 		private List<String> phoneNumbers;
 
 		public Employee() {
 		}
 
-		public Employee(Integer id, List<String> phoneNumbers) {
+		public Employee(Integer id, String name, List<String> phoneNumbers) {
 			this.id = id;
+			this.name = name;
 			this.phoneNumbers = phoneNumbers;
 		}
 
 		public Integer getId() {
 			return id;
+		}
+
+		public String getName() {
+			return name;
 		}
 
 		public List<String> getPhoneNumbers() {
