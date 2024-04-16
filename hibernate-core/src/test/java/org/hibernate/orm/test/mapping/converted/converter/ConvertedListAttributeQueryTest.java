@@ -88,6 +88,19 @@ public class ConvertedListAttributeQueryTest {
 	}
 
 	@Test
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-17598" )
+	public void testObjectArrayHQL(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final Object result = session.createQuery(
+					"select id, name from Employee where id = 1",
+					Object[].class
+			).getSingleResult();
+			assertThat( result ).isInstanceOf( Object[].class );
+			assertThat( ( (Object[]) result ) ).containsExactly( 1, "employee_1" );
+		} );
+	}
+
+	@Test
 	@Jira( "https://hibernate.atlassian.net/browse/HHH-17956" )
 	public void testTypedArrayCriteria(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
@@ -97,6 +110,19 @@ public class ConvertedListAttributeQueryTest {
 			q.multiselect( r.get( "id" ), r.get( "id" ) );
 			q.where( cb.equal( r.get( "id" ), 1 ) );
 			final Object result = session.createQuery( q ).getSingleResult();
+			assertThat( result ).isInstanceOf( Integer[].class );
+			assertThat( ( (Integer[]) result ) ).containsExactly( 1, 1 );
+		} );
+	}
+
+	@Test
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-17956" )
+	public void testTypedArrayHQL(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final Object result = session.createQuery(
+					"select id, id from Employee where id = 1",
+					Integer[].class
+			).getSingleResult();
 			assertThat( result ).isInstanceOf( Integer[].class );
 			assertThat( ( (Integer[]) result ) ).containsExactly( 1, 1 );
 		} );
