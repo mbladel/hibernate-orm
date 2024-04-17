@@ -375,7 +375,7 @@ public class EmbeddableBinder {
 		// Main entry point for binding embeddable inheritance
 		bindDiscriminator(
 				component,
-				annotatedClass,
+				returnedClassOrElement,
 				subholder,
 				inferredData,
 				inheritanceStatePerClass,
@@ -386,11 +386,11 @@ public class EmbeddableBinder {
 			final BasicType<?> discriminatorType = (BasicType<?>) component.getDiscriminator().getType();
 			final Map<Object, String> discriminatorValues = new HashMap<>();
 			final Map<String, String> subclassToSuperclass = new HashMap<>();
-			collectDiscriminatorValue( annotatedClass, discriminatorType, discriminatorValues );
+			collectDiscriminatorValue( returnedClassOrElement, discriminatorType, discriminatorValues );
 			collectSubclassElements(
 					propertyAccessor,
 					context,
-					annotatedClass,
+					returnedClassOrElement,
 					classElements,
 					discriminatorType,
 					discriminatorValues,
@@ -583,7 +583,7 @@ public class EmbeddableBinder {
 				new PropertyContainer( returnedClassOrElement, annotatedClass, propertyAccessor );
 		addElementsOfClass( classElements, container, context);
 		//add elements of the embeddable's mapped superclasses
-		XClass superClass = annotatedClass.getSuperclass();
+		XClass superClass = returnedClassOrElement.getSuperclass();
 		while ( isValidSuperclass( superClass, isIdClass ) ) {
 			//FIXME: proper support of type variables incl var resolved at upper levels
 			final PropertyContainer superContainer =
