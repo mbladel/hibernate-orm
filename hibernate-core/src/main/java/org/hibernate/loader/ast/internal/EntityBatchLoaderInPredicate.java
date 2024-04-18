@@ -166,7 +166,12 @@ public class EntityBatchLoaderInPredicate<T>
 				},
 				(key, relativePosition, absolutePosition) -> {
 					if ( key != null ) {
-						entityKeys.add( session.generateEntityKey( key, getLoadable().getEntityPersister() ) );
+						final EntityKey entityKey = session.generateEntityKey(
+								key,
+								getLoadable().getEntityPersister()
+						);
+						entityKeys.add( entityKey );
+						batchFetchQueue.removeBatchLoadableEntityKey( entityKey );
 					}
 				},
 				(startIndex) -> {
@@ -181,7 +186,6 @@ public class EntityBatchLoaderInPredicate<T>
 					}
 				},
 				(startIndex, nonNullElementCount) -> {
-					entityKeys.forEach( batchFetchQueue::removeBatchLoadableEntityKey );
 					entityKeys.clear();
 				},
 				session
