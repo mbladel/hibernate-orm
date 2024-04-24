@@ -8,7 +8,6 @@ package org.hibernate.generator.values;
 
 import java.util.function.BiFunction;
 
-import org.hibernate.dialect.Dialect;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.query.results.DomainResultCreationStateImpl;
 import org.hibernate.query.results.ResultBuilder;
@@ -79,15 +78,7 @@ public class GeneratedValueBasicResultBuilder implements ResultBuilder {
 
 		final int position = valuesArrayPosition != null ?
 				valuesArrayPosition :
-				columnIndex(
-						jdbcResultsMetadata,
-						modelPart,
-						domainResultCreationState.getSqlAstCreationState()
-								.getCreationContext()
-								.getSessionFactory()
-								.getJdbcServices()
-								.getDialect()
-				);
+				columnIndex( jdbcResultsMetadata, modelPart );
 		final SqlSelection sqlSelection = creationStateImpl.resolveSqlSelection(
 				ResultsHelper.resolveSqlExpression(
 						creationStateImpl,
@@ -111,16 +102,13 @@ public class GeneratedValueBasicResultBuilder implements ResultBuilder {
 		return modelPart;
 	}
 
-	private static int columnIndex(
-			JdbcValuesMetadata jdbcResultsMetadata,
-			BasicValuedModelPart modelPart,
-			Dialect dialect) {
+	private static int columnIndex(JdbcValuesMetadata jdbcResultsMetadata, BasicValuedModelPart modelPart) {
 		if ( jdbcResultsMetadata.getColumnCount() == 1 ) {
 			return 0;
 		}
 		else {
 			return jdbcPositionToValuesArrayPosition( jdbcResultsMetadata.resolveColumnPosition(
-					dialect.getGeneratedKeyFindColumnName( getActualGeneratedModelPart( modelPart ).getSelectionExpression() )
+					getActualGeneratedModelPart( modelPart ).getSelectionExpression()
 			) );
 		}
 	}

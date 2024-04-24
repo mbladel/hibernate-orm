@@ -4166,10 +4166,6 @@ public abstract class Dialect implements ConversionContext, TypeContributor, Fun
 		return false;
 	}
 
-	public String getGeneratedKeyFindColumnName(String columnName) {
-		return columnName;
-	}
-
 	/**
 	 * Does this dialect support the given {@code FETCH} clause type.
 	 *
