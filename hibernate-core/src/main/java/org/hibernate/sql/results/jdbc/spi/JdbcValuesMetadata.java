@@ -24,7 +24,7 @@ public interface JdbcValuesMetadata {
 	/**
 	 * Position of a particular result value by name
 	 */
-	int resolveColumnPosition(String columnName);
+	int  resolveColumnPosition(String columnName);
 
 	/**
 	 * Name of a particular result value by position

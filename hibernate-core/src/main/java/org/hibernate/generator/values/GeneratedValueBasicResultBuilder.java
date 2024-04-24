@@ -8,6 +8,7 @@ package org.hibernate.generator.values;
 
 import java.util.function.BiFunction;
 
+import org.hibernate.dialect.Dialect;
 import org.hibernate.metamodel.mapping.BasicValuedModelPart;
 import org.hibernate.query.results.DomainResultCreationStateImpl;
 import org.hibernate.query.results.ResultBuilder;
@@ -76,9 +77,17 @@ public class GeneratedValueBasicResultBuilder implements ResultBuilder {
 				"t"
 		);
 
-		final int position = valuesArrayPosition == null ?
-				columnIndex( jdbcResultsMetadata, modelPart ) :
-				valuesArrayPosition;
+		final int position = valuesArrayPosition != null ?
+				valuesArrayPosition :
+				columnIndex(
+						jdbcResultsMetadata,
+						modelPart,
+						domainResultCreationState.getSqlAstCreationState()
+								.getCreationContext()
+								.getSessionFactory()
+								.getJdbcServices()
+								.getDialect()
+				);
 		final SqlSelection sqlSelection = creationStateImpl.resolveSqlSelection(
 				ResultsHelper.resolveSqlExpression(
 						creationStateImpl,
@@ -102,20 +111,17 @@ public class GeneratedValueBasicResultBuilder implements ResultBuilder {
 		return modelPart;
 	}
 
-	private static int columnIndex(JdbcValuesMetadata jdbcResultsMetadata, BasicValuedModelPart modelPart) {
-		try {
-			return jdbcPositionToValuesArrayPosition( jdbcResultsMetadata.resolveColumnPosition(
-					getActualGeneratedModelPart( modelPart ).getSelectionExpression()
-			) );
+	private static int columnIndex(
+			JdbcValuesMetadata jdbcResultsMetadata,
+			BasicValuedModelPart modelPart,
+			Dialect dialect) {
+		if ( jdbcResultsMetadata.getColumnCount() == 1 ) {
+			return 0;
 		}
-		catch (Exception e) {
-			if ( modelPart.isEntityIdentifierMapping() ) {
-				// Default to the first position for entity identifiers
-				return 0;
-			}
-			else {
-				throw e;
-			}
+		else {
+			return jdbcPositionToValuesArrayPosition( jdbcResultsMetadata.resolveColumnPosition(
+					dialect.getGeneratedKeyFindColumnName( getActualGeneratedModelPart( modelPart ).getSelectionExpression() )
+			) );
 		}
 	}
 }

@@ -1139,6 +1139,11 @@ public class MySQLLegacyDialect extends Dialect {
 	}
 
 	@Override
+	public String getGeneratedKeyFindColumnName(String columnName) {
+		return "GENERATED_KEY";
+	}
+
+	@Override
 	public boolean isJdbcLogWarningsEnabledByDefault() {
 		return false;
 	}
