@@ -13,6 +13,7 @@ import org.hibernate.query.Query;
 import org.hibernate.stat.spi.StatisticsImplementor;
 
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
@@ -42,14 +43,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 		SingleTableInheritanceQueryCacheTest.EntityB.class,
 } )
 @SessionFactory
-@ServiceRegistry( settings = @Setting( name = AvailableSettings.USE_QUERY_CACHE, value = "true" ) )
+@ServiceRegistry( settings = {
+		@Setting( name = AvailableSettings.USE_QUERY_CACHE, value = "true" ),
+		@Setting( name = AvailableSettings.GENERATE_STATISTICS, value = "true" ),
+} )
+@Jira( "https://hibernate.atlassian.net/browse/HHH-18017" )
 public class SingleTableInheritanceQueryCacheTest {
 	@Test
 	public void testHQL(SessionFactoryScope scope) {
 		scope.inTransaction( session -> executeQuery( session, session.createQuery(
 				"from AbstractEntity where id = 1",
 				AbstractEntity.class
-		) ) );
+		), SubEntityA.class ) );
 	}
 
 	@Test
@@ -58,17 +63,24 @@ public class SingleTableInheritanceQueryCacheTest {
 			final CriteriaBuilder cb = session.getCriteriaBuilder();
 			final CriteriaQuery<AbstractEntity> query = cb.createQuery( AbstractEntity.class );
 			final Root<AbstractEntity> from = query.from( AbstractEntity.class );
-			executeQuery( session, session.createQuery( query.where( cb.equal( from.get( "id" ), 2 ) ) ) );
+			executeQuery(
+					session,
+					session.createQuery( query.where( cb.equal( from.get( "id" ), 2 ) ) ),
+					EntityB.class
+			);
 		} );
 	}
 
-	private void executeQuery(SessionImplementor session, Query<AbstractEntity> query) {
+	private void executeQuery(
+			SessionImplementor session,
+			Query<AbstractEntity> query,
+			Class<? extends AbstractEntity> resultClass) {
 		final StatisticsImplementor statistics = session.getSessionFactory().getStatistics();
 		query.setHint( HibernateHints.HINT_CACHEABLE, true );
 		for ( int i = 0; i < 2; i++ ) {
 			statistics.clear();
 			final AbstractEntity result = query.getSingleResult();
-			assertThat( result ).isExactlyInstanceOf( SubEntityA.class );
+			assertThat( result ).isExactlyInstanceOf( resultClass );
 			assertThat( statistics.getQueryCacheHitCount() ).isEqualTo( i );
 			assertThat( statistics.getQueryCachePutCount() ).isEqualTo( 1 - i );
 		}
@@ -84,9 +96,7 @@ public class SingleTableInheritanceQueryCacheTest {
 
 	@AfterAll
 	public void tearDown(SessionFactoryScope scope) {
-		scope.inTransaction( session -> {
-
-		} );
+		scope.inTransaction( session -> session.createMutationQuery( "delete from AbstractEntity" ).executeUpdate() );
 	}
 
 	@Entity( name = "AbstractEntity" )
