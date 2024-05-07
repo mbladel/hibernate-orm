@@ -5486,6 +5486,57 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 		}
 	}
 
+	protected void renderSortSpecificationsNotIncludedInSelect() {
+		final QuerySpec querySpec = getQueryPartStack().getCurrent().getFirstQuerySpec();
+		if ( !querySpec.hasSortSpecifications() ) {
+			return;
+		}
+
+		for ( SortSpecification sortSpec : querySpec.getSortSpecifications() ) {
+			final Expression sortExpression = sortSpec.getSortExpression();
+			final Set<ColumnReference> sortColumns = collectColumnReferences( sortExpression, false );
+			final List<SqlSelection> sqlSelections = querySpec.getSelectClause().getSqlSelections();
+			// boolean found = false;
+			for ( int i = 0; i < sqlSelections.size() && !sortColumns.isEmpty(); i++ ) {
+				final Expression selectionExpression = sqlSelections.get( i ).getExpression();
+				if ( sortExpression == selectionExpression
+						// || ( sortColumn != null && sortColumn == selectionExpression.getColumnReference() )
+				) {
+					sortColumns.clear();
+					break;
+				}
+				else if ( selectionExpression.getColumnReference() != null ) {
+					sortColumns.remove( selectionExpression.getColumnReference() );
+				}
+			}
+			if ( !sortColumns.isEmpty() ) {
+				appendSql( COMMA_SEPARATOR );
+				renderSelectExpression( sortExpression );
+			}
+		}
+	}
+
+	private Set<ColumnReference> collectColumnReferences(Expression expression, boolean onlyPlainReferences) {
+		if ( onlyPlainReferences ) {
+			if ( expression instanceof ColumnReference ) {
+				return Set.of( (ColumnReference) expression );
+			}
+			else {
+				return Set.of();
+			}
+		}
+		else {
+			final Set<ColumnReference> result = new HashSet<>();
+			expression.accept( new AbstractSqlAstWalker() {
+				@Override
+				public void visitColumnReference(ColumnReference columnReference) {
+					result.add( columnReference );
+				}
+			} );
+			return result;
+		}
+	}
+
 	@Override
 	public void visitOver(Over<?> over) {
 		final Expression overExpression = over.getExpression();

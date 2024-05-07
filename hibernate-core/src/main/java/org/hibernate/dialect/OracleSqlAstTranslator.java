@@ -139,6 +139,26 @@ public class OracleSqlAstTranslator<T extends JdbcOperation> extends SqlAstTrans
 	}
 
 	@Override
+	public void visitSelectClause(SelectClause selectClause) {
+		getClauseStack().push( Clause.SELECT );
+
+		try {
+			appendSql( "select " );
+			if ( selectClause.isDistinct() ) {
+				appendSql( "distinct " );
+			}
+			visitSqlSelections( selectClause );
+			renderVirtualSelections( selectClause );
+			if ( selectClause.isDistinct() ) {
+				renderSortSpecificationsNotIncludedInSelect();
+			}
+		}
+		finally {
+			getClauseStack().pop();
+		}
+	}
+
+	@Override
 	public void visitSqlSelection(SqlSelection sqlSelection) {
 		if ( getCurrentCteStatement() != null ) {
 			if ( getCurrentCteStatement().getMaterialization() == CteMaterialization.MATERIALIZED ) {
