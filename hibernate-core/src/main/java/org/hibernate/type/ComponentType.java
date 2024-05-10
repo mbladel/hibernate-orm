@@ -806,12 +806,18 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 	}
 
 	protected final EmbeddableInstantiator instantiator(Object compositeInstance) {
-		final String compositeClassName = compositeInstance != null ?
-				compositeInstance.getClass().getName() :
-				componentClass.getName();
-		return embeddableTypeDescriptor().getRepresentationStrategy().getInstantiator(
-				embeddableTypeDescriptor().getDiscriminatorMapping().getDiscriminatorValue( compositeClassName )
-		);
+		final EmbeddableRepresentationStrategy representationStrategy = embeddableTypeDescriptor().getRepresentationStrategy();
+		if ( embeddableTypeDescriptor().isPolymorphic() ) {
+			final String compositeClassName = compositeInstance != null ?
+					compositeInstance.getClass().getName() :
+					componentClass.getName();
+			return representationStrategy.getInstantiator(
+					embeddableTypeDescriptor().getDiscriminatorMapping().getDiscriminatorValue( compositeClassName )
+			);
+		}
+		else {
+			return representationStrategy.getInstantiator();
+		}
 	}
 
 	@Override
