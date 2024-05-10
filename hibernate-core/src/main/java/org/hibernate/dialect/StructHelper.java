@@ -29,20 +29,13 @@ import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
  */
 @Internal
 public class StructHelper {
-
-	public static Object[] getAttributeValues(
+	public static StructAttributeValues getAttributeValues(
 			EmbeddableMappingType embeddableMappingType,
 			Object[] rawJdbcValues,
 			WrapperOptions options) throws SQLException {
 		final int numberOfAttributeMappings = embeddableMappingType.getNumberOfAttributeMappings();
 		final int size = numberOfAttributeMappings + ( embeddableMappingType.isPolymorphic() ? 1 : 0 );
-		final Object[] attributeValues;
-		if ( size != rawJdbcValues.length ) {
-			attributeValues = new Object[size];
-		}
-		else {
-			attributeValues = rawJdbcValues;
-		}
+		final StructAttributeValues attributeValues = new StructAttributeValues( numberOfAttributeMappings, rawJdbcValues );
 		int jdbcIndex = 0;
 		for ( int i = 0; i < size; i++ ) {
 			final ValuedModelPart valuedModelPart = getValuedModelPart(
@@ -57,7 +50,7 @@ public class StructHelper {
 
 	private static int injectAttributeValue(
 			ValuedModelPart modelPart,
-			Object[] attributeValues,
+			StructAttributeValues attributeValues,
 			int attributeIndex,
 			Object[] rawJdbcValues,
 			int jdbcIndex,
@@ -69,20 +62,25 @@ public class StructHelper {
 			final EmbeddableMappingType embeddableMappingType = (EmbeddableMappingType) mappedType;
 			if ( embeddableMappingType.getAggregateMapping() != null ) {
 				jdbcValueCount = 1;
-				attributeValues[attributeIndex] = rawJdbcValue;
+				attributeValues.setAttributeValue( attributeIndex, rawJdbcValue );
 			}
 			else {
 				jdbcValueCount = embeddableMappingType.getJdbcValueCount();
 				final Object[] subJdbcValues = new Object[jdbcValueCount];
 				System.arraycopy( rawJdbcValues, jdbcIndex, subJdbcValues, 0, subJdbcValues.length );
-				final Object[] subValues = getAttributeValues( embeddableMappingType, subJdbcValues, options );
-				attributeValues[attributeIndex] = getInstantiator( embeddableMappingType, subValues )
-						.instantiate(
-								() -> subValues,
+				final StructAttributeValues subValues = getAttributeValues( embeddableMappingType, subJdbcValues, options );
+				attributeValues.setAttributeValue(
+						attributeIndex,
+						getInstantiator(
+								embeddableMappingType,
+								subValues.getDiscriminatorValue()
+						).instantiate(
+								subValues::getAttributeValues,
 								embeddableMappingType.findContainingEntityMapping()
 										.getEntityPersister()
 										.getFactory()
-						);
+						)
+				);
 			}
 		}
 		else {
@@ -93,7 +91,7 @@ public class StructHelper {
 					rawJdbcValue,
 					options
 			);
-			attributeValues[attributeIndex] = jdbcMapping.convertToDomainValue( jdbcValue );
+			attributeValues.setAttributeValue( attributeIndex, jdbcMapping.convertToDomainValue( jdbcValue ) );
 		}
 		return jdbcValueCount;
 	}
@@ -148,14 +146,16 @@ public class StructHelper {
 		}
 	}
 
-	public static EmbeddableInstantiator getInstantiator(EmbeddableMappingType embeddableMappingType, Object[] values) {
+	public static EmbeddableInstantiator getInstantiator(EmbeddableMappingType embeddableMappingType, Object discriminatorValue) {
 		final EmbeddableRepresentationStrategy representationStrategy = embeddableMappingType.getRepresentationStrategy();
 		if ( !embeddableMappingType.isPolymorphic() ) {
 			return representationStrategy.getInstantiator();
 		}
 		else {
-			assert values.length == embeddableMappingType.getNumberOfAttributeMappings() + 1;
-			return representationStrategy.getInstantiator( values[values.length - 1] );
+			// the value here is the compositeClass because it gets converted back to the domain type
+			return representationStrategy.getInstantiator(
+					embeddableMappingType.getDiscriminatorMapping().getDiscriminatorValue( (String) discriminatorValue )
+			);
 		}
 	}
 

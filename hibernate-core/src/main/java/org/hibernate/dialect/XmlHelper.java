@@ -244,10 +244,10 @@ public class XmlHelper {
 		assert end + END_TAG.length() == string.length();
 
 		if ( returnEmbeddable ) {
-			final Object[] attributeValues = StructHelper.getAttributeValues( embeddableMappingType, array, options );
+			final StructAttributeValues attributeValues = StructHelper.getAttributeValues( embeddableMappingType, array, options );
 			//noinspection unchecked
-			return (X) getInstantiator( embeddableMappingType, attributeValues ).instantiate(
-					() -> attributeValues,
+			return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminatorValue() ).instantiate(
+					attributeValues::getAttributeValues,
 					options.getSessionFactory()
 			);
 		}
@@ -420,13 +420,13 @@ public class XmlHelper {
 								);
 							}
 							if ( returnEmbeddable ) {
-								final Object[] attributeValues = StructHelper.getAttributeValues(
+								final StructAttributeValues attributeValues = StructHelper.getAttributeValues(
 										subMappingType,
 										subValues,
 										options
 								);
-								final Object subValue = getInstantiator( subMappingType, attributeValues )
-										.instantiate( () -> attributeValues, options.getSessionFactory() );
+								final Object subValue = getInstantiator( subMappingType, attributeValues.getDiscriminatorValue() )
+										.instantiate( attributeValues::getAttributeValues, options.getSessionFactory() );
 								values[selectableIndex] = subValue;
 							}
 							else {

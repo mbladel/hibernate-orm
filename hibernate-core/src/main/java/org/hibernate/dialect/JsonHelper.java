@@ -305,14 +305,14 @@ public class JsonHelper {
 		final int end = fromString( embeddableMappingType, string, 0, string.length(), values, returnEmbeddable, options );
 		assert string.substring( end ).isBlank();
 		if ( returnEmbeddable ) {
-			final Object[] attributeValues = StructHelper.getAttributeValues(
+			final StructAttributeValues attributeValues = StructHelper.getAttributeValues(
 					embeddableMappingType,
 					values,
 					options
 			);
 			//noinspection unchecked
-			return (X) getInstantiator( embeddableMappingType, attributeValues ).instantiate(
-					() -> attributeValues,
+			return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminatorValue() ).instantiate(
+					attributeValues::getAttributeValues,
 					options.getSessionFactory()
 			);
 		}
@@ -446,14 +446,14 @@ public class JsonHelper {
 							i = fromString( subMappingType, string, i, end, subValues, returnEmbeddable, options ) - 1;
 							assert string.charAt( i ) == '}';
 							if ( returnEmbeddable ) {
-								final Object[] attributeValues = StructHelper.getAttributeValues(
+								final StructAttributeValues attributeValues = StructHelper.getAttributeValues(
 										subMappingType,
 										subValues,
 										options
 								);
-								values[selectableIndex] = getInstantiator( embeddableMappingType, attributeValues )
+								values[selectableIndex] = getInstantiator( embeddableMappingType, attributeValues.getDiscriminatorValue())
 										.instantiate(
-												() -> attributeValues,
+												attributeValues::getAttributeValues,
 												options.getSessionFactory()
 										);
 							}
