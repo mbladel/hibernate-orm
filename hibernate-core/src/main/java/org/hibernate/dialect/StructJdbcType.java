@@ -11,16 +11,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Struct;
-import java.util.ArrayList;
 
 import org.hibernate.boot.model.naming.Identifier;
-import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.MappingType;
-import org.hibernate.metamodel.mapping.ValueMapping;
 import org.hibernate.metamodel.mapping.ValuedModelPart;
-import org.hibernate.metamodel.spi.EmbeddableInstantiator;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.BasicType;
@@ -31,12 +27,12 @@ import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.java.spi.UnknownBasicJavaType;
 import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
-import org.hibernate.type.descriptor.jdbc.ArrayJdbcType;
 import org.hibernate.type.descriptor.jdbc.BasicBinder;
 import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.spi.TypeConfiguration;
 
+import static org.hibernate.dialect.StructHelper.getInstantiator;
 import static org.hibernate.dialect.StructHelper.getValuedModelPart;
 
 /**
@@ -217,7 +213,7 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 						options
 				);
 				//noinspection unchecked
-				return (X) embeddableMappingType.getRepresentationStrategy().getInstantiator().instantiate(
+				return (X) getInstantiator( embeddableMappingType, attributeValues ).instantiate(
 						() -> attributeValues,
 						options.getSessionFactory()
 				);
@@ -230,18 +226,17 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 			int[] orderMapping,
 			Object[] rawJdbcValues,
 			WrapperOptions options) throws SQLException {
-		// todo marco : change this too for ComponentType#extract
-		// todo marco : see StructEmbeddableTest for stored procedures
 		final int numberOfAttributeMappings = embeddableMappingType.getNumberOfAttributeMappings();
+		final int size = numberOfAttributeMappings + ( embeddableMappingType.isPolymorphic() ? 1 : 0 );
 		final Object[] attributeValues;
-		if ( numberOfAttributeMappings != rawJdbcValues.length || orderMapping != null ) {
-			attributeValues = new Object[numberOfAttributeMappings];
+		if ( size != rawJdbcValues.length || orderMapping != null ) {
+			attributeValues = new Object[size];
 		}
 		else {
 			attributeValues = rawJdbcValues;
 		}
 		int jdbcIndex = 0;
-		for ( int i = 0; i < numberOfAttributeMappings; i++ ) {
+		for ( int i = 0; i < size; i++ ) {
 			final int attributeIndex;
 			if ( orderMapping == null ) {
 				attributeIndex = i;
@@ -249,9 +244,9 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 			else {
 				attributeIndex = orderMapping[i];
 			}
-			final AttributeMapping attributeMapping = embeddableMappingType.getAttributeMapping( attributeIndex );
+			final ValuedModelPart modelPart = getValuedModelPart( embeddableMappingType, numberOfAttributeMappings, attributeIndex );
 			jdbcIndex += injectAttributeValue(
-					attributeMapping,
+					modelPart,
 					attributeValues,
 					attributeIndex,
 					rawJdbcValues,
@@ -263,13 +258,13 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 	}
 
 	private int injectAttributeValue(
-			AttributeMapping attributeMapping,
+			ValuedModelPart modelPart,
 			Object[] attributeValues,
 			int attributeIndex,
 			Object[] rawJdbcValues,
 			int jdbcIndex,
 			WrapperOptions options) throws SQLException {
-		final MappingType mappedType = attributeMapping.getMappedType();
+		final MappingType mappedType = modelPart.getMappedType();
 		final int jdbcValueCount;
 		final Object rawJdbcValue = rawJdbcValues[jdbcIndex];
 		if ( mappedType instanceof EmbeddableMappingType ) {
@@ -295,8 +290,7 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 					else {
 						subValues = aggregateJdbcType.extractJdbcValues( rawJdbcValue, options );
 					}
-					attributeValues[attributeIndex] = embeddableMappingType.getRepresentationStrategy()
-							.getInstantiator()
+					attributeValues[attributeIndex] = getInstantiator( embeddableMappingType, subValues )
 							.instantiate(
 									() -> subValues,
 									embeddableMappingType.findContainingEntityMapping()
@@ -310,8 +304,7 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 				final Object[] jdbcValues = new Object[jdbcValueCount];
 				System.arraycopy( rawJdbcValues, jdbcIndex, jdbcValues, 0, jdbcValues.length );
 				final Object[] subValues = getAttributeValues( embeddableMappingType, null, jdbcValues, options );
-				attributeValues[attributeIndex] = embeddableMappingType.getRepresentationStrategy()
-						.getInstantiator()
+				attributeValues[attributeIndex] = getInstantiator( embeddableMappingType, subValues )
 						.instantiate(
 								() -> subValues,
 								embeddableMappingType.findContainingEntityMapping()
@@ -321,9 +314,9 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 			}
 		}
 		else {
-			assert attributeMapping.getJdbcTypeCount() == 1;
+			assert modelPart.getJdbcTypeCount() == 1;
 			jdbcValueCount = 1;
-			final JdbcMapping jdbcMapping = attributeMapping.getSingleJdbcMapping();
+			final JdbcMapping jdbcMapping = modelPart.getSingleJdbcMapping();
 			final Object jdbcValue;
 			if ( rawJdbcValue == null ) {
 				jdbcValue = null;
@@ -364,8 +357,6 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 								newArray = new Object[array.length];
 								final AggregateJdbcType aggregateJdbcType = (AggregateJdbcType) elementJdbcType;
 								final EmbeddableMappingType subEmbeddableMappingType = aggregateJdbcType.getEmbeddableMappingType();
-								final EmbeddableInstantiator instantiator = subEmbeddableMappingType.getRepresentationStrategy()
-										.getInstantiator();
 								for ( int j = 0; j < array.length; j++ ) {
 									final Object[] subValues = StructHelper.getAttributeValues(
 											subEmbeddableMappingType,
@@ -375,7 +366,7 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 											),
 											options
 									);
-									newArray[j] = instantiator.instantiate(
+									newArray[j] = getInstantiator( subEmbeddableMappingType, subValues ).instantiate(
 											() -> subValues,
 											options.getSessionFactory()
 									);
@@ -478,8 +469,6 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 									newArray = new Object[array.length];
 									final AggregateJdbcType aggregateJdbcType = (AggregateJdbcType) elementJdbcType;
 									final EmbeddableMappingType subEmbeddableMappingType = aggregateJdbcType.getEmbeddableMappingType();
-									final EmbeddableInstantiator instantiator = subEmbeddableMappingType.getRepresentationStrategy()
-											.getInstantiator();
 									for ( int j = 0; j < array.length; j++ ) {
 										final Object[] subValues = StructHelper.getAttributeValues(
 												subEmbeddableMappingType,
@@ -489,7 +478,7 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 												),
 												options
 										);
-										newArray[j] = instantiator.instantiate(
+										newArray[j] = getInstantiator( subEmbeddableMappingType, subValues ).instantiate(
 												() -> subValues,
 												options.getSessionFactory()
 										);

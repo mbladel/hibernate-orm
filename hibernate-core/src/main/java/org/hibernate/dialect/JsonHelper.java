@@ -22,7 +22,6 @@ import java.util.Objects;
 import org.hibernate.Internal;
 import org.hibernate.internal.util.CharSequenceHelper;
 import org.hibernate.internal.util.collections.ArrayHelper;
-import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.MappingType;
@@ -42,6 +41,7 @@ import org.hibernate.type.descriptor.java.OffsetDateTimeJavaType;
 import org.hibernate.type.descriptor.java.PrimitiveByteArrayJavaType;
 import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 
+import static org.hibernate.dialect.StructHelper.getInstantiator;
 import static org.hibernate.dialect.StructHelper.getValuedModelPart;
 import static org.hibernate.dialect.StructHelper.getValues;
 
@@ -311,7 +311,7 @@ public class JsonHelper {
 					options
 			);
 			//noinspection unchecked
-			return (X) embeddableMappingType.getRepresentationStrategy().getInstantiator().instantiate(
+			return (X) getInstantiator( embeddableMappingType, attributeValues ).instantiate(
 					() -> attributeValues,
 					options.getSessionFactory()
 			);
@@ -451,8 +451,7 @@ public class JsonHelper {
 										subValues,
 										options
 								);
-								values[selectableIndex] = embeddableMappingType.getRepresentationStrategy()
-										.getInstantiator()
+								values[selectableIndex] = getInstantiator( embeddableMappingType, attributeValues )
 										.instantiate(
 												() -> attributeValues,
 												options.getSessionFactory()
@@ -1120,8 +1119,7 @@ public class JsonHelper {
 					);
 					if ( returnEmbeddable ) {
 						final EmbeddableMappingType embeddableMappingType = aggregateJdbcType.getEmbeddableMappingType();
-						return embeddableMappingType.getRepresentationStrategy()
-								.getInstantiator()
+						return getInstantiator( embeddableMappingType, subValues )
 								.instantiate(
 										() -> subValues,
 										options.getSessionFactory()

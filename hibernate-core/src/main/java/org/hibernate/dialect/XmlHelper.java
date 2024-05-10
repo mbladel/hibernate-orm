@@ -21,7 +21,6 @@ import org.hibernate.internal.util.CharSequenceHelper;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.SelectableMapping;
-import org.hibernate.metamodel.mapping.ValueMapping;
 import org.hibernate.metamodel.mapping.ValuedModelPart;
 import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
 import org.hibernate.sql.ast.spi.SqlAppender;
@@ -35,6 +34,7 @@ import org.hibernate.type.descriptor.java.JdbcTimestampJavaType;
 import org.hibernate.type.descriptor.java.OffsetDateTimeJavaType;
 import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 
+import static org.hibernate.dialect.StructHelper.getInstantiator;
 import static org.hibernate.dialect.StructHelper.getValuedModelPart;
 import static org.hibernate.dialect.StructHelper.getValues;
 
@@ -246,7 +246,7 @@ public class XmlHelper {
 		if ( returnEmbeddable ) {
 			final Object[] attributeValues = StructHelper.getAttributeValues( embeddableMappingType, array, options );
 			//noinspection unchecked
-			return (X) embeddableMappingType.getRepresentationStrategy().getInstantiator().instantiate(
+			return (X) getInstantiator( embeddableMappingType, attributeValues ).instantiate(
 					() -> attributeValues,
 					options.getSessionFactory()
 			);
@@ -425,8 +425,7 @@ public class XmlHelper {
 										subValues,
 										options
 								);
-								final Object subValue = subMappingType.getRepresentationStrategy()
-										.getInstantiator()
+								final Object subValue = getInstantiator( subMappingType, attributeValues )
 										.instantiate( () -> attributeValues, options.getSessionFactory() );
 								values[selectableIndex] = subValue;
 							}

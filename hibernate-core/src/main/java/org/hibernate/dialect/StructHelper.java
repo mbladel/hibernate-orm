@@ -13,12 +13,12 @@ import java.sql.NClob;
 import java.sql.SQLException;
 
 import org.hibernate.Internal;
-import org.hibernate.metamodel.mapping.AttributeMapping;
-import org.hibernate.metamodel.mapping.DiscriminatorConverter;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.MappingType;
 import org.hibernate.metamodel.mapping.ValuedModelPart;
+import org.hibernate.metamodel.spi.EmbeddableInstantiator;
+import org.hibernate.metamodel.spi.EmbeddableRepresentationStrategy;
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.java.JavaType;
@@ -35,29 +35,34 @@ public class StructHelper {
 			Object[] rawJdbcValues,
 			WrapperOptions options) throws SQLException {
 		final int numberOfAttributeMappings = embeddableMappingType.getNumberOfAttributeMappings();
+		final int size = numberOfAttributeMappings + ( embeddableMappingType.isPolymorphic() ? 1 : 0 );
 		final Object[] attributeValues;
-		if ( numberOfAttributeMappings != rawJdbcValues.length ) {
-			attributeValues = new Object[numberOfAttributeMappings];
+		if ( size != rawJdbcValues.length ) {
+			attributeValues = new Object[size];
 		}
 		else {
 			attributeValues = rawJdbcValues;
 		}
 		int jdbcIndex = 0;
-		for ( int i = 0; i < numberOfAttributeMappings; i++ ) {
-			final AttributeMapping attributeMapping = embeddableMappingType.getAttributeMapping( i );
-			jdbcIndex += injectAttributeValue( attributeMapping, attributeValues, i, rawJdbcValues, jdbcIndex, options );
+		for ( int i = 0; i < size; i++ ) {
+			final ValuedModelPart valuedModelPart = getValuedModelPart(
+					embeddableMappingType,
+					numberOfAttributeMappings,
+					i
+			);
+			jdbcIndex += injectAttributeValue( valuedModelPart, attributeValues, i, rawJdbcValues, jdbcIndex, options );
 		}
 		return attributeValues;
 	}
 
 	private static int injectAttributeValue(
-			AttributeMapping attributeMapping,
+			ValuedModelPart modelPart,
 			Object[] attributeValues,
 			int attributeIndex,
 			Object[] rawJdbcValues,
 			int jdbcIndex,
 			WrapperOptions options) throws SQLException {
-		final MappingType mappedType = attributeMapping.getMappedType();
+		final MappingType mappedType = modelPart.getMappedType();
 		final int jdbcValueCount;
 		final Object rawJdbcValue = rawJdbcValues[jdbcIndex];
 		if ( mappedType instanceof EmbeddableMappingType ) {
@@ -71,8 +76,7 @@ public class StructHelper {
 				final Object[] subJdbcValues = new Object[jdbcValueCount];
 				System.arraycopy( rawJdbcValues, jdbcIndex, subJdbcValues, 0, subJdbcValues.length );
 				final Object[] subValues = getAttributeValues( embeddableMappingType, subJdbcValues, options );
-				attributeValues[attributeIndex] = embeddableMappingType.getRepresentationStrategy()
-						.getInstantiator()
+				attributeValues[attributeIndex] = getInstantiator( embeddableMappingType, subValues )
 						.instantiate(
 								() -> subValues,
 								embeddableMappingType.findContainingEntityMapping()
@@ -82,9 +86,9 @@ public class StructHelper {
 			}
 		}
 		else {
-			assert attributeMapping.getJdbcTypeCount() == 1;
+			assert modelPart.getJdbcTypeCount() == 1;
 			jdbcValueCount = 1;
-			final JdbcMapping jdbcMapping = attributeMapping.getSingleJdbcMapping();
+			final JdbcMapping jdbcMapping = modelPart.getSingleJdbcMapping();
 			final Object jdbcValue = jdbcMapping.getJdbcJavaType().wrap(
 					rawJdbcValue,
 					options
@@ -141,6 +145,17 @@ public class StructHelper {
 		}
 		else {
 			return attributeValues;
+		}
+	}
+
+	public static EmbeddableInstantiator getInstantiator(EmbeddableMappingType embeddableMappingType, Object[] values) {
+		final EmbeddableRepresentationStrategy representationStrategy = embeddableMappingType.getRepresentationStrategy();
+		if ( !embeddableMappingType.isPolymorphic() ) {
+			return representationStrategy.getInstantiator();
+		}
+		else {
+			assert values.length == embeddableMappingType.getNumberOfAttributeMappings() + 1;
+			return representationStrategy.getInstantiator( values[values.length - 1] );
 		}
 	}
 
