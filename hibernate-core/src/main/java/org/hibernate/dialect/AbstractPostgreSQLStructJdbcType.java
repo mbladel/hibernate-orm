@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.TimeZone;
 
 import org.hibernate.internal.util.CharSequenceHelper;
-import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.BasicValuedMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
@@ -195,8 +194,8 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 		if ( returnEmbeddable ) {
 			final StructAttributeValues attributeValues = getAttributeValues( embeddableMappingType, orderMapping, array, options );
 			//noinspection unchecked
-			return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminatorValue() ).instantiate(
-					attributeValues::getAttributeValues,
+			return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminator() ).instantiate(
+					attributeValues,
 					options.getSessionFactory()
 			);
 		}
@@ -477,8 +476,8 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 											subValues,
 											options
 									);
-									final Object subValue = getInstantiator( structJdbcType.embeddableMappingType, attributeValues.getDiscriminatorValue() )
-											.instantiate( attributeValues::getAttributeValues, options.getSessionFactory() );
+									final Object subValue = getInstantiator( structJdbcType.embeddableMappingType, attributeValues.getDiscriminator() )
+											.instantiate( attributeValues, options.getSessionFactory() );
 									values[column] = subValue;
 								}
 								else {
@@ -878,8 +877,8 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 											subValues,
 											options
 									);
-									final Object subValue = getInstantiator( structJdbcType.embeddableMappingType, attributeValues.getDiscriminatorValue() )
-											.instantiate( attributeValues::getAttributeValues, options.getSessionFactory() );
+									final Object subValue = getInstantiator( structJdbcType.embeddableMappingType, attributeValues.getDiscriminator() )
+											.instantiate( attributeValues, options.getSessionFactory() );
 									values.add( subValue );
 								}
 								else {
@@ -1461,7 +1460,7 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 			final EmbeddableMappingType embeddableMappingType = (EmbeddableMappingType) mappedType;
 			if ( embeddableMappingType.getAggregateMapping() != null ) {
 				jdbcValueCount = 1;
-				attributeValues.setAttributeValue( attributeIndex, rawJdbcValue );
+				attributeValues.setValue( attributeIndex, rawJdbcValue );
 			}
 			else {
 				jdbcValueCount = embeddableMappingType.getJdbcValueCount();
@@ -1473,13 +1472,13 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 						subJdbcValues,
 						options
 				);
-				attributeValues.setAttributeValue(
+				attributeValues.setValue(
 						attributeIndex,
 						getInstantiator(
 								embeddableMappingType,
-								subValues.getDiscriminatorValue()
+								subValues.getDiscriminator()
 						).instantiate(
-								subValues::getAttributeValues,
+								subValues,
 								embeddableMappingType.findContainingEntityMapping()
 										.getEntityPersister()
 										.getFactory()
@@ -1495,7 +1494,7 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 					rawJdbcValue,
 					options
 			);
-			attributeValues.setAttributeValue( attributeIndex, jdbcMapping.convertToDomainValue( jdbcValue ) );
+			attributeValues.setValue( attributeIndex, jdbcMapping.convertToDomainValue( jdbcValue ) );
 		}
 		return jdbcValueCount;
 	}

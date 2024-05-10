@@ -20,7 +20,6 @@ import org.hibernate.dialect.StructHelper;
 import org.hibernate.engine.jdbc.Size;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
-import org.hibernate.metamodel.spi.EmbeddableInstantiator;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.descriptor.ValueBinder;
 import org.hibernate.type.descriptor.ValueExtractor;
@@ -165,8 +164,8 @@ public class ArrayJdbcType implements JdbcType {
 				);
 				domainObjects[i] = getInstantiator(
 						embeddableMappingType,
-						attributeValues.getDiscriminatorValue()
-				).instantiate( attributeValues::getAttributeValues, options.getSessionFactory() );
+						attributeValues.getDiscriminator()
+				).instantiate( attributeValues, options.getSessionFactory() );
 			}
 			return extractor.getJavaType().wrap( domainObjects, options );
 		}

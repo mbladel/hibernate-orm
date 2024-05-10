@@ -213,8 +213,8 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 						options
 				);
 				//noinspection unchecked
-				return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminatorValue() ).instantiate(
-						attributeValues::getAttributeValues,
+				return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminator() ).instantiate(
+						attributeValues,
 						options.getSessionFactory()
 				);
 			}
@@ -271,7 +271,7 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 			if ( embeddableMappingType.getAggregateMapping() != null ) {
 				jdbcValueCount = 1;
 				if ( rawJdbcValue == null ) {
-					attributeValues.setAttributeValue( attributeIndex, null );
+					attributeValues.setValue( attributeIndex, null );
 				}
 				else {
 					final AggregateJdbcType aggregateJdbcType = (AggregateJdbcType) embeddableMappingType.getAggregateMapping()
@@ -287,21 +287,20 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 						);
 					}
 					else {
-						subValues = new StructAttributeValues(
-								embeddableMappingType.getJdbcValueCount(),
-								aggregateJdbcType.extractJdbcValues(
-										rawJdbcValue,
-										options
-								)
+						subValues = getAttributeValues(
+								embeddableMappingType,
+								null,
+								aggregateJdbcType.extractJdbcValues( rawJdbcValue, options ),
+								options
 						);
 					}
-					attributeValues.setAttributeValue(
+					attributeValues.setValue(
 							attributeIndex,
 							getInstantiator(
 									embeddableMappingType,
-									subValues.getDiscriminatorValue()
+									subValues.getDiscriminator()
 							).instantiate(
-									subValues::getAttributeValues,
+									subValues,
 									embeddableMappingType.findContainingEntityMapping()
 											.getEntityPersister()
 											.getFactory()
@@ -314,13 +313,13 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 				final Object[] jdbcValues = new Object[jdbcValueCount];
 				System.arraycopy( rawJdbcValues, jdbcIndex, jdbcValues, 0, jdbcValues.length );
 				final StructAttributeValues subValues = getAttributeValues( embeddableMappingType, null, jdbcValues, options );
-				attributeValues.setAttributeValue(
+				attributeValues.setValue(
 						attributeIndex,
 						getInstantiator(
 								embeddableMappingType,
-								subValues.getDiscriminatorValue()
+								subValues.getDiscriminator()
 						).instantiate(
-								subValues::getAttributeValues,
+								subValues,
 								embeddableMappingType.findContainingEntityMapping()
 										.getEntityPersister()
 										.getFactory()
@@ -381,8 +380,8 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 											),
 											options
 									);
-									newArray[j] = getInstantiator( subEmbeddableMappingType, subValues.getDiscriminatorValue() ).instantiate(
-											subValues::getAttributeValues,
+									newArray[j] = getInstantiator( subEmbeddableMappingType, subValues.getDiscriminator() ).instantiate(
+											subValues,
 											options.getSessionFactory()
 									);
 								}
@@ -398,7 +397,7 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 						break;
 				}
 			}
-			attributeValues.setAttributeValue( attributeIndex, jdbcMapping.convertToDomainValue( jdbcValue ) );
+			attributeValues.setValue( attributeIndex, jdbcMapping.convertToDomainValue( jdbcValue ) );
 		}
 		return jdbcValueCount;
 	}
@@ -493,8 +492,8 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 												),
 												options
 										);
-										newArray[j] = getInstantiator( subEmbeddableMappingType, subValues.getDiscriminatorValue() ).instantiate(
-												subValues::getAttributeValues,
+										newArray[j] = getInstantiator( subEmbeddableMappingType, subValues.getDiscriminator() ).instantiate(
+												subValues,
 												options.getSessionFactory()
 										);
 									}

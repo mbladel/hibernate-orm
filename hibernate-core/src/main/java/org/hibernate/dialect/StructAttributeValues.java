@@ -6,38 +6,41 @@
  */
 package org.hibernate.dialect;
 
+import org.hibernate.metamodel.spi.ValueAccess;
+
 /**
  * @author Marco Belladelli
  */
-public class StructAttributeValues {
-	private final Object[] attributeValues;
-	private final int numberOfAttributeMappings;
-	private Object discriminatorValue;
+public class StructAttributeValues implements ValueAccess {
+	private final Object[] values;
+	private final int size;
+	private Object discriminator;
 
-	public StructAttributeValues(int numberOfAttributeMappings, Object[] rawJdbcValues) {
-		if ( rawJdbcValues == null || numberOfAttributeMappings != rawJdbcValues.length) {
-			attributeValues = new Object[numberOfAttributeMappings];
+	public StructAttributeValues(int size, Object[] rawJdbcValues) {
+		if ( rawJdbcValues == null || size != rawJdbcValues.length ) {
+			values = new Object[size];
 		}
 		else {
-			attributeValues = rawJdbcValues;
+			values = rawJdbcValues;
 		}
-		this.numberOfAttributeMappings = numberOfAttributeMappings;
+		this.size = size;
 	}
 
-	public void setAttributeValue(int index, Object value) {
-		if ( index == numberOfAttributeMappings ) {
-			discriminatorValue = value;
+	public void setValue(int index, Object value) {
+		if ( index == size ) {
+			discriminator = value;
 		}
 		else {
-			attributeValues[index] = value;
+			values[index] = value;
 		}
 	}
 
-	public Object[] getAttributeValues() {
-		return attributeValues;
+	@Override
+	public Object[] getValues() {
+		return values;
 	}
 
-	public Object getDiscriminatorValue() {
-		return discriminatorValue;
+	public Object getDiscriminator() {
+		return discriminator;
 	}
 }

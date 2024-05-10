@@ -62,20 +62,20 @@ public class StructHelper {
 			final EmbeddableMappingType embeddableMappingType = (EmbeddableMappingType) mappedType;
 			if ( embeddableMappingType.getAggregateMapping() != null ) {
 				jdbcValueCount = 1;
-				attributeValues.setAttributeValue( attributeIndex, rawJdbcValue );
+				attributeValues.setValue( attributeIndex, rawJdbcValue );
 			}
 			else {
 				jdbcValueCount = embeddableMappingType.getJdbcValueCount();
 				final Object[] subJdbcValues = new Object[jdbcValueCount];
 				System.arraycopy( rawJdbcValues, jdbcIndex, subJdbcValues, 0, subJdbcValues.length );
 				final StructAttributeValues subValues = getAttributeValues( embeddableMappingType, subJdbcValues, options );
-				attributeValues.setAttributeValue(
+				attributeValues.setValue(
 						attributeIndex,
 						getInstantiator(
 								embeddableMappingType,
-								subValues.getDiscriminatorValue()
+								subValues.getDiscriminator()
 						).instantiate(
-								subValues::getAttributeValues,
+								subValues,
 								embeddableMappingType.findContainingEntityMapping()
 										.getEntityPersister()
 										.getFactory()
@@ -91,7 +91,7 @@ public class StructHelper {
 					rawJdbcValue,
 					options
 			);
-			attributeValues.setAttributeValue( attributeIndex, jdbcMapping.convertToDomainValue( jdbcValue ) );
+			attributeValues.setValue( attributeIndex, jdbcMapping.convertToDomainValue( jdbcValue ) );
 		}
 		return jdbcValueCount;
 	}

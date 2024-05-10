@@ -311,8 +311,8 @@ public class JsonHelper {
 					options
 			);
 			//noinspection unchecked
-			return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminatorValue() ).instantiate(
-					attributeValues::getAttributeValues,
+			return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminator() ).instantiate(
+					attributeValues,
 					options.getSessionFactory()
 			);
 		}
@@ -451,9 +451,9 @@ public class JsonHelper {
 										subValues,
 										options
 								);
-								values[selectableIndex] = getInstantiator( embeddableMappingType, attributeValues.getDiscriminatorValue())
+								values[selectableIndex] = getInstantiator( embeddableMappingType, attributeValues.getDiscriminator())
 										.instantiate(
-												attributeValues::getAttributeValues,
+												attributeValues,
 												options.getSessionFactory()
 										);
 							}
