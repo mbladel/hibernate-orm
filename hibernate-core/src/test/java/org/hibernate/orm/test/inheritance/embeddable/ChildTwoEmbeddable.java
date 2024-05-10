@@ -7,7 +7,6 @@
 package org.hibernate.orm.test.inheritance.embeddable;
 
 import jakarta.persistence.Embeddable;
-import jakarta.persistence.ManyToOne;
 
 /**
  * @author Marco Belladelli

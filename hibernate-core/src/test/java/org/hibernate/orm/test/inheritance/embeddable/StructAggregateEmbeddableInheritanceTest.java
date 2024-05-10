@@ -6,7 +6,6 @@
  */
 package org.hibernate.orm.test.inheritance.embeddable;
 
-import java.util.List;
 import java.util.Set;
 
 import org.hibernate.annotations.Struct;
@@ -23,7 +22,6 @@ import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.OracleDialect;
 import org.hibernate.dialect.PostgreSQLDialect;
 import org.hibernate.dialect.PostgresPlusDialect;
-import org.hibernate.orm.test.mapping.embeddable.EmbeddableAggregate;
 import org.hibernate.procedure.ProcedureCall;
 import org.hibernate.query.procedure.ProcedureParameter;
 
@@ -45,8 +43,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.ParameterMode;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 /**
  * @author Marco Belladelli
@@ -157,8 +153,10 @@ public class StructAggregateEmbeddableInheritanceTest implements AdditionalMappi
 					.markAsFunctionCall( ParentEmbeddable.class );
 			//noinspection unchecked
 			final ParentEmbeddable result = (ParentEmbeddable) structFunction.getSingleResult();
-			assertThat( result ).isInstanceOf( ParentEmbeddable.class );
-			// todo marco : better assertions
+			assertThat( result.getParentProp() ).isEqualTo( "function_embeddable" );
+			assertThat( result ).isExactlyInstanceOf( SubChildOneEmbeddable.class );
+			assertThat( ( (SubChildOneEmbeddable) result ).getChildOneProp() ).isEqualTo( 1 );
+			assertThat( ( (SubChildOneEmbeddable) result ).getSubChildOneProp() ).isEqualTo( 1.0 );
 		} );
 	}
 
@@ -185,6 +183,9 @@ public class StructAggregateEmbeddableInheritanceTest implements AdditionalMappi
 			structFunction.setParameter( resultParameter, null );
 			final ParentEmbeddable result = structFunction.getOutputs().getOutputParameterValue( resultParameter );
 			assertThat( result ).isInstanceOf( ParentEmbeddable.class );
+			assertThat( result.getParentProp() ).isEqualTo( "procedure_embeddable" );
+			assertThat( result ).isExactlyInstanceOf( ChildTwoEmbeddable.class );
+			assertThat( ( (ChildTwoEmbeddable) result ).getChildTwoProp() ).isEqualTo( 2 );
 		} );
 	}
 
@@ -233,7 +234,7 @@ public class StructAggregateEmbeddableInheritanceTest implements AdditionalMappi
 				new NamedAuxiliaryDatabaseObject(
 						"PostgreSQL structProcedure",
 						namespace,
-						"create procedure structProcedure(INOUT result inheritance_embeddable) AS $$ declare res inheritance_embeddable; begin result.parentProp = 'function_embeddable'; result.childOneProp = null; result.subChildOneProp = null; result.childTwoProp = 1; result.embeddable_type = 'child_two'; result = res; end $$ language plpgsql",
+						"create procedure structProcedure(INOUT result inheritance_embeddable) AS $$ declare res inheritance_embeddable; begin res.parentProp = 'procedure_embeddable'; res.childOneProp = null; res.subChildOneProp = null; res.childTwoProp = 2; res.embeddable_type = 'ChildTwoEmbeddable'; result = res; end $$ language plpgsql",
 						"drop procedure structProcedure",
 						Set.of( PostgreSQLDialect.class.getName() )
 				)
@@ -247,7 +248,7 @@ public class StructAggregateEmbeddableInheritanceTest implements AdditionalMappi
 				new NamedAuxiliaryDatabaseObject(
 						"PostgrePlus structFunction",
 						namespace,
-						"create function structFunction() returns structType as $$ declare result structType; begin result.theBinary = bytea '\\x01'; result.theString = 'ABC'; result.theDouble = 0; result.theInt = 0; result.theLocalDateTime = timestamp '2022-12-01 01:00:00'; result.theUuid = '53886a8a-7082-4879-b430-25cb94415be8'::uuid; return result; end $$ language plpgsql",
+						"create function structFunction() returns inheritance_embeddable as $$ declare result inheritance_embeddable; begin result.parentProp = 'function_embeddable'; result.childOneProp = 1; result.subChildOneProp = 1.0; result.childTwoProp = null; result.embeddable_type = 'sub_child_one'; return result; end $$ language plpgsql",
 						"drop function structFunction",
 						Set.of( PostgresPlusDialect.class.getName() )
 				)
@@ -256,7 +257,7 @@ public class StructAggregateEmbeddableInheritanceTest implements AdditionalMappi
 				new NamedAuxiliaryDatabaseObject(
 						"PostgrePlus structProcedure",
 						namespace,
-						"create procedure structProcedure(result INOUT structType) AS $$ declare res structType; begin res.theBinary = bytea '\\x01'; res.theString = 'ABC'; res.theDouble = 0; res.theInt = 0; res.theLocalDateTime = timestamp '2022-12-01 01:00:00'; res.theUuid = '53886a8a-7082-4879-b430-25cb94415be8'::uuid; result = res; end $$ language plpgsql",
+						"create procedure structProcedure(result INOUT inheritance_embeddable) AS $$ declare res inheritance_embeddable; begin res.parentProp = 'procedure_embeddable'; res.childOneProp = null; res.subChildOneProp = null; res.childTwoProp = 2; res.embeddable_type = 'ChildTwoEmbeddable'; result = res; end $$ language plpgsql",
 						"drop procedure structProcedure",
 						Set.of( PostgresPlusDialect.class.getName() )
 				)
@@ -265,25 +266,12 @@ public class StructAggregateEmbeddableInheritanceTest implements AdditionalMappi
 		//---------------------------------------------------------
 		// DB2
 		//---------------------------------------------------------
-		final String binaryType;
-		final String binaryLiteralPrefix;
-		if ( metadata.getDatabase().getDialect().getVersion().isBefore( 11 ) ) {
-			binaryType = "char(16) for bit data";
-			binaryLiteralPrefix = "x";
-		}
-		else {
-			binaryType = "binary(16)";
-			binaryLiteralPrefix = "bx";
-		}
 
 		contributions.contributeAuxiliaryDatabaseObject(
 				new NamedAuxiliaryDatabaseObject(
 						"DB2 structFunction",
 						namespace,
-						"create function structFunction() returns structType language sql RETURN select structType()..theBinary(" + binaryLiteralPrefix + "'01')..theString('ABC')..theDouble(0)..theInt(0)..theLocalDateTime(timestamp '2022-12-01 01:00:00')..theUuid(cast(" + binaryLiteralPrefix + "'" +
-								// UUID is already in HEX encoding, but we have to remove the dashes
-								"53886a8a-7082-4879-b430-25cb94415be8".replace( "-", "" )
-								+ "' as " + binaryType + ")) from (values (1)) t",
+						"create function structFunction() returns inheritance_embeddable language sql RETURN select inheritance_embeddable()..parentProp('function_embeddable')..childOneProp(1)..subChildOneProp(1.0)..childTwoProp(nul)..embeddable_type('sub_child_one')) from (values (1)) t",
 						"drop function structFunction",
 						Set.of( DB2Dialect.class.getName() )
 				)
@@ -297,33 +285,13 @@ public class StructAggregateEmbeddableInheritanceTest implements AdditionalMappi
 				new NamedAuxiliaryDatabaseObject(
 						"Oracle structFunction",
 						namespace,
-						"create function structFunction return structType is result structType; begin " +
-								"result := structType(" +
-								"theBinary => hextoraw('01')," +
-								"theString => 'ABC'," +
-								"theDouble => 0," +
-								"theInt => 0," +
-								"theLocalDateTime => timestamp '2022-12-01 01:00:00'," +
-								"theUuid => hextoraw('53886a8a70824879b43025cb94415be8')," +
-								"converted_gender => null," +
-								"gender => null," +
-								"mutableValue => null," +
-								"ordinal_gender => null," +
-								"theBoolean => null," +
-								"theClob => null," +
-								"theDate => null," +
-								"theDuration => null," +
-								"theInstant => null," +
-								"theInteger => null," +
-								"theLocalDate => null," +
-								"theLocalTime => null," +
-								"theNumericBoolean => null," +
-								"theOffsetDateTime => null," +
-								"theStringBoolean => null," +
-								"theTime => null," +
-								"theTimestamp => null," +
-								"theUrl => null," +
-								"theZonedDateTime => null" +
+						"create function structFunction return inheritance_embeddable is result inheritance_embeddable; begin " +
+								"result := inheritance_embeddable(" +
+								"parentProp => 'function_embeddable'," +
+								"childOneProp => 1," +
+								"subChildOneProp => 1.0," +
+								"childTwoProp => null," +
+								"embeddable_type => 'sub_child_one'" +
 								"); return result; end;",
 						"drop function structFunction",
 						Set.of( OracleDialect.class.getName() )
@@ -333,33 +301,13 @@ public class StructAggregateEmbeddableInheritanceTest implements AdditionalMappi
 				new NamedAuxiliaryDatabaseObject(
 						"Oracle structProcedure",
 						namespace,
-						"create procedure structProcedure(result OUT structType) AS begin " +
-								"result := structType(" +
-								"theBinary => hextoraw('01')," +
-								"theString => 'ABC'," +
-								"theDouble => 0," +
-								"theInt => 0," +
-								"theLocalDateTime => timestamp '2022-12-01 01:00:00'," +
-								"theUuid => hextoraw('53886a8a70824879b43025cb94415be8')," +
-								"converted_gender => null," +
-								"gender => null," +
-								"mutableValue => null," +
-								"ordinal_gender => null," +
-								"theBoolean => null," +
-								"theClob => null," +
-								"theDate => null," +
-								"theDuration => null," +
-								"theInstant => null," +
-								"theInteger => null," +
-								"theLocalDate => null," +
-								"theLocalTime => null," +
-								"theNumericBoolean => null," +
-								"theOffsetDateTime => null," +
-								"theStringBoolean => null," +
-								"theTime => null," +
-								"theTimestamp => null," +
-								"theUrl => null," +
-								"theZonedDateTime => null" +
+						"create procedure structProcedure(result OUT inheritance_embeddable) AS begin " +
+								"result := inheritance_embeddable(" +
+								"parentProp => 'procedure_embeddable'," +
+								"childOneProp => null," +
+								"subChildOneProp => null," +
+								"childTwoProp => 2," +
+								"embeddable_type => 'ChildTwoEmbeddable'" +
 								"); end;",
 						"drop procedure structProcedure",
 						Set.of( OracleDialect.class.getName() )
