@@ -30,12 +30,13 @@ import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.ArrayHelper;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.Property;
-import org.hibernate.mapping.Value;
+import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess;
 import org.hibernate.metamodel.spi.EmbeddableInstantiator;
+import org.hibernate.metamodel.spi.EmbeddableRepresentationStrategy;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.query.sqm.SqmExpressible;
 import org.hibernate.type.descriptor.ValueExtractor;
@@ -582,9 +583,17 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 			return null;
 		}
 		else {
-			final Object[] values = getPropertyValues( value );
-			for ( int i = 0; i < propertyTypes.length; i++ ) {
-				values[i] = propertyTypes[i].disassemble( values[i], session, owner );
+			final boolean polymorphic = embeddableTypeDescriptor().isPolymorphic();
+			final Object[] values = new Object[propertySpan + (polymorphic ? 1 : 0)];
+			final Object[] propertyValues = getPropertyValues( value );
+			int i = 0;
+			for ( ; i < propertySpan; i++ ) {
+				values[i] = propertyTypes[i].disassemble( propertyValues[i], session, owner );
+			}
+			if ( polymorphic ) {
+				final EmbeddableDiscriminatorMapping discriminatorMapping = embeddableTypeDescriptor().getDiscriminatorMapping();
+				final Object discriminatorValue = discriminatorMapping.getDiscriminatorValue( value.getClass().getName() );
+				values[i] = discriminatorMapping.disassemble( discriminatorValue, session );
 			}
 			return values;
 		}
@@ -597,9 +606,17 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 			return null;
 		}
 		else {
-			final Object[] values = getPropertyValues( value );
-			for ( int i = 0; i < propertyTypes.length; i++ ) {
-				values[i] = propertyTypes[i].disassemble( values[i], sessionFactory );
+			final boolean polymorphic = embeddableTypeDescriptor().isPolymorphic();
+			final Object[] values = new Object[propertySpan + (polymorphic ? 1 : 0)];
+			final Object[] propertyValues = getPropertyValues( value );
+			int i = 0;
+			for ( ; i < propertyTypes.length; i++ ) {
+				values[i] = propertyTypes[i].disassemble( propertyValues[i], sessionFactory );
+			}
+			if ( polymorphic ) {
+				final EmbeddableDiscriminatorMapping discriminatorMapping = embeddableTypeDescriptor().getDiscriminatorMapping();
+				final Object discriminatorValue = discriminatorMapping.getDiscriminatorValue( value.getClass().getName() );
+				values[i] = discriminatorMapping.disassemble( discriminatorValue, null );
 			}
 			return values;
 		}
@@ -608,18 +625,23 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 	@Override
 	public Object assemble(Serializable object, SharedSessionContractImplementor session, Object owner)
 			throws HibernateException {
-
 		if ( object == null ) {
 			return null;
 		}
 		else {
 			final Object[] values = (Object[]) object;
-			final Object[] assembled = new Object[values.length];
-			for ( int i = 0; i < propertyTypes.length; i++ ) {
+			final boolean polymorphic = embeddableTypeDescriptor().isPolymorphic();
+			final Object[] assembled = new Object[values.length - ( polymorphic ? 1 : 0 )];
+			int i = 0;
+			for ( ; i < propertyTypes.length; i++ ) {
 				assembled[i] = propertyTypes[i].assemble( (Serializable) values[i], session, owner );
 			}
 
-			final Object instance = instantiator( owner ).instantiate( () -> assembled, session.getFactory() );
+			final EmbeddableRepresentationStrategy representationStrategy = embeddableTypeDescriptor().getRepresentationStrategy();
+			final EmbeddableInstantiator instantiator = polymorphic ?
+					representationStrategy.getInstantiator( values[i] ) :
+					representationStrategy.getInstantiator();
+			final Object instance = instantiator.instantiate( () -> assembled, session.getFactory() );
 
 			final PropertyAccess parentInjectionAccess = mappingModelPart.getParentInjectionAttributePropertyAccess();
 			if ( parentInjectionAccess != null ) {
@@ -714,7 +736,8 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 			values = (Object[]) jdbcValueExtractor().extract( statement, startIndex, session );
 		}
 		else {
-			values = new Object[propertySpan];
+			final boolean polymorphic = embeddableTypeDescriptor().isPolymorphic();
+			values = new Object[propertySpan + ( polymorphic ? 1 : 0 )];
 			int currentIndex = startIndex;
 			boolean notNull = false;
 			for ( int i = 0; i < propertySpan; i++ ) {
@@ -735,6 +758,17 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 				currentIndex += propertyType.getColumnSpan( session.getFactory() );
 			}
 
+			if ( polymorphic ) {
+				values[currentIndex] = embeddableTypeDescriptor().getDiscriminatorMapping()
+						.getJdbcMapping()
+						.getJdbcValueExtractor()
+						.extract(
+								statement,
+								currentIndex,
+								session
+						);
+			}
+
 			if ( !notNull ) {
 				values = null;
 			}
@@ -751,7 +785,18 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 	}
 
 	private Object resolve(Object[] value, SharedSessionContractImplementor session) throws HibernateException {
-		return instantiator( null ).instantiate( () -> value, session.getFactory() );
+		final EmbeddableRepresentationStrategy representationStrategy = embeddableTypeDescriptor().getRepresentationStrategy();
+		final EmbeddableInstantiator instantiator;
+		if ( embeddableTypeDescriptor().isPolymorphic() ) {
+			// the value here is the composite class name because it gets converted to the domain type when extracted
+			instantiator = representationStrategy.getInstantiator(
+					embeddableTypeDescriptor().getDiscriminatorMapping().getDiscriminatorValue( (String) value[value.length - 1] )
+			);
+		}
+		else {
+			instantiator = representationStrategy.getInstantiator();
+		}
+		return instantiator.instantiate( () -> value, session.getFactory() );
 	}
 
 	private EmbeddableMappingType embeddableTypeDescriptor() {
@@ -763,9 +808,18 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 	}
 
 	protected final EmbeddableInstantiator instantiator(Object compositeInstance) {
-		return embeddableTypeDescriptor().getRepresentationStrategy().getInstantiatorForSubclass(
-				compositeInstance != null ? compositeInstance.getClass().getName() : componentClass.getName()
-		);
+		final EmbeddableRepresentationStrategy representationStrategy = embeddableTypeDescriptor().getRepresentationStrategy();
+		if ( embeddableTypeDescriptor().isPolymorphic() ) {
+			final String compositeClassName = compositeInstance != null ?
+					compositeInstance.getClass().getName() :
+					componentClass.getName();
+			return representationStrategy.getInstantiator(
+					embeddableTypeDescriptor().getDiscriminatorMapping().getDiscriminatorValue( compositeClassName )
+			);
+		}
+		else {
+			return representationStrategy.getInstantiator();
+		}
 	}
 
 	@Override

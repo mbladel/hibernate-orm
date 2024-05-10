@@ -6,13 +6,33 @@
  */
 package org.hibernate.orm.test.inheritance.embeddable;
 
-import org.hibernate.annotations.Struct;
+import java.util.Set;
 
+import org.hibernate.annotations.Struct;
+import org.hibernate.boot.ResourceStreamLocator;
+import org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl;
+import org.hibernate.boot.model.relational.NamedAuxiliaryDatabaseObject;
+import org.hibernate.boot.model.relational.Namespace;
+import org.hibernate.boot.spi.AdditionalMappingContributions;
+import org.hibernate.boot.spi.AdditionalMappingContributor;
+import org.hibernate.boot.spi.InFlightMetadataCollector;
+import org.hibernate.boot.spi.MetadataBuildingContext;
+import org.hibernate.dialect.DB2Dialect;
+import org.hibernate.dialect.Dialect;
+import org.hibernate.dialect.OracleDialect;
+import org.hibernate.dialect.PostgreSQLDialect;
+import org.hibernate.dialect.PostgresPlusDialect;
+import org.hibernate.procedure.ProcedureCall;
+import org.hibernate.query.procedure.ProcedureParameter;
+
+import org.hibernate.testing.jdbc.SharedDriverManagerTypeCacheClearingIntegrator;
+import org.hibernate.testing.orm.junit.BootstrapServiceRegistry;
 import org.hibernate.testing.orm.junit.DialectFeatureChecks;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.RequiresDialectFeature;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.hibernate.testing.orm.junit.SkipForDialect;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -20,12 +40,21 @@ import org.junit.jupiter.api.Test;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.ParameterMode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Marco Belladelli
  */
+@BootstrapServiceRegistry(
+		javaServices = @BootstrapServiceRegistry.JavaService(
+				role = AdditionalMappingContributor.class,
+				impl = StructAggregateEmbeddableInheritanceTest.class
+		),
+		// Clear the type cache, otherwise we might run into ORA-21700: object does not exist or is marked for delete
+		integrators = SharedDriverManagerTypeCacheClearingIntegrator.class
+)
 @DomainModel( annotatedClasses = {
 		StructAggregateEmbeddableInheritanceTest.TestEntity.class,
 		ParentEmbeddable.class,
@@ -35,7 +64,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 } )
 @SessionFactory
 @RequiresDialectFeature( feature = DialectFeatureChecks.SupportsStructAggregate.class )
-public class StructAggregateEmbeddableInheritanceTest {
+public class StructAggregateEmbeddableInheritanceTest implements AdditionalMappingContributor {
 	@Test
 	public void testFind(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
@@ -117,6 +146,49 @@ public class StructAggregateEmbeddableInheritanceTest {
 		} );
 	}
 
+	@Test
+	public void testFunction(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final ProcedureCall structFunction = session.createStoredProcedureCall( "structFunction" )
+					.markAsFunctionCall( ParentEmbeddable.class );
+			//noinspection unchecked
+			final ParentEmbeddable result = (ParentEmbeddable) structFunction.getSingleResult();
+			assertThat( result.getParentProp() ).isEqualTo( "function_embeddable" );
+			assertThat( result ).isExactlyInstanceOf( SubChildOneEmbeddable.class );
+			assertThat( ( (SubChildOneEmbeddable) result ).getChildOneProp() ).isEqualTo( 1 );
+			assertThat( ( (SubChildOneEmbeddable) result ).getSubChildOneProp() ).isEqualTo( 1.0 );
+		} );
+	}
+
+	@Test
+	@SkipForDialect( dialectClass = PostgreSQLDialect.class, majorVersion = 10, reason = "Procedures were only introduced in version 11" )
+	@SkipForDialect( dialectClass = PostgresPlusDialect.class, majorVersion = 10, reason = "Procedures were only introduced in version 11" )
+	@SkipForDialect( dialectClass = DB2Dialect.class, reason = "DB2 does not support struct types in procedures" )
+	public void testProcedure(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final Dialect dialect = session.getJdbcServices().getDialect();
+			final ParameterMode parameterMode;
+			if ( dialect instanceof PostgreSQLDialect ) {
+				parameterMode = ParameterMode.INOUT;
+			}
+			else {
+				parameterMode = ParameterMode.OUT;
+			}
+			final ProcedureCall structFunction = session.createStoredProcedureCall( "structProcedure" );
+			final ProcedureParameter<ParentEmbeddable> resultParameter = structFunction.registerParameter(
+					"structType",
+					ParentEmbeddable.class,
+					parameterMode
+			);
+			structFunction.setParameter( resultParameter, null );
+			final ParentEmbeddable result = structFunction.getOutputs().getOutputParameterValue( resultParameter );
+			assertThat( result ).isInstanceOf( ParentEmbeddable.class );
+			assertThat( result.getParentProp() ).isEqualTo( "procedure_embeddable" );
+			assertThat( result ).isExactlyInstanceOf( ChildTwoEmbeddable.class );
+			assertThat( ( (ChildTwoEmbeddable) result ).getChildTwoProp() ).isEqualTo( 2 );
+		} );
+	}
+
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
@@ -131,6 +203,116 @@ public class StructAggregateEmbeddableInheritanceTest {
 	@AfterAll
 	public void tearDown(SessionFactoryScope scope) {
 		scope.inTransaction( session -> session.createMutationQuery( "delete from TestEntity" ).executeUpdate() );
+	}
+
+	@Override
+	public void contribute(
+			AdditionalMappingContributions contributions,
+			InFlightMetadataCollector metadata,
+			ResourceStreamLocator resourceStreamLocator,
+			MetadataBuildingContext buildingContext) {
+		final Namespace namespace = new Namespace(
+				PhysicalNamingStrategyStandardImpl.INSTANCE,
+				null,
+				new Namespace.Name( null, null )
+		);
+
+		//---------------------------------------------------------
+		// PostgreSQL
+		//---------------------------------------------------------
+
+		contributions.contributeAuxiliaryDatabaseObject(
+				new NamedAuxiliaryDatabaseObject(
+						"PostgreSQL structFunction",
+						namespace,
+						"create function structFunction() returns inheritance_embeddable as $$ declare result inheritance_embeddable; begin result.parentProp = 'function_embeddable'; result.childOneProp = 1; result.subChildOneProp = 1.0; result.childTwoProp = null; result.embeddable_type = 'sub_child_one'; return result; end $$ language plpgsql",
+						"drop function structFunction",
+						Set.of( PostgreSQLDialect.class.getName() )
+				)
+		);
+		contributions.contributeAuxiliaryDatabaseObject(
+				new NamedAuxiliaryDatabaseObject(
+						"PostgreSQL structProcedure",
+						namespace,
+						"create procedure structProcedure(INOUT result inheritance_embeddable) AS $$ declare res inheritance_embeddable; begin res.parentProp = 'procedure_embeddable'; res.childOneProp = null; res.subChildOneProp = null; res.childTwoProp = 2; res.embeddable_type = 'ChildTwoEmbeddable'; result = res; end $$ language plpgsql",
+						"drop procedure structProcedure",
+						Set.of( PostgreSQLDialect.class.getName() )
+				)
+		);
+
+		//---------------------------------------------------------
+		// PostgrePlus
+		//---------------------------------------------------------
+
+		contributions.contributeAuxiliaryDatabaseObject(
+				new NamedAuxiliaryDatabaseObject(
+						"PostgrePlus structFunction",
+						namespace,
+						"create function structFunction() returns inheritance_embeddable as $$ declare result inheritance_embeddable; begin result.parentProp = 'function_embeddable'; result.childOneProp = 1; result.subChildOneProp = 1.0; result.childTwoProp = null; result.embeddable_type = 'sub_child_one'; return result; end $$ language plpgsql",
+						"drop function structFunction",
+						Set.of( PostgresPlusDialect.class.getName() )
+				)
+		);
+		contributions.contributeAuxiliaryDatabaseObject(
+				new NamedAuxiliaryDatabaseObject(
+						"PostgrePlus structProcedure",
+						namespace,
+						"create procedure structProcedure(result INOUT inheritance_embeddable) AS $$ declare res inheritance_embeddable; begin res.parentProp = 'procedure_embeddable'; res.childOneProp = null; res.subChildOneProp = null; res.childTwoProp = 2; res.embeddable_type = 'ChildTwoEmbeddable'; result = res; end $$ language plpgsql",
+						"drop procedure structProcedure",
+						Set.of( PostgresPlusDialect.class.getName() )
+				)
+		);
+
+		//---------------------------------------------------------
+		// DB2
+		//---------------------------------------------------------
+
+		contributions.contributeAuxiliaryDatabaseObject(
+				new NamedAuxiliaryDatabaseObject(
+						"DB2 structFunction",
+						namespace,
+						"create function structFunction() returns inheritance_embeddable language sql RETURN select inheritance_embeddable()..parentProp('function_embeddable')..childOneProp(1)..subChildOneProp(1.0)..embeddable_type('sub_child_one') from (values (1)) t",
+						"drop function structFunction",
+						Set.of( DB2Dialect.class.getName() )
+				)
+		);
+
+		//---------------------------------------------------------
+		// Oracle
+		//---------------------------------------------------------
+
+		contributions.contributeAuxiliaryDatabaseObject(
+				new NamedAuxiliaryDatabaseObject(
+						"Oracle structFunction",
+						namespace,
+						"create function structFunction return inheritance_embeddable is result inheritance_embeddable; begin " +
+								"result := inheritance_embeddable(" +
+								"parentProp => 'function_embeddable'," +
+								"childOneProp => 1," +
+								"subChildOneProp => 1.0," +
+								"childTwoProp => null," +
+								"embeddable_type => 'sub_child_one'" +
+								"); return result; end;",
+						"drop function structFunction",
+						Set.of( OracleDialect.class.getName() )
+				)
+		);
+		contributions.contributeAuxiliaryDatabaseObject(
+				new NamedAuxiliaryDatabaseObject(
+						"Oracle structProcedure",
+						namespace,
+						"create procedure structProcedure(result OUT inheritance_embeddable) AS begin " +
+								"result := inheritance_embeddable(" +
+								"parentProp => 'procedure_embeddable'," +
+								"childOneProp => null," +
+								"subChildOneProp => null," +
+								"childTwoProp => 2," +
+								"embeddable_type => 'ChildTwoEmbeddable'" +
+								"); end;",
+						"drop procedure structProcedure",
+						Set.of( OracleDialect.class.getName() )
+				)
+		);
 	}
 
 	@Entity( name = "TestEntity" )

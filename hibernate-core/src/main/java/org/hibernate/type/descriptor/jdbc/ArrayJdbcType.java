@@ -15,11 +15,11 @@ import java.sql.SQLException;
 import java.sql.Types;
 
 import org.hibernate.HibernateException;
+import org.hibernate.dialect.StructAttributeValues;
 import org.hibernate.dialect.StructHelper;
 import org.hibernate.engine.jdbc.Size;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
-import org.hibernate.metamodel.spi.EmbeddableInstantiator;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.descriptor.ValueBinder;
 import org.hibernate.type.descriptor.ValueExtractor;
@@ -33,6 +33,8 @@ import org.hibernate.type.descriptor.sql.spi.DdlTypeRegistry;
 import org.hibernate.type.internal.BasicTypeImpl;
 import org.hibernate.type.internal.ParameterizedTypeImpl;
 import org.hibernate.type.spi.TypeConfiguration;
+
+import static org.hibernate.dialect.StructHelper.getInstantiator;
 
 /**
  * Descriptor for {@link Types#ARRAY ARRAY} handling.
@@ -151,18 +153,19 @@ public class ArrayJdbcType implements JdbcType {
 		if ( array != null && getElementJdbcType() instanceof AggregateJdbcType ) {
 			final AggregateJdbcType aggregateJdbcType = (AggregateJdbcType) getElementJdbcType();
 			final EmbeddableMappingType embeddableMappingType = aggregateJdbcType.getEmbeddableMappingType();
-			final EmbeddableInstantiator instantiator = embeddableMappingType.getRepresentationStrategy()
-					.getInstantiator();
 			final Object rawArray = array.getArray();
 			final Object[] domainObjects = new Object[Array.getLength( rawArray )];
 			for ( int i = 0; i < domainObjects.length; i++ ) {
 				final Object[] aggregateRawValues = aggregateJdbcType.extractJdbcValues( Array.get( rawArray, i ), options );
-				final Object[] attributeValues = StructHelper.getAttributeValues(
+				final StructAttributeValues attributeValues = StructHelper.getAttributeValues(
 						embeddableMappingType,
 						aggregateRawValues,
 						options
 				);
-				domainObjects[i] = instantiator.instantiate( () -> attributeValues, options.getSessionFactory() );
+				domainObjects[i] = getInstantiator(
+						embeddableMappingType,
+						attributeValues.getDiscriminator()
+				).instantiate( attributeValues, options.getSessionFactory() );
 			}
 			return extractor.getJavaType().wrap( domainObjects, options );
 		}

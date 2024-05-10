@@ -392,7 +392,7 @@ By default, the discriminator column will be `STRING` typed and named like `<pro
 where `property_name` is the name of the `@Embedded` property in the respective entity mapping.
 It's possible to customize the discriminator column mapping:
 
-* For the whole `@Embeddable` type, by using `@DiscriminatorColumn` on the *root* class of the inheritance hierarchy
+* For the whole `@Embeddable` type, by using `@DiscriminatorColumn` or `@DiscriminatorFormula` on the *root* class of the inheritance hierarchy
 (NOTE: if using the same inheritance-enabled embeddable type for two different properties in the same entity mapping,
 this will cause a column name conflict);
 * For a specific `@Embedded` property, by using the `@AttributeOverride` annotation with the special name `{discriminator}`.

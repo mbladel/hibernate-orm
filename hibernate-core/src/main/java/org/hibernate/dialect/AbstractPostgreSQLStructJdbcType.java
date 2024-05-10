@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.TimeZone;
 
 import org.hibernate.internal.util.CharSequenceHelper;
-import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.BasicValuedMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
@@ -46,6 +45,7 @@ import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.StructJdbcType;
 import org.hibernate.type.spi.TypeConfiguration;
 
+import static org.hibernate.dialect.StructHelper.getInstantiator;
 import static org.hibernate.dialect.StructHelper.getValuedModelPart;
 import static org.hibernate.dialect.StructHelper.getValues;
 import static org.hibernate.type.descriptor.DateTimeUtils.appendAsDate;
@@ -187,15 +187,15 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 			array = values.toArray();
 		}
 		else {
-			array = new Object[embeddableMappingType.getJdbcValueCount()];
+			array = new Object[embeddableMappingType.getJdbcValueCount() + ( embeddableMappingType.isPolymorphic() ? 1 : 0 )];
 			end = deserializeStruct( string, 0, 0, array, returnEmbeddable, options );
 		}
 		assert end == string.length();
 		if ( returnEmbeddable ) {
-			final Object[] attributeValues = getAttributeValues( embeddableMappingType, orderMapping, array, options );
+			final StructAttributeValues attributeValues = getAttributeValues( embeddableMappingType, orderMapping, array, options );
 			//noinspection unchecked
-			return (X) embeddableMappingType.getRepresentationStrategy().getInstantiator().instantiate(
-					() -> attributeValues,
+			return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminator() ).instantiate(
+					attributeValues,
 					options.getSessionFactory()
 			);
 		}
@@ -470,15 +470,14 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 										options
 								);
 								if ( returnEmbeddable ) {
-									final Object[] attributeValues = structJdbcType.getAttributeValues(
+									final StructAttributeValues attributeValues = structJdbcType.getAttributeValues(
 											structJdbcType.embeddableMappingType,
 											structJdbcType.orderMapping,
 											subValues,
 											options
 									);
-									final Object subValue = structJdbcType.embeddableMappingType.getRepresentationStrategy()
-											.getInstantiator()
-											.instantiate( () -> attributeValues, options.getSessionFactory() );
+									final Object subValue = getInstantiator( structJdbcType.embeddableMappingType, attributeValues.getDiscriminator() )
+											.instantiate( attributeValues, options.getSessionFactory() );
 									values[column] = subValue;
 								}
 								else {
@@ -872,15 +871,14 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 										options
 								);
 								if ( returnEmbeddable ) {
-									final Object[] attributeValues = structJdbcType.getAttributeValues(
+									final StructAttributeValues attributeValues = structJdbcType.getAttributeValues(
 											structJdbcType.embeddableMappingType,
 											structJdbcType.orderMapping,
 											subValues,
 											options
 									);
-									final Object subValue = structJdbcType.embeddableMappingType.getRepresentationStrategy()
-											.getInstantiator()
-											.instantiate( () -> attributeValues, options.getSessionFactory() );
+									final Object subValue = getInstantiator( structJdbcType.embeddableMappingType, attributeValues.getDiscriminator() )
+											.instantiate( attributeValues, options.getSessionFactory() );
 									values.add( subValue );
 								}
 								else {
@@ -1013,10 +1011,11 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 	private SelectableMapping getJdbcValueSelectable(int jdbcValueSelectableIndex) {
 		if ( orderMapping != null ) {
 			final int numberOfAttributeMappings = embeddableMappingType.getNumberOfAttributeMappings();
+			final int size = numberOfAttributeMappings + ( embeddableMappingType.isPolymorphic() ? 1 : 0 );
 			int count = 0;
-			for ( int i = 0; i < numberOfAttributeMappings; i++ ) {
-				final AttributeMapping attributeMapping = embeddableMappingType.getAttributeMapping( orderMapping[i] );
-				final MappingType mappedType = attributeMapping.getMappedType();
+			for ( int i = 0; i < size; i++ ) {
+				final ValuedModelPart modelPart = getValuedModelPart( embeddableMappingType, numberOfAttributeMappings, orderMapping[i] );
+				final MappingType mappedType = modelPart.getMappedType();
 				if ( mappedType instanceof EmbeddableMappingType ) {
 					final EmbeddableMappingType embeddableMappingType = (EmbeddableMappingType) mappedType;
 					final SelectableMapping aggregateMapping = embeddableMappingType.getAggregateMapping();
@@ -1036,9 +1035,9 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 				}
 				else {
 					if ( count == jdbcValueSelectableIndex ) {
-						return (SelectableMapping) attributeMapping;
+						return (SelectableMapping) modelPart;
 					}
-					count += attributeMapping.getJdbcTypeCount();
+					count += modelPart.getJdbcTypeCount();
 				}
 			}
 			return null;
@@ -1412,21 +1411,21 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 		}
 	}
 
-	private Object[] getAttributeValues(
+	private StructAttributeValues getAttributeValues(
 			EmbeddableMappingType embeddableMappingType,
 			int[] orderMapping,
 			Object[] rawJdbcValues,
 			WrapperOptions options) throws SQLException {
 		final int numberOfAttributeMappings = embeddableMappingType.getNumberOfAttributeMappings();
-		final Object[] attributeValues;
-		if ( numberOfAttributeMappings != rawJdbcValues.length || orderMapping != null ) {
-			attributeValues = new Object[numberOfAttributeMappings];
-		}
-		else {
-			attributeValues = rawJdbcValues;
-		}
+		final int size = numberOfAttributeMappings + ( embeddableMappingType.isPolymorphic() ? 1 : 0 );
+		final StructAttributeValues attributeValues = new StructAttributeValues(
+				numberOfAttributeMappings,
+				orderMapping != null ?
+						null :
+						rawJdbcValues
+		);
 		int jdbcIndex = 0;
-		for ( int i = 0; i < numberOfAttributeMappings; i++ ) {
+		for ( int i = 0; i < size; i++ ) {
 			final int attributeIndex;
 			if ( orderMapping == null ) {
 				attributeIndex = i;
@@ -1434,9 +1433,9 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 			else {
 				attributeIndex = orderMapping[i];
 			}
-			final AttributeMapping attributeMapping = embeddableMappingType.getAttributeMapping( attributeIndex );
+			final ValuedModelPart modelPart = getValuedModelPart( embeddableMappingType, numberOfAttributeMappings, attributeIndex );
 			jdbcIndex += injectAttributeValue(
-					attributeMapping,
+					modelPart,
 					attributeValues,
 					attributeIndex,
 					rawJdbcValues,
@@ -1448,45 +1447,54 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 	}
 
 	private int injectAttributeValue(
-			AttributeMapping attributeMapping,
-			Object[] attributeValues,
+			ValuedModelPart modelPart,
+			StructAttributeValues attributeValues,
 			int attributeIndex,
 			Object[] rawJdbcValues,
 			int jdbcIndex,
 			WrapperOptions options) throws SQLException {
-		final MappingType mappedType = attributeMapping.getMappedType();
+		final MappingType mappedType = modelPart.getMappedType();
 		final int jdbcValueCount;
 		final Object rawJdbcValue = rawJdbcValues[jdbcIndex];
 		if ( mappedType instanceof EmbeddableMappingType ) {
 			final EmbeddableMappingType embeddableMappingType = (EmbeddableMappingType) mappedType;
 			if ( embeddableMappingType.getAggregateMapping() != null ) {
 				jdbcValueCount = 1;
-				attributeValues[attributeIndex] = rawJdbcValue;
+				attributeValues.setValue( attributeIndex, rawJdbcValue );
 			}
 			else {
 				jdbcValueCount = embeddableMappingType.getJdbcValueCount();
 				final Object[] subJdbcValues = new Object[jdbcValueCount];
 				System.arraycopy( rawJdbcValues, jdbcIndex, subJdbcValues, 0, subJdbcValues.length );
-				final Object[] subValues = getAttributeValues( embeddableMappingType, null, subJdbcValues, options );
-				attributeValues[attributeIndex] = embeddableMappingType.getRepresentationStrategy()
-						.getInstantiator()
-						.instantiate(
-								() -> subValues,
+				final StructAttributeValues subValues = getAttributeValues(
+						embeddableMappingType,
+						null,
+						subJdbcValues,
+						options
+				);
+				attributeValues.setValue(
+						attributeIndex,
+						getInstantiator(
+								embeddableMappingType,
+								subValues.getDiscriminator()
+						).instantiate(
+								subValues,
 								embeddableMappingType.findContainingEntityMapping()
 										.getEntityPersister()
 										.getFactory()
-						);
+						)
+				);
 			}
 		}
 		else {
-			assert attributeMapping.getJdbcTypeCount() == 1;
+			assert modelPart.getJdbcTypeCount() == 1;
 			jdbcValueCount = 1;
-			final JdbcMapping jdbcMapping = attributeMapping.getSingleJdbcMapping();
+			final JdbcMapping jdbcMapping = modelPart.getSingleJdbcMapping();
 			final Object jdbcValue = jdbcMapping.getJdbcJavaType().wrap(
 					rawJdbcValue,
 					options
 			);
-			attributeValues[attributeIndex] = jdbcMapping.convertToDomainValue( jdbcValue );
+			attributeValues.setValue( attributeIndex, jdbcMapping.convertToDomainValue( jdbcValue ) );
 		}
 		return jdbcValueCount;
 	}

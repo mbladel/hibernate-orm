@@ -132,6 +132,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		this.originalPropertyOrder = original.originalPropertyOrder == null ? null : original.originalPropertyOrder.clone();
 		this.propertyDeclaringClasses = original.propertyDeclaringClasses;
 		this.componentClassName = original.componentClassName;
+		this.componentClass = original.componentClass;
 		this.embedded = original.embedded;
 		this.parentProperty = original.parentProperty;
 		this.owner = original.owner;
@@ -142,6 +143,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		this.roleName = original.roleName;
 		this.discriminator = original.discriminator;
 		this.discriminatorValues = original.discriminatorValues;
+		this.subclassToSuperclass = original.subclassToSuperclass;
 		this.customInstantiator = original.customInstantiator;
 		this.type = original.type;
 	}
@@ -316,7 +318,27 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	@Override
 	public void checkColumnDuplication(Set<String> distinctColumns, String owner) {
 		if ( aggregateColumn == null ) {
-			checkPropertyColumnDuplication( distinctColumns, getProperties(), owner );
+			if ( isPolymorphic() ) {
+				// We can allow different subtypes reusing the same columns
+				// since only one subtype can exist at one time
+				final Map<String, Set<String>> distinctColumnsByClass = new HashMap<>();
+				for ( Property prop : properties ) {
+					if ( prop.isUpdateable() || prop.isInsertable() ) {
+						final String declaringClass = propertyDeclaringClasses.get( prop );
+						final Set<String> set = distinctColumnsByClass.computeIfAbsent(
+								declaringClass,
+								k -> new HashSet<>( distinctColumns )
+						);
+						prop.getValue().checkColumnDuplication( set, owner );
+					}
+				}
+				for ( Set<String> columns : distinctColumnsByClass.values() ) {
+					distinctColumns.addAll( columns );
+				}
+			}
+			else {
+				checkPropertyColumnDuplication( distinctColumns, getProperties(), owner );
+			}
 		}
 		else {
 			checkPropertyColumnDuplication( new HashSet<>(), getProperties(), "component '" + getRoleName() + "'" );

@@ -27,6 +27,7 @@ import static org.hibernate.sql.ast.spi.SqlExpressionResolver.createColumnRefere
  */
 public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminatorMapping
 		implements EmbeddableDiscriminatorMapping {
+	private final String name;
 	private final String tableExpression;
 	private final String columnName;
 	private final String columnFormula;
@@ -40,6 +41,7 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 
 	public ExplicitColumnDiscriminatorMappingImpl(
 			ManagedMappingType mappingType,
+			String name,
 			String tableExpression,
 			String columnExpression,
 			boolean isFormula,
@@ -53,6 +55,7 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 			DiscriminatorType<?> discriminatorType) {
 		//noinspection unchecked
 		super( mappingType, (DiscriminatorType<Object>) discriminatorType, (BasicType<Object>) discriminatorType.getUnderlyingJdbcMapping() );
+		this.name = name;
 		this.tableExpression = tableExpression;
 		this.isPhysical = isPhysical;
 		this.columnDefinition = columnDefinition;
@@ -104,6 +107,11 @@ public class ExplicitColumnDiscriminatorMappingImpl extends AbstractDiscriminato
 	@Override
 	public String getContainingTableExpression() {
 		return tableExpression;
+	}
+
+	@Override
+	public String getSelectableName() {
+		return name;
 	}
 
 	@Override

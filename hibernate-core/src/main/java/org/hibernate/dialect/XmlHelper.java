@@ -21,7 +21,6 @@ import org.hibernate.internal.util.CharSequenceHelper;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.SelectableMapping;
-import org.hibernate.metamodel.mapping.ValueMapping;
 import org.hibernate.metamodel.mapping.ValuedModelPart;
 import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
 import org.hibernate.sql.ast.spi.SqlAppender;
@@ -35,6 +34,7 @@ import org.hibernate.type.descriptor.java.JdbcTimestampJavaType;
 import org.hibernate.type.descriptor.java.OffsetDateTimeJavaType;
 import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 
+import static org.hibernate.dialect.StructHelper.getInstantiator;
 import static org.hibernate.dialect.StructHelper.getValuedModelPart;
 import static org.hibernate.dialect.StructHelper.getValues;
 
@@ -238,16 +238,16 @@ public class XmlHelper {
 			array = values.toArray();
 		}
 		else {
-			array = new Object[embeddableMappingType.getJdbcValueCount()];
+			array = new Object[embeddableMappingType.getJdbcValueCount() + ( embeddableMappingType.isPolymorphic() ? 1 : 0 )];
 			end = fromString( embeddableMappingType, string, returnEmbeddable, options, array, START_TAG.length() );
 		}
 		assert end + END_TAG.length() == string.length();
 
 		if ( returnEmbeddable ) {
-			final Object[] attributeValues = StructHelper.getAttributeValues( embeddableMappingType, array, options );
+			final StructAttributeValues attributeValues = StructHelper.getAttributeValues( embeddableMappingType, array, options );
 			//noinspection unchecked
-			return (X) embeddableMappingType.getRepresentationStrategy().getInstantiator().instantiate(
-					() -> attributeValues,
+			return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminator() ).instantiate(
+					attributeValues,
 					options.getSessionFactory()
 			);
 		}
@@ -420,14 +420,13 @@ public class XmlHelper {
 								);
 							}
 							if ( returnEmbeddable ) {
-								final Object[] attributeValues = StructHelper.getAttributeValues(
+								final StructAttributeValues attributeValues = StructHelper.getAttributeValues(
 										subMappingType,
 										subValues,
 										options
 								);
-								final Object subValue = subMappingType.getRepresentationStrategy()
-										.getInstantiator()
-										.instantiate( () -> attributeValues, options.getSessionFactory() );
+								final Object subValue = getInstantiator( subMappingType, attributeValues.getDiscriminator() )
+										.instantiate( attributeValues, options.getSessionFactory() );
 								values[selectableIndex] = subValue;
 							}
 							else {
