@@ -21,7 +21,7 @@ public interface EmbeddableRepresentationStrategy extends ManagedTypeRepresentat
 	 */
 	EmbeddableInstantiator getInstantiator();
 
-	default EmbeddableInstantiator getInstantiatorForSubclass(String embeddableClassName) {
+	default EmbeddableInstantiator getInstantiator(Object discriminatorValue) {
 		return getInstantiator();
 	}
 

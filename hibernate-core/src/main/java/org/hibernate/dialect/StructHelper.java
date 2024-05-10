@@ -14,6 +14,7 @@ import java.sql.SQLException;
 
 import org.hibernate.Internal;
 import org.hibernate.metamodel.mapping.AttributeMapping;
+import org.hibernate.metamodel.mapping.DiscriminatorConverter;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.MappingType;
@@ -135,7 +136,7 @@ public class StructHelper {
 		if ( embeddableMappingType.isPolymorphic() ) {
 			final Object[] result = new Object[attributeValues.length + 1];
 			System.arraycopy( attributeValues, 0, result, 0, attributeValues.length );
-			result[attributeValues.length] = domainValue.getClass().getName();
+			result[attributeValues.length] = embeddableMappingType.getDiscriminatorMapping().getDiscriminatorValue( domainValue.getClass().getName() );
 			return result;
 		}
 		else {

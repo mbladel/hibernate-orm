@@ -230,6 +230,8 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 			int[] orderMapping,
 			Object[] rawJdbcValues,
 			WrapperOptions options) throws SQLException {
+		// todo marco : change this too for ComponentType#extract
+		// todo marco : see StructEmbeddableTest for stored procedures
 		final int numberOfAttributeMappings = embeddableMappingType.getNumberOfAttributeMappings();
 		final Object[] attributeValues;
 		if ( numberOfAttributeMappings != rawJdbcValues.length || orderMapping != null ) {

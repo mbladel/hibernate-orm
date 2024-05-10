@@ -1417,6 +1417,7 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 			int[] orderMapping,
 			Object[] rawJdbcValues,
 			WrapperOptions options) throws SQLException {
+		// todo marco : change this for ComponentType#extract
 		final int numberOfAttributeMappings = embeddableMappingType.getNumberOfAttributeMappings();
 		final Object[] attributeValues;
 		if ( numberOfAttributeMappings != rawJdbcValues.length || orderMapping != null ) {

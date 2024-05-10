@@ -62,7 +62,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 	private final Object[] rowState;
 	private State state = State.INITIAL;
 	protected Object compositeInstance;
-	private String embeddableClassName;
+	private Object discriminatorValue;
 	private RowProcessingState wrappedProcessingState;
 
 	public AbstractEmbeddableInitializer(
@@ -170,11 +170,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 			final EmbeddableDiscriminatorMapping discriminatorMapping = embedded.getEmbeddableTypeDescriptor()
 					.getDiscriminatorMapping();
 			assert discriminatorMapping != null;
-			final Object discriminator = discriminatorAssembler.extractRawValue( wrappedProcessingState );
-			final DiscriminatorValueDetails details = discriminatorMapping.resolveDiscriminatorValue(
-					discriminator
-			);
-			embeddableClassName = details.getIndicatedEntityName();
+			discriminatorValue = discriminatorAssembler.extractRawValue( wrappedProcessingState );
 		}
 	}
 
@@ -295,7 +291,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 
 		if ( compositeInstance == null ) {
 			compositeInstance = createCompositeInstance(
-					embeddableClassName,
+					discriminatorValue,
 					navigablePath,
 					sessionFactory
 			);
@@ -356,7 +352,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 	}
 
 	private Object createCompositeInstance(
-			String embeddableClassName,
+			Object discriminatorValue,
 			NavigablePath navigablePath,
 			SessionFactoryImplementor sessionFactory) {
 		if ( state == State.NULL ) {
@@ -369,7 +365,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 
 		final Object instance = embedded.getEmbeddableTypeDescriptor()
 				.getRepresentationStrategy()
-				.getInstantiatorForSubclass( embeddableClassName )
+				.getInstantiator( discriminatorValue )
 				.instantiate( this, sessionFactory );
 		state = State.EXTRACTED;
 
@@ -394,8 +390,8 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 	}
 
 	@Override
-	public String getEmbeddableClassName() {
-		return embeddableClassName;
+	public Object getDiscriminatorValue() {
+		return discriminatorValue;
 	}
 
 	private void handleParentInjection() {
@@ -496,7 +492,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 	@Override
 	public void finishUpRow(RowProcessingState rowProcessingState) {
 		compositeInstance = null;
-		embeddableClassName = null;
+		discriminatorValue = null;
 		state = State.INITIAL;
 		wrappedProcessingState = null;
 

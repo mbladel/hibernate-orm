@@ -33,6 +33,7 @@ import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.UnsupportedMappingException;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.AttributeMappingsList;
+import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.metamodel.mapping.EntityMappingType;
@@ -648,6 +649,13 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 				final AttributeMapping attributeMapping = attributeMappings.get( i );
 				attributeMapping.addToCacheKey( cacheKey, attributeMapping.getValue( value ), session );
 			}
+		}
+		if ( isPolymorphic() ) {
+			final EmbeddableDiscriminatorMapping discriminatorMapping = getDiscriminatorMapping();
+			final Object discriminatorValue = value != null ?
+					discriminatorMapping.getDiscriminatorValue( value.getClass().getName() )
+					: null;
+			discriminatorMapping.addToCacheKey( cacheKey, discriminatorValue, session );
 		}
 	}
 

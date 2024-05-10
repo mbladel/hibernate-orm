@@ -318,6 +318,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	@Override
 	public void checkColumnDuplication(Set<String> distinctColumns, String owner) {
 		if ( aggregateColumn == null ) {
+			// todo : consider different subtypes as isolated
 			checkPropertyColumnDuplication( distinctColumns, getProperties(), owner );
 		}
 		else {

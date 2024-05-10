@@ -53,7 +53,8 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 
 	private final StrategySelector strategySelector;
 	private final ReflectionOptimizer reflectionOptimizer;
-	private final Map<String, EmbeddableInstantiator> instantiators;
+	private final EmbeddableInstantiator instantiator;
+	private final Map<Object, EmbeddableInstantiator> instantiators;
 
 	public EmbeddableRepresentationStrategyPojo(
 			Component bootDescriptor,
@@ -92,14 +93,33 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 				creationContext
 		);
 
-		this.instantiators = resolveInstantiators(
-				bootDescriptor,
-				customInstantiator,
-				reflectionOptimizer,
-				subclassesByName,
-				runtimeDescriptorAccess,
-				creationContext
-		);
+		if ( bootDescriptor.isPolymorphic() ) {
+			final Collection<String> embeddableClassNames = bootDescriptor.getDiscriminatorValues().values();
+			final Map<Object, EmbeddableInstantiator> result = new HashMap<>( embeddableClassNames.size() );
+			for ( Map.Entry<Object, String> discriminator : bootDescriptor.getDiscriminatorValues().entrySet() ) {
+			result.put( discriminator.getKey(), determineInstantiator(
+						bootDescriptor,
+						castNonNull( subclassesByName ).get( discriminator.getValue() ),
+						reflectionOptimizer,
+						runtimeDescriptorAccess,
+						creationContext
+				) );
+			}
+			this.instantiators = Collections.unmodifiableMap( result );
+			this.instantiator = null;
+		}
+		else {
+			this.instantiator = customInstantiator != null ?
+					customInstantiator :
+					determineInstantiator(
+							bootDescriptor,
+							bootDescriptor.getComponentClass(),
+							reflectionOptimizer,
+							runtimeDescriptorAccess,
+							creationContext
+					);
+			this.instantiators = null;
+		}
 	}
 
 	private static <T> JavaType<T> resolveEmbeddableJavaType(
@@ -116,41 +136,14 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 		);
 	}
 
-	private static Map<String, EmbeddableInstantiator> resolveInstantiators(
+	private void resolveInstantiators(
 			Component bootDescriptor,
 			EmbeddableInstantiator customInstantiator,
 			ReflectionOptimizer reflectionOptimizer,
 			Map<String, Class<?>> subclassesByName,
 			Supplier<EmbeddableMappingType> runtimeDescriptorAccess,
 			RuntimeModelCreationContext creationContext) {
-		if ( bootDescriptor.isPolymorphic() ) {
-			final Collection<String> embeddableClassNames = bootDescriptor.getDiscriminatorValues().values();
-			final Map<String, EmbeddableInstantiator> result = new HashMap<>( embeddableClassNames.size() );
-			for ( final String embeddableClassName : embeddableClassNames ) {
-				result.put( embeddableClassName.intern(), determineInstantiator(
-						bootDescriptor,
-						subclassesByName.get( embeddableClassName ),
-						reflectionOptimizer,
-						runtimeDescriptorAccess,
-						creationContext
-				) );
-			}
-			return Collections.unmodifiableMap( result );
-		}
-		else {
-			return Map.of(
-					bootDescriptor.getComponentClassName().intern(),
-					customInstantiator != null ?
-							customInstantiator :
-							determineInstantiator(
-									bootDescriptor,
-									bootDescriptor.getComponentClass(),
-									reflectionOptimizer,
-									runtimeDescriptorAccess,
-									creationContext
-							)
-			);
-		}
+
 	}
 
 	private static EmbeddableInstantiator determineInstantiator(
@@ -311,16 +304,16 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 
 	@Override
 	public EmbeddableInstantiator getInstantiator() {
-		assert instantiators.size() == 1;
-		return instantiators.values().iterator().next();
-		// return getInstantiatorForSubclass( getEmbeddableJavaType().getJavaTypeClass().getName() );
+		assert instantiator != null && instantiators == null;
+		return instantiator;
 	}
 
 	@Override
-	public EmbeddableInstantiator getInstantiatorForSubclass(String embeddableClassName) {
-		if ( instantiators.size() == 1 ) {
-			return instantiators.values().iterator().next();
+	public EmbeddableInstantiator getInstantiator(Object discriminatorValue) {
+		if ( instantiator != null ) {
+			assert instantiators == null;
+			return instantiator;
 		}
-		return instantiators.get( embeddableClassName );
+		return instantiators.get( discriminatorValue );
 	}
 }
