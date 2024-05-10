@@ -832,9 +832,10 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 	@Override
 	protected Object[] getAttributeValues(Object compositeInstance) {
 		final Object[] results = new Object[getNumberOfAttributeMappings()];
+		final String compositeClassName = compositeInstance.getClass().getName();
 		for ( int i = 0; i < getNumberOfAttributeMappings(); i++ ) {
 			final AttributeMapping attributeMapping = getAttributeMapping( i );
-			if ( declaresAttribute( compositeInstance.getClass().getName(), attributeMapping ) ) {
+			if ( declaresAttribute( compositeClassName, attributeMapping ) ) {
 				final Getter getter = attributeMapping.getAttributeMetadata()
 						.getPropertyAccess()
 						.getGetter();
@@ -849,15 +850,16 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 
 	@Override
 	protected void setAttributeValues(Object component, Object[] values) {
+		final String compositeClassName = component.getClass().getName();
 		for ( int i = 0; i < values.length; i++ ) {
 			final AttributeMapping attributeMapping = getAttributeMapping( i );
-			if ( declaresAttribute( component.getClass().getName(), attributeMapping ) ) {
+			if ( declaresAttribute( compositeClassName, attributeMapping ) ) {
 				attributeMapping.getPropertyAccess().getSetter().set( component, values[i] );
 			}
 			else if ( values[i] != null ) {
 				throw new IllegalArgumentException( String.format(
 						"Unexpected non-null value for embeddable subtype '%s'",
-						component.getClass().getName()
+						compositeClassName
 				) );
 			}
 		}
@@ -896,10 +898,11 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			}
 		}
 		else {
+			final String compositeClassName = domainValue == null ? null : domainValue.getClass().getName();
 			for ( int i = 0; i < size; i++ ) {
 				final AttributeMapping attributeMapping = attributeMappings.get( i );
 				if ( !attributeMapping.isPluralAttributeMapping() ) {
-					final Object attributeValue = domainValue == null || !declaresAttribute( domainValue.getClass().getName(), attributeMapping )
+					final Object attributeValue = domainValue == null || !declaresAttribute( compositeClassName, attributeMapping )
 							? null
 							: attributeMapping.getPropertyAccess().getGetter().get( domainValue );
 					span += attributeMapping.breakDownJdbcValues(
@@ -913,7 +916,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 				}
 			}
 			if ( isPolymorphic() ) {
-				final Object d = domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( domainValue.getClass().getName() );
+				final Object d = domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( compositeClassName );
 				span += discriminatorMapping.breakDownJdbcValues( d, offset + span, x, y, valueConsumer, session );
 			}
 		}
@@ -948,17 +951,18 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			}
 		}
 		else {
+			final String compositeClassName = domainValue == null ? null : domainValue.getClass().getName();
 			for ( int i = 0; i < size; i++ ) {
 				final AttributeMapping attributeMapping = attributeMappings.get( i );
 				if ( !attributeMapping.isPluralAttributeMapping() ) {
-					final Object attributeValue = domainValue == null || !declaresAttribute( domainValue.getClass().getName(), attributeMapping )
+					final Object attributeValue = domainValue == null || !declaresAttribute( compositeClassName, attributeMapping )
 							? null
 							: attributeMapping.getPropertyAccess().getGetter().get( domainValue );
 					span += attributeMapping.decompose( attributeValue, offset + span, x, y, valueConsumer, session );
 				}
 			}
 			if ( isPolymorphic() ) {
-				final Object d = domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( domainValue.getClass().getName() );
+				final Object d = domainValue == null ? null : discriminatorMapping.getDiscriminatorValue( compositeClassName );
 				span += discriminatorMapping.decompose( d, offset + span, x, y, valueConsumer, session );
 			}
 		}
