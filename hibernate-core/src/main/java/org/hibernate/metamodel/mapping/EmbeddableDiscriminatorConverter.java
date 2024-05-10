@@ -6,6 +6,8 @@
  */
 package org.hibernate.metamodel.mapping;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -13,7 +15,6 @@ import java.util.function.Function;
 
 import org.hibernate.AssertionFailure;
 import org.hibernate.HibernateException;
-import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.mapping.internal.EmbeddableDiscriminatorValueDetailsImpl;
 import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.type.BasicType;
@@ -32,7 +33,7 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 			JavaType<O> domainJavaType,
 			BasicType<R> underlyingJdbcMapping,
 			Map<Object, String> valueMappings) {
-		final List<DiscriminatorValueDetails> valueDetailsList = CollectionHelper.arrayList( valueMappings.size() );
+		final List<DiscriminatorValueDetails> valueDetailsList = new ArrayList<>( valueMappings.size() );
 		valueMappings.forEach( (value, embeddableClassName) -> valueDetailsList.add( new EmbeddableDiscriminatorValueDetailsImpl(
 				value,
 				embeddableClassName
@@ -55,8 +56,8 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 			List<DiscriminatorValueDetails> valueMappings) {
 		super( discriminatorRole, domainJavaType, relationalJavaType );
 
-		this.discriminatorValueToDetailsMap = CollectionHelper.concurrentMap( valueMappings.size() );
-		this.embeddableClassNameToDetailsMap = CollectionHelper.concurrentMap( valueMappings.size() );
+		this.discriminatorValueToDetailsMap = new HashMap<>( valueMappings.size() );
+		this.embeddableClassNameToDetailsMap = new HashMap<>( valueMappings.size() );
 		valueMappings.forEach( valueDetails -> {
 			discriminatorValueToDetailsMap.put( valueDetails.getValue(), valueDetails );
 			embeddableClassNameToDetailsMap.put( valueDetails.getIndicatedEntityName(), valueDetails );

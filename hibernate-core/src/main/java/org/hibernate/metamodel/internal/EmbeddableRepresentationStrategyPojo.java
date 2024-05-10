@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import org.hibernate.HibernateException;
@@ -50,7 +49,7 @@ import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresentationStrategy {
 	private final JavaType<?> embeddableJavaType;
 	private final PropertyAccess[] propertyAccesses;
-	private final Map<String,Integer> attributeNameToPositionMap;
+	private final Map<String, Integer> attributeNameToPositionMap;
 
 	private final StrategySelector strategySelector;
 	private final ReflectionOptimizer reflectionOptimizer;
@@ -66,7 +65,7 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 
 		final int propertySpan = bootDescriptor.getPropertySpan();
 		this.propertyAccesses = new PropertyAccess[propertySpan];
-		this.attributeNameToPositionMap = new ConcurrentHashMap<>( propertySpan );
+		this.attributeNameToPositionMap = new HashMap<>( propertySpan );
 
 		// We need access to the Class objects, used only during initialization
 		final Map<String, Class<?>> subclassesByName = getSubclassesByName( bootDescriptor, creationContext );
@@ -186,7 +185,7 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 			Property bootAttributeDescriptor,
 			Class<?> embeddableClass,
 			boolean requireSetters) {
-		PropertyAccessStrategy strategy = bootAttributeDescriptor.getPropertyAccessStrategy( getEmbeddableJavaType().getJavaTypeClass() );
+		PropertyAccessStrategy strategy = bootAttributeDescriptor.getPropertyAccessStrategy( embeddableClass );
 
 		if ( strategy == null ) {
 			final String propertyAccessorName = bootAttributeDescriptor.getPropertyAccessorName();
@@ -312,18 +311,16 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 
 	@Override
 	public EmbeddableInstantiator getInstantiator() {
-		return getInstantiatorForSubclass( getEmbeddableJavaType().getJavaTypeClass().getName() );
+		assert instantiators.size() == 1;
+		return instantiators.values().iterator().next();
+		// return getInstantiatorForSubclass( getEmbeddableJavaType().getJavaTypeClass().getName() );
 	}
 
 	@Override
 	public EmbeddableInstantiator getInstantiatorForSubclass(String embeddableClassName) {
-		final EmbeddableInstantiator instantiator = embeddableClassName != null ?
-				instantiators.get( embeddableClassName ) :
-				null;
-		if ( instantiator == null ) {
-			assert instantiators.size() == 1;
+		if ( instantiators.size() == 1 ) {
 			return instantiators.values().iterator().next();
 		}
-		return instantiator;
+		return instantiators.get( embeddableClassName );
 	}
 }
