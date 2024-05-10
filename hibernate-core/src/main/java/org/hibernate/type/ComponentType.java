@@ -30,8 +30,6 @@ import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.ArrayHelper;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.Property;
-import org.hibernate.mapping.Value;
-import org.hibernate.metamodel.mapping.DiscriminatorValueDetails;
 import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
@@ -639,9 +637,10 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 				assembled[i] = propertyTypes[i].assemble( (Serializable) values[i], session, owner );
 			}
 
+			final EmbeddableRepresentationStrategy representationStrategy = embeddableTypeDescriptor().getRepresentationStrategy();
 			final EmbeddableInstantiator instantiator = polymorphic ?
-					instantiator( values[i] ) :
-					embeddableTypeDescriptor().getRepresentationStrategy().getInstantiator();
+					representationStrategy.getInstantiator( values[i] ) :
+					representationStrategy.getInstantiator();
 			final Object instance = instantiator.instantiate( () -> assembled, session.getFactory() );
 
 			final PropertyAccess parentInjectionAccess = mappingModelPart.getParentInjectionAttributePropertyAccess();
@@ -789,7 +788,10 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 		final EmbeddableRepresentationStrategy representationStrategy = embeddableTypeDescriptor().getRepresentationStrategy();
 		final EmbeddableInstantiator instantiator;
 		if ( embeddableTypeDescriptor().isPolymorphic() ) {
-			instantiator = representationStrategy.getInstantiator( value[value.length - 1] );
+			// the value here is the composite class name because it gets converted to the domain type when extracted
+			instantiator = representationStrategy.getInstantiator(
+					embeddableTypeDescriptor().getDiscriminatorMapping().getDiscriminatorValue( (String) value[value.length - 1] )
+			);
 		}
 		else {
 			instantiator = representationStrategy.getInstantiator();

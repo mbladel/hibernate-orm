@@ -37,34 +37,53 @@ import static org.assertj.core.api.Assertions.assertThat;
 		ChildTwoEmbeddable.class,
 } )
 @ServiceRegistry( settings = @Setting( name = AvailableSettings.USE_SECOND_LEVEL_CACHE, value = "true" ) )
-@SessionFactory
+@SessionFactory( generateStatistics = true )
 public class EmbeddableInheritance2LCTest {
 	@Test
 	public void testFind(SessionFactoryScope scope) {
 		final StatisticsImplementor statistics = scope.getSessionFactory().getStatistics();
+		statistics.clear();
 		final CacheImplementor cache = scope.getSessionFactory().getCache();
 		cache.evictEntityData();
 		scope.inTransaction( session -> {
 			// load the entity in cache
 			session.find( TestEntity.class, 1L );
 			assertThat( statistics.getSecondLevelCachePutCount() ).isEqualTo( 1 );
-
+		} );
+		scope.inTransaction( session -> {
 			final TestEntity result = session.find( TestEntity.class, 1L );
 			assertThat( statistics.getSecondLevelCacheHitCount() ).isEqualTo( 1 );
 			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_1" );
-			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildOneEmbeddable.class );
-			assertThat( ( (ChildOneEmbeddable) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 1 );
+			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( SubChildOneEmbeddable.class );
+			assertThat( ( (SubChildOneEmbeddable) result.getEmbeddable() ).getChildOneProp() ).isEqualTo( 1 );
+			assertThat( ( (SubChildOneEmbeddable) result.getEmbeddable() ).getSubChildOneProp() ).isEqualTo( 1.0 );
+		} );
+	}
+
+	@Test
+	public void testQuery(SessionFactoryScope scope) {
+		final StatisticsImplementor statistics = scope.getSessionFactory().getStatistics();
+		statistics.clear();
+		final CacheImplementor cache = scope.getSessionFactory().getCache();
+		cache.evictEntityData();
+		scope.inTransaction( session -> {
+			session.createQuery( "from TestEntity where id = 2", TestEntity.class ).getSingleResult();
+			assertThat( statistics.getSecondLevelCachePutCount() ).isEqualTo( 1 );
+		} );
+		scope.inTransaction( session -> {
+			final TestEntity result = session.find( TestEntity.class, 2L );
+			assertThat( statistics.getSecondLevelCacheHitCount() ).isEqualTo( 1 );
+			assertThat( result.getEmbeddable().getParentProp() ).isEqualTo( "embeddable_2" );
+			assertThat( result.getEmbeddable() ).isExactlyInstanceOf( ChildTwoEmbeddable.class );
+			assertThat( ( (ChildTwoEmbeddable) result.getEmbeddable() ).getChildTwoProp() ).isEqualTo( 2L );
 		} );
 	}
 
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			session.persist( new TestEntity( 1L, new ChildOneEmbeddable( "embeddable_1", 1 ) ) );
+			session.persist( new TestEntity( 1L, new SubChildOneEmbeddable( "embeddable_1", 1, 1.0 ) ) );
 			session.persist( new TestEntity( 2L, new ChildTwoEmbeddable( "embeddable_2", 2L ) ) );
-			session.persist( new TestEntity( 3L, new ParentEmbeddable( "embeddable_3" ) ) );
-			session.persist( new TestEntity( 4L, new SubChildOneEmbeddable( "embeddable_4", 4, 4.0 ) ) );
-			session.persist( new TestEntity( 5L, new ChildOneEmbeddable( "embeddable_5", 5 ) ) );
 		} );
 	}
 
