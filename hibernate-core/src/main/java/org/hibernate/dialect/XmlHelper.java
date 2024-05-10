@@ -238,7 +238,7 @@ public class XmlHelper {
 			array = values.toArray();
 		}
 		else {
-			array = new Object[embeddableMappingType.getJdbcValueCount()];
+			array = new Object[embeddableMappingType.getJdbcValueCount() + ( embeddableMappingType.isPolymorphic() ? 1 : 0 )];
 			end = fromString( embeddableMappingType, string, returnEmbeddable, options, array, START_TAG.length() );
 		}
 		assert end + END_TAG.length() == string.length();

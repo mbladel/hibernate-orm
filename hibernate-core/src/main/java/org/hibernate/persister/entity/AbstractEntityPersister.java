@@ -5366,6 +5366,7 @@ public abstract class AbstractEntityPersister
 			}
 			return new ExplicitColumnDiscriminatorMappingImpl(
 					this,
+					discriminatorColumnExpression,
 					getTableName(),
 					discriminatorColumnExpression,
 					getDiscriminatorFormulaTemplate() != null,

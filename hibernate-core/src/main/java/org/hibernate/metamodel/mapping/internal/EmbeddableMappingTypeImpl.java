@@ -707,13 +707,14 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		final Selectable selectable = discriminator.getSelectables().get( 0 );
 		final String discriminatorColumnExpression;
 		final String columnDefinition;
+		final String name;
 		final Long length;
 		final Integer precision;
 		final Integer scale;
 		final boolean isFormula = discriminator.hasFormula();
 		if ( isFormula ) {
 			final Formula formula = (Formula) selectable;
-			discriminatorColumnExpression = formula.getTemplate(
+			discriminatorColumnExpression = name = formula.getTemplate(
 					creationContext.getDialect(),
 					creationContext.getTypeConfiguration(),
 					creationContext.getFunctionRegistry()
@@ -728,6 +729,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			assert column != null : "Embeddable discriminators require a column";
 			discriminatorColumnExpression = column.getReadExpr( creationContext.getDialect() );
 			columnDefinition = column.getSqlType();
+			name = column.getName();
 			length = column.getLength();
 			precision = column.getPrecision();
 			scale = column.getScale();
@@ -740,6 +742,7 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 
 		return new ExplicitColumnDiscriminatorMappingImpl(
 				this,
+				name,
 				bootDescriptor.getTable().getName(),
 				discriminatorColumnExpression,
 				isFormula,

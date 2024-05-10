@@ -271,7 +271,7 @@ public class StructAggregateEmbeddableInheritanceTest implements AdditionalMappi
 				new NamedAuxiliaryDatabaseObject(
 						"DB2 structFunction",
 						namespace,
-						"create function structFunction() returns inheritance_embeddable language sql RETURN select inheritance_embeddable()..parentProp('function_embeddable')..childOneProp(1)..subChildOneProp(1.0)..childTwoProp(nul)..embeddable_type('sub_child_one')) from (values (1)) t",
+						"create function structFunction() returns inheritance_embeddable language sql RETURN select inheritance_embeddable()..parentProp('function_embeddable')..childOneProp(1)..subChildOneProp(1.0)..embeddable_type('sub_child_one') from (values (1)) t",
 						"drop function structFunction",
 						Set.of( DB2Dialect.class.getName() )
 				)
