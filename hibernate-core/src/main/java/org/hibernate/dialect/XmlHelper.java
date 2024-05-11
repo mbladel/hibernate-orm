@@ -34,9 +34,9 @@ import org.hibernate.type.descriptor.java.JdbcTimestampJavaType;
 import org.hibernate.type.descriptor.java.OffsetDateTimeJavaType;
 import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 
-import static org.hibernate.dialect.StructHelper.getInstantiator;
-import static org.hibernate.dialect.StructHelper.getValuedModelPart;
+import static org.hibernate.dialect.StructHelper.getEmbeddedPart;
 import static org.hibernate.dialect.StructHelper.getValues;
+import static org.hibernate.dialect.StructHelper.instantiate;
 
 /**
  * A Helper for serializing and deserializing XML, based on an {@link EmbeddableMappingType}.
@@ -246,10 +246,7 @@ public class XmlHelper {
 		if ( returnEmbeddable ) {
 			final StructAttributeValues attributeValues = StructHelper.getAttributeValues( embeddableMappingType, array, options );
 			//noinspection unchecked
-			return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminator() ).instantiate(
-					attributeValues,
-					options.getSessionFactory()
-			);
+			return (X) instantiate( embeddableMappingType, attributeValues, options.getSessionFactory() );
 		}
 		//noinspection unchecked
 		return (X) array;
@@ -425,9 +422,7 @@ public class XmlHelper {
 										subValues,
 										options
 								);
-								final Object subValue = getInstantiator( subMappingType, attributeValues.getDiscriminator() )
-										.instantiate( attributeValues, options.getSessionFactory() );
-								values[selectableIndex] = subValue;
+								values[selectableIndex] = instantiate( subMappingType, attributeValues, options.getSessionFactory() );
 							}
 							else {
 								values[selectableIndex] = subValues;
@@ -499,7 +494,7 @@ public class XmlHelper {
 			if ( array[i] == null ) {
 				continue;
 			}
-			final ValuedModelPart attributeMapping = getValuedModelPart( embeddableMappingType, numberOfAttributes, i );
+			final ValuedModelPart attributeMapping = getEmbeddedPart( embeddableMappingType, numberOfAttributes, i );
 			if ( attributeMapping instanceof SelectableMapping ) {
 				final SelectableMapping selectable = (SelectableMapping) attributeMapping;
 				final String tagName = selectable.getSelectableName();

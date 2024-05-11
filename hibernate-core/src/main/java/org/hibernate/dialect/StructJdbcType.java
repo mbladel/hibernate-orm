@@ -32,8 +32,8 @@ import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.spi.TypeConfiguration;
 
-import static org.hibernate.dialect.StructHelper.getInstantiator;
-import static org.hibernate.dialect.StructHelper.getValuedModelPart;
+import static org.hibernate.dialect.StructHelper.getEmbeddedPart;
+import static org.hibernate.dialect.StructHelper.instantiate;
 
 /**
  * @author Christian Beikov
@@ -213,10 +213,7 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 						options
 				);
 				//noinspection unchecked
-				return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminator() ).instantiate(
-						attributeValues,
-						options.getSessionFactory()
-				);
+				return (X) instantiate( embeddableMappingType, attributeValues, options.getSessionFactory() );
 			}
 		};
 	}
@@ -243,7 +240,7 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 			else {
 				attributeIndex = orderMapping[i];
 			}
-			final ValuedModelPart modelPart = getValuedModelPart( embeddableMappingType, numberOfAttributeMappings, attributeIndex );
+			final ValuedModelPart modelPart = getEmbeddedPart( embeddableMappingType, numberOfAttributeMappings, attributeIndex );
 			jdbcIndex += injectAttributeValue(
 					modelPart,
 					attributeValues,
@@ -287,24 +284,15 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 						);
 					}
 					else {
-						subValues = getAttributeValues(
+						subValues = StructHelper.getAttributeValues(
 								embeddableMappingType,
-								null,
 								aggregateJdbcType.extractJdbcValues( rawJdbcValue, options ),
 								options
 						);
 					}
 					attributeValues.setValue(
 							attributeIndex,
-							getInstantiator(
-									embeddableMappingType,
-									subValues.getDiscriminator()
-							).instantiate(
-									subValues,
-									embeddableMappingType.findContainingEntityMapping()
-											.getEntityPersister()
-											.getFactory()
-							)
+							instantiate( embeddableMappingType, subValues, options.getSessionFactory() )
 					);
 				}
 			}
@@ -315,15 +303,7 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 				final StructAttributeValues subValues = getAttributeValues( embeddableMappingType, null, jdbcValues, options );
 				attributeValues.setValue(
 						attributeIndex,
-						getInstantiator(
-								embeddableMappingType,
-								subValues.getDiscriminator()
-						).instantiate(
-								subValues,
-								embeddableMappingType.findContainingEntityMapping()
-										.getEntityPersister()
-										.getFactory()
-						)
+						instantiate( embeddableMappingType, subValues, options.getSessionFactory() )
 				);
 			}
 		}
@@ -380,10 +360,7 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 											),
 											options
 									);
-									newArray[j] = getInstantiator( subEmbeddableMappingType, subValues.getDiscriminator() ).instantiate(
-											subValues,
-											options.getSessionFactory()
-									);
+									newArray[j] = instantiate( subEmbeddableMappingType, subValues, options.getSessionFactory() );
 								}
 								jdbcValue = jdbcMapping.getJdbcJavaType().wrap( newArray, options );
 								break;
@@ -420,10 +397,10 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 		for ( int i = 0; i < numberOfAttributeMappings + ( embeddableMappingType.isPolymorphic() ? 1 : 0 ); i++ ) {
 			final ValuedModelPart attributeMapping;
 			if ( orderMapping == null ) {
-				attributeMapping = getValuedModelPart( embeddableMappingType, numberOfAttributeMappings, i );
+				attributeMapping = getEmbeddedPart( embeddableMappingType, numberOfAttributeMappings, i );
 			}
 			else {
-				attributeMapping = getValuedModelPart( embeddableMappingType, numberOfAttributeMappings, orderMapping[i] );
+				attributeMapping = getEmbeddedPart( embeddableMappingType, numberOfAttributeMappings, orderMapping[i] );
 			}
 			final MappingType mappedType = attributeMapping.getMappedType();
 
@@ -492,10 +469,7 @@ public class StructJdbcType implements org.hibernate.type.descriptor.jdbc.Struct
 												),
 												options
 										);
-										newArray[j] = getInstantiator( subEmbeddableMappingType, subValues.getDiscriminator() ).instantiate(
-												subValues,
-												options.getSessionFactory()
-										);
+										newArray[j] = instantiate( subEmbeddableMappingType, subValues, options.getSessionFactory() );
 									}
 									targetJdbcValues[jdbcIndex] = jdbcMapping.getJdbcJavaType().wrap( newArray, options );
 									break;

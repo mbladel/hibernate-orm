@@ -13,6 +13,7 @@ import java.sql.NClob;
 import java.sql.SQLException;
 
 import org.hibernate.Internal;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.MappingType;
@@ -38,7 +39,7 @@ public class StructHelper {
 		final StructAttributeValues attributeValues = new StructAttributeValues( numberOfAttributeMappings, rawJdbcValues );
 		int jdbcIndex = 0;
 		for ( int i = 0; i < size; i++ ) {
-			final ValuedModelPart valuedModelPart = getValuedModelPart(
+			final ValuedModelPart valuedModelPart = getEmbeddedPart(
 					embeddableMappingType,
 					numberOfAttributeMappings,
 					i
@@ -71,15 +72,7 @@ public class StructHelper {
 				final StructAttributeValues subValues = getAttributeValues( embeddableMappingType, subJdbcValues, options );
 				attributeValues.setValue(
 						attributeIndex,
-						getInstantiator(
-								embeddableMappingType,
-								subValues.getDiscriminator()
-						).instantiate(
-								subValues,
-								embeddableMappingType.findContainingEntityMapping()
-										.getEntityPersister()
-										.getFactory()
-						)
+						instantiate( embeddableMappingType, subValues, options.getSessionFactory() )
 				);
 			}
 		}
@@ -121,7 +114,7 @@ public class StructHelper {
 				attributeIndex = orderMapping[i];
 			}
 			jdbcIndex += injectJdbcValue(
-					getValuedModelPart( embeddableMappingType, jdbcValueCount, attributeIndex ),
+					getEmbeddedPart( embeddableMappingType, jdbcValueCount, attributeIndex ),
 					values,
 					attributeIndex,
 					jdbcValues,
@@ -146,20 +139,25 @@ public class StructHelper {
 		}
 	}
 
-	public static EmbeddableInstantiator getInstantiator(EmbeddableMappingType embeddableMappingType, Object discriminatorValue) {
+	public static Object instantiate(
+			EmbeddableMappingType embeddableMappingType,
+			StructAttributeValues attributeValues,
+			SessionFactoryImplementor sessionFactory) {
 		final EmbeddableRepresentationStrategy representationStrategy = embeddableMappingType.getRepresentationStrategy();
+		final EmbeddableInstantiator instantiator;
 		if ( !embeddableMappingType.isPolymorphic() ) {
-			return representationStrategy.getInstantiator();
+			instantiator = representationStrategy.getInstantiator();
 		}
 		else {
-			// the value here is the composite class name because it gets converted to the domain type when extracted
-			return representationStrategy.getInstantiator(
-					embeddableMappingType.getDiscriminatorMapping().getDiscriminatorValue( (String) discriminatorValue )
+			// the discriminator here is the composite class name because it gets converted to the domain type when extracted
+			instantiator = representationStrategy.getInstantiator(
+					embeddableMappingType.getDiscriminatorMapping().getDiscriminatorValue( (String) attributeValues.getDiscriminator() )
 			);
 		}
+		return instantiator.instantiate( attributeValues, sessionFactory );
 	}
 
-	public static ValuedModelPart getValuedModelPart(
+	public static ValuedModelPart getEmbeddedPart(
 			EmbeddableMappingType embeddableMappingType,
 			int numberOfAttributes,
 			int position) {
@@ -197,7 +195,7 @@ public class StructHelper {
 				int offset = 0;
 				for ( int i = 0; i < numberOfValues; i++ ) {
 					offset += injectJdbcValue(
-							getValuedModelPart( embeddableMappingType, numberOfAttributeMappings, i ),
+							getEmbeddedPart( embeddableMappingType, numberOfAttributeMappings, i ),
 							subValues,
 							i,
 							jdbcValues,
@@ -271,7 +269,7 @@ public class StructHelper {
 		final int numberOfAttributes = embeddableMappingType.getNumberOfAttributeMappings();
 		int targetJdbcOffset = 0;
 		for ( int i = 0; i < numberOfAttributes + ( embeddableMappingType.isPolymorphic() ? 1 : 0 ); i++ ) {
-			final ValuedModelPart attributeMapping = getValuedModelPart( embeddableMappingType, numberOfAttributes, i );
+			final ValuedModelPart attributeMapping = getEmbeddedPart( embeddableMappingType, numberOfAttributes, i );
 			final MappingType mappedType = attributeMapping.getMappedType();
 			final int jdbcValueCount = getJdbcValueCount( mappedType );
 

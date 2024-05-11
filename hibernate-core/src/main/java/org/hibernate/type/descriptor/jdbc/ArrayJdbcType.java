@@ -34,7 +34,7 @@ import org.hibernate.type.internal.BasicTypeImpl;
 import org.hibernate.type.internal.ParameterizedTypeImpl;
 import org.hibernate.type.spi.TypeConfiguration;
 
-import static org.hibernate.dialect.StructHelper.getInstantiator;
+import static org.hibernate.dialect.StructHelper.instantiate;
 
 /**
  * Descriptor for {@link Types#ARRAY ARRAY} handling.
@@ -162,10 +162,7 @@ public class ArrayJdbcType implements JdbcType {
 						aggregateRawValues,
 						options
 				);
-				domainObjects[i] = getInstantiator(
-						embeddableMappingType,
-						attributeValues.getDiscriminator()
-				).instantiate( attributeValues, options.getSessionFactory() );
+				domainObjects[i] = instantiate( embeddableMappingType, attributeValues, options.getSessionFactory() );
 			}
 			return extractor.getJavaType().wrap( domainObjects, options );
 		}

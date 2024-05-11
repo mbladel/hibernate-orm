@@ -45,9 +45,9 @@ import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.descriptor.jdbc.StructJdbcType;
 import org.hibernate.type.spi.TypeConfiguration;
 
-import static org.hibernate.dialect.StructHelper.getInstantiator;
-import static org.hibernate.dialect.StructHelper.getValuedModelPart;
+import static org.hibernate.dialect.StructHelper.getEmbeddedPart;
 import static org.hibernate.dialect.StructHelper.getValues;
+import static org.hibernate.dialect.StructHelper.instantiate;
 import static org.hibernate.type.descriptor.DateTimeUtils.appendAsDate;
 import static org.hibernate.type.descriptor.DateTimeUtils.appendAsLocalTime;
 import static org.hibernate.type.descriptor.DateTimeUtils.appendAsTime;
@@ -194,10 +194,7 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 		if ( returnEmbeddable ) {
 			final StructAttributeValues attributeValues = getAttributeValues( embeddableMappingType, orderMapping, array, options );
 			//noinspection unchecked
-			return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminator() ).instantiate(
-					attributeValues,
-					options.getSessionFactory()
-			);
+			return (X) instantiate( embeddableMappingType, attributeValues, options.getSessionFactory() );
 		}
 		else if ( inverseOrderMapping != null ) {
 			StructHelper.orderJdbcValues( embeddableMappingType, inverseOrderMapping, array.clone(), array );
@@ -476,8 +473,7 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 											subValues,
 											options
 									);
-									final Object subValue = getInstantiator( structJdbcType.embeddableMappingType, attributeValues.getDiscriminator() )
-											.instantiate( attributeValues, options.getSessionFactory() );
+									final Object subValue = instantiate( structJdbcType.embeddableMappingType, attributeValues, options.getSessionFactory() );
 									values[column] = subValue;
 								}
 								else {
@@ -877,8 +873,7 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 											subValues,
 											options
 									);
-									final Object subValue = getInstantiator( structJdbcType.embeddableMappingType, attributeValues.getDiscriminator() )
-											.instantiate( attributeValues, options.getSessionFactory() );
+									final Object subValue = instantiate( structJdbcType.embeddableMappingType, attributeValues, options.getSessionFactory() );
 									values.add( subValue );
 								}
 								else {
@@ -1014,7 +1009,7 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 			final int size = numberOfAttributeMappings + ( embeddableMappingType.isPolymorphic() ? 1 : 0 );
 			int count = 0;
 			for ( int i = 0; i < size; i++ ) {
-				final ValuedModelPart modelPart = getValuedModelPart( embeddableMappingType, numberOfAttributeMappings, orderMapping[i] );
+				final ValuedModelPart modelPart = getEmbeddedPart( embeddableMappingType, numberOfAttributeMappings, orderMapping[i] );
 				final MappingType mappedType = modelPart.getMappedType();
 				if ( mappedType instanceof EmbeddableMappingType ) {
 					final EmbeddableMappingType embeddableMappingType = (EmbeddableMappingType) mappedType;
@@ -1210,11 +1205,11 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 			final ValuedModelPart attributeMapping;
 			final Object attributeValue;
 			if ( orderMapping == null ) {
-				attributeMapping = getValuedModelPart( embeddableMappingType, numberOfAttributes, i );
+				attributeMapping = getEmbeddedPart( embeddableMappingType, numberOfAttributes, i );
 				attributeValue = array[i];
 			}
 			else {
-				attributeMapping = getValuedModelPart( embeddableMappingType, numberOfAttributes, orderMapping[i] );
+				attributeMapping = getEmbeddedPart( embeddableMappingType, numberOfAttributes, orderMapping[i] );
 				attributeValue = array[orderMapping[i]];
 			}
 			if ( attributeMapping instanceof BasicValuedMapping ) {
@@ -1433,7 +1428,7 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 			else {
 				attributeIndex = orderMapping[i];
 			}
-			final ValuedModelPart modelPart = getValuedModelPart( embeddableMappingType, numberOfAttributeMappings, attributeIndex );
+			final ValuedModelPart modelPart = getEmbeddedPart( embeddableMappingType, numberOfAttributeMappings, attributeIndex );
 			jdbcIndex += injectAttributeValue(
 					modelPart,
 					attributeValues,
@@ -1474,15 +1469,7 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 				);
 				attributeValues.setValue(
 						attributeIndex,
-						getInstantiator(
-								embeddableMappingType,
-								subValues.getDiscriminator()
-						).instantiate(
-								subValues,
-								embeddableMappingType.findContainingEntityMapping()
-										.getEntityPersister()
-										.getFactory()
-						)
+						instantiate( embeddableMappingType, subValues, options.getSessionFactory() )
 				);
 			}
 		}

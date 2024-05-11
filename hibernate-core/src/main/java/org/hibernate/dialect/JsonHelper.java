@@ -41,9 +41,9 @@ import org.hibernate.type.descriptor.java.OffsetDateTimeJavaType;
 import org.hibernate.type.descriptor.java.PrimitiveByteArrayJavaType;
 import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 
-import static org.hibernate.dialect.StructHelper.getInstantiator;
-import static org.hibernate.dialect.StructHelper.getValuedModelPart;
+import static org.hibernate.dialect.StructHelper.getEmbeddedPart;
 import static org.hibernate.dialect.StructHelper.getValues;
+import static org.hibernate.dialect.StructHelper.instantiate;
 
 /**
  * A Helper for serializing and deserializing JSON, based on an {@link org.hibernate.metamodel.mapping.EmbeddableMappingType}.
@@ -74,7 +74,7 @@ public class JsonHelper {
 		final Object[] values = getValues( embeddableMappingType, domainValue );
 		final int numberOfAttributes = embeddableMappingType.getNumberOfAttributeMappings();
 		for ( int i = 0; i < values.length; i++ ) {
-			final ValuedModelPart attributeMapping = getValuedModelPart( embeddableMappingType, numberOfAttributes, i );
+			final ValuedModelPart attributeMapping = getEmbeddedPart( embeddableMappingType, numberOfAttributes, i );
 			if ( attributeMapping instanceof SelectableMapping ) {
 				final String name = ( (SelectableMapping) attributeMapping ).getSelectableName();
 				appender.append( separator );
@@ -311,10 +311,7 @@ public class JsonHelper {
 					options
 			);
 			//noinspection unchecked
-			return (X) getInstantiator( embeddableMappingType, attributeValues.getDiscriminator() ).instantiate(
-					attributeValues,
-					options.getSessionFactory()
-			);
+			return (X) instantiate( embeddableMappingType, attributeValues, options.getSessionFactory() );
 		}
 		//noinspection unchecked
 		return (X) values;
@@ -451,11 +448,7 @@ public class JsonHelper {
 										subValues,
 										options
 								);
-								values[selectableIndex] = getInstantiator( embeddableMappingType, attributeValues.getDiscriminator())
-										.instantiate(
-												attributeValues,
-												options.getSessionFactory()
-										);
+								values[selectableIndex] = instantiate( embeddableMappingType, attributeValues, options.getSessionFactory() );
 							}
 							else {
 								values[selectableIndex] = subValues;
@@ -1109,21 +1102,21 @@ public class JsonHelper {
 			default:
 				if ( jdbcMapping.getJdbcType() instanceof AggregateJdbcType ) {
 					final AggregateJdbcType aggregateJdbcType = (AggregateJdbcType) jdbcMapping.getJdbcType();
-					final Object[] subValues = aggregateJdbcType.extractJdbcValues(
-							CharSequenceHelper.subSequence(
-									string,
-									start,
-									end
+					final StructAttributeValues subValues = StructHelper.getAttributeValues(
+							aggregateJdbcType.getEmbeddableMappingType(),
+							aggregateJdbcType.extractJdbcValues(
+									CharSequenceHelper.subSequence(
+											string,
+											start,
+											end
+									),
+									options
 							),
 							options
 					);
 					if ( returnEmbeddable ) {
 						final EmbeddableMappingType embeddableMappingType = aggregateJdbcType.getEmbeddableMappingType();
-						return getInstantiator( embeddableMappingType, subValues )
-								.instantiate(
-										() -> subValues,
-										options.getSessionFactory()
-								);
+						return instantiate( embeddableMappingType, subValues, options.getSessionFactory() ) ;
 					}
 					return subValues;
 				}
