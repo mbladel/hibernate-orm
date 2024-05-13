@@ -97,7 +97,7 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 
 	protected Object[] getAttributeValues(Object compositeInstance) {
 		final Object[] results = new Object[getNumberOfAttributeMappings()];
-		for ( int i = 0; i < getNumberOfAttributeMappings(); i++ ) {
+		for ( int i = 0; i < results.length; i++ ) {
 			final Getter getter = getAttributeMapping( i ).getAttributeMetadata()
 					.getPropertyAccess()
 					.getGetter();

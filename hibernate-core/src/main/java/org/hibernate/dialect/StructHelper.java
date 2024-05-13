@@ -96,7 +96,7 @@ public class StructHelper {
 			WrapperOptions options) throws SQLException {
 		final int jdbcValueCount = embeddableMappingType.getJdbcValueCount();
 		final int valueCount = jdbcValueCount + ( embeddableMappingType.isPolymorphic() ? 1 : 0 );
-		final Object[] values = getValues( embeddableMappingType, domainValue );
+		final Object[] values = embeddableMappingType.getValues( domainValue );
 		final Object[] jdbcValues;
 		if ( valueCount != values.length || orderMapping != null ) {
 			jdbcValues = new Object[valueCount];
@@ -128,15 +128,15 @@ public class StructHelper {
 
 	public static Object[] getValues(EmbeddableMappingType embeddableMappingType, Object domainValue) {
 		final Object[] attributeValues = embeddableMappingType.getValues( domainValue );
-		if ( embeddableMappingType.isPolymorphic() ) {
-			final Object[] result = new Object[attributeValues.length + 1];
-			System.arraycopy( attributeValues, 0, result, 0, attributeValues.length );
-			result[attributeValues.length] = domainValue.getClass().getName();
-			return result;
-		}
-		else {
+//		if ( embeddableMappingType.isPolymorphic() ) {
+//			final Object[] result = new Object[attributeValues.length + 1];
+//			System.arraycopy( attributeValues, 0, result, 0, attributeValues.length );
+//			result[attributeValues.length] = domainValue.getClass().getName();
+//			return result;
+//		}
+//		else {
 			return attributeValues;
-		}
+//		}
 	}
 
 	public static Object instantiate(
@@ -189,7 +189,7 @@ public class StructHelper {
 				jdbcValueCount = embeddableMappingType.getJdbcValueCount() + ( embeddableMappingType.isPolymorphic() ? 1 : 0 );
 				final int numberOfAttributeMappings = embeddableMappingType.getNumberOfAttributeMappings();
 				final int numberOfValues = numberOfAttributeMappings + ( embeddableMappingType.isPolymorphic() ? 1 : 0 );
-				final Object[] subValues = getValues( embeddableMappingType, attributeValues[attributeIndex] );
+				final Object[] subValues = embeddableMappingType.getValues( attributeValues[attributeIndex] );
 				int offset = 0;
 				for ( int i = 0; i < numberOfValues; i++ ) {
 					offset += injectJdbcValue(

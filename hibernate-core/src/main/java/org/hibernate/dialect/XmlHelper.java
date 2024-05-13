@@ -35,7 +35,6 @@ import org.hibernate.type.descriptor.java.OffsetDateTimeJavaType;
 import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 
 import static org.hibernate.dialect.StructHelper.getEmbeddedPart;
-import static org.hibernate.dialect.StructHelper.getValues;
 import static org.hibernate.dialect.StructHelper.instantiate;
 
 /**
@@ -488,7 +487,7 @@ public class XmlHelper {
 			Object value,
 			WrapperOptions options,
 			XMLAppender sb) {
-		final Object[] array = getValues( embeddableMappingType, value );
+		final Object[] array = embeddableMappingType.getValues( value );
 		final int numberOfAttributes = embeddableMappingType.getNumberOfAttributeMappings();
 		for ( int i = 0; i < array.length; i++ ) {
 			if ( array[i] == null ) {

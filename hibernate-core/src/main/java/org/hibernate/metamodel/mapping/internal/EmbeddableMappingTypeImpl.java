@@ -16,6 +16,7 @@ import java.util.function.Function;
 
 import org.hibernate.MappingException;
 import org.hibernate.SharedSessionContract;
+import org.hibernate.WrongClassException;
 import org.hibernate.cfg.Environment;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.aggregate.AggregateSupport;
@@ -834,36 +835,49 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 
 	@Override
 	protected Object[] getAttributeValues(Object compositeInstance) {
-		final Object[] results = new Object[getNumberOfAttributeMappings()];
-		final String compositeClassName = compositeInstance.getClass().getName();
-		for ( int i = 0; i < getNumberOfAttributeMappings(); i++ ) {
-			final AttributeMapping attributeMapping = getAttributeMapping( i );
-			if ( declaresAttribute( compositeClassName, attributeMapping ) ) {
-				final Getter getter = attributeMapping.getAttributeMetadata()
-						.getPropertyAccess()
-						.getGetter();
-				results[i] = getter.get( compositeInstance );
-			}
-			else {
-				results[i] = null;
-			}
+		if ( !isPolymorphic() ) {
+			return super.getAttributeValues( compositeInstance );
 		}
-		return results;
+		else {
+			final int numberOfAttributes = getNumberOfAttributeMappings();
+			final Object[] results = new Object[numberOfAttributes + 1];
+			final String compositeClassName = compositeInstance.getClass().getName();
+			int i = 0;
+			for ( ; i < numberOfAttributes; i++ ) {
+				final AttributeMapping attributeMapping = getAttributeMapping( i );
+				if ( declaresAttribute( compositeClassName, attributeMapping ) ) {
+					final Getter getter = attributeMapping.getAttributeMetadata()
+							.getPropertyAccess()
+							.getGetter();
+					results[i] = getter.get( compositeInstance );
+				}
+				else {
+					results[i] = null;
+				}
+			}
+			results[i] = compositeInstance.getClass().getName();
+			return results;
+		}
 	}
 
 	@Override
 	protected void setAttributeValues(Object component, Object[] values) {
-		final String compositeClassName = component.getClass().getName();
-		for ( int i = 0; i < values.length; i++ ) {
-			final AttributeMapping attributeMapping = getAttributeMapping( i );
-			if ( declaresAttribute( compositeClassName, attributeMapping ) ) {
-				attributeMapping.getPropertyAccess().getSetter().set( component, values[i] );
-			}
-			else if ( values[i] != null ) {
-				throw new IllegalArgumentException( String.format(
-						"Unexpected non-null value for embeddable subtype '%s'",
-						compositeClassName
-				) );
+		if ( !isPolymorphic() ) {
+			super.setAttributeValues( component, values );
+		}
+		else {
+			final String compositeClassName = component.getClass().getName();
+			for ( int i = 0; i < getNumberOfAttributeMappings(); i++ ) {
+				final AttributeMapping attributeMapping = getAttributeMapping( i );
+				if ( declaresAttribute( compositeClassName, attributeMapping ) ) {
+					attributeMapping.getPropertyAccess().getSetter().set( component, values[i] );
+				}
+				else if ( values[i] != null ) {
+					throw new IllegalArgumentException( String.format(
+							"Unexpected non-null value for embeddable subtype '%s'",
+							compositeClassName
+					) );
+				}
 			}
 		}
 	}

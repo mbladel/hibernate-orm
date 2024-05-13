@@ -22,6 +22,7 @@ import org.hibernate.Remove;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
 import org.hibernate.engine.spi.CascadeStyle;
+import org.hibernate.engine.spi.CascadeStyles;
 import org.hibernate.engine.spi.Mapping;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
@@ -30,6 +31,7 @@ import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.ArrayHelper;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.Property;
+import org.hibernate.mapping.Value;
 import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
@@ -44,6 +46,7 @@ import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.spi.CompositeTypeImplementor;
 
 import static org.hibernate.internal.util.ReflectHelper.isRecord;
+import static org.hibernate.metamodel.mapping.EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME;
 
 /**
  * Handles {@linkplain jakarta.persistence.Embedded embedded} mappings.
@@ -88,14 +91,12 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 		this.isKey = component.isKey();
 		this.propertySpan = component.getPropertySpan();
 		this.originalPropertyOrder = originalPropertyOrder;
-		this.propertyNames = new String[propertySpan];
-		this.propertyTypes = new Type[propertySpan];
-		this.propertyNullability = new boolean[propertySpan];
-		this.cascade = new CascadeStyle[propertySpan];
-		this.joinedFetch = new FetchMode[propertySpan];
-		this.discriminatorColumnSpan = component.getDiscriminator() != null ?
-				component.getDiscriminator().getColumnSpan() :
-				0;
+		final Value discriminator = component.getDiscriminator();
+		this.propertyNames = new String[propertySpan + ( component.isPolymorphic() ? 1 : 0 )];
+		this.propertyTypes = new Type[propertySpan + ( component.isPolymorphic() ? 1 : 0 )];
+		this.propertyNullability = new boolean[propertySpan + ( component.isPolymorphic() ? 1 : 0 )];
+		this.cascade = new CascadeStyle[propertySpan + ( component.isPolymorphic() ? 1 : 0 )];
+		this.joinedFetch = new FetchMode[propertySpan + ( component.isPolymorphic() ? 1 : 0 )];
 
 		int i = 0;
 		for ( Property property : component.getProperties() ) {
@@ -111,6 +112,17 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 				hasNullProperty = true;
 			}
 			i++;
+		}
+		if ( discriminator != null ) {
+			this.discriminatorColumnSpan = discriminator.getColumnSpan();
+			this.propertyNames[i] = DISCRIMINATOR_ROLE_NAME;
+			this.propertyTypes[i] = discriminator.getType();
+			this.propertyNullability[i] = false;
+			this.cascade[i] = CascadeStyles.NONE;
+			this.joinedFetch[i] = FetchMode.SELECT;
+		}
+		else {
+			this.discriminatorColumnSpan = 0;
 		}
 	}
 
@@ -633,7 +645,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 			final boolean polymorphic = embeddableTypeDescriptor().isPolymorphic();
 			final Object[] assembled = new Object[values.length - ( polymorphic ? 1 : 0 )];
 			int i = 0;
-			for ( ; i < propertyTypes.length; i++ ) {
+			for ( ; i < assembled.length; i++ ) {
 				assembled[i] = propertyTypes[i].assemble( (Serializable) values[i], session, owner );
 			}
 

@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.TimeZone;
 
 import org.hibernate.internal.util.CharSequenceHelper;
-import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.BasicValuedMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
@@ -47,7 +46,6 @@ import org.hibernate.type.descriptor.jdbc.StructJdbcType;
 import org.hibernate.type.spi.TypeConfiguration;
 
 import static org.hibernate.dialect.StructHelper.getEmbeddedPart;
-import static org.hibernate.dialect.StructHelper.getValues;
 import static org.hibernate.dialect.StructHelper.instantiate;
 import static org.hibernate.type.descriptor.DateTimeUtils.appendAsDate;
 import static org.hibernate.type.descriptor.DateTimeUtils.appendAsLocalTime;
@@ -1200,7 +1198,7 @@ public abstract class AbstractPostgreSQLStructJdbcType implements StructJdbcType
 			EmbeddableMappingType embeddableMappingType,
 			Object domainValue,
 			char separator) {
-		final Object[] array = getValues( embeddableMappingType, domainValue );
+		final Object[] array = embeddableMappingType.getValues( domainValue );
 		final int numberOfAttributes = embeddableMappingType.getNumberOfAttributeMappings();
 		for ( int i = 0; i < array.length; i++ ) {
 			final ValuedModelPart attributeMapping;

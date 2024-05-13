@@ -122,7 +122,6 @@ public interface FetchParentAccess extends Initializer {
 						final String embeddableClassName = descriptor.getDiscriminatorMapping()
 								.resolveDiscriminatorValue( embeddableInitializer.getDiscriminatorValue() )
 								.getIndicatedEntityName();
-						embeddableInitializer.getDiscriminatorValue();
 						if ( !descriptor.declaresAttribute( embeddableClassName, attribute ) ) {
 							return true;
 						}

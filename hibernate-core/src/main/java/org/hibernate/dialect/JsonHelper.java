@@ -42,7 +42,6 @@ import org.hibernate.type.descriptor.java.PrimitiveByteArrayJavaType;
 import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 
 import static org.hibernate.dialect.StructHelper.getEmbeddedPart;
-import static org.hibernate.dialect.StructHelper.getValues;
 import static org.hibernate.dialect.StructHelper.instantiate;
 
 /**
@@ -71,7 +70,7 @@ public class JsonHelper {
 			JsonAppender appender,
 			Object domainValue,
 			char separator) {
-		final Object[] values = getValues( embeddableMappingType, domainValue );
+		final Object[] values = embeddableMappingType.getValues( domainValue );
 		final int numberOfAttributes = embeddableMappingType.getNumberOfAttributeMappings();
 		for ( int i = 0; i < values.length; i++ ) {
 			final ValuedModelPart attributeMapping = getEmbeddedPart( embeddableMappingType, numberOfAttributes, i );
