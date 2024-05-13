@@ -74,6 +74,7 @@ import org.hibernate.metamodel.mapping.internal.SqlTypedMappingImpl;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
 import org.hibernate.metamodel.mapping.ordering.OrderByFragment;
 import org.hibernate.metamodel.model.domain.BasicDomainType;
+import org.hibernate.metamodel.model.domain.DiscriminatorSqmPath;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.PersistentAttribute;
@@ -187,6 +188,7 @@ import org.hibernate.query.sqm.tree.expression.SqmCollation;
 import org.hibernate.query.sqm.tree.expression.SqmCollectionSize;
 import org.hibernate.query.sqm.tree.expression.SqmDistinct;
 import org.hibernate.query.sqm.tree.expression.SqmDurationUnit;
+import org.hibernate.query.sqm.tree.expression.SqmEmbeddedDiscriminatorValue;
 import org.hibernate.query.sqm.tree.expression.SqmEnumLiteral;
 import org.hibernate.query.sqm.tree.expression.SqmEvery;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
@@ -198,6 +200,7 @@ import org.hibernate.query.sqm.tree.expression.SqmFunction;
 import org.hibernate.query.sqm.tree.expression.SqmHqlNumericLiteral;
 import org.hibernate.query.sqm.tree.expression.SqmJpaCriteriaParameterWrapper;
 import org.hibernate.query.sqm.tree.expression.SqmLiteral;
+import org.hibernate.query.sqm.tree.expression.SqmLiteralEmbeddableType;
 import org.hibernate.query.sqm.tree.expression.SqmLiteralEntityType;
 import org.hibernate.query.sqm.tree.expression.SqmLiteralNull;
 import org.hibernate.query.sqm.tree.expression.SqmModifiedSubQueryExpression;
@@ -301,6 +304,7 @@ import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.ast.tree.expression.Distinct;
 import org.hibernate.sql.ast.tree.expression.Duration;
 import org.hibernate.sql.ast.tree.expression.DurationUnit;
+import org.hibernate.sql.ast.tree.expression.EmbeddableTypeLiteral;
 import org.hibernate.sql.ast.tree.expression.EntityTypeLiteral;
 import org.hibernate.sql.ast.tree.expression.Every;
 import org.hibernate.sql.ast.tree.expression.Expression;
@@ -3158,8 +3162,10 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		return false;
 	}
 
-	protected void registerTypeUsage(EntityDiscriminatorSqmPath path) {
-		registerTypeUsage( getFromClauseAccess().getTableGroup( path.getNavigablePath().getParent() ) );
+	protected void registerTypeUsage(DiscriminatorSqmPath<?> path) {
+		if ( path instanceof EntityDiscriminatorSqmPath<?> ) {
+			registerTypeUsage( getFromClauseAccess().getTableGroup( path.getNavigablePath().getParent() ) );
+		}
 	}
 
 	protected void registerTypeUsage(TableGroup tableGroup) {
@@ -4503,7 +4509,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 	}
 
 	@Override
-	public Object visitDiscriminatorPath(EntityDiscriminatorSqmPath sqmPath) {
+	public Object visitDiscriminatorPath(DiscriminatorSqmPath<?> sqmPath) {
 		return prepareReusablePath(
 				sqmPath,
 				() -> {
@@ -7132,13 +7138,21 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		return new EntityTypeLiteral( mappingDescriptor );
 	}
 
-
 	@Override
 	public Expression visitAnyDiscriminatorTypeValueExpression(SqmAnyDiscriminatorValue<?> expression) {
 		final BasicType<?> domainType = expression.getDomainType();
 		return new QueryLiteral<>(
 				domainType.convertToRelationalValue( expression.getEntityValue().getJavaType() ),
 				domainType
+		);
+	}
+
+	@Override
+	public Expression visitEmbeddedDiscriminatorTypeValueExpression(SqmEmbeddedDiscriminatorValue<?> expression) {
+		final BasicType<?> nodeType = expression.getNodeType();
+		return new QueryLiteral<>(
+				nodeType.convertToRelationalValue( expression.getEmbeddableDomainType().getJavaType().getName() ),
+				nodeType
 		);
 	}
 
@@ -7640,7 +7654,11 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			List<EntityTypeLiteral> literalExpressions,
 			boolean inclusive) {
 		final TableGroup tableGroup = getFromClauseIndex().getTableGroup( typeExpression.getNavigablePath().getParent() );
-		final EntityMappingType entityMappingType = (EntityMappingType) tableGroup.getModelPart().getPartMappingType();
+		final MappingType partMappingType = tableGroup.getModelPart().getPartMappingType();
+		if ( !( partMappingType instanceof EntityMappingType ) ) {
+			return;
+		}
+		final EntityMappingType entityMappingType = (EntityMappingType) partMappingType;
 		if ( entityMappingType.getDiscriminatorMapping().hasPhysicalColumn() ) {
 			// If the entity has a physical discriminator column we don't need to register any FILTER usages.
 			// Register only an EXPRESSION usage to prevent pruning of the root type's table reference which

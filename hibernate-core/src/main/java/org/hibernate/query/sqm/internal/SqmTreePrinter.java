@@ -9,6 +9,7 @@ package org.hibernate.query.sqm.internal;
 import java.util.List;
 import java.util.Locale;
 
+import org.hibernate.metamodel.model.domain.DiscriminatorSqmPath;
 import org.hibernate.metamodel.model.domain.internal.AnyDiscriminatorSqmPath;
 import org.hibernate.metamodel.model.domain.internal.EntityDiscriminatorSqmPath;
 import org.hibernate.query.QueryLogging;
@@ -47,6 +48,7 @@ import org.hibernate.query.sqm.tree.expression.SqmCollation;
 import org.hibernate.query.sqm.tree.expression.SqmCollectionSize;
 import org.hibernate.query.sqm.tree.expression.SqmDistinct;
 import org.hibernate.query.sqm.tree.expression.SqmDurationUnit;
+import org.hibernate.query.sqm.tree.expression.SqmEmbeddedDiscriminatorValue;
 import org.hibernate.query.sqm.tree.expression.SqmEnumLiteral;
 import org.hibernate.query.sqm.tree.expression.SqmEvery;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
@@ -56,6 +58,7 @@ import org.hibernate.query.sqm.tree.expression.SqmFormat;
 import org.hibernate.query.sqm.tree.expression.SqmFunction;
 import org.hibernate.query.sqm.tree.expression.SqmHqlNumericLiteral;
 import org.hibernate.query.sqm.tree.expression.SqmLiteral;
+import org.hibernate.query.sqm.tree.expression.SqmLiteralEmbeddableType;
 import org.hibernate.query.sqm.tree.expression.SqmLiteralEntityType;
 import org.hibernate.query.sqm.tree.expression.SqmModifiedSubQueryExpression;
 import org.hibernate.query.sqm.tree.expression.SqmNamedParameter;
@@ -723,7 +726,7 @@ public class SqmTreePrinter implements SemanticQueryWalker<Object> {
 	}
 
 	@Override
-	public Object visitDiscriminatorPath(EntityDiscriminatorSqmPath sqmPath) {
+	public Object visitDiscriminatorPath(DiscriminatorSqmPath<?> sqmPath) {
 		logWithIndentation( "-> [discriminator-path] - `%s`", sqmPath.getNavigablePath() );
 
 		return null;
@@ -1143,6 +1146,11 @@ public class SqmTreePrinter implements SemanticQueryWalker<Object> {
 
 	@Override
 	public Object visitAnyDiscriminatorTypeValueExpression(SqmAnyDiscriminatorValue<?> expression) {
+		return null;
+	}
+
+	@Override
+	public Object visitEmbeddedDiscriminatorTypeValueExpression(SqmEmbeddedDiscriminatorValue<?> expression) {
 		return null;
 	}
 

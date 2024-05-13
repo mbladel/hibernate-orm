@@ -495,6 +495,11 @@ public class MappingMetamodelImpl extends QueryParameterBindingTypeResolverImpl
 	}
 
 	@Override
+	public <X> EmbeddableDomainType<X> embeddable(String embeddableClassName) {
+		return jpaMetamodel.embeddable( embeddableClassName );
+	}
+
+	@Override
 	public <X> EntityDomainType<X> getHqlEntityReference(String entityName) {
 		return jpaMetamodel.getHqlEntityReference( entityName );
 	}

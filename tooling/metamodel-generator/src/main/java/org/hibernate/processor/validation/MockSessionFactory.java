@@ -58,6 +58,7 @@ import org.hibernate.metamodel.internal.MetadataContext;
 import org.hibernate.metamodel.internal.RuntimeMetamodelsImpl;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.model.domain.DomainType;
+import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.metamodel.model.domain.PersistentAttribute;
@@ -791,6 +792,11 @@ public abstract class MockSessionFactory
 			else {
 				return null;
 			}
+		}
+
+		@Override
+		public <X> EmbeddableDomainType<X> embeddable(String embeddableClassName) {
+			return null;
 		}
 
 		@Override
