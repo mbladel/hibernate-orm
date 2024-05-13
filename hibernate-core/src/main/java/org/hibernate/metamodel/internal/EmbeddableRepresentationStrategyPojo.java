@@ -324,6 +324,10 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 
 	@Override
 	public EmbeddableInstantiator getInstantiatorForClass(String className) {
-		return EmbeddableRepresentationStrategy.super.getInstantiatorForClass( className );
+		if ( instantiator != null ) {
+			assert instantiatorsByClass == null;
+			return instantiator;
+		}
+		return instantiatorsByClass.get( className );
 	}
 }
