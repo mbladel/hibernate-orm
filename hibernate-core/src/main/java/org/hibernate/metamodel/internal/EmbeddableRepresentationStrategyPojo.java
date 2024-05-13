@@ -54,7 +54,8 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 	private final StrategySelector strategySelector;
 	private final ReflectionOptimizer reflectionOptimizer;
 	private final EmbeddableInstantiator instantiator;
-	private final Map<Object, EmbeddableInstantiator> instantiators;
+	private final Map<Object, EmbeddableInstantiator> instantiatorsByDiscriminator;
+	private final Map<String, EmbeddableInstantiator> instantiatorsByClass;
 
 	public EmbeddableRepresentationStrategyPojo(
 			Component bootDescriptor,
@@ -94,18 +95,21 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 		);
 
 		if ( bootDescriptor.isPolymorphic() ) {
-			final Collection<String> embeddableClassNames = bootDescriptor.getDiscriminatorValues().values();
-			final Map<Object, EmbeddableInstantiator> result = new HashMap<>( embeddableClassNames.size() );
+			final int size = bootDescriptor.getDiscriminatorValues().size();
+			this.instantiatorsByDiscriminator = new HashMap<>( size );
+			this.instantiatorsByClass = new HashMap<>( size );
 			for ( Map.Entry<Object, String> discriminator : bootDescriptor.getDiscriminatorValues().entrySet() ) {
-			result.put( discriminator.getKey(), determineInstantiator(
+				final String className = discriminator.getValue();
+				final EmbeddableInstantiator instantiator = determineInstantiator(
 						bootDescriptor,
-						castNonNull( subclassesByName ).get( discriminator.getValue() ),
+						castNonNull( subclassesByName ).get( className ),
 						reflectionOptimizer,
 						runtimeDescriptorAccess,
 						creationContext
-				) );
+				);
+				instantiatorsByDiscriminator.put( discriminator.getKey(), instantiator );
+				instantiatorsByClass.put( className, instantiator );
 			}
-			this.instantiators = Collections.unmodifiableMap( result );
 			this.instantiator = null;
 		}
 		else {
@@ -118,7 +122,8 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 							runtimeDescriptorAccess,
 							creationContext
 					);
-			this.instantiators = null;
+			this.instantiatorsByDiscriminator = null;
+			this.instantiatorsByClass = null;
 		}
 	}
 
@@ -304,16 +309,25 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 
 	@Override
 	public EmbeddableInstantiator getInstantiator() {
-		assert instantiator != null && instantiators == null;
+		assert instantiator != null && instantiatorsByDiscriminator == null;
 		return instantiator;
 	}
 
 	@Override
-	public EmbeddableInstantiator getInstantiator(Object discriminatorValue) {
+	public EmbeddableInstantiator getInstantiatorForDiscriminator(Object discriminatorValue) {
 		if ( instantiator != null ) {
-			assert instantiators == null;
+			assert instantiatorsByDiscriminator == null;
 			return instantiator;
 		}
-		return instantiators.get( discriminatorValue );
+		return instantiatorsByDiscriminator.get( discriminatorValue );
+	}
+
+	@Override
+	public EmbeddableInstantiator getInstantiatorForClass(String className) {
+		if ( instantiator != null ) {
+			assert instantiatorsByDiscriminator == null;
+			return instantiator;
+		}
+		return instantiatorsByClass.get( className );
 	}
 }

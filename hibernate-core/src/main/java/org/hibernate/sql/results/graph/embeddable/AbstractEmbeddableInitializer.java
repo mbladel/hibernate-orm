@@ -9,9 +9,7 @@ package org.hibernate.sql.results.graph.embeddable;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.CollectionPart;
-import org.hibernate.metamodel.mapping.DiscriminatorValueDetails;
 import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorMapping;
-import org.hibernate.metamodel.mapping.internal.EmbeddableDiscriminatorValueDetailsImpl;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.metamodel.mapping.EntityMappingType;
@@ -365,7 +363,7 @@ public abstract class AbstractEmbeddableInitializer extends AbstractFetchParentA
 
 		final Object instance = embedded.getEmbeddableTypeDescriptor()
 				.getRepresentationStrategy()
-				.getInstantiator( discriminatorValue )
+				.getInstantiatorForDiscriminator( discriminatorValue )
 				.instantiate( this, sessionFactory );
 		state = State.EXTRACTED;
 

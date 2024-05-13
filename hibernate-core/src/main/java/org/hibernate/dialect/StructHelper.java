@@ -153,9 +153,7 @@ public class StructHelper {
 		}
 		else {
 			// the value here is the composite class name because it gets converted to the domain type when extracted
-			return representationStrategy.getInstantiator(
-					embeddableMappingType.getDiscriminatorMapping().getDiscriminatorValue( (String) discriminatorValue )
-			);
+			return representationStrategy.getInstantiatorForClass( (String) discriminatorValue );
 		}
 	}
 
