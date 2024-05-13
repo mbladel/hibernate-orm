@@ -13,9 +13,13 @@ import org.hibernate.metamodel.mapping.EntityValuedModelPart;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.ModelPartContainer;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
+import org.hibernate.metamodel.model.domain.DiscriminatorSqmPath;
+import org.hibernate.metamodel.model.domain.DomainType;
+import org.hibernate.metamodel.model.domain.internal.EmbeddableDiscriminatorSqmPath;
 import org.hibernate.metamodel.model.domain.internal.EntityDiscriminatorSqmPath;
 import org.hibernate.query.results.ResultSetMappingSqlSelection;
 import org.hibernate.query.sqm.sql.SqmToSqlAstConverter;
+import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.SqlAstWalker;
 import org.hibernate.sql.ast.spi.SqlAstCreationState;
@@ -58,22 +62,34 @@ public class DiscriminatorPathInterpretation<T> extends AbstractSqmPathInterpret
 	}
 
 	public static SqmPathInterpretation<?> from(
-			EntityDiscriminatorSqmPath path,
+			DiscriminatorSqmPath<?> path,
 			SqmToSqlAstConverter converter) {
-		assert path.getEntityDescriptor().hasSubclasses();
 
 		final NavigablePath navigablePath = path.getNavigablePath();
 		final TableGroup tableGroup = converter.getFromClauseAccess().getTableGroup( navigablePath.getParent() );
 		final ModelPartContainer modelPart = tableGroup.getModelPart();
-		final EntityMappingType entityMapping;
-		if ( modelPart instanceof EntityValuedModelPart ) {
-			entityMapping = ( (EntityValuedModelPart) modelPart ).getEntityMappingType();
+
+		if ( path instanceof EntityDiscriminatorSqmPath<?> ) {
+			assert ((EntityDiscriminatorSqmPath<?>) path).getEntityDescriptor().hasSubclasses();
+			final EntityMappingType entityMapping;
+			if ( modelPart instanceof EntityValuedModelPart ) {
+				entityMapping = ( (EntityValuedModelPart) modelPart ).getEntityMappingType();
+			}
+			else {
+				entityMapping = (EntityMappingType) ( (PluralAttributeMapping) modelPart ).getElementDescriptor().getPartMappingType();
+			}
+			return new DiscriminatorPathInterpretation<>( navigablePath, entityMapping, tableGroup, converter );
 		}
 		else {
-			entityMapping = (EntityMappingType) ( (PluralAttributeMapping) modelPart ).getElementDescriptor().getPartMappingType();
+			final EmbeddableDiscriminatorSqmPath<?> embeddableDiscriminator = (EmbeddableDiscriminatorSqmPath<?>) path;
+			assert embeddableDiscriminator.getEmbeddableDomainType().isPolymorphic();
+			return new DiscriminatorPathInterpretation<>(
+					navigablePath,
+					embeddableDiscriminator.getDiscriminator(),
+					tableGroup,
+					converter
+			);
 		}
-
-		return new DiscriminatorPathInterpretation<>( navigablePath, entityMapping, tableGroup, converter );
 	}
 
 	public EntityDiscriminatorMapping getDiscriminatorMapping() {

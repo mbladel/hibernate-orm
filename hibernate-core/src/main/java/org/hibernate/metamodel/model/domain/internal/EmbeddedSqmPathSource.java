@@ -6,11 +6,18 @@
  */
 package org.hibernate.metamodel.model.domain.internal;
 
+import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
+import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
+import org.hibernate.metamodel.model.domain.PersistentAttribute;
+import org.hibernate.metamodel.model.domain.spi.JpaMetamodelImplementor;
 import org.hibernate.query.sqm.SqmJoinable;
 import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.tree.domain.SqmEmbeddedValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
+import org.hibernate.type.StandardBasicTypes;
+
+import static org.hibernate.metamodel.mapping.EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME;
 
 /**
  * @author Steve Ebersole
@@ -37,7 +44,20 @@ public class EmbeddedSqmPathSource<J>
 
 	@Override
 	public SqmPathSource<?> findSubPathSource(String name) {
-		return (SqmPathSource<?>) getSqmPathType().findAttribute( name );
+		final PersistentAttribute<? super J, ?> attribute = getSqmPathType().findAttribute( name );
+		if ( attribute != null ) {
+			return (SqmPathSource<?>) attribute;
+		}
+
+		if ( name.equals( DISCRIMINATOR_ROLE_NAME ) && getSqmPathType().isPolymorphic() ) {
+			final EmbeddableDomainType<J> embeddableDomainType = getSqmPathType();
+			return new EmbeddedDiscriminatorSqmPathSource<>(
+				null, // todo marco
+				embeddableDomainType
+			);
+		}
+
+		return null;
 	}
 
 	@Override

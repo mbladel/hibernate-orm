@@ -17,42 +17,14 @@ import static jakarta.persistence.metamodel.Bindable.BindableType.SINGULAR_ATTRI
 import static org.hibernate.metamodel.mapping.EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME;
 
 /**
- * SqmPathSource implementation for entity discriminator
+ * Abstract SqmPathSource implementation for discriminators
  *
  * @author Steve Ebersole
  */
-public class DiscriminatorSqmPathSource<D> extends AbstractSqmPathSource<D>
+public abstract class DiscriminatorSqmPathSource<D> extends AbstractSqmPathSource<D>
 		implements ReturnableType<D> {
-	private final EntityDomainType<?> entityDomainType;
-	private final EntityMappingType entityMapping;
-
-	public DiscriminatorSqmPathSource(
-			DomainType<D> discriminatorValueType,
-			EntityDomainType<?> entityDomainType,
-			EntityMappingType entityMapping) {
+	public DiscriminatorSqmPathSource(DomainType<D> discriminatorValueType) {
 		super( DISCRIMINATOR_ROLE_NAME, null, discriminatorValueType, SINGULAR_ATTRIBUTE );
-		this.entityDomainType = entityDomainType;
-		this.entityMapping = entityMapping;
-	}
-
-	public EntityDomainType<?> getEntityDomainType() {
-		return entityDomainType;
-	}
-
-	public EntityMappingType getEntityMapping() {
-		return entityMapping;
-	}
-
-	@Override
-	public SqmPath<D> createSqmPath(SqmPath<?> lhs, SqmPathSource<?> intermediatePathSource) {
-		return new EntityDiscriminatorSqmPath<>(
-				PathHelper.append( lhs, this, intermediatePathSource ),
-				pathModel,
-				lhs,
-				entityDomainType,
-				entityMapping,
-				lhs.nodeBuilder()
-		);
 	}
 
 	@Override

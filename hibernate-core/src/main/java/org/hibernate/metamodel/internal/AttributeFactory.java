@@ -264,6 +264,7 @@ public class AttributeFactory {
 		final EmbeddableTypeImpl<Y> embeddableType = new EmbeddableTypeImpl<>(
 				context.getJavaTypeRegistry().resolveManagedTypeDescriptor( embeddableClass ),
 				false,
+				component.isPolymorphic(),
 				context.getJpaMetamodel()
 		);
 
@@ -276,6 +277,7 @@ public class AttributeFactory {
 		final EmbeddableTypeImpl<Y> embeddableType = new EmbeddableTypeImpl<>(
 				context.getJavaTypeRegistry().getDescriptor( java.util.Map.class ),
 				true,
+				component.isPolymorphic(),
 				context.getJpaMetamodel()
 		);
 

@@ -8,6 +8,7 @@ package org.hibernate.metamodel.mapping;
 
 import java.util.function.BiConsumer;
 
+import org.hibernate.Incubating;
 import org.hibernate.internal.util.IndexedConsumer;
 import org.hibernate.internal.util.MutableInteger;
 import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
@@ -40,6 +41,7 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 	 * Returns the {@linkplain EmbeddableDiscriminatorMapping discriminator mapping}
 	 * if this discriminator type is polymorphic, {@code null} otherwise.
 	 */
+	@Incubating
 	default EmbeddableDiscriminatorMapping getDiscriminatorMapping() {
 		return null;
 	}
@@ -48,6 +50,7 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 	 * Returns {@code true} if this embeddable mapping type defines a
 	 * discriminator-based inheritance hierarchy, {@code false} otherwise.
 	 */
+	@Incubating
 	default boolean isPolymorphic() {
 		return getDiscriminatorMapping() != null;
 	}
@@ -60,6 +63,7 @@ public interface EmbeddableMappingType extends ManagedMappingType, SelectableMap
 	 * @param embeddableClassName the embeddable subclass in which the attribute must be declared
 	 * @param attributeMapping the attribute to check
 	 */
+	@Incubating
 	default boolean declaresAttribute(String embeddableClassName, AttributeMapping attributeMapping) {
 		return true;
 	}

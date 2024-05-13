@@ -6,7 +6,7 @@
  */
 package org.hibernate.metamodel.model.domain;
 
-import org.hibernate.query.BindableType;
+import org.hibernate.Incubating;
 import org.hibernate.query.sqm.SqmExpressible;
 
 import jakarta.persistence.metamodel.EmbeddableType;
@@ -21,4 +21,8 @@ import jakarta.persistence.metamodel.EmbeddableType;
  */
 public interface EmbeddableDomainType<J>
 		extends ManagedDomainType<J>, EmbeddableType<J>, SqmExpressible<J> {
+	@Incubating
+	default boolean isPolymorphic() {
+		return false;
+	};
 }
