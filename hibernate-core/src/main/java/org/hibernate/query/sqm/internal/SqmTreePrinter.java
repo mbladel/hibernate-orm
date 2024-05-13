@@ -48,6 +48,7 @@ import org.hibernate.query.sqm.tree.expression.SqmCollation;
 import org.hibernate.query.sqm.tree.expression.SqmCollectionSize;
 import org.hibernate.query.sqm.tree.expression.SqmDistinct;
 import org.hibernate.query.sqm.tree.expression.SqmDurationUnit;
+import org.hibernate.query.sqm.tree.expression.SqmEmbeddedDiscriminatorValue;
 import org.hibernate.query.sqm.tree.expression.SqmEnumLiteral;
 import org.hibernate.query.sqm.tree.expression.SqmEvery;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
@@ -810,11 +811,6 @@ public class SqmTreePrinter implements SemanticQueryWalker<Object> {
 	}
 
 	@Override
-	public Object visitEmbeddableTypeLiteralExpression(SqmLiteralEmbeddableType<?> expression) {
-		return null;
-	}
-
-	@Override
 	public Object visitParameterizedEntityTypeExpression(SqmParameterizedEntityType expression) {
 		return null;
 	}
@@ -1150,6 +1146,11 @@ public class SqmTreePrinter implements SemanticQueryWalker<Object> {
 
 	@Override
 	public Object visitAnyDiscriminatorTypeValueExpression(SqmAnyDiscriminatorValue<?> expression) {
+		return null;
+	}
+
+	@Override
+	public Object visitEmbeddedDiscriminatorTypeValueExpression(SqmEmbeddedDiscriminatorValue<?> expression) {
 		return null;
 	}
 

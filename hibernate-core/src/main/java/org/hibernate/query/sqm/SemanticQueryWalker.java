@@ -59,6 +59,7 @@ import org.hibernate.query.sqm.tree.expression.SqmCollation;
 import org.hibernate.query.sqm.tree.expression.SqmCollectionSize;
 import org.hibernate.query.sqm.tree.expression.SqmDistinct;
 import org.hibernate.query.sqm.tree.expression.SqmDurationUnit;
+import org.hibernate.query.sqm.tree.expression.SqmEmbeddedDiscriminatorValue;
 import org.hibernate.query.sqm.tree.expression.SqmEnumLiteral;
 import org.hibernate.query.sqm.tree.expression.SqmEvery;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
@@ -322,11 +323,11 @@ public interface SemanticQueryWalker<T> {
 
 	T visitEntityTypeLiteralExpression(SqmLiteralEntityType<?> expression);
 
-	T visitEmbeddableTypeLiteralExpression(SqmLiteralEmbeddableType<?> expression);
-
 	T visitAnyDiscriminatorTypeExpression(AnyDiscriminatorSqmPath<?> expression);
 
 	T visitAnyDiscriminatorTypeValueExpression(SqmAnyDiscriminatorValue<?> expression);
+
+	T visitEmbeddedDiscriminatorTypeValueExpression(SqmEmbeddedDiscriminatorValue<?> expression);
 
 	T visitParameterizedEntityTypeExpression(SqmParameterizedEntityType<?> expression);
 

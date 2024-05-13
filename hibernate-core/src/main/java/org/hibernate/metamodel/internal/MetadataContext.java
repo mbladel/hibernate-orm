@@ -414,6 +414,14 @@ public class MetadataContext {
 					}
 				}
 
+				if ( component.isPolymorphic() ) {
+					// todo marco : this is (kinda) temporary, ideally we would be creating embeddable domain types
+					getJpaMetamodel().registerEmbeddableSubtype( component.getComponentClassName() );
+					for ( String value : component.getDiscriminatorValues().values() ) {
+						getJpaMetamodel().registerEmbeddableSubtype( value );
+					}
+				}
+
 				( ( AttributeContainer<?>) embeddable ).getInFlightAccess().finishUp();
 				// Do not process embeddables for entity types i.e. id-classes or
 				// generic component embeddables used just for concrete type resolution

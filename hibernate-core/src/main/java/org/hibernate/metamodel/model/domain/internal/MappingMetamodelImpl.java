@@ -500,6 +500,16 @@ public class MappingMetamodelImpl extends QueryParameterBindingTypeResolverImpl
 	}
 
 	@Override
+	public void registerEmbeddableSubtype(String embeddableClassName) {
+		jpaMetamodel.registerEmbeddableSubtype( embeddableClassName );
+	}
+
+	@Override
+	public boolean embeddableSubtype(String embeddableClassName) {
+		return jpaMetamodel.embeddableSubtype( embeddableClassName );
+	}
+
+	@Override
 	public <X> EntityDomainType<X> getHqlEntityReference(String entityName) {
 		return jpaMetamodel.getHqlEntityReference( entityName );
 	}

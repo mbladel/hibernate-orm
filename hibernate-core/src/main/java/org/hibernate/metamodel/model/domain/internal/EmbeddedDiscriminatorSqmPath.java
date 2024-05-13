@@ -15,20 +15,20 @@ import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.domain.AbstractSqmPath;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
-import org.hibernate.query.sqm.tree.expression.SqmLiteralEmbeddableType;
 import org.hibernate.spi.NavigablePath;
+import org.hibernate.type.BasicType;
 
 /**
  * {@link SqmPath} specialization for an embeddable discriminator
  *
  * @author Marco Belladelli
  */
-public class EmbeddableDiscriminatorSqmPath<T> extends AbstractSqmPath<T> implements DiscriminatorSqmPath<T> {
+public class EmbeddedDiscriminatorSqmPath<T> extends AbstractSqmPath<T> implements DiscriminatorSqmPath<T> {
 	private final EmbeddableDomainType<T> embeddableDomainType;
 	private final EmbeddableDiscriminatorMapping discriminator;
 
 	@SuppressWarnings( { "rawtypes", "unchecked" } )
-	protected EmbeddableDiscriminatorSqmPath(
+	protected EmbeddedDiscriminatorSqmPath(
 			NavigablePath navigablePath,
 			SqmPathSource referencedPathSource,
 			SqmPath<?> lhs,
@@ -49,35 +49,27 @@ public class EmbeddableDiscriminatorSqmPath<T> extends AbstractSqmPath<T> implem
 	}
 
 	@Override
-	public EntityDiscriminatorSqmPathSource<T> getExpressible() {
-		return (EntityDiscriminatorSqmPathSource<T>) getNodeType();
+	public BasicType<T> getExpressible() {
+		//noinspection unchecked
+		return (BasicType<T>) discriminator.getJdbcMapping();
 	}
 
 	@Override
-	public EmbeddableDiscriminatorSqmPath<T> copy(SqmCopyContext context) {
-		final EmbeddableDiscriminatorSqmPath<T> existing = context.getCopy( this );
+	public EmbeddedDiscriminatorSqmPath<T> copy(SqmCopyContext context) {
+		final EmbeddedDiscriminatorSqmPath<T> existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
 		//noinspection unchecked
 		return context.registerCopy(
 				this,
-				(EmbeddableDiscriminatorSqmPath<T>) getLhs().copy( context ).type()
+				(EmbeddedDiscriminatorSqmPath<T>) getLhs().copy( context ).type()
 		);
 	}
 
 	@Override
 	public <X> X accept(SemanticQueryWalker<X> walker) {
 		assert embeddableDomainType.isPolymorphic();
-		// todo marco : this should never happen, right?
-//		if ( !embeddableDomainType.isPolymorphic() ) {
-//			return walker.visitEmbeddableTypeLiteralExpression( new SqmLiteralEmbeddableType<>(
-//					embeddableDomainType,
-//					discriminator,
-//					nodeBuilder()
-//			) );
-//		}
-
 		return walker.visitDiscriminatorPath( this );
 	}
 }

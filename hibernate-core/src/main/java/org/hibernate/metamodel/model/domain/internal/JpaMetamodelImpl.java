@@ -93,6 +93,7 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 	private final Map<Class<?>, ManagedDomainType<?>> jpaManagedTypeMap = new HashMap<>();
 	private final Set<ManagedDomainType<?>> jpaManagedTypes = new HashSet<>();
 	private final Set<EmbeddableDomainType<?>> jpaEmbeddables = new HashSet<>();
+	private Set<String> embeddableSubtypes;
 	private final Map<String, Set<String>> allowedEnumLiteralTexts = new HashMap<>();
 
 	private final transient Map<String, RootGraphImplementor<?>> entityGraphMap = new ConcurrentHashMap<>();
@@ -139,6 +140,19 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 	public <X> EmbeddableDomainType<X> embeddable(String embeddableName) {
 		//noinspection unchecked
 		return embeddableName == null ? null : (EmbeddableDomainType<X>) jpaEmbeddableTypeMap.get( embeddableName );
+	}
+
+	@Override
+	public void registerEmbeddableSubtype(String embeddableClassName) {
+		if ( embeddableSubtypes == null ) {
+			embeddableSubtypes = new HashSet<>();
+		}
+		embeddableSubtypes.add( embeddableClassName );
+	}
+
+	@Override
+	public boolean embeddableSubtype(String embeddableClassName) {
+		return embeddableSubtypes != null && embeddableSubtypes.contains( embeddableClassName );
 	}
 
 	@Override

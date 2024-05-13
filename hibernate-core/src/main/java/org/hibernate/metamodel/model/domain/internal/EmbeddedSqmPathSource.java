@@ -51,10 +51,7 @@ public class EmbeddedSqmPathSource<J>
 
 		if ( name.equals( DISCRIMINATOR_ROLE_NAME ) && getSqmPathType().isPolymorphic() ) {
 			final EmbeddableDomainType<J> embeddableDomainType = getSqmPathType();
-			return new EmbeddedDiscriminatorSqmPathSource<>(
-				null, // todo marco
-				embeddableDomainType
-			);
+			return new EmbeddedDiscriminatorSqmPathSource<>( embeddableDomainType );
 		}
 
 		return null;

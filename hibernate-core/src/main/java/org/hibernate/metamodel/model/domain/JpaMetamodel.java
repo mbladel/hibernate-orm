@@ -57,6 +57,10 @@ public interface JpaMetamodel extends Metamodel {
 	 */
 	<X> EmbeddableDomainType<X> embeddable(String embeddableName);
 
+	void registerEmbeddableSubtype(String embeddableClassName);
+
+	boolean embeddableSubtype(String embeddableClassName);
+
 	/**
 	 * Specialized handling for resolving entity-name references in
 	 * an HQL query

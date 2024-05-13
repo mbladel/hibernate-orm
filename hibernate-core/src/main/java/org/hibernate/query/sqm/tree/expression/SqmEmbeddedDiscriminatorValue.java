@@ -6,6 +6,8 @@
  */
 package org.hibernate.query.sqm.tree.expression;
 
+import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorMapping;
+import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.query.hql.HqlInterpretationException;
 import org.hibernate.query.hql.spi.SemanticPathPart;
 import org.hibernate.query.hql.spi.SqmCreationState;
@@ -15,26 +17,23 @@ import org.hibernate.query.sqm.SqmExpressible;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.select.SqmSelectableNode;
-import org.hibernate.type.StandardBasicTypes;
+import org.hibernate.type.BasicType;
 
-/**
- * Represents a reference to an embeddable type as a literal.
- *
- * @author Marco Belladelli
- */
-public class SqmLiteralEmbeddableType
-		extends AbstractSqmExpression<String>
-		implements SqmSelectableNode<String>, SemanticPathPart {
+import org.checkerframework.checker.nullness.qual.Nullable;
+
+public class SqmEmbeddedDiscriminatorValue<T> extends AbstractSqmExpression<T>
+		implements SqmSelectableNode<T>, SemanticPathPart {
+	private final String pathName;
 	private final String embeddableClassName;
 
-	public SqmLiteralEmbeddableType(
+	public SqmEmbeddedDiscriminatorValue(
+			String pathName,
+			BasicType<T> domainType,
 			String embeddableClassName,
 			NodeBuilder nodeBuilder) {
-		super(
-				nodeBuilder.getTypeConfiguration().getBasicTypeRegistry().resolve( StandardBasicTypes.STRING ),
-				nodeBuilder
-		);
+		super( domainType, nodeBuilder );
 		this.embeddableClassName = embeddableClassName;
+		this.pathName = pathName;
 	}
 
 	public String getEmbeddableClassName() {
@@ -42,14 +41,21 @@ public class SqmLiteralEmbeddableType
 	}
 
 	@Override
-	public SqmLiteralEmbeddableType copy(SqmCopyContext context) {
-		final SqmLiteralEmbeddableType existing = context.getCopy( this );
+	public @Nullable BasicType<T> getNodeType() {
+		return (BasicType<T>) super.getNodeType();
+	}
+
+	@Override
+	public SqmEmbeddedDiscriminatorValue<T> copy(SqmCopyContext context) {
+		final SqmEmbeddedDiscriminatorValue<T> existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
-		final SqmLiteralEmbeddableType expression = context.registerCopy(
+		final SqmEmbeddedDiscriminatorValue<T> expression = context.registerCopy(
 				this,
-				new SqmLiteralEmbeddableType(
+				new SqmEmbeddedDiscriminatorValue<>(
+						pathName,
+						getNodeType(),
 						embeddableClassName,
 						nodeBuilder()
 				)
@@ -59,17 +65,17 @@ public class SqmLiteralEmbeddableType
 	}
 
 	@Override
-	public void internalApplyInferableType(SqmExpressible<?> type) {
+	public <X> X accept(SemanticQueryWalker<X> walker) {
+		return walker.visitEmbeddedDiscriminatorTypeValueExpression( this );
 	}
 
-	@Override
-	public <X> X accept(SemanticQueryWalker<X> walker) {
-		throw new UnsupportedOperationException();
+	public String getPathName() {
+		return pathName;
 	}
 
 	@Override
 	public String asLoggableText() {
-		return "TYPE(" + embeddableClassName + ")";
+		return "SqmEmbeddedDiscriminatorValue(" + embeddableClassName + ")";
 	}
 
 	@Override
@@ -77,7 +83,7 @@ public class SqmLiteralEmbeddableType
 			String name,
 			boolean isTerminal,
 			SqmCreationState creationState) {
-		throw new HqlInterpretationException( "Cannot dereference an embeddable name" );
+		throw new HqlInterpretationException( "Cannot dereference an entity name" );
 	}
 
 	@Override
@@ -85,7 +91,7 @@ public class SqmLiteralEmbeddableType
 			SqmExpression<?> selector,
 			boolean isTerminal,
 			SqmCreationState creationState) {
-		throw new HqlInterpretationException( "Cannot dereference an embeddable name" );
+		throw new HqlInterpretationException( "Cannot dereference an entity name" );
 	}
 
 	@Override

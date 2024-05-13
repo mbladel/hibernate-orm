@@ -188,6 +188,7 @@ import org.hibernate.query.sqm.tree.expression.SqmCollation;
 import org.hibernate.query.sqm.tree.expression.SqmCollectionSize;
 import org.hibernate.query.sqm.tree.expression.SqmDistinct;
 import org.hibernate.query.sqm.tree.expression.SqmDurationUnit;
+import org.hibernate.query.sqm.tree.expression.SqmEmbeddedDiscriminatorValue;
 import org.hibernate.query.sqm.tree.expression.SqmEnumLiteral;
 import org.hibernate.query.sqm.tree.expression.SqmEvery;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
@@ -7130,17 +7131,20 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 	}
 
 	@Override
-	public Expression visitEmbeddableTypeLiteralExpression(SqmLiteralEmbeddableType<?> sqmExpression) {
-		assert sqmExpression.getDiscriminator() != null;
-		return new EmbeddableTypeLiteral( sqmExpression.getNodeType(), sqmExpression.getDiscriminator() );
-	}
-
-	@Override
 	public Expression visitAnyDiscriminatorTypeValueExpression(SqmAnyDiscriminatorValue<?> expression) {
 		final BasicType<?> domainType = expression.getDomainType();
 		return new QueryLiteral<>(
 				domainType.convertToRelationalValue( expression.getEntityValue().getJavaType() ),
 				domainType
+		);
+	}
+
+	@Override
+	public Expression visitEmbeddedDiscriminatorTypeValueExpression(SqmEmbeddedDiscriminatorValue<?> expression) {
+		final BasicType<?> nodeType = expression.getNodeType();
+		return new QueryLiteral<>(
+				nodeType.convertToRelationalValue( expression.getEmbeddableClassName() ),
+				nodeType
 		);
 	}
 
@@ -7642,7 +7646,11 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			List<EntityTypeLiteral> literalExpressions,
 			boolean inclusive) {
 		final TableGroup tableGroup = getFromClauseIndex().getTableGroup( typeExpression.getNavigablePath().getParent() );
-		final EntityMappingType entityMappingType = (EntityMappingType) tableGroup.getModelPart().getPartMappingType();
+		final MappingType partMappingType = tableGroup.getModelPart().getPartMappingType();
+		if ( !( partMappingType instanceof EntityMappingType ) ) {
+			return;
+		}
+		final EntityMappingType entityMappingType = (EntityMappingType) partMappingType;
 		if ( entityMappingType.getDiscriminatorMapping().hasPhysicalColumn() ) {
 			// If the entity has a physical discriminator column we don't need to register any FILTER usages.
 			// Register only an EXPRESSION usage to prevent pruning of the root type's table reference which

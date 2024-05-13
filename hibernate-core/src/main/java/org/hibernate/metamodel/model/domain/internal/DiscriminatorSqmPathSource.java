@@ -23,8 +23,8 @@ import static org.hibernate.metamodel.mapping.EntityDiscriminatorMapping.DISCRIM
  */
 public abstract class DiscriminatorSqmPathSource<D> extends AbstractSqmPathSource<D>
 		implements ReturnableType<D> {
-	public DiscriminatorSqmPathSource(DomainType<D> discriminatorValueType) {
-		super( DISCRIMINATOR_ROLE_NAME, null, discriminatorValueType, SINGULAR_ATTRIBUTE );
+	public DiscriminatorSqmPathSource(DomainType<D> domainType) {
+		super( DISCRIMINATOR_ROLE_NAME, null, domainType, SINGULAR_ATTRIBUTE );
 	}
 
 	@Override
