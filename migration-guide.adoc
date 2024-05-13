@@ -57,3 +57,10 @@ Support for `array_contains()` to accept an array as element argument is depreca
 To check if an array is a subset of another array, use the `array_includes()` function,
 or the new `INCLUDES` predicate i.e. `array INCLUDES subarray`.
 
+[[embeddable-treated-paths]]
+== Changes to the `SqmTreatedPath` interface
+
+ORM 6.6 introduced support for `@Embeddable` type inheritance.
+With it, we also allowed the `type()` and `treat()` functions to work with embeddable-typed paths as well.
+As a consequence, the `SqmTreatedPath#getTreatTarget()` method will now return a generic `ManagedDomainType`,
+which could in turn be an `EntityDomainType` (as it was before) or also an `EmbeddableDomainType` instance.

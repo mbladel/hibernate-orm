@@ -8,7 +8,9 @@ package org.hibernate.query.sqm.tree.domain;
 
 import java.util.Locale;
 
+import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
+import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.metamodel.model.domain.SingularPersistentAttribute;
 import org.hibernate.query.sqm.SemanticQueryWalker;
 import org.hibernate.spi.NavigablePath;
@@ -94,35 +96,41 @@ public class SqmSingularJoin<O,T> extends AbstractSqmAttributeJoin<O,T> {
 	}
 
 	@Override
-	public <S extends T> SqmTreatedSingularJoin<O,T,S> treatAs(Class<S> treatJavaType) {
-		return treatAs( nodeBuilder().getDomainModel().entity( treatJavaType ) );
+	public <S extends T> AbstractSqmTreatedSingularJoin<O,T,S> treatAs(Class<S> treatJavaType) {
+		return treatAs( treatJavaType, null );
 	}
 
 	@Override
-	public <S extends T> SqmTreatedSingularJoin<O,T,S> treatAs(EntityDomainType<S> treatTarget) {
+	public <S extends T> SqmTreatedSingularEntityJoin<O,T,S> treatAs(EntityDomainType<S> treatTarget) {
 		return treatAs( treatTarget, null );
 	}
 
 	@Override
-	public <S extends T> SqmTreatedSingularJoin<O,T,S> treatAs(Class<S> treatJavaType, String alias) {
-		return treatAs( nodeBuilder().getDomainModel().entity( treatJavaType ), alias );
+	public <S extends T> AbstractSqmTreatedSingularJoin<O,T,S> treatAs(Class<S> treatJavaType, String alias) {
+		return treatAs( treatJavaType, alias, false );
 	}
 
 	@Override
-	public <S extends T> SqmTreatedSingularJoin<O,T,S> treatAs(EntityDomainType<S> treatTarget, String alias) {
+	public <S extends T> SqmTreatedSingularEntityJoin<O,T,S> treatAs(EntityDomainType<S> treatTarget, String alias) {
 		return treatAs( treatTarget, alias, false );
 	}
 
 	@Override
-	public <S extends T> SqmTreatedSingularJoin<O,T,S> treatAs(Class<S> treatJavaType, String alias, boolean fetch) {
-		return treatAs( nodeBuilder().getDomainModel().entity( treatJavaType ), alias, fetch );
+	public <S extends T> AbstractSqmTreatedSingularJoin<O,T,S> treatAs(Class<S> treatJavaType, String alias, boolean fetch) {
+		final ManagedDomainType<S> domainType = nodeBuilder().getDomainModel().managedType( treatJavaType );
+		if ( domainType instanceof EntityDomainType<?> ) {
+			return treatAs( ( EntityDomainType<S> ) domainType, alias, fetch );
+		}
+		else {
+			return addTreat( new SqmTreatedSingularEmbeddedJoin<>( this, ( (EmbeddableDomainType<S>) domainType ), alias ) );
+		}
 	}
 
 	@Override
-	public <S extends T> SqmTreatedSingularJoin<O,T,S> treatAs(EntityDomainType<S> treatTarget, String alias, boolean fetch) {
-		final SqmTreatedSingularJoin<O, T, S> treat = findTreat( treatTarget, alias );
+	public <S extends T> SqmTreatedSingularEntityJoin<O,T,S> treatAs(EntityDomainType<S> treatTarget, String alias, boolean fetch) {
+		final SqmTreatedSingularEntityJoin<O, T, S> treat = findTreat( treatTarget, alias );
 		if ( treat == null ) {
-			return addTreat( new SqmTreatedSingularJoin<>( this, treatTarget, alias, fetch ) );
+			return addTreat( new SqmTreatedSingularEntityJoin<>( this, treatTarget, alias, fetch ) );
 		}
 		return treat;
 	}
