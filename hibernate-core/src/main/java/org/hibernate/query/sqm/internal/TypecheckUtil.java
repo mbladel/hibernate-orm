@@ -13,7 +13,7 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.TupleType;
-import org.hibernate.metamodel.model.domain.internal.DiscriminatorSqmPathSource;
+import org.hibernate.metamodel.model.domain.internal.EntityDiscriminatorSqmPathSource;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.SemanticException;
 import org.hibernate.query.sqm.BinaryArithmeticOperator;
@@ -157,11 +157,11 @@ public class TypecheckUtil {
 		// entities can be compared to discriminators if they belong to
 		// the same inheritance hierarchy
 
-		if ( lhsDomainType instanceof DiscriminatorSqmPathSource ) {
-			return isDiscriminatorTypeComparable( (DiscriminatorSqmPathSource<?>) lhsDomainType, rhsDomainType, factory );
+		if ( lhsDomainType instanceof EntityDiscriminatorSqmPathSource ) {
+			return isDiscriminatorTypeComparable( (EntityDiscriminatorSqmPathSource<?>) lhsDomainType, rhsDomainType, factory );
 		}
-		if ( rhsDomainType instanceof DiscriminatorSqmPathSource ) {
-			return isDiscriminatorTypeComparable( (DiscriminatorSqmPathSource<?>) rhsDomainType, lhsDomainType, factory );
+		if ( rhsDomainType instanceof EntityDiscriminatorSqmPathSource ) {
+			return isDiscriminatorTypeComparable( (EntityDiscriminatorSqmPathSource<?>) rhsDomainType, lhsDomainType, factory );
 		}
 
 		// Treat the expressions as comparable if they belong to the same
@@ -234,7 +234,7 @@ public class TypecheckUtil {
 	}
 
 	private static boolean isDiscriminatorTypeComparable(
-			DiscriminatorSqmPathSource<?> lhsDiscriminator, SqmExpressible<?> rhsType,
+			EntityDiscriminatorSqmPathSource<?> lhsDiscriminator, SqmExpressible<?> rhsType,
 			SessionFactoryImplementor factory) {
 		String entityName = lhsDiscriminator.getEntityDomainType().getHibernateEntityName();
 		EntityPersister lhsEntity = factory.getMappingMetamodel().getEntityDescriptor( entityName );
@@ -243,8 +243,8 @@ public class TypecheckUtil {
 			EntityPersister rhsEntity = getEntityDescriptor( factory, rhsEntityName );
 			return lhsEntity.getRootEntityName().equals( rhsEntity.getRootEntityName() );
 		}
-		else if ( rhsType instanceof DiscriminatorSqmPathSource ) {
-			DiscriminatorSqmPathSource<?> discriminator = (DiscriminatorSqmPathSource<?>) rhsType;
+		else if ( rhsType instanceof EntityDiscriminatorSqmPathSource ) {
+			EntityDiscriminatorSqmPathSource<?> discriminator = (EntityDiscriminatorSqmPathSource<?>) rhsType;
 			String rhsEntityName = discriminator.getEntityDomainType().getHibernateEntityName();
 			EntityPersister rhsEntity = factory.getMappingMetamodel().getEntityDescriptor( rhsEntityName );
 			return rhsEntity.getRootEntityName().equals( lhsEntity.getRootEntityName() );

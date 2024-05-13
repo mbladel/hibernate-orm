@@ -74,6 +74,7 @@ import org.hibernate.metamodel.mapping.internal.SqlTypedMappingImpl;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
 import org.hibernate.metamodel.mapping.ordering.OrderByFragment;
 import org.hibernate.metamodel.model.domain.BasicDomainType;
+import org.hibernate.metamodel.model.domain.DiscriminatorSqmPath;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.PersistentAttribute;
@@ -198,6 +199,7 @@ import org.hibernate.query.sqm.tree.expression.SqmFunction;
 import org.hibernate.query.sqm.tree.expression.SqmHqlNumericLiteral;
 import org.hibernate.query.sqm.tree.expression.SqmJpaCriteriaParameterWrapper;
 import org.hibernate.query.sqm.tree.expression.SqmLiteral;
+import org.hibernate.query.sqm.tree.expression.SqmLiteralEmbeddableType;
 import org.hibernate.query.sqm.tree.expression.SqmLiteralEntityType;
 import org.hibernate.query.sqm.tree.expression.SqmLiteralNull;
 import org.hibernate.query.sqm.tree.expression.SqmModifiedSubQueryExpression;
@@ -301,6 +303,7 @@ import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.ast.tree.expression.Distinct;
 import org.hibernate.sql.ast.tree.expression.Duration;
 import org.hibernate.sql.ast.tree.expression.DurationUnit;
+import org.hibernate.sql.ast.tree.expression.EmbeddableTypeLiteral;
 import org.hibernate.sql.ast.tree.expression.EntityTypeLiteral;
 import org.hibernate.sql.ast.tree.expression.Every;
 import org.hibernate.sql.ast.tree.expression.Expression;
@@ -3158,8 +3161,10 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		return false;
 	}
 
-	protected void registerTypeUsage(EntityDiscriminatorSqmPath path) {
-		registerTypeUsage( getFromClauseAccess().getTableGroup( path.getNavigablePath().getParent() ) );
+	protected void registerTypeUsage(DiscriminatorSqmPath<?> path) {
+		if ( path instanceof EntityDiscriminatorSqmPath<?> ) {
+			registerTypeUsage( getFromClauseAccess().getTableGroup( path.getNavigablePath().getParent() ) );
+		}
 	}
 
 	protected void registerTypeUsage(TableGroup tableGroup) {
@@ -4500,7 +4505,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 	}
 
 	@Override
-	public Object visitDiscriminatorPath(EntityDiscriminatorSqmPath sqmPath) {
+	public Object visitDiscriminatorPath(DiscriminatorSqmPath<?> sqmPath) {
 		return prepareReusablePath(
 				sqmPath,
 				() -> {
@@ -7124,6 +7129,11 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		return new EntityTypeLiteral( mappingDescriptor );
 	}
 
+	@Override
+	public Expression visitEmbeddableTypeLiteralExpression(SqmLiteralEmbeddableType<?> sqmExpression) {
+		assert sqmExpression.getDiscriminator() != null;
+		return new EmbeddableTypeLiteral( sqmExpression.getNodeType(), sqmExpression.getDiscriminator() );
+	}
 
 	@Override
 	public Expression visitAnyDiscriminatorTypeValueExpression(SqmAnyDiscriminatorValue<?> expression) {

@@ -27,13 +27,16 @@ public class EmbeddableTypeImpl<J>
 		implements EmbeddableDomainType<J>, Serializable {
 
 	private final boolean isDynamic;
+	private final boolean isPolymorphic;
 
 	public EmbeddableTypeImpl(
 			JavaType<J> javaType,
 			boolean isDynamic,
+			boolean isPolymorphic,
 			JpaMetamodelImplementor domainMetamodel) {
 		super( javaType.getTypeName(), javaType, null, domainMetamodel );
 		this.isDynamic = isDynamic;
+		this.isPolymorphic = isPolymorphic;
 	}
 
 	@Override
@@ -47,5 +50,10 @@ public class EmbeddableTypeImpl<J>
 			count += ( (DomainType<?>) attribute.getType() ).getTupleLength();
 		}
 		return count;
+	}
+
+	@Override
+	public boolean isPolymorphic() {
+		return isPolymorphic;
 	}
 }

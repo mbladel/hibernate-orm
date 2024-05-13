@@ -115,6 +115,7 @@ import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.ast.tree.expression.Distinct;
 import org.hibernate.sql.ast.tree.expression.Duration;
 import org.hibernate.sql.ast.tree.expression.DurationUnit;
+import org.hibernate.sql.ast.tree.expression.EmbeddableTypeLiteral;
 import org.hibernate.sql.ast.tree.expression.EntityTypeLiteral;
 import org.hibernate.sql.ast.tree.expression.Every;
 import org.hibernate.sql.ast.tree.expression.Expression;
@@ -225,6 +226,7 @@ import org.hibernate.type.descriptor.sql.DdlType;
 import org.hibernate.type.descriptor.sql.spi.DdlTypeRegistry;
 import org.hibernate.type.spi.TypeConfiguration;
 
+import static org.hibernate.persister.entity.DiscriminatorHelper.jdbcLiteral;
 import static org.hibernate.query.sqm.BinaryArithmeticOperator.DIVIDE_PORTABLE;
 import static org.hibernate.query.sqm.TemporalUnit.NANOSECOND;
 import static org.hibernate.sql.ast.SqlTreePrinter.logSqlAst;
@@ -7201,6 +7203,16 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 	@Override
 	public void visitEntityTypeLiteral(EntityTypeLiteral expression) {
 		appendSql( expression.getEntityTypeDescriptor().getDiscriminatorSQLValue() );
+	}
+
+	@Override
+	public void visitEmbeddableTypeLiteral(EmbeddableTypeLiteral expression) {
+		//noinspection unchecked
+		appendSql( jdbcLiteral(
+				expression.getDiscriminatorValue(),
+				expression.getExpressionType().getSingleJdbcMapping().getJdbcLiteralFormatter(),
+				getDialect()
+		) );
 	}
 
 	@Override

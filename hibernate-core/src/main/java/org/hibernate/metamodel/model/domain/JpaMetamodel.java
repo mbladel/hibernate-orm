@@ -53,6 +53,11 @@ public interface JpaMetamodel extends Metamodel {
 	<X> EntityDomainType<X> entity(String entityName);
 
 	/**
+	 * Access to an embeddable by FQDN name
+	 */
+	<X> EmbeddableDomainType<X> embeddable(String embeddableName);
+
+	/**
 	 * Specialized handling for resolving entity-name references in
 	 * an HQL query
 	 */

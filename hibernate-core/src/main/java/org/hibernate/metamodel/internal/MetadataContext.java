@@ -553,6 +553,7 @@ public class MetadataContext {
 		final EmbeddableTypeImpl<?> embeddableType = new EmbeddableTypeImpl<>(
 				javaType,
 				false,
+				idClassComponent.isPolymorphic(),
 				getJpaMetamodel()
 		);
 		registerEmbeddableType( embeddableType, idClassComponent );

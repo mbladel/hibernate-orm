@@ -89,6 +89,7 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 	private final ServiceRegistry serviceRegistry;
 
 	private final Map<String, EntityDomainType<?>> jpaEntityTypeMap = new TreeMap<>(); // Need ordering for deterministic implementers list in SqmPolymorphicRootDescriptor
+	private final Map<String, EmbeddableDomainType<?>> jpaEmbeddableTypeMap = new HashMap<>();
 	private final Map<Class<?>, ManagedDomainType<?>> jpaManagedTypeMap = new HashMap<>();
 	private final Set<ManagedDomainType<?>> jpaManagedTypes = new HashSet<>();
 	private final Set<EmbeddableDomainType<?>> jpaEmbeddables = new HashSet<>();
@@ -131,7 +132,13 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 	@Override
 	public <X> EntityDomainType<X> entity(String entityName) {
 		//noinspection unchecked
-		return entityName==null ? null : (EntityDomainType<X>) jpaEntityTypeMap.get( entityName );
+		return entityName == null ? null : (EntityDomainType<X>) jpaEntityTypeMap.get( entityName );
+	}
+
+	@Override
+	public <X> EmbeddableDomainType<X> embeddable(String embeddableName) {
+		//noinspection unchecked
+		return embeddableName == null ? null : (EmbeddableDomainType<X>) jpaEmbeddableTypeMap.get( embeddableName );
 	}
 
 	@Override
@@ -588,6 +595,7 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 						this.jpaManagedTypes.add( embeddable );
 						if ( !( embeddable.getExpressibleJavaType() instanceof EntityJavaType<?> ) ) {
 							this.jpaManagedTypeMap.put( embeddable.getJavaType(), embeddable );
+							this.jpaEmbeddableTypeMap.put( embeddable.getJavaType().getName(), embeddable );
 						}
 					}
 					break;
@@ -597,6 +605,7 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 					if ( embeddable.getJavaType() != null
 							&& !( embeddable.getExpressibleJavaType() instanceof EntityJavaType<?> ) ) {
 						this.jpaManagedTypeMap.put( embeddable.getJavaType(), embeddable );
+						this.jpaEmbeddableTypeMap.put( embeddable.getJavaType().getName(), embeddable );
 					}
 					break;
 				case DISABLED:

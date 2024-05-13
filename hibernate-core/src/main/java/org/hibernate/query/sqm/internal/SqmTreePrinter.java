@@ -9,6 +9,7 @@ package org.hibernate.query.sqm.internal;
 import java.util.List;
 import java.util.Locale;
 
+import org.hibernate.metamodel.model.domain.DiscriminatorSqmPath;
 import org.hibernate.metamodel.model.domain.internal.AnyDiscriminatorSqmPath;
 import org.hibernate.metamodel.model.domain.internal.EntityDiscriminatorSqmPath;
 import org.hibernate.query.QueryLogging;
@@ -56,6 +57,7 @@ import org.hibernate.query.sqm.tree.expression.SqmFormat;
 import org.hibernate.query.sqm.tree.expression.SqmFunction;
 import org.hibernate.query.sqm.tree.expression.SqmHqlNumericLiteral;
 import org.hibernate.query.sqm.tree.expression.SqmLiteral;
+import org.hibernate.query.sqm.tree.expression.SqmLiteralEmbeddableType;
 import org.hibernate.query.sqm.tree.expression.SqmLiteralEntityType;
 import org.hibernate.query.sqm.tree.expression.SqmModifiedSubQueryExpression;
 import org.hibernate.query.sqm.tree.expression.SqmNamedParameter;
@@ -723,7 +725,7 @@ public class SqmTreePrinter implements SemanticQueryWalker<Object> {
 	}
 
 	@Override
-	public Object visitDiscriminatorPath(EntityDiscriminatorSqmPath sqmPath) {
+	public Object visitDiscriminatorPath(DiscriminatorSqmPath<?> sqmPath) {
 		logWithIndentation( "-> [discriminator-path] - `%s`", sqmPath.getNavigablePath() );
 
 		return null;
@@ -804,6 +806,11 @@ public class SqmTreePrinter implements SemanticQueryWalker<Object> {
 
 	@Override
 	public Object visitEntityTypeLiteralExpression(SqmLiteralEntityType expression) {
+		return null;
+	}
+
+	@Override
+	public Object visitEmbeddableTypeLiteralExpression(SqmLiteralEmbeddableType<?> expression) {
 		return null;
 	}
 

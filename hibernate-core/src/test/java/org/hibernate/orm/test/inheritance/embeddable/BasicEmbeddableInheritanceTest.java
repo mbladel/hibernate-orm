@@ -112,6 +112,16 @@ public class BasicEmbeddableInheritanceTest {
 		} );
 	}
 
+	@Test
+	public void testTypeExpressions(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final Object result = session.createQuery(
+					"select type(t.embeddable) from TestEntity t where t.id = 1",
+					Object.class
+			).getSingleResult();
+		} );
+	}
+
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
