@@ -7,6 +7,7 @@
 package org.hibernate.query.hql.internal;
 
 import org.hibernate.metamodel.model.domain.EntityDomainType;
+import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.query.PathException;
 import org.hibernate.query.SemanticException;
 import org.hibernate.query.hql.spi.DotIdentifierConsumer;
@@ -292,8 +293,11 @@ public class QualifiedJoinPathConsumer implements DotIdentifierConsumer {
 			creationState.getCurrentProcessingState().getPathRegistry().register( currentPath );
 		}
 
-		private <T> EntityDomainType<T> treatTarget(String entityName) {
-			return creationState.getCreationContext().getJpaMetamodel().entity(entityName);
+		private <T> Class<T> treatTarget(String typeName) {
+			final ManagedDomainType<T> managedType = creationState.getCreationContext()
+					.getJpaMetamodel()
+					.managedType( typeName );
+			return managedType.getJavaType();
 		}
 
 		@Override

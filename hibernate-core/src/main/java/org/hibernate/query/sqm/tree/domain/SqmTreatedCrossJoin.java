@@ -15,7 +15,7 @@ import org.hibernate.spi.NavigablePath;
 /**
  * @author Steve Ebersole
  */
-public class SqmTreatedCrossJoin<T, S extends T> extends SqmCrossJoin<S> implements SqmTreatedPath<T, S> {
+public class SqmTreatedCrossJoin<T, S extends T> extends SqmCrossJoin<S> implements SqmTreatedEntityPath<T, S> {
 	private final SqmCrossJoin<T> wrappedPath;
 	private final EntityDomainType<S> treatTarget;
 

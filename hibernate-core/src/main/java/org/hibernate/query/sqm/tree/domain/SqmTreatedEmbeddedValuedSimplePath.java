@@ -6,30 +6,29 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
+import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.query.hql.spi.SqmCreationState;
 import org.hibernate.query.sqm.SemanticQueryWalker;
 import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
-import org.hibernate.query.sqm.tree.from.SqmRoot;
 import org.hibernate.spi.NavigablePath;
 
 /**
  * @author Steve Ebersole
  */
-public class SqmTreatedRoot<T, S extends T> extends SqmRoot<S> implements SqmTreatedEntityPath<T,S> {
-	private final SqmRoot<T> wrappedPath;
-	private final EntityDomainType<S> treatTarget;
+public class SqmTreatedEmbeddedValuedSimplePath<T, S extends T> extends SqmEmbeddedValuedSimplePath<S>
+		implements SqmTreatedPath<T, S> {
+	private final SqmPath<T> wrappedPath;
+	private final EmbeddableDomainType<S> treatTarget;
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public SqmTreatedRoot(
-			SqmRoot<T> wrappedPath,
-			EntityDomainType<S> treatTarget) {
+	@SuppressWarnings( { "unchecked" } )
+	public SqmTreatedEmbeddedValuedSimplePath(
+			SqmPath<T> wrappedPath,
+			EmbeddableDomainType<S> treatTarget) {
 		super(
-				wrappedPath.getNavigablePath().treatAs(
-						treatTarget.getHibernateEntityName()
-				),
-				(EntityDomainType) wrappedPath.getReferencedPathSource(),
+				wrappedPath.getNavigablePath().treatAs( treatTarget.getTypeName() ),
+				(SqmPathSource<S>) wrappedPath.getReferencedPathSource(),
 				null,
 				wrappedPath.nodeBuilder()
 		);
@@ -37,14 +36,14 @@ public class SqmTreatedRoot<T, S extends T> extends SqmRoot<S> implements SqmTre
 		this.treatTarget = treatTarget;
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	private SqmTreatedRoot(
+	@SuppressWarnings( { "unchecked" } )
+	private SqmTreatedEmbeddedValuedSimplePath(
 			NavigablePath navigablePath,
-			SqmRoot<T> wrappedPath,
-			EntityDomainType<S> treatTarget) {
+			SqmPath<T> wrappedPath,
+			EmbeddableDomainType<S> treatTarget) {
 		super(
 				navigablePath,
-				(EntityDomainType) wrappedPath.getReferencedPathSource(),
+				(SqmPathSource<S>) wrappedPath.getReferencedPathSource(),
 				null,
 				wrappedPath.nodeBuilder()
 		);
@@ -53,14 +52,14 @@ public class SqmTreatedRoot<T, S extends T> extends SqmRoot<S> implements SqmTre
 	}
 
 	@Override
-	public SqmRoot<S> copy(SqmCopyContext context) {
-		final SqmTreatedRoot<T, S> existing = context.getCopy( this );
+	public SqmTreatedEmbeddedValuedSimplePath<T, S> copy(SqmCopyContext context) {
+		final SqmTreatedEmbeddedValuedSimplePath<T, S> existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
-		final SqmTreatedRoot<T, S> path = context.registerCopy(
+		final SqmTreatedEmbeddedValuedSimplePath<T, S> path = context.registerCopy(
 				this,
-				new SqmTreatedRoot<>(
+				new SqmTreatedEmbeddedValuedSimplePath<>(
 						getNavigablePath(),
 						wrappedPath.copy( context ),
 						treatTarget
@@ -71,13 +70,8 @@ public class SqmTreatedRoot<T, S extends T> extends SqmRoot<S> implements SqmTre
 	}
 
 	@Override
-	public EntityDomainType<S> getTreatTarget() {
+	public EmbeddableDomainType<S> getTreatTarget() {
 		return treatTarget;
-	}
-
-	@Override
-	public EntityDomainType<S> getManagedType() {
-		return getTreatTarget();
 	}
 
 	@Override
@@ -91,7 +85,12 @@ public class SqmTreatedRoot<T, S extends T> extends SqmRoot<S> implements SqmTre
 	}
 
 	@Override
-	public EntityDomainType<S> getReferencedPathSource() {
+	public SqmPathSource<?> getResolvedModel() {
+		return treatTarget;
+	}
+
+	@Override
+	public EmbeddableDomainType<S> getReferencedPathSource() {
 		return getTreatTarget();
 	}
 
@@ -106,10 +105,7 @@ public class SqmTreatedRoot<T, S extends T> extends SqmRoot<S> implements SqmTre
 	}
 
 	@Override
-	public SqmPath<?> resolvePathPart(
-			String name,
-			boolean isTerminal,
-			SqmCreationState creationState) {
+	public SqmPath<?> resolvePathPart(String name, boolean isTerminal, SqmCreationState creationState) {
 		final SqmPath<?> sqmPath = get( name );
 		creationState.getProcessingStateStack().getCurrent().getPathRegistry().register( sqmPath );
 		return sqmPath;
@@ -120,7 +116,7 @@ public class SqmTreatedRoot<T, S extends T> extends SqmRoot<S> implements SqmTre
 		sb.append( "treat(" );
 		wrappedPath.appendHqlString( sb );
 		sb.append( " as " );
-		sb.append( treatTarget.getName() );
+		sb.append( treatTarget.getTypeName() );
 		sb.append( ')' );
 	}
 }

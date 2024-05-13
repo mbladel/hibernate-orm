@@ -18,7 +18,7 @@ import org.hibernate.spi.NavigablePath;
 /**
  * @author Steve Ebersole
  */
-public class SqmTreatedBagJoin<O,T, S extends T> extends SqmBagJoin<O,S> implements SqmTreatedPath<T,S> {
+public class SqmTreatedBagJoin<O,T, S extends T> extends SqmBagJoin<O,S> implements SqmTreatedEntityPath<T,S> {
 	private final SqmBagJoin<O, T> wrappedPath;
 	private final EntityDomainType<S> treatTarget;
 

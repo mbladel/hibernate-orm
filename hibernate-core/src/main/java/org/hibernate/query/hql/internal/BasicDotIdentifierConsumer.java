@@ -9,7 +9,9 @@ package org.hibernate.query.hql.internal;
 import java.lang.reflect.Field;
 
 import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
+import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
+import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.metamodel.model.domain.spi.JpaMetamodelImplementor;
 import org.hibernate.query.SemanticException;
 import org.hibernate.query.hql.HqlLogging;
@@ -24,6 +26,7 @@ import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.expression.SqmEnumLiteral;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
 import org.hibernate.query.sqm.tree.expression.SqmFieldLiteral;
+import org.hibernate.query.sqm.tree.expression.SqmLiteralEmbeddableType;
 import org.hibernate.query.sqm.tree.expression.SqmLiteralEntityType;
 import org.hibernate.query.sqm.tree.from.SqmFrom;
 import org.hibernate.type.descriptor.java.EnumJavaType;
@@ -93,10 +96,10 @@ public class BasicDotIdentifierConsumer implements DotIdentifierConsumer {
 	}
 
 	@Override
-	public void consumeTreat(String entityName, boolean isTerminal) {
-		final EntityDomainType<?> entityDomainType = creationState.getCreationContext().getJpaMetamodel()
-				.entity( entityName );
-		currentPart = ( (SqmPath) currentPart ).treatAs( entityDomainType );
+	public void consumeTreat(String importableName, boolean isTerminal) {
+		final ManagedDomainType<?> managedDomainType = creationState.getCreationContext().getJpaMetamodel()
+				.managedType( importableName );
+		currentPart = ( (SqmPath) currentPart ).treatAs( managedDomainType.getJavaType() );
 	}
 
 	protected void reset() {
@@ -184,7 +187,12 @@ public class BasicDotIdentifierConsumer implements DotIdentifierConsumer {
 			if ( importableName != null ) {
 				final EntityDomainType<?> entityDomainType = jpaMetamodel.entity( importableName );
 				if ( entityDomainType != null ) {
-					return new SqmLiteralEntityType( entityDomainType, nodeBuilder );
+					return new SqmLiteralEntityType<>( entityDomainType, nodeBuilder );
+				}
+
+				final EmbeddableDomainType<?> embeddableDomainType = jpaMetamodel.embeddable( importableName );
+				if ( embeddableDomainType != null ) {
+					return new SqmLiteralEmbeddableType<>( embeddableDomainType, nodeBuilder );
 				}
 			}
 
