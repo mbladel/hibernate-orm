@@ -191,7 +191,6 @@ public class BasicDotIdentifierConsumer implements DotIdentifierConsumer {
 
 				// todo marco : using embeddable domain types is an options, but we would have to
 				//  construct them for all subtypes, which we don't right now
- 				// final EmbeddableDomainType<?> embeddableDomainType = jpaMetamodel.embeddable( importableName );
 				if ( jpaMetamodel.embeddableSubtype( importableName ) ) {
 					return new SqmLiteralEmbeddableType( importableName, nodeBuilder );
 				}

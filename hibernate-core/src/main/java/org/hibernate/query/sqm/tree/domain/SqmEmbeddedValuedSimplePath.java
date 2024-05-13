@@ -99,6 +99,7 @@ public class SqmEmbeddedValuedSimplePath<T>
 
 	@Override
 	public <S extends T> SqmTreatedPath<T, S> treatAs(Class<S> treatJavaType) throws PathException {
+		// todo marco : register embeddable treats here ?
 		throw new FunctionArgumentException( "Embeddable paths cannot be TREAT-ed" );
 	}
 

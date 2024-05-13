@@ -495,11 +495,6 @@ public class MappingMetamodelImpl extends QueryParameterBindingTypeResolverImpl
 	}
 
 	@Override
-	public <X> EmbeddableDomainType<X> embeddable(String embeddableName) {
-		return jpaMetamodel.embeddable( embeddableName );
-	}
-
-	@Override
 	public void registerEmbeddableSubtype(String embeddableClassName) {
 		jpaMetamodel.registerEmbeddableSubtype( embeddableClassName );
 	}

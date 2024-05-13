@@ -283,6 +283,9 @@ public class AttributeFactory {
 
 		context.registerComponentByEmbeddable( embeddableType, component);
 
+		// todo marco : load the subclasses and create embeddable domain types accordingly
+		// todo marco : also add attributes to the correct embeddable subtype
+
 		final EmbeddableTypeImpl.InFlightAccess<Y> inFlightAccess = embeddableType.getInFlightAccess();
 		for ( Property property : component.getProperties() ) {
 			final PersistentAttribute<Y, Y> attribute = buildAttribute( embeddableType, property, context);
