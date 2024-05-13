@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.hibernate.AnnotationException;
 import org.hibernate.annotations.DiscriminatorFormula;
@@ -387,7 +388,9 @@ public class EmbeddableBinder {
 		if ( component.isPolymorphic() ) {
 			validateInheritanceIsSupported( subholder, compositeUserType );
 			final BasicType<?> discriminatorType = (BasicType<?>) component.getDiscriminator().getType();
-			final Map<Object, String> discriminatorValues = new HashMap<>();
+			// Discriminator values are used to construct the embeddable domain
+			// type hierarchy so order of processing is important
+			final Map<Object, String> discriminatorValues = new TreeMap<>();
 			final Map<String, String> subclassToSuperclass = new HashMap<>();
 			collectDiscriminatorValue( returnedClassOrElement, discriminatorType, discriminatorValues );
 			collectSubclassElements(
