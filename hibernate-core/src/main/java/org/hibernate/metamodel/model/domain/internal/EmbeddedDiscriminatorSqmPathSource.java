@@ -6,8 +6,6 @@
  */
 package org.hibernate.metamodel.model.domain.internal;
 
-import org.hibernate.metamodel.mapping.AttributeMapping;
-import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.tree.domain.SqmPath;

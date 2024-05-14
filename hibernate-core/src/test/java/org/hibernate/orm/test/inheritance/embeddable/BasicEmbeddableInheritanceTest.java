@@ -142,6 +142,7 @@ public class BasicEmbeddableInheritanceTest {
 
 	@Test
 	public void testTreat(SessionFactoryScope scope) {
+		// todo marco : separate into dedicated test class (and maybe also test criteria queries?)
 		scope.inTransaction( session -> {
 			final Object result = session.createQuery(
 					"select treat(t.embeddable as ChildOneEmbeddable) from TestEntity t where t.id = 1",

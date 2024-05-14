@@ -19,8 +19,6 @@ import org.hibernate.query.sqm.tree.select.SqmSelectableNode;
 import org.hibernate.type.BasicType;
 import org.hibernate.type.StandardBasicTypes;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
-
 /**
  * Represents a reference to an embeddable type as a literal.
  *
@@ -34,7 +32,6 @@ public class SqmLiteralEmbeddableType<T>
 	public SqmLiteralEmbeddableType(
 			EmbeddableDomainType<T> embeddableDomainType,
 			NodeBuilder nodeBuilder) {
-		// todo marco : would be nice to not have to do this here
 		//noinspection unchecked
 		super(
 				(SqmExpressible<? super T>) nodeBuilder.getTypeConfiguration()
@@ -78,11 +75,6 @@ public class SqmLiteralEmbeddableType<T>
 
 	@Override
 	public void internalApplyInferableType(SqmExpressible<?> type) {
-	}
-
-	@Override
-	public Integer getTupleLength() {
-		return 1;
 	}
 
 	@Override
