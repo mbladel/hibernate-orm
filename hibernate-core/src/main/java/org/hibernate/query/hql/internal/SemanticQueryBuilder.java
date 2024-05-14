@@ -54,7 +54,6 @@ import org.hibernate.metamodel.model.domain.PersistentAttribute;
 import org.hibernate.metamodel.model.domain.PluralPersistentAttribute;
 import org.hibernate.metamodel.model.domain.SingularPersistentAttribute;
 import org.hibernate.metamodel.model.domain.internal.AnyDiscriminatorSqmPath;
-import org.hibernate.metamodel.model.domain.internal.EmbeddedDiscriminatorSqmPath;
 import org.hibernate.metamodel.model.domain.internal.EntitySqmPathSource;
 import org.hibernate.metamodel.model.domain.spi.JpaMetamodelImplementor;
 import org.hibernate.query.NullPrecedence;
@@ -142,7 +141,6 @@ import org.hibernate.query.sqm.tree.expression.SqmCollation;
 import org.hibernate.query.sqm.tree.expression.SqmCollectionSize;
 import org.hibernate.query.sqm.tree.expression.SqmDistinct;
 import org.hibernate.query.sqm.tree.expression.SqmDurationUnit;
-import org.hibernate.query.sqm.tree.expression.SqmEmbeddedDiscriminatorValue;
 import org.hibernate.query.sqm.tree.expression.SqmEvery;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
 import org.hibernate.query.sqm.tree.expression.SqmExtractUnit;
@@ -150,7 +148,6 @@ import org.hibernate.query.sqm.tree.expression.SqmFormat;
 import org.hibernate.query.sqm.tree.expression.SqmFunction;
 import org.hibernate.query.sqm.tree.expression.SqmHqlNumericLiteral;
 import org.hibernate.query.sqm.tree.expression.SqmLiteral;
-import org.hibernate.query.sqm.tree.expression.SqmLiteralEmbeddableType;
 import org.hibernate.query.sqm.tree.expression.SqmLiteralEntityType;
 import org.hibernate.query.sqm.tree.expression.SqmLiteralNull;
 import org.hibernate.query.sqm.tree.expression.SqmNamedParameter;
@@ -2554,20 +2551,6 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 				left = createDiscriminatorValue( (AnyDiscriminatorSqmPath<?>) r, leftExpressionContext );
 				right = r;
 			}
-			else if ( l instanceof EmbeddedDiscriminatorSqmPath && r instanceof SqmLiteralEmbeddableType ) {
-				left = l;
-				right = createEmbeddedDiscriminatorValue(
-						(EmbeddedDiscriminatorSqmPath<?>) left,
-						(SqmLiteralEmbeddableType<?>) r
-				);
-			}
-			else if ( r instanceof EmbeddedDiscriminatorSqmPath && l instanceof SqmLiteralEmbeddableType ) {
-				left = createEmbeddedDiscriminatorValue(
-						(EmbeddedDiscriminatorSqmPath<?>) r,
-						(SqmLiteralEmbeddableType<?>) l
-				);
-				right = r;
-			}
 			else {
 				left = l;
 				right = r;
@@ -2589,17 +2572,6 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 				creationContext.getJpaMetamodel().resolveHqlEntityReference( valueExpressionContext.getText() ),
 				anyDiscriminatorTypeSqmPath.getExpressible().getSqmPathType(),
 				creationContext.getNodeBuilder()
-		);
-	}
-
-	private <T> SqmExpression<T> createEmbeddedDiscriminatorValue(
-			EmbeddedDiscriminatorSqmPath<T> embeddedDiscriminatorSqmPath,
-			SqmLiteralEmbeddableType<?> literalEmbeddableType) {
-		return new SqmEmbeddedDiscriminatorValue<>(
-			embeddedDiscriminatorSqmPath.getNodeType().getPathName(),
-			embeddedDiscriminatorSqmPath.getExpressible(),
-			literalEmbeddableType.getEmbeddableDomainType(),
-			creationContext.getNodeBuilder()
 		);
 	}
 

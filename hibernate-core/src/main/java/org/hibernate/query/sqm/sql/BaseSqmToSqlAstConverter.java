@@ -188,7 +188,6 @@ import org.hibernate.query.sqm.tree.expression.SqmCollation;
 import org.hibernate.query.sqm.tree.expression.SqmCollectionSize;
 import org.hibernate.query.sqm.tree.expression.SqmDistinct;
 import org.hibernate.query.sqm.tree.expression.SqmDurationUnit;
-import org.hibernate.query.sqm.tree.expression.SqmEmbeddedDiscriminatorValue;
 import org.hibernate.query.sqm.tree.expression.SqmEnumLiteral;
 import org.hibernate.query.sqm.tree.expression.SqmEvery;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
@@ -332,12 +331,10 @@ import org.hibernate.sql.ast.tree.from.CorrelatedPluralTableGroup;
 import org.hibernate.sql.ast.tree.from.CorrelatedTableGroup;
 import org.hibernate.sql.ast.tree.from.EmbeddableFunctionTableGroup;
 import org.hibernate.sql.ast.tree.from.FromClause;
-import org.hibernate.sql.ast.tree.from.FunctionTableGroup;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.PluralTableGroup;
 import org.hibernate.sql.ast.tree.from.QueryPartTableGroup;
 import org.hibernate.sql.ast.tree.from.QueryPartTableReference;
-import org.hibernate.sql.ast.tree.from.StandardTableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroupJoin;
 import org.hibernate.sql.ast.tree.from.TableGroupJoinProducer;
@@ -7141,14 +7138,11 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 	@Override
 	public Object visitEmbeddableTypeLiteralExpression(SqmLiteralEmbeddableType<?> expression) {
 		final MappingModelExpressible<?> inferredValueMapping = getInferredValueMapping();
-
-		final BasicType<?> basicType;
-		if ( inferredValueMapping != null ) {
-			basicType = (BasicType<?>) inferredValueMapping;
-		}
-		else {
-			basicType = expression.getNodeType();
-		}
+		// The inferred value mapping for literal embeddable types will either be the
+		// discriminator mapping for polymorphic embeddables or the Class<?> basic type
+		final BasicType<?> basicType = inferredValueMapping != null ?
+				(BasicType<?>) inferredValueMapping.getSingleJdbcMapping() :
+				expression.getNodeType();
 		return new EmbeddableTypeLiteral( expression.getEmbeddableDomainType(), basicType );
 	}
 
@@ -7158,15 +7152,6 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		return new QueryLiteral<>(
 				domainType.convertToRelationalValue( expression.getEntityValue().getJavaType() ),
 				domainType
-		);
-	}
-
-	@Override
-	public Expression visitEmbeddedDiscriminatorTypeValueExpression(SqmEmbeddedDiscriminatorValue<?> expression) {
-		final BasicType<?> nodeType = expression.getNodeType();
-		return new QueryLiteral<>(
-				nodeType.convertToRelationalValue( expression.getEmbeddableDomainType().getJavaType().getName() ),
-				nodeType
 		);
 	}
 
