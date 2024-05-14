@@ -17,7 +17,7 @@ import org.hibernate.spi.NavigablePath;
 /**
  * @author Steve Ebersole
  */
-public class SqmTreatedRoot<T, S extends T> extends SqmRoot<S> implements SqmTreatedPath<T,S> {
+public class SqmTreatedRoot<T, S extends T> extends SqmRoot<S> implements SqmTreatedEntityPath<T,S> {
 	private final SqmRoot<T> wrappedPath;
 	private final EntityDomainType<S> treatTarget;
 

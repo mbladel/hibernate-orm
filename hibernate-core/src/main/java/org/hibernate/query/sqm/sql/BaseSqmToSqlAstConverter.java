@@ -77,6 +77,7 @@ import org.hibernate.metamodel.model.domain.BasicDomainType;
 import org.hibernate.metamodel.model.domain.DiscriminatorSqmPath;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
+import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.metamodel.model.domain.PersistentAttribute;
 import org.hibernate.metamodel.model.domain.PluralPersistentAttribute;
 import org.hibernate.metamodel.model.domain.internal.AnyDiscriminatorSqmPath;
@@ -172,6 +173,7 @@ import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.domain.SqmPluralPartJoin;
 import org.hibernate.query.sqm.tree.domain.SqmPluralValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmSimplePath;
+import org.hibernate.query.sqm.tree.domain.SqmTreatedEntityPath;
 import org.hibernate.query.sqm.tree.domain.SqmTreatedPath;
 import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.query.sqm.tree.expression.JpaCriteriaParameter;
@@ -2915,10 +2917,10 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 	 * If the path is a treat, registers {@link EntityNameUse#TREAT} for all treated subtypes instead.
 	 */
 	private void registerEntityNameProjectionUsage(SqmPath<?> projectedPath, TableGroup tableGroup) {
-		final EntityDomainType<?> treatedType;
+		final ManagedDomainType<?> treatedType;
 		if ( projectedPath instanceof SqmTreatedPath<?, ?> ) {
 			treatedType = ( (SqmTreatedPath<?, ?>) projectedPath ).getTreatTarget();
-			registerEntityNameUsage( tableGroup, EntityNameUse.TREAT, treatedType.getHibernateEntityName(), true );
+			registerEntityNameUsage( tableGroup, EntityNameUse.TREAT, treatedType.getTypeName(), true );
 
 			if ( projectedPath instanceof SqmFrom<?, ?> ) {
 				// Register that the TREAT uses for the SqmFrom node may not be downgraded
@@ -2930,7 +2932,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		}
 		else if ( projectedPath.getNodeType().getSqmPathType() instanceof EntityDomainType<?> ) {
 			treatedType = (EntityDomainType<?>) projectedPath.getNodeType().getSqmPathType();
-			registerEntityNameUsage( tableGroup, EntityNameUse.PROJECTION, treatedType.getHibernateEntityName(), true );
+			registerEntityNameUsage( tableGroup, EntityNameUse.PROJECTION, treatedType.getTypeName(), true );
 
 			if ( projectedPath instanceof SqmFrom<?, ?> ) {
 				// Register that the TREAT uses for the SqmFrom node may not be downgraded
@@ -2972,10 +2974,10 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			final String attributeName = resolvedModel.getPathName();
 			final EntityMappingType entityType = (EntityMappingType) tableGroup.getModelPart().getPartMappingType();
 			final EntityMappingType parentType;
-			if ( parentPath instanceof SqmTreatedPath<?, ?> ) {
+			if ( parentPath instanceof SqmTreatedEntityPath<?, ?> ) {
 				// A treated attribute usage i.e. `treat(alias as Subtype).attribute = 1`
 
-				final EntityDomainType<?> treatTarget = ( (SqmTreatedPath<?, ?>) parentPath ).getTreatTarget();
+				final EntityDomainType<?> treatTarget = ( (SqmTreatedEntityPath<?, ?>) parentPath ).getTreatTarget();
 
 				parentType = creationContext.getMappingMetamodel()
 						.getEntityDescriptor( treatTarget.getHibernateEntityName() );
@@ -3241,7 +3243,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			for ( SqmFrom<?, ?> sqmTreat : sqmTreats ) {
 				final TableGroup actualTableGroup = getActualTableGroup( lhsTableGroup, sqmTreat );
 				// We don't know the context yet in which a treat is used, so we have to register base treats and track the usage
-				registerEntityNameUsage( actualTableGroup, EntityNameUse.BASE_TREAT, ( (SqmTreatedPath<?, ?>) sqmTreat ).getTreatTarget().getHibernateEntityName() );
+				registerEntityNameUsage( actualTableGroup, EntityNameUse.BASE_TREAT, ( (SqmTreatedPath<?, ?>) sqmTreat ).getTreatTarget().getTypeName() );
 				consumeExplicitJoins( sqmTreat, actualTableGroup );
 			}
 		}
@@ -3412,8 +3414,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			joinForPredicate = TableGroupJoinHelper.determineJoinForPredicateApply( joinedTableGroupJoin );
 		}
 		// Since joins on treated paths will never cause table pruning, we need to add a join condition for the treat
-		if ( sqmJoin.getLhs() instanceof SqmTreatedPath<?, ?> ) {
-			final SqmTreatedPath<?, ?> treatedPath = (SqmTreatedPath<?, ?>) sqmJoin.getLhs();
+		if ( sqmJoin.getLhs() instanceof SqmTreatedEntityPath<?, ?> ) {
+			final SqmTreatedEntityPath<?, ?> treatedPath = (SqmTreatedEntityPath<?, ?>) sqmJoin.getLhs();
 			joinForPredicate.applyPredicate(
 					createTreatTypeRestriction(
 							treatedPath.getWrappedPath(),
@@ -3833,8 +3835,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		final FromClauseIndex fromClauseIndex = getFromClauseIndex();
 		final ModelPart subPart = parentTableGroup.getModelPart().findSubPart(
 				joinedPath.getReferencedPathSource().getPathName(),
-				lhsPath instanceof SqmTreatedPath
-						? resolveEntityPersister( ( (SqmTreatedPath<?, ?>) lhsPath ).getTreatTarget() )
+				lhsPath instanceof SqmTreatedEntityPath
+						? resolveEntityPersister( ( (SqmTreatedEntityPath<?, ?>) lhsPath ).getTreatTarget() )
 						: null
 		);
 
@@ -4219,11 +4221,11 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			}
 
 			final EntityMappingType treatedMapping;
-			if ( path instanceof SqmTreatedPath ) {
+			if ( path instanceof SqmTreatedEntityPath ) {
 				treatedMapping = creationContext.getSessionFactory()
 						.getRuntimeMetamodels()
 						.getMappingMetamodel()
-						.findEntityDescriptor( ( (SqmTreatedPath<?,?>) path ).getTreatTarget().getHibernateEntityName() );
+						.findEntityDescriptor( ( (SqmTreatedEntityPath<?,?>) path ).getTreatTarget().getHibernateEntityName() );
 			}
 			else {
 				treatedMapping = interpretationModelPart.getEntityMappingType();
@@ -5156,8 +5158,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		else {
 			lhs = path.getLhs();
 		}
-		if ( lhs instanceof SqmTreatedPath<?, ?> ) {
-			final SqmTreatedPath<?, ?> treatedPath = (SqmTreatedPath<?, ?>) lhs;
+		if ( lhs instanceof SqmTreatedEntityPath<?, ?> ) {
+			final SqmTreatedEntityPath<?, ?> treatedPath = (SqmTreatedEntityPath<?, ?>) lhs;
 			final Class<?> treatTargetJavaType = treatedPath.getTreatTarget().getJavaType();
 			final SqmPath<?> wrappedPath = treatedPath.getWrappedPath();
 			final Class<?> originalJavaType = wrappedPath.getJavaType();

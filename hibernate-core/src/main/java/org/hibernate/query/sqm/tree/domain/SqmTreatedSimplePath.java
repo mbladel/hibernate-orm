@@ -19,7 +19,7 @@ import org.hibernate.spi.NavigablePath;
  */
 public class SqmTreatedSimplePath<T, S extends T>
 		extends SqmEntityValuedSimplePath<S>
-		implements SqmSimplePath<S>, SqmTreatedPath<T,S> {
+		implements SqmSimplePath<S>, SqmTreatedEntityPath<T,S> {
 
 	private final EntityDomainType<S> treatTarget;
 	private final SqmPath<T> wrappedPath;

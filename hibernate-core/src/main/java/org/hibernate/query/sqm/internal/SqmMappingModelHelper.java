@@ -36,6 +36,7 @@ import org.hibernate.query.sqm.tree.cte.SqmCteTable;
 import org.hibernate.query.sqm.tree.domain.AbstractSqmSpecificPluralPartPath;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.domain.SqmPolymorphicRootDescriptor;
+import org.hibernate.query.sqm.tree.domain.SqmTreatedEntityPath;
 import org.hibernate.query.sqm.tree.domain.SqmTreatedPath;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.tree.from.TableGroup;
@@ -178,15 +179,15 @@ public class SqmMappingModelHelper {
 			MappingMetamodel domainModel,
 			Function<NavigablePath,TableGroup> tableGroupLocator) {
 
-		if ( sqmPath instanceof SqmTreatedPath<?, ?> ) {
-			final SqmTreatedPath<?, ?> treatedPath = (SqmTreatedPath<?, ?>) sqmPath;
+		if ( sqmPath instanceof SqmTreatedEntityPath<?, ?> ) {
+			final SqmTreatedEntityPath<?, ?> treatedPath = (SqmTreatedEntityPath<?, ?>) sqmPath;
 			final EntityDomainType<?> treatTargetType = treatedPath.getTreatTarget();
 			return domainModel.findEntityDescriptor( treatTargetType.getHibernateEntityName() );
 		}
 
 		// see if the LHS is treated
-		if ( sqmPath.getLhs() instanceof SqmTreatedPath<?, ?> ) {
-			final SqmTreatedPath<?, ?> treatedPath = (SqmTreatedPath<?, ?>) sqmPath.getLhs();
+		if ( sqmPath.getLhs() instanceof SqmTreatedEntityPath<?, ?> ) {
+			final SqmTreatedEntityPath<?, ?> treatedPath = (SqmTreatedEntityPath<?, ?>) sqmPath.getLhs();
 			final EntityDomainType<?> treatTargetType = treatedPath.getTreatTarget();
 			final EntityPersister container = domainModel.findEntityDescriptor( treatTargetType.getHibernateEntityName() );
 
@@ -253,8 +254,8 @@ public class SqmMappingModelHelper {
 			SqmPath<?> sqmPath,
 			SqmToSqlAstConverter converter) {
 		final SqmPath<?> parentPath = sqmPath.getLhs();
-		if ( parentPath instanceof SqmTreatedPath ) {
-			final SqmTreatedPath<?, ?> treatedPath = (SqmTreatedPath<?, ?>) parentPath;
+		if ( parentPath instanceof SqmTreatedEntityPath ) {
+			final SqmTreatedEntityPath<?, ?> treatedPath = (SqmTreatedEntityPath<?, ?>) parentPath;
 			return resolveEntityPersister( treatedPath.getTreatTarget(), converter.getCreationContext().getSessionFactory() );
 		}
 

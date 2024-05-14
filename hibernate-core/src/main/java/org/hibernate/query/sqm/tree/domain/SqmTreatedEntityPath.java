@@ -6,14 +6,12 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
-import org.hibernate.metamodel.model.domain.ManagedDomainType;
+import org.hibernate.metamodel.model.domain.EntityDomainType;
 
 /**
  * @author Steve Ebersole
  */
-public interface SqmTreatedPath<T, S extends T> extends SqmPathWrapper<T, S> {
-	ManagedDomainType<S> getTreatTarget();
-
+public interface SqmTreatedEntityPath<T, S extends T> extends SqmTreatedPath<T, S> {
 	@Override
-	SqmPath<T> getWrappedPath();
+	EntityDomainType<S> getTreatTarget();
 }

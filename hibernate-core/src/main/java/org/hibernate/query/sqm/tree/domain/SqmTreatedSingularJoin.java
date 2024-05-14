@@ -17,7 +17,7 @@ import org.hibernate.spi.NavigablePath;
 /**
  * @author Steve Ebersole
  */
-public class SqmTreatedSingularJoin<O,T, S extends T> extends SqmSingularJoin<O,S> implements SqmTreatedPath<T,S> {
+public class SqmTreatedSingularJoin<O,T, S extends T> extends SqmSingularJoin<O,S> implements SqmTreatedEntityPath<T,S> {
 	private final SqmSingularJoin<O,T> wrappedPath;
 	private final EntityDomainType<S> treatTarget;
 
