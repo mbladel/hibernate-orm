@@ -7140,8 +7140,16 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 
 	@Override
 	public Object visitEmbeddableTypeLiteralExpression(SqmLiteralEmbeddableType<?> expression) {
-		final SqmExpressible<? extends Class<?>> nodeType = expression.getNodeType();
-		return new EmbeddableTypeLiteral( expression.getEmbeddableDomainType() );
+		final MappingModelExpressible<?> inferredValueMapping = getInferredValueMapping();
+
+		final BasicType<?> basicType;
+		if ( inferredValueMapping != null ) {
+			basicType = (BasicType<?>) inferredValueMapping;
+		}
+		else {
+			basicType = expression.getNodeType();
+		}
+		return new EmbeddableTypeLiteral( expression.getEmbeddableDomainType(), basicType );
 	}
 
 	@Override

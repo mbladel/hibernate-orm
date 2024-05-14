@@ -16,7 +16,10 @@ import org.hibernate.query.sqm.SqmExpressible;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.select.SqmSelectableNode;
+import org.hibernate.type.BasicType;
 import org.hibernate.type.StandardBasicTypes;
+
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * Represents a reference to an embeddable type as a literal.
@@ -43,6 +46,11 @@ public class SqmLiteralEmbeddableType<T>
 	}
 
 	@Override
+	public BasicType<Class<T>> getNodeType() {
+		return (BasicType<Class<T>>) super.getNodeType();
+	}
+
+	@Override
 	public SqmLiteralEmbeddableType<T> copy(SqmCopyContext context) {
 		final SqmLiteralEmbeddableType<T> existing = context.getCopy( this );
 		if ( existing != null ) {
@@ -65,7 +73,7 @@ public class SqmLiteralEmbeddableType<T>
 
 	@Override
 	public <X> X accept(SemanticQueryWalker<X> walker) {
-		throw new UnsupportedOperationException();
+		return walker.visitEmbeddableTypeLiteralExpression( this );
 	}
 
 	@Override

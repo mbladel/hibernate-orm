@@ -10,8 +10,6 @@ import org.hibernate.cache.MutableCacheKeyBuilder;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.IndexedConsumer;
 import org.hibernate.metamodel.mapping.BasicValuedMapping;
-import org.hibernate.metamodel.mapping.DiscriminatorType;
-import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.MappingModelExpressible;
 import org.hibernate.metamodel.mapping.MappingType;
@@ -22,6 +20,7 @@ import org.hibernate.sql.ast.spi.SqlSelection;
 import org.hibernate.sql.results.graph.DomainResult;
 import org.hibernate.sql.results.graph.DomainResultCreationState;
 import org.hibernate.sql.results.graph.basic.BasicResult;
+import org.hibernate.type.BasicType;
 import org.hibernate.type.descriptor.java.JavaType;
 
 /**
@@ -29,18 +28,18 @@ import org.hibernate.type.descriptor.java.JavaType;
  */
 public class EmbeddableTypeLiteral
 		implements Expression, DomainResultProducer<Object>, BasicValuedMapping {
-	private final Object discriminatorValue;
-	private final DiscriminatorType<?> discriminatorType;
+	private final Class<?> embeddableClass;
+	private final BasicType<?> basicType;
 
 	public EmbeddableTypeLiteral(
 			EmbeddableDomainType<?> embeddableDomainType,
-			EmbeddableDiscriminatorMapping discriminator) {
-		this.discriminatorType = (DiscriminatorType<?>) discriminator.getJdbcMapping();
-		this.discriminatorValue = discriminator.getDiscriminatorValue( embeddableDomainType.getJavaType().getName() );
+			BasicType<?> basicType) {
+		this.embeddableClass = embeddableDomainType.getJavaType();
+		this.basicType = basicType;
 	}
 
-	public Object getDiscriminatorValue() {
-		return discriminatorValue;
+	public Object getEmbeddableClass() {
+		return embeddableClass;
 	}
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -53,42 +52,42 @@ public class EmbeddableTypeLiteral
 
 	@Override
 	public JdbcMapping getJdbcMapping() {
-		return discriminatorType;
+		return basicType;
 	}
 
 	@Override
 	public MappingType getMappedType() {
-		return discriminatorType;
+		return basicType;
 	}
 
 	@Override
 	public int getJdbcTypeCount() {
-		return discriminatorType.getJdbcTypeCount();
+		return basicType.getJdbcTypeCount();
 	}
 
 	@Override
 	public JdbcMapping getJdbcMapping(int index) {
-		return discriminatorType.getJdbcMapping( index );
+		return basicType.getJdbcMapping( index );
 	}
 
 	@Override
 	public JdbcMapping getSingleJdbcMapping() {
-		return discriminatorType.getSingleJdbcMapping();
+		return basicType.getSingleJdbcMapping();
 	}
 
 	@Override
 	public int forEachJdbcType(int offset, IndexedConsumer<JdbcMapping> action) {
-		return discriminatorType.forEachJdbcType( offset, action );
+		return basicType.forEachJdbcType( offset, action );
 	}
 
 	@Override
 	public Object disassemble(Object value, SharedSessionContractImplementor session) {
-		return discriminatorType.disassemble( value, session );
+		return basicType.disassemble( value, session );
 	}
 
 	@Override
 	public void addToCacheKey(MutableCacheKeyBuilder cacheKey, Object value, SharedSessionContractImplementor session) {
-		discriminatorType.addToCacheKey( cacheKey, value, session );
+		basicType.addToCacheKey( cacheKey, value, session );
 	}
 
 	@Override
@@ -99,7 +98,7 @@ public class EmbeddableTypeLiteral
 			Y y,
 			JdbcValuesBiConsumer<X, Y> valuesConsumer,
 			SharedSessionContractImplementor session) {
-		return discriminatorType.forEachDisassembledJdbcValue( value, offset, x, y, valuesConsumer, session );
+		return basicType.forEachDisassembledJdbcValue( value, offset, x, y, valuesConsumer, session );
 	}
 
 	@Override
@@ -110,7 +109,7 @@ public class EmbeddableTypeLiteral
 			Y y,
 			JdbcValuesBiConsumer<X, Y> valuesConsumer,
 			SharedSessionContractImplementor session) {
-		return discriminatorType.forEachJdbcValue( value, offset, x, y, valuesConsumer, session );
+		return basicType.forEachJdbcValue( value, offset, x, y, valuesConsumer, session );
 	}
 
 
@@ -127,14 +126,14 @@ public class EmbeddableTypeLiteral
 		return new BasicResult<>(
 				createSqlSelection( creationState ).getValuesArrayPosition(),
 				resultVariable,
-				discriminatorType
+				basicType
 		);
 	}
 
 	private SqlSelection createSqlSelection(DomainResultCreationState creationState) {
 		return creationState.getSqlAstCreationState().getSqlExpressionResolver().resolveSqlSelection(
 				this,
-				discriminatorType.getJdbcJavaType(),
+				basicType.getJdbcJavaType(),
 				null,
 				creationState.getSqlAstCreationState().getCreationContext().getMappingMetamodel().getTypeConfiguration()
 		);
@@ -147,6 +146,6 @@ public class EmbeddableTypeLiteral
 
 	@Override
 	public JavaType getExpressibleJavaType() {
-		return discriminatorType.getExpressibleJavaType();
+		return basicType.getExpressibleJavaType();
 	}
 }

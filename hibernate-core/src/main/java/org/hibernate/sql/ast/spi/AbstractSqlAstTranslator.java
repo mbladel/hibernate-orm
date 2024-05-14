@@ -219,6 +219,7 @@ import org.hibernate.type.BasicType;
 import org.hibernate.type.SqlTypes;
 import org.hibernate.type.StandardBasicTypes;
 import org.hibernate.type.descriptor.WrapperOptions;
+import org.hibernate.type.descriptor.converter.spi.BasicValueConverter;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.jdbc.JdbcLiteralFormatter;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
@@ -7205,11 +7206,14 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 		appendSql( expression.getEntityTypeDescriptor().getDiscriminatorSQLValue() );
 	}
 
+	@SuppressWarnings( { "rawtypes", "unchecked" } )
 	@Override
 	public void visitEmbeddableTypeLiteral(EmbeddableTypeLiteral expression) {
-		//noinspection unchecked
+		final BasicValueConverter valueConverter = expression.getJdbcMapping().getValueConverter();
 		appendSql( jdbcLiteral(
-				expression.getDiscriminatorValue(),
+				valueConverter != null ?
+						valueConverter.toRelationalValue( expression.getEmbeddableClass() ) :
+						expression.getEmbeddableClass(),
 				expression.getExpressionType().getSingleJdbcMapping().getJdbcLiteralFormatter(),
 				getDialect()
 		) );

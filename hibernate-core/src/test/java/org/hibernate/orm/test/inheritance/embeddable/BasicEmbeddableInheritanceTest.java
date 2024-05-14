@@ -136,7 +136,7 @@ public class BasicEmbeddableInheritanceTest {
 			assertThat( simpleEmbeddableType ).isEqualTo( SimpleEmbeddable.class );
 			session.createQuery(
 					"from TestEntity t where type(t.simpleEmbeddable) = SimpleEmbeddable",
-					Class.class
+					TestEntity.class
 			).getResultList();
 		} );
 	}
