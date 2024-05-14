@@ -91,8 +91,8 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 	private final Map<String, EntityDomainType<?>> jpaEntityTypeMap = new TreeMap<>(); // Need ordering for deterministic implementers list in SqmPolymorphicRootDescriptor
 	private final Map<Class<?>, ManagedDomainType<?>> jpaManagedTypeMap = new HashMap<>();
 	private final Set<ManagedDomainType<?>> jpaManagedTypes = new HashSet<>();
-	private final Map<String, EmbeddableDomainType<?>> jpaEmbeddables = new HashMap<>();
-	private Set<String> embeddableSubtypes;
+	private final Set<EmbeddableDomainType<?>> jpaEmbeddables = new HashSet<>();
+	private final Map<String, EmbeddableDomainType<?>> jpaEmbeddableTypeMap = new HashMap<>();
 	private final Map<String, Set<String>> allowedEnumLiteralTexts = new HashMap<>();
 
 	private final transient Map<String, RootGraphImplementor<?>> entityGraphMap = new ConcurrentHashMap<>();
@@ -138,7 +138,7 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 	@Override
 	public <X> EmbeddableDomainType<X> embeddable(String embeddableClassName) {
 		//noinspection unchecked
-		return embeddableClassName == null ? null : (EmbeddableDomainType<X>) jpaEmbeddables.get( embeddableClassName );
+		return embeddableClassName == null ? null : (EmbeddableDomainType<X>) jpaEmbeddableTypeMap.get( embeddableClassName );
 	}
 
 	@Override
@@ -243,7 +243,7 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 
 	@Override
 	public Set<EmbeddableType<?>> getEmbeddables() {
-		return new HashSet<>( jpaEmbeddables.values() );
+		return new HashSet<>( jpaEmbeddables );
 	}
 
 	@Override
@@ -588,10 +588,13 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 			if ( embeddable.getExpressibleJavaType() instanceof EntityJavaType<?> ) {
 				continue;
 			}
+			if ( embeddable.getJavaType() == Map.class ) {
+				this.jpaEmbeddableTypeMap.put( embeddable.getJavaType().getName(), embeddable );
+			}
 			switch ( jpaMetaModelPopulationSetting ) {
 				case IGNORE_UNSUPPORTED:
 					if ( embeddable.getJavaType() != null && embeddable.getJavaType() != Map.class ) {
-						this.jpaEmbeddables.put( embeddable.getJavaType().getName(), embeddable );
+						this.jpaEmbeddables.add( embeddable );
 						this.jpaManagedTypes.add( embeddable );
 						if ( !( embeddable.getExpressibleJavaType() instanceof EntityJavaType<?> ) ) {
 							this.jpaManagedTypeMap.put( embeddable.getJavaType(), embeddable );
@@ -599,7 +602,7 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 					}
 					break;
 				case ENABLED:
-					this.jpaEmbeddables.put( embeddable.getJavaType().getName(), embeddable );
+					this.jpaEmbeddables.add( embeddable );
 					this.jpaManagedTypes.add( embeddable );
 					if ( embeddable.getJavaType() != null
 							&& !( embeddable.getExpressibleJavaType() instanceof EntityJavaType<?> ) ) {
