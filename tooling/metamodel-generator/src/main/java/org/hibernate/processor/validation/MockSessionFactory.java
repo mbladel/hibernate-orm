@@ -795,11 +795,6 @@ public abstract class MockSessionFactory
 		}
 
 		@Override
-		public <X> EmbeddableDomainType<X> embeddable(String embeddableClassName) {
-			return null;
-		}
-
-		@Override
 		public String qualifyImportableName(String queryName) {
 			if (isClassDefined(queryName)) {
 				return queryName;

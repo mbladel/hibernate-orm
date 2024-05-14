@@ -4067,7 +4067,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		throw new InterpretationException( "SqmEntityJoin not yet resolved to TableGroup" );
 	}
 
-	private Expression visitTableGroup(TableGroup tableGroup, SqmFrom<?, ?> path) {
+	private Expression visitTableGroup(TableGroup tableGroup, SqmPath<?> path) {
 		final ModelPartContainer tableGroupModelPart = tableGroup.getModelPart();
 
 		final ModelPart actualModelPart;
@@ -4582,7 +4582,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		final TableGroup resolved = getFromClauseAccess().findTableGroup( sqmTreatedPath.getNavigablePath() );
 		if ( resolved != null ) {
 			log.tracef( "SqmTreatedPath [%s] resolved to existing TableGroup [%s]", sqmTreatedPath, resolved );
-			return visitTableGroup( resolved, (SqmFrom<?, ?>) sqmTreatedPath );
+			return visitTableGroup( resolved, sqmTreatedPath );
 		}
 
 		throw new InterpretationException( "SqmTreatedPath not yet resolved to TableGroup" );

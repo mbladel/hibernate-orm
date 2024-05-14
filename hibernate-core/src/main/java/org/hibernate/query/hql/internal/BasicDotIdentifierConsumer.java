@@ -11,6 +11,7 @@ import java.lang.reflect.Field;
 import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
+import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.metamodel.model.domain.spi.JpaMetamodelImplementor;
 import org.hibernate.query.SemanticException;
 import org.hibernate.query.hql.HqlLogging;
@@ -95,10 +96,10 @@ public class BasicDotIdentifierConsumer implements DotIdentifierConsumer {
 	}
 
 	@Override
-	public void consumeTreat(String entityName, boolean isTerminal) {
-		final EntityDomainType<?> entityDomainType = creationState.getCreationContext().getJpaMetamodel()
-				.entity( entityName );
-		currentPart = ( (SqmPath) currentPart ).treatAs( entityDomainType );
+	public void consumeTreat(String importableName, boolean isTerminal) {
+		final ManagedDomainType<?> managedDomainType = creationState.getCreationContext().getJpaMetamodel()
+				.managedType( importableName );
+		currentPart = ( (SqmPath) currentPart ).treatAs( managedDomainType.getJavaType() );
 	}
 
 	protected void reset() {

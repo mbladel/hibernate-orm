@@ -48,6 +48,11 @@ public interface JpaMetamodel extends Metamodel {
 	// Extended features
 
 	/**
+	 * Access to a managed type through its name
+	 */
+	<X> ManagedDomainType<X> managedType(String typeName);
+
+	/**
 	 * Access to an entity supporting Hibernate's entity-name feature
 	 */
 	<X> EntityDomainType<X> entity(String entityName);

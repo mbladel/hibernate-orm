@@ -6,9 +6,14 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
 import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
+import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.query.PathException;
 import org.hibernate.query.hql.spi.SqmCreationState;
 import org.hibernate.query.sqm.NodeBuilder;
@@ -17,6 +22,7 @@ import org.hibernate.query.sqm.SqmExpressible;
 import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.produce.function.FunctionArgumentException;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
+import org.hibernate.query.sqm.tree.from.SqmFrom;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.type.descriptor.java.JavaType;
 
@@ -26,6 +32,8 @@ import org.hibernate.type.descriptor.java.JavaType;
 public class SqmEmbeddedValuedSimplePath<T>
 		extends AbstractSqmSimplePath<T>
 		implements SqmExpressible<T> {
+	private List<SqmEmbeddedValuedSimplePath<?>> treats;
+
 	public SqmEmbeddedValuedSimplePath(
 			NavigablePath navigablePath,
 			SqmPathSource<T> referencedPathSource,
@@ -99,13 +107,39 @@ public class SqmEmbeddedValuedSimplePath<T>
 
 	@Override
 	public <S extends T> SqmTreatedPath<T, S> treatAs(Class<S> treatJavaType) throws PathException {
-		// todo marco : register embeddable treats here ?
-		throw new FunctionArgumentException( "Embeddable paths cannot be TREAT-ed" );
+		final EmbeddableDomainType<S> treatTarget = nodeBuilder().getDomainModel().embeddable( treatJavaType );
+		final SqmTreatedEmbeddedValuedSimplePath<T, S> treat = findTreat( treatTarget, null );
+		if ( treat == null ) {
+			return addTreat( new SqmTreatedEmbeddedValuedSimplePath<>( this, treatTarget ) );
+		}
+		return treat;
 	}
 
 	@Override
 	public <S extends T> SqmTreatedPath<T, S> treatAs(EntityDomainType<S> treatTarget) throws PathException {
-		throw new FunctionArgumentException( "Embeddable paths cannot be TREAT-ed" );
+		throw new FunctionArgumentException( "Embeddable paths cannot be TREAT-ed to an entity type" );
+	}
+
+	protected <S, X extends SqmFrom<?, S>> X findTreat(EmbeddableDomainType<S> targetType, String alias) {
+		if ( treats != null ) {
+			for ( SqmEmbeddedValuedSimplePath<?> treat : treats ) {
+				if ( treat.getModel() == targetType ) {
+					if ( Objects.equals( treat.getExplicitAlias(), alias ) ) {
+						//noinspection unchecked
+						return (X) treat;
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	protected <X extends SqmEmbeddedValuedSimplePath<?>> X addTreat(X treat) {
+		if ( treats == null ) {
+			treats = new ArrayList<>();
+		}
+		treats.add( treat );
+		return treat;
 	}
 
 	@Override
