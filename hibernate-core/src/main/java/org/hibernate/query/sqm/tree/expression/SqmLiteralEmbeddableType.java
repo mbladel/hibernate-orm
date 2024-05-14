@@ -16,6 +16,7 @@ import org.hibernate.query.sqm.SqmExpressible;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.select.SqmSelectableNode;
+import org.hibernate.type.StandardBasicTypes;
 
 /**
  * Represents a reference to an embeddable type as a literal.
@@ -23,17 +24,22 @@ import org.hibernate.query.sqm.tree.select.SqmSelectableNode;
  * @author Marco Belladelli
  */
 public class SqmLiteralEmbeddableType<T>
-		extends AbstractSqmExpression<T>
-		implements SqmSelectableNode<T>, SemanticPathPart {
+		extends AbstractSqmExpression<Class<T>>
+		implements SqmSelectableNode<Class<T>>, SemanticPathPart {
+	final EmbeddableDomainType<T> embeddableDomainType;
+
 	public SqmLiteralEmbeddableType(
 			EmbeddableDomainType<T> embeddableDomainType,
 			NodeBuilder nodeBuilder) {
-		super( embeddableDomainType, nodeBuilder );
+		super(
+				nodeBuilder.getTypeConfiguration().getBasicTypeRegistry().resolve( StandardBasicTypes.CLASS ),
+				nodeBuilder
+		);
+		this.embeddableDomainType = embeddableDomainType;
 	}
 
-	@Override
-	public EmbeddableDomainType<T> getNodeType() {
-		return (EmbeddableDomainType<T>) super.getNodeType();
+	public EmbeddableDomainType<T> getEmbeddableDomainType() {
+		return embeddableDomainType;
 	}
 
 	@Override
@@ -45,7 +51,7 @@ public class SqmLiteralEmbeddableType<T>
 		final SqmLiteralEmbeddableType<T> expression = context.registerCopy(
 				this,
 				new SqmLiteralEmbeddableType<>(
-						getNodeType(),
+						embeddableDomainType,
 						nodeBuilder()
 				)
 		);
@@ -64,7 +70,7 @@ public class SqmLiteralEmbeddableType<T>
 
 	@Override
 	public String asLoggableText() {
-		return "TYPE(" + getNodeType() + ")";
+		return "TYPE(" + embeddableDomainType + ")";
 	}
 
 	@Override
@@ -85,6 +91,6 @@ public class SqmLiteralEmbeddableType<T>
 
 	@Override
 	public void appendHqlString(StringBuilder sb) {
-		sb.append( getNodeType().getTypeName() );
+		sb.append( embeddableDomainType.getTypeName() );
 	}
 }

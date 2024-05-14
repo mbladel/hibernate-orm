@@ -811,6 +811,11 @@ public class SqmTreePrinter implements SemanticQueryWalker<Object> {
 	}
 
 	@Override
+	public Object visitEmbeddableTypeLiteralExpression(SqmLiteralEmbeddableType<?> expression) {
+		return null;
+	}
+
+	@Override
 	public Object visitParameterizedEntityTypeExpression(SqmParameterizedEntityType expression) {
 		return null;
 	}

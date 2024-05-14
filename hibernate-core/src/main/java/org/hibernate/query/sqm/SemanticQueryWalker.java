@@ -323,6 +323,8 @@ public interface SemanticQueryWalker<T> {
 
 	T visitEntityTypeLiteralExpression(SqmLiteralEntityType<?> expression);
 
+	T visitEmbeddableTypeLiteralExpression(SqmLiteralEmbeddableType<?> expression);
+
 	T visitAnyDiscriminatorTypeExpression(AnyDiscriminatorSqmPath<?> expression);
 
 	T visitAnyDiscriminatorTypeValueExpression(SqmAnyDiscriminatorValue<?> expression);

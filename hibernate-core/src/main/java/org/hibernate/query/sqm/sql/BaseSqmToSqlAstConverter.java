@@ -7139,6 +7139,12 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 	}
 
 	@Override
+	public Object visitEmbeddableTypeLiteralExpression(SqmLiteralEmbeddableType<?> expression) {
+		final SqmExpressible<? extends Class<?>> nodeType = expression.getNodeType();
+		return new EmbeddableTypeLiteral( expression.getEmbeddableDomainType() );
+	}
+
+	@Override
 	public Expression visitAnyDiscriminatorTypeValueExpression(SqmAnyDiscriminatorValue<?> expression) {
 		final BasicType<?> domainType = expression.getDomainType();
 		return new QueryLiteral<>(

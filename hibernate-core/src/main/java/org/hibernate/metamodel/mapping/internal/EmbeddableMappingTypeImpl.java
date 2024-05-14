@@ -16,7 +16,6 @@ import java.util.function.Function;
 
 import org.hibernate.MappingException;
 import org.hibernate.SharedSessionContract;
-import org.hibernate.WrongClassException;
 import org.hibernate.cfg.Environment;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.aggregate.AggregateSupport;
@@ -51,11 +50,9 @@ import org.hibernate.metamodel.mapping.SelectableConsumer;
 import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.SelectableMappings;
 import org.hibernate.metamodel.mapping.SelectablePath;
-import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.metamodel.spi.EmbeddableRepresentationStrategy;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
-import org.hibernate.persister.entity.DiscriminatorHelper;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.PropertyAccess;
@@ -763,13 +760,14 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			Component bootDescriptor,
 			RuntimeModelCreationContext creationContext) {
 		final JavaTypeRegistry javaTypeRegistry = creationContext.getSessionFactory().getTypeConfiguration().getJavaTypeRegistry();
-		final JavaType<String> domainJavaType = javaTypeRegistry.resolveDescriptor( String.class );
+		final JavaType<String> domainJavaType = javaTypeRegistry.resolveDescriptor( Class.class );
 		final BasicType<?> discriminatorType = getDiscriminatorType( bootDescriptor );
 		final DiscriminatorConverter<String, ?> converter = EmbeddableDiscriminatorConverter.fromValueMappings(
 				getNavigableRole().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
 				domainJavaType,
 				discriminatorType,
-				bootDescriptor.getDiscriminatorValues()
+				bootDescriptor.getDiscriminatorValues(),
+				creationContext.getSessionFactory()
 		);
 		return new DiscriminatorTypeImpl<>( discriminatorType, converter );
 	}

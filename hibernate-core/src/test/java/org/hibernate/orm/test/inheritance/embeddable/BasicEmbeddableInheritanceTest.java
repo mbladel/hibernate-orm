@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DomainModel( annotatedClasses = {
 		BasicEmbeddableInheritanceTest.TestEntity.class,
 		BasicEmbeddableInheritanceTest.DeleteMe.class,
+		SimpleEmbeddable.class,
 		ParentEmbeddable.class,
 		ChildOneEmbeddable.class,
 		SubChildOneEmbeddable.class,
@@ -115,17 +116,28 @@ public class BasicEmbeddableInheritanceTest {
 
 	@Test
 	public void testTypeExpressions(SessionFactoryScope scope) {
+		// todo marco : separate into dedicated test class (and maybe also test criteria queries?)
 		scope.inTransaction( session -> {
-			// todo marco : this returns a string (embeddable class name)
-			//  would we rather want to return a class? (problem: we don't store embeddable subtype classes)
-			final Object r1 = session.createQuery(
+			final Class<?> embeddableType = session.createQuery(
 					"select type(t.embeddable) from TestEntity t where t.id = 1",
-					String.class
+					Class.class
 			).getSingleResult();
-			final TestEntity r2 = session.createQuery(
+			assertThat( embeddableType ).isEqualTo( ChildOneEmbeddable.class );
+			final TestEntity testEntity = session.createQuery(
 					"from TestEntity t where type(t.embeddable) = SubChildOneEmbeddable",
 					TestEntity.class
 			).getSingleResult();
+			assertThat( testEntity.getId() ).isEqualTo( 4L );
+			assertThat( testEntity.getEmbeddable() ).isExactlyInstanceOf( SubChildOneEmbeddable.class );
+			final Class<?> simpleEmbeddableType = session.createQuery(
+					"select type(t.simpleEmbeddable) from TestEntity t where t.id = 1",
+					Class.class
+			).getSingleResult();
+			assertThat( simpleEmbeddableType ).isEqualTo( SimpleEmbeddable.class );
+			session.createQuery(
+					"from TestEntity t where type(t.simpleEmbeddable) = SimpleEmbeddable",
+					Class.class
+			).getResultList();
 		} );
 	}
 
@@ -154,6 +166,9 @@ public class BasicEmbeddableInheritanceTest {
 		@Embedded
 		private ParentEmbeddable embeddable;
 
+		@Embedded
+		private SimpleEmbeddable simpleEmbeddable;
+
 		// ...
 	//end::embeddable-inheritance-entity-example[]
 
@@ -163,6 +178,10 @@ public class BasicEmbeddableInheritanceTest {
 		public TestEntity(Long id, ParentEmbeddable embeddable) {
 			this.id = id;
 			this.embeddable = embeddable;
+		}
+
+		public Long getId() {
+			return id;
 		}
 
 		public ParentEmbeddable getEmbeddable() {

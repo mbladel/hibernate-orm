@@ -2598,7 +2598,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 		return new SqmEmbeddedDiscriminatorValue<>(
 			embeddedDiscriminatorSqmPath.getNodeType().getPathName(),
 			embeddedDiscriminatorSqmPath.getExpressible(),
-			literalEmbeddableType.getNodeType(),
+			literalEmbeddableType.getEmbeddableDomainType(),
 			creationContext.getNodeBuilder()
 		);
 	}

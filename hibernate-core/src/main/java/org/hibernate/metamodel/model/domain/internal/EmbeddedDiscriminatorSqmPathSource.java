@@ -8,7 +8,6 @@ package org.hibernate.metamodel.model.domain.internal;
 
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
-import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
@@ -18,7 +17,7 @@ import org.hibernate.query.sqm.tree.domain.SqmPath;
  *
  * @author Steve Ebersole
  */
-public class EmbeddedDiscriminatorSqmPathSource<D> extends DiscriminatorSqmPathSource<D> {
+public class EmbeddedDiscriminatorSqmPathSource<D> extends AbstractDiscriminatorSqmPathSource<D> {
 	private final EmbeddableDomainType<?> embeddableDomainType;
 
 	public EmbeddedDiscriminatorSqmPathSource(EmbeddableDomainType<D> embeddableDomainType) {
@@ -28,6 +27,7 @@ public class EmbeddedDiscriminatorSqmPathSource<D> extends DiscriminatorSqmPathS
 
 	@Override
 	public SqmPath<D> createSqmPath(SqmPath<?> lhs, SqmPathSource<?> intermediatePathSource) {
+		// todo marco : is there a better way to retrieve the discriminator?
 		final AttributeMapping attributeMapping = lhs.nodeBuilder()
 				.getSessionFactory()
 				.getMappingMetamodel()
