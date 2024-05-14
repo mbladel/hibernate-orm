@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DomainModel( annotatedClasses = {
 		BasicEmbeddableInheritanceTest.TestEntity.class,
-		BasicEmbeddableInheritanceTest.DeleteMe.class,
 		SimpleEmbeddable.class,
 		ParentEmbeddable.class,
 		ChildOneEmbeddable.class,
@@ -115,7 +114,7 @@ public class BasicEmbeddableInheritanceTest {
 	}
 
 	@Test
-	public void testTypeExpressions(SessionFactoryScope scope) {
+	public void testType(SessionFactoryScope scope) {
 		// todo marco : separate into dedicated test class (and maybe also test criteria queries?)
 		scope.inTransaction( session -> {
 			final Class<?> embeddableType = session.createQuery(
@@ -138,6 +137,17 @@ public class BasicEmbeddableInheritanceTest {
 					"from TestEntity t where type(t.simpleEmbeddable) = SimpleEmbeddable",
 					TestEntity.class
 			).getResultList();
+		} );
+	}
+
+	@Test
+	public void testTreat(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final Object result = session.createQuery(
+					"select treat(t.embeddable as ChildOneEmbeddable) from TestEntity t where t.id = 1",
+					Object.class
+			).getSingleResult();
+			assertThat( result ).isExactlyInstanceOf( ChildOneEmbeddable.class );
 		} );
 	}
 
@@ -194,8 +204,4 @@ public class BasicEmbeddableInheritanceTest {
 	//tag::embeddable-inheritance-entity-example[]
 	}
 	//end::embeddable-inheritance-entity-example[]
-
-	// todo marco : delete this
-	@Entity( name = "DeleteMe" )
-	static class DeleteMe extends TestEntity {}
 }

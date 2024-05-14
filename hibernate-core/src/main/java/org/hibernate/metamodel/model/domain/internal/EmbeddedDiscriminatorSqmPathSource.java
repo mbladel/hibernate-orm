@@ -18,7 +18,7 @@ import org.hibernate.query.sqm.tree.domain.SqmPath;
  * @author Steve Ebersole
  */
 public class EmbeddedDiscriminatorSqmPathSource<D> extends AbstractDiscriminatorSqmPathSource<D> {
-	private final EmbeddableDomainType<?> embeddableDomainType;
+	private final EmbeddableDomainType<D> embeddableDomainType;
 
 	public EmbeddedDiscriminatorSqmPathSource(EmbeddableDomainType<D> embeddableDomainType) {
 		super( embeddableDomainType );
@@ -27,19 +27,11 @@ public class EmbeddedDiscriminatorSqmPathSource<D> extends AbstractDiscriminator
 
 	@Override
 	public SqmPath<D> createSqmPath(SqmPath<?> lhs, SqmPathSource<?> intermediatePathSource) {
-		// todo marco : is there a better way to retrieve the discriminator?
-		final AttributeMapping attributeMapping = lhs.nodeBuilder()
-				.getSessionFactory()
-				.getMappingMetamodel()
-				.getEntityDescriptor( lhs.findRoot().getEntityName() )
-				.findAttributeMapping( lhs.getResolvedModel().getPathName() );
-		assert attributeMapping instanceof EmbeddedAttributeMapping;
 		return new EmbeddedDiscriminatorSqmPath<>(
 				PathHelper.append( lhs, this, intermediatePathSource ),
 				pathModel,
 				lhs,
 				embeddableDomainType,
-				( (EmbeddedAttributeMapping) attributeMapping ).getMappedType().getDiscriminatorMapping(),
 				lhs.nodeBuilder()
 		);
 	}

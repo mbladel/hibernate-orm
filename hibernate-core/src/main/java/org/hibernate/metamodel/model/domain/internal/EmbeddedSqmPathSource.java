@@ -23,6 +23,7 @@ public class EmbeddedSqmPathSource<J>
 		extends AbstractSqmPathSource<J>
 		implements CompositeSqmPathSource<J> {
 	private final boolean isGeneric;
+	private final EmbeddedDiscriminatorSqmPathSource<?> discriminatorPathSource;
 
 	public EmbeddedSqmPathSource(
 			String localPathName,
@@ -32,6 +33,12 @@ public class EmbeddedSqmPathSource<J>
 			boolean isGeneric) {
 		super( localPathName, pathModel, domainType, jpaBindableType );
 		this.isGeneric = isGeneric;
+		if ( domainType.getSuperType() != null || !domainType.getSubTypes().isEmpty() ) {
+			discriminatorPathSource = new EmbeddedDiscriminatorSqmPathSource<>( domainType );
+		}
+		else {
+			discriminatorPathSource = null;
+		}
 	}
 
 	@Override
@@ -56,11 +63,8 @@ public class EmbeddedSqmPathSource<J>
 			return (SqmPathSource<?>) attribute;
 		}
 
-		if ( name.equals( DISCRIMINATOR_ROLE_NAME ) ) {
-			final EmbeddableDomainType<J> embeddableDomainType = getSqmPathType();
-			if ( embeddableDomainType.getSuperType() != null || !embeddableDomainType.getSubTypes().isEmpty() ) {
-				return new EmbeddedDiscriminatorSqmPathSource<>( embeddableDomainType );
-			}
+		if ( name.equals( DISCRIMINATOR_ROLE_NAME ) && discriminatorPathSource != null ) {
+			return discriminatorPathSource;
 		}
 
 		return null;

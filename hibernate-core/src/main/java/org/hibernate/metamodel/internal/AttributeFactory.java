@@ -283,12 +283,14 @@ public class AttributeFactory {
 					continue;
 				}
 				final Class<?> subclass = cls.classForName( subclassName );
-				context.registerEmbeddableType( new EmbeddableTypeImpl<>(
+				final EmbeddableTypeImpl<?> subType = new EmbeddableTypeImpl<>(
 						context.getJavaTypeRegistry().resolveManagedTypeDescriptor( subclass ),
 						domainTypes.get( component.getSuperclass( subclassName ) ),
 						false,
 						context.getJpaMetamodel()
-				), component );
+				);
+				domainTypes.put( subclassName, subType );
+				context.registerEmbeddableType( subType, component );
 			}
 		}
 

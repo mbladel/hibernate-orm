@@ -12,6 +12,8 @@ import jakarta.persistence.metamodel.EntityType;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.model.domain.DomainType;
+import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
+import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.metamodel.model.domain.TupleType;
 import org.hibernate.metamodel.model.domain.internal.EntityDiscriminatorSqmPathSource;
 import org.hibernate.persister.entity.EntityPersister;
@@ -128,8 +130,8 @@ public class TypecheckUtil {
 
 		// for embeddables, the embeddable class must match exactly
 
-		final EmbeddableType<?> lhsEmbeddable = getEmbeddableType( lhsDomainType );
-		final EmbeddableType<?> rhsEmbeddable = getEmbeddableType( rhsDomainType );
+		final EmbeddableDomainType<?> lhsEmbeddable = getEmbeddableType( lhsDomainType );
+		final EmbeddableDomainType<?> rhsEmbeddable = getEmbeddableType( rhsDomainType );
 		if ( lhsEmbeddable != null && rhsEmbeddable != null ) {
 			return areEmbeddableTypesComparable( lhsEmbeddable, rhsEmbeddable );
 		}
@@ -197,15 +199,26 @@ public class TypecheckUtil {
 		return false;
 	}
 
-	private static EmbeddableType<?> getEmbeddableType(SqmExpressible<?> expressible) {
-		return expressible instanceof EmbeddableType<?> ? (EmbeddableType<?>) expressible : null;
+	private static EmbeddableDomainType<?> getEmbeddableType(SqmExpressible<?> expressible) {
+		return expressible instanceof EmbeddableDomainType<?> ? (EmbeddableDomainType<?>) expressible : null;
 	}
 
 	private static boolean areEmbeddableTypesComparable(
-			EmbeddableType<?> lhsType,
-			EmbeddableType<?> rhsType) {
-		// no polymorphism for embeddable types
-		return rhsType.getJavaType() == lhsType.getJavaType();
+			EmbeddableDomainType<?> lhsType,
+			EmbeddableDomainType<?> rhsType) {
+		if ( rhsType.getJavaType() == lhsType.getJavaType() ) {
+			return true;
+		}
+
+		return getRootEmbeddableType( lhsType ) == getRootEmbeddableType( rhsType );
+	}
+
+	private static ManagedDomainType<?> getRootEmbeddableType(EmbeddableDomainType<?> embeddableType) {
+		ManagedDomainType<?> rootType = embeddableType;
+		while ( rootType.getSuperType() != null ) {
+			rootType = rootType.getSuperType();
+		}
+		return rootType;
 	}
 
 	private static boolean areTupleTypesComparable(

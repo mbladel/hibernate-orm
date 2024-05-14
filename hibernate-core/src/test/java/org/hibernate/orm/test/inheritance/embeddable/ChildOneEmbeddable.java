@@ -6,6 +6,8 @@
  */
 package org.hibernate.orm.test.inheritance.embeddable;
 
+import org.hibernate.annotations.Imported;
+
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Embeddable;
 
@@ -15,6 +17,7 @@ import jakarta.persistence.Embeddable;
 //tag::embeddable-inheritance-child-one-example[]
 @Embeddable
 @DiscriminatorValue( "child_one" )
+@Imported
 class ChildOneEmbeddable extends ParentEmbeddable {
 	private Integer childOneProp;
 

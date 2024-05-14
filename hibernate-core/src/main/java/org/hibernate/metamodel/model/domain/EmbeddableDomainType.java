@@ -22,11 +22,4 @@ import jakarta.persistence.metamodel.EmbeddableType;
  */
 public interface EmbeddableDomainType<J>
 		extends ManagedDomainType<J>, EmbeddableType<J>, SqmExpressible<J> {
-	/**
-	 * If this embeddable domain type is polymorphic, retrieve the discriminator type
-	 */
-	@Incubating
-	default DiscriminatorType<?> getDiscriminatorType() {
-		return null;
-	}
 }

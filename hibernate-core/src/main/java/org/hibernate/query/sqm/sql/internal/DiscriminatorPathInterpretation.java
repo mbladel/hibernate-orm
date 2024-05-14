@@ -11,6 +11,7 @@ import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.EntityValuedModelPart;
 import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.metamodel.mapping.MappingModelExpressible;
 import org.hibernate.metamodel.mapping.ModelPartContainer;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.metamodel.model.domain.DiscriminatorSqmPath;
@@ -28,6 +29,8 @@ import org.hibernate.sql.results.graph.DomainResult;
 import org.hibernate.sql.results.graph.DomainResultCreationState;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.spi.TypeConfiguration;
+
+import static org.hibernate.query.sqm.internal.SqmMappingModelHelper.resolveMappingModelExpressible;
 
 /**
  * SqmPathInterpretation and DomainResultProducer implementation for entity discriminator
@@ -80,9 +83,14 @@ public class DiscriminatorPathInterpretation<T> extends AbstractSqmPathInterpret
 		}
 		else {
 			final EmbeddedDiscriminatorSqmPath<?> embeddableDiscriminator = (EmbeddedDiscriminatorSqmPath<?>) path;
+			final DiscriminatorMapping discriminator = (DiscriminatorMapping) resolveMappingModelExpressible(
+					embeddableDiscriminator,
+					converter.getCreationContext().getMappingMetamodel(),
+					converter.getFromClauseAccess()::findTableGroup
+			);
 			return new DiscriminatorPathInterpretation<>(
 					navigablePath,
-					embeddableDiscriminator.getDiscriminator(),
+					discriminator,
 					tableGroup,
 					converter
 			);

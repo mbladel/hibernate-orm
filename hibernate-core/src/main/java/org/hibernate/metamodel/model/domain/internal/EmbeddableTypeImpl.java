@@ -37,7 +37,7 @@ public class EmbeddableTypeImpl<J>
 
 	public EmbeddableTypeImpl(
 			JavaType<J> javaType,
-			ManagedDomainType<? super J> superType,
+			EmbeddableDomainType<? super J> superType,
 			boolean isDynamic,
 			JpaMetamodelImplementor domainMetamodel) {
 		super( javaType.getTypeName(), javaType, superType, domainMetamodel );

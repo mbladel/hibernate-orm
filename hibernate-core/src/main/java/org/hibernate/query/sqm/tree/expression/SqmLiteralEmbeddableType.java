@@ -27,15 +27,19 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  * @author Marco Belladelli
  */
 public class SqmLiteralEmbeddableType<T>
-		extends AbstractSqmExpression<Class<T>>
-		implements SqmSelectableNode<Class<T>>, SemanticPathPart {
+		extends AbstractSqmExpression<T>
+		implements SqmSelectableNode<T>, SemanticPathPart {
 	final EmbeddableDomainType<T> embeddableDomainType;
 
 	public SqmLiteralEmbeddableType(
 			EmbeddableDomainType<T> embeddableDomainType,
 			NodeBuilder nodeBuilder) {
+		// todo marco : would be nice to not have to do this here
+		//noinspection unchecked
 		super(
-				nodeBuilder.getTypeConfiguration().getBasicTypeRegistry().resolve( StandardBasicTypes.CLASS ),
+				(SqmExpressible<? super T>) nodeBuilder.getTypeConfiguration()
+						.getBasicTypeRegistry()
+						.resolve( StandardBasicTypes.CLASS ),
 				nodeBuilder
 		);
 		this.embeddableDomainType = embeddableDomainType;
@@ -46,8 +50,13 @@ public class SqmLiteralEmbeddableType<T>
 	}
 
 	@Override
-	public BasicType<Class<T>> getNodeType() {
-		return (BasicType<Class<T>>) super.getNodeType();
+	public BasicType<T> getNodeType() {
+		return (BasicType<T>) super.getNodeType();
+	}
+
+	@Override
+	public EmbeddableDomainType<T> getExpressible() {
+		return embeddableDomainType;
 	}
 
 	@Override
@@ -69,6 +78,11 @@ public class SqmLiteralEmbeddableType<T>
 
 	@Override
 	public void internalApplyInferableType(SqmExpressible<?> type) {
+	}
+
+	@Override
+	public Integer getTupleLength() {
+		return 1;
 	}
 
 	@Override

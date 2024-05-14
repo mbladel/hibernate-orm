@@ -6,7 +6,6 @@
  */
 package org.hibernate.metamodel.model.domain.internal;
 
-import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorMapping;
 import org.hibernate.metamodel.model.domain.DiscriminatorSqmPath;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.query.sqm.NodeBuilder;
@@ -15,9 +14,7 @@ import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.domain.AbstractSqmPath;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
-import org.hibernate.query.sqm.tree.expression.SqmLiteralEmbeddableType;
 import org.hibernate.spi.NavigablePath;
-import org.hibernate.type.BasicType;
 
 /**
  * {@link SqmPath} specialization for an embeddable discriminator
@@ -26,7 +23,6 @@ import org.hibernate.type.BasicType;
  */
 public class EmbeddedDiscriminatorSqmPath<T> extends AbstractSqmPath<T> implements DiscriminatorSqmPath<T> {
 	private final EmbeddableDomainType<T> embeddableDomainType;
-	private final EmbeddableDiscriminatorMapping discriminator;
 
 	@SuppressWarnings( { "rawtypes", "unchecked" } )
 	protected EmbeddedDiscriminatorSqmPath(
@@ -34,25 +30,14 @@ public class EmbeddedDiscriminatorSqmPath<T> extends AbstractSqmPath<T> implemen
 			SqmPathSource referencedPathSource,
 			SqmPath<?> lhs,
 			EmbeddableDomainType embeddableDomainType,
-			EmbeddableDiscriminatorMapping discriminator,
 			NodeBuilder nodeBuilder) {
 		super( navigablePath, referencedPathSource, lhs, nodeBuilder );
 		this.embeddableDomainType = embeddableDomainType;
-		this.discriminator = discriminator;
-	}
-
-	public EmbeddableDomainType<T> getEmbeddableDomainType() {
-		return embeddableDomainType;
-	}
-
-	public EmbeddableDiscriminatorMapping getDiscriminator() {
-		return discriminator;
 	}
 
 	@Override
-	public BasicType<T> getExpressible() {
-		//noinspection unchecked
-		return (BasicType<T>) discriminator.getJdbcMapping();
+	public EmbeddableDomainType<T> getExpressible() {
+		return embeddableDomainType;
 	}
 
 	@Override
