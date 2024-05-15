@@ -5188,7 +5188,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				// Treating a node to a super type can be ignored
 				return expression;
 			}
-			if ( lhs instanceof SqmEmbeddedValuedSimplePath<?> ) {
+			if ( treatTarget instanceof EmbeddableDomainType<?> ) {
 				// For embedded treats we simply register a TREAT use
 				final TableGroup tableGroup = getFromClauseIndex().findTableGroup( wrappedPath.getNavigablePath() );
 				registerEntityNameUsage( tableGroup, EntityNameUse.TREAT, treatTarget.getTypeName(), false );

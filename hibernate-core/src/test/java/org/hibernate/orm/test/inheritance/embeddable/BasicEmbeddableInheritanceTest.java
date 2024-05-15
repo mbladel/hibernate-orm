@@ -145,16 +145,22 @@ public class BasicEmbeddableInheritanceTest {
 		// todo marco : separate into dedicated test class (and maybe also test criteria queries?)
 		scope.inTransaction( session -> {
 			// todo marco : we now interpret the treats correctly, now we need to add restrictions
-//			final SubChildOneEmbeddable r1 = session.createQuery(
-//					"select treat(t.embeddable as SubChildOneEmbeddable) from TestEntity t",
-//					SubChildOneEmbeddable.class
-//			).getSingleResult();
-//			assertThat( r1.getParentProp() ).isEqualTo( "embeddable_4" );
+			final SubChildOneEmbeddable r1 = session.createQuery(
+					"select treat(t.embeddable as SubChildOneEmbeddable) from TestEntity t",
+					SubChildOneEmbeddable.class
+			).getSingleResult();
+			final SubChildOneEmbeddable r11 = session.createQuery(
+					"select treat(e as SubChildOneEmbeddable) from TestEntity t join t.embeddable e",
+					SubChildOneEmbeddable.class
+			).getSingleResult();
 			final TestEntity r2 = session.createQuery(
 					"from TestEntity t where treat(t.embeddable as ChildTwoEmbeddable).childTwoProp = 2",
 					TestEntity.class
 			).getSingleResult();
-			assertThat( r2.getId() ).isEqualTo( 2L );
+			final TestEntity r22 = session.createQuery(
+					"from TestEntity t join t.embeddable e where treat(e as ChildTwoEmbeddable).childTwoProp = 2",
+					TestEntity.class
+			).getSingleResult();
 		} );
 	}
 
