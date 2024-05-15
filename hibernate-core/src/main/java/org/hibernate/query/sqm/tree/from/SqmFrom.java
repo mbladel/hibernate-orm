@@ -8,11 +8,8 @@ package org.hibernate.query.sqm.tree.from;
 
 import java.util.List;
 import java.util.function.Consumer;
-import jakarta.persistence.criteria.CollectionJoin;
+
 import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.ListJoin;
-import jakarta.persistence.criteria.MapJoin;
-import jakarta.persistence.criteria.SetJoin;
 import jakarta.persistence.metamodel.CollectionAttribute;
 import jakarta.persistence.metamodel.ListAttribute;
 import jakarta.persistence.metamodel.MapAttribute;
@@ -20,18 +17,13 @@ import jakarta.persistence.metamodel.SetAttribute;
 import jakarta.persistence.metamodel.SingularAttribute;
 
 import org.hibernate.metamodel.model.domain.EntityDomainType;
-import org.hibernate.query.PathException;
 import org.hibernate.query.criteria.JpaFrom;
-import org.hibernate.query.criteria.JpaJoin;
-import org.hibernate.query.criteria.JpaPath;
-import org.hibernate.query.hql.spi.SqmCreationState;
 import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.SqmVisitableNode;
 import org.hibernate.query.sqm.tree.domain.SqmBagJoin;
 import org.hibernate.query.sqm.tree.domain.SqmListJoin;
 import org.hibernate.query.sqm.tree.domain.SqmMapJoin;
-import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.domain.SqmSetJoin;
 import org.hibernate.query.sqm.tree.domain.SqmSingularJoin;
 
@@ -40,7 +32,7 @@ import org.hibernate.query.sqm.tree.domain.SqmSingularJoin;
  *
  * @author Steve Ebersole
  */
-public interface SqmFrom<O,T> extends SqmVisitableNode, SqmPath<T>, JpaFrom<O, T> {
+public interface SqmFrom<O,T> extends SqmVisitableNode, SqmTreatablePath<T>, JpaFrom<O, T> {
 	/**
 	 * The Navigable for an SqmFrom will always be a NavigableContainer
 	 *
@@ -68,6 +60,9 @@ public interface SqmFrom<O,T> extends SqmVisitableNode, SqmPath<T>, JpaFrom<O, T
 	void visitSqmJoins(Consumer<SqmJoin<T, ?>> consumer);
 
 	@Override
+	List<SqmFrom<?, ?>> getSqmTreats();
+
+	@Override
 	<S extends T> SqmFrom<?, S> treatAs(Class<S> treatAsType);
 
 	@Override
@@ -76,14 +71,6 @@ public interface SqmFrom<O,T> extends SqmVisitableNode, SqmPath<T>, JpaFrom<O, T
 	<S extends T> SqmFrom<?, S> treatAs(Class<S> treatJavaType, String alias);
 
 	<S extends T> SqmFrom<?, S> treatAs(EntityDomainType<S> treatTarget, String alias);
-
-	boolean hasTreats();
-
-	/**
-	 * The treats associated with this SqmFrom
-	 */
-	List<SqmFrom<?,?>> getSqmTreats();
-
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// JPA

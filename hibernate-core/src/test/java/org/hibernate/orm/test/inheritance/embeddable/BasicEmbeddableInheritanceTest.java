@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DomainModel( annotatedClasses = {
 		BasicEmbeddableInheritanceTest.TestEntity.class,
-		SimpleEmbeddable.class,
 		ParentEmbeddable.class,
 		ChildOneEmbeddable.class,
 		SubChildOneEmbeddable.class,
@@ -113,65 +112,6 @@ public class BasicEmbeddableInheritanceTest {
 		} );
 	}
 
-	@Test
-	public void testType(SessionFactoryScope scope) {
-		// todo marco : separate into dedicated test class (and maybe also test criteria queries?)
-		scope.inTransaction( session -> {
-			final Class<?> embeddableType = session.createQuery(
-					"select type(t.embeddable) from TestEntity t where t.id = 1",
-					Class.class
-			).getSingleResult();
-			assertThat( embeddableType ).isEqualTo( ChildOneEmbeddable.class );
-			final TestEntity testEntity = session.createQuery(
-					"from TestEntity t where type(t.embeddable) = SubChildOneEmbeddable",
-					TestEntity.class
-			).getSingleResult();
-			assertThat( testEntity.getId() ).isEqualTo( 4L );
-			assertThat( testEntity.getEmbeddable() ).isExactlyInstanceOf( SubChildOneEmbeddable.class );
-			final Class<?> simpleEmbeddableType = session.createQuery(
-					"select type(t.simpleEmbeddable) from TestEntity t where t.id = 1",
-					Class.class
-			).getSingleResult();
-			assertThat( simpleEmbeddableType ).isEqualTo( SimpleEmbeddable.class );
-			session.createQuery(
-					"from TestEntity t where type(t.simpleEmbeddable) = SimpleEmbeddable",
-					TestEntity.class
-			).getResultList();
-		} );
-	}
-
-	@Test
-	public void testTreat(SessionFactoryScope scope) {
-		// todo marco : separate into dedicated test class (and maybe also test criteria queries?)
-		scope.inTransaction( session -> {
-			// todo marco : we now interpret the treats correctly, now we need to add restrictions
-			final SubChildOneEmbeddable r1 = session.createQuery(
-					"select treat(t.embeddable as SubChildOneEmbeddable) from TestEntity t",
-					SubChildOneEmbeddable.class
-			).getSingleResult();
-			final SubChildOneEmbeddable r11 = session.createQuery(
-					"select treat(e as SubChildOneEmbeddable) from TestEntity t join t.embeddable e",
-					SubChildOneEmbeddable.class
-			).getSingleResult();
-			final SubChildOneEmbeddable r111 = session.createQuery(
-					"select e from TestEntity t join treat(t.embeddable as SubChildOneEmbeddable) e",
-					SubChildOneEmbeddable.class
-			).getSingleResult();
-			final TestEntity r2 = session.createQuery(
-					"from TestEntity t where treat(t.embeddable as ChildTwoEmbeddable).childTwoProp = 2",
-					TestEntity.class
-			).getSingleResult();
-			final TestEntity r22 = session.createQuery(
-					"from TestEntity t join t.embeddable e where treat(e as ChildTwoEmbeddable).childTwoProp = 2",
-					TestEntity.class
-			).getSingleResult();
-			final TestEntity r222 = session.createQuery(
-					"from TestEntity t join treat(t.embeddable as ChildTwoEmbeddable) e where e.childTwoProp = 2",
-					TestEntity.class
-			).getSingleResult();
-		} );
-	}
-
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
@@ -196,9 +136,6 @@ public class BasicEmbeddableInheritanceTest {
 
 		@Embedded
 		private ParentEmbeddable embeddable;
-
-		@Embedded
-		private SimpleEmbeddable simpleEmbeddable;
 
 		// ...
 	//end::embeddable-inheritance-entity-example[]

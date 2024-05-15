@@ -287,11 +287,6 @@ public abstract class AbstractSqmFrom<O,T> extends AbstractSqmPath<T> implements
 	}
 
 	@Override
-	public boolean hasTreats() {
-		return treats != null && !treats.isEmpty();
-	}
-
-	@Override
 	public List<SqmFrom<?, ?>> getSqmTreats() {
 		return treats == null ? Collections.emptyList() : treats;
 	}

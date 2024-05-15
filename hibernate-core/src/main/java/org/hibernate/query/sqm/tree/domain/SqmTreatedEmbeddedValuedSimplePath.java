@@ -85,6 +85,11 @@ public class SqmTreatedEmbeddedValuedSimplePath<T, S extends T> extends SqmEmbed
 	}
 
 	@Override
+	public SqmPathSource<?> getResolvedModel() {
+		return treatTarget;
+	}
+
+	@Override
 	public EmbeddableDomainType<S> getReferencedPathSource() {
 		return getTreatTarget();
 	}

@@ -87,6 +87,11 @@ public class SqmTreatedSingularEmbeddedJoin<O, T, S extends T> extends AbstractS
 	}
 
 	@Override
+	public SqmPathSource<?> getResolvedModel() {
+		return treatTarget;
+	}
+
+	@Override
 	public SqmAttributeJoin<O, S> makeCopy(SqmCreationProcessingState creationProcessingState) {
 		return new SqmTreatedSingularEmbeddedJoin<>( getWrappedPath(), treatTarget, getAlias() );
 	}

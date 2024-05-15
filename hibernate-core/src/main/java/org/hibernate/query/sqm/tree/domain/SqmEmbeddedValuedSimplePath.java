@@ -13,7 +13,6 @@ import java.util.Objects;
 import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
-import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.query.PathException;
 import org.hibernate.query.hql.spi.SqmCreationState;
 import org.hibernate.query.sqm.NodeBuilder;
@@ -23,6 +22,7 @@ import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.produce.function.FunctionArgumentException;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.from.SqmFrom;
+import org.hibernate.query.sqm.tree.from.SqmTreatablePath;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.type.descriptor.java.JavaType;
 
@@ -31,7 +31,7 @@ import org.hibernate.type.descriptor.java.JavaType;
  */
 public class SqmEmbeddedValuedSimplePath<T>
 		extends AbstractSqmSimplePath<T>
-		implements SqmExpressible<T> {
+		implements SqmExpressible<T>, SqmTreatablePath<T> {
 	private List<SqmEmbeddedValuedSimplePath<?>> treats;
 
 	public SqmEmbeddedValuedSimplePath(
@@ -140,6 +140,11 @@ public class SqmEmbeddedValuedSimplePath<T>
 		}
 		treats.add( treat );
 		return treat;
+	}
+
+	@Override
+	public List<SqmEmbeddedValuedSimplePath<?>> getSqmTreats() {
+		return treats;
 	}
 
 	@Override

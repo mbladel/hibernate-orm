@@ -13,7 +13,6 @@ import org.hibernate.HibernateException;
 import org.hibernate.Internal;
 import org.hibernate.LockMode;
 import org.hibernate.boot.model.process.internal.InferredBasicValueResolver;
-import org.hibernate.boot.model.source.spi.EmbeddedAttributeMapping;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.function.TimestampaddFunction;
 import org.hibernate.dialect.function.TimestampdiffFunction;
@@ -227,6 +226,7 @@ import org.hibernate.query.sqm.tree.from.SqmFrom;
 import org.hibernate.query.sqm.tree.from.SqmFromClause;
 import org.hibernate.query.sqm.tree.from.SqmJoin;
 import org.hibernate.query.sqm.tree.from.SqmRoot;
+import org.hibernate.query.sqm.tree.from.SqmTreatablePath;
 import org.hibernate.query.sqm.tree.insert.SqmConflictClause;
 import org.hibernate.query.sqm.tree.insert.SqmConflictUpdateAction;
 import org.hibernate.query.sqm.tree.insert.SqmInsertSelectStatement;
@@ -3758,6 +3758,9 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			if ( newTableGroup != null ) {
 				implicitJoinChecker.accept( newTableGroup );
 				registerPathAttributeEntityNameUsage( sqmPath, newTableGroup );
+				if ( sqmPath instanceof SqmTreatedPath<?, ?> ) {
+					fromClauseIndex.register( sqmPath, newTableGroup );
+				}
 			}
 			return newTableGroup;
 		}
