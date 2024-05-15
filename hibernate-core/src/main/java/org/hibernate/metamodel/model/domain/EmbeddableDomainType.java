@@ -9,6 +9,7 @@ package org.hibernate.metamodel.model.domain;
 import org.hibernate.Incubating;
 import org.hibernate.metamodel.mapping.DiscriminatorType;
 import org.hibernate.query.sqm.SqmExpressible;
+import org.hibernate.query.sqm.SqmPathSource;
 
 import jakarta.persistence.metamodel.EmbeddableType;
 
@@ -21,5 +22,9 @@ import jakarta.persistence.metamodel.EmbeddableType;
  * @author Steve Ebersole
  */
 public interface EmbeddableDomainType<J>
-		extends ManagedDomainType<J>, EmbeddableType<J>, SqmExpressible<J> {
+		extends ManagedDomainType<J>, EmbeddableType<J>, SqmExpressible<J>, SqmPathSource<J> {
+	@Override
+	default EmbeddableDomainType<J> getSqmType() {
+		return this;
+	}
 }

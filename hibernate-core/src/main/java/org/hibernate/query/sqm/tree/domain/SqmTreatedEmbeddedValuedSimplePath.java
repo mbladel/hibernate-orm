@@ -7,6 +7,7 @@
 package org.hibernate.query.sqm.tree.domain;
 
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
+import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.query.hql.spi.SqmCreationState;
 import org.hibernate.query.sqm.SemanticQueryWalker;
 import org.hibernate.query.sqm.SqmPathSource;
@@ -80,14 +81,12 @@ public class SqmTreatedEmbeddedValuedSimplePath<T, S extends T> extends SqmEmbed
 
 	@Override
 	public SqmPathSource<S> getNodeType() {
-		// todo marco : this won't be the treated type
-		return super.getNodeType();
+		return treatTarget;
 	}
 
 	@Override
-	public SqmPathSource<S> getReferencedPathSource() {
-		// todo marco : this won't be the treated type
-		return super.getReferencedPathSource();
+	public EmbeddableDomainType<S> getReferencedPathSource() {
+		return getTreatTarget();
 	}
 
 	@Override

@@ -153,12 +153,20 @@ public class BasicEmbeddableInheritanceTest {
 					"select treat(e as SubChildOneEmbeddable) from TestEntity t join t.embeddable e",
 					SubChildOneEmbeddable.class
 			).getSingleResult();
+			final SubChildOneEmbeddable r111 = session.createQuery(
+					"select e from TestEntity t join treat(t.embeddable as SubChildOneEmbeddable) e",
+					SubChildOneEmbeddable.class
+			).getSingleResult();
 			final TestEntity r2 = session.createQuery(
 					"from TestEntity t where treat(t.embeddable as ChildTwoEmbeddable).childTwoProp = 2",
 					TestEntity.class
 			).getSingleResult();
 			final TestEntity r22 = session.createQuery(
 					"from TestEntity t join t.embeddable e where treat(e as ChildTwoEmbeddable).childTwoProp = 2",
+					TestEntity.class
+			).getSingleResult();
+			final TestEntity r222 = session.createQuery(
+					"from TestEntity t join treat(t.embeddable as ChildTwoEmbeddable) e where e.childTwoProp = 2",
 					TestEntity.class
 			).getSingleResult();
 		} );

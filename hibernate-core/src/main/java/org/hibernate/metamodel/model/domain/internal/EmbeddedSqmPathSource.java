@@ -47,20 +47,10 @@ public class EmbeddedSqmPathSource<J>
 	}
 
 	@Override
-	public SqmPathSource<?> findSubPathSource(String name, JpaMetamodelImplementor metamodel) {
-		final PersistentAttribute<? super J, ?> attribute = getSqmPathType().findAttribute( name );
-		if ( attribute != null ) {
-			return (SqmPathSource<?>) attribute;
-		}
-
-		return (SqmPathSource<?>) getSqmPathType().findSubTypesAttribute( name );
-	}
-
-	@Override
 	public SqmPathSource<?> findSubPathSource(String name) {
-		final PersistentAttribute<? super J, ?> attribute = getSqmPathType().findAttribute( name );
-		if ( attribute != null ) {
-			return (SqmPathSource<?>) attribute;
+		final SqmPathSource<?> subPathSource = getSqmPathType().findSubPathSource( name );
+		if ( subPathSource != null ) {
+			return subPathSource;
 		}
 
 		if ( name.equals( DISCRIMINATOR_ROLE_NAME ) && discriminatorPathSource != null ) {
