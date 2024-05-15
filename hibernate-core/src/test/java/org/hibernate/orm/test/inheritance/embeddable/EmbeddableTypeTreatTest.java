@@ -88,25 +88,25 @@ public class EmbeddableTypeTreatTest {
 		} );
 	}
 
-	// @Test
+	@Test
 	public void testTreatJunctions(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-			// todo marco : this doesn't work for now
 			assertThat( session.createQuery(
-					"from TestEntity t where treat(t.embeddable as SubChildOneEmbeddable).subChildOneProp = 2.0 or id = 1",
+					"from TestEntity t " +
+							"where treat(t.embeddable as SubChildOneEmbeddable).subChildOneProp = 2.0 or id = 1",
 					TestEntity.class
-			).getResultList() ).hasSize( 2 );
+			).getResultList() ).isNotEmpty();
 
 			assertThat( session.createQuery(
-					"from TestEntity t where treat(t.embeddable as SubChildOneEmbeddable).subChildOneProp = 2.0 and id = 1",
+					"from TestEntity t " +
+							"where treat(t.embeddable as SubChildOneEmbeddable).subChildOneProp = 2.0 and id = 1",
 					TestEntity.class
 			).getResultList() ).hasSize( 0 );
 
-			// todo marco : this doesn't work, the algorithm in visitJunction supposes the treat use should be the first in order
-//			assertThat( session.createQuery(
-//					"from TestEntity t where id = 1 or treat(t.embeddable as SubChildOneEmbeddable).subChildOneProp = 2.0",
-//					TestEntity.class
-//			).getResultList() ).hasSize( 2 );
+			assertThat( session.createQuery(
+					"from TestEntity t where id = 1 or treat(t.embeddable as SubChildOneEmbeddable).subChildOneProp = 2.0",
+					TestEntity.class
+			).getResultList() ).hasSize( 2 );
 		} );
 	}
 

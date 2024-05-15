@@ -82,6 +82,7 @@ import org.hibernate.type.descriptor.jdbc.spi.JdbcTypeRegistry;
 import org.hibernate.type.spi.CompositeTypeImplementor;
 import org.hibernate.type.spi.TypeConfiguration;
 
+import static org.hibernate.internal.util.StringHelper.qualify;
 import static org.hibernate.persister.entity.DiscriminatorHelper.getDiscriminatorType;
 
 import static org.hibernate.type.SqlTypes.JSON;
@@ -735,9 +736,12 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 			scale = column.getScale();
 		}
 
-		final DiscriminatorType<?> discriminatorType = buildDiscriminatorType(
-				bootDescriptor,
-				creationContext
+		final DiscriminatorType<?> discriminatorType = creationContext.getMetadata().resolveEmbeddableDiscriminatorType(
+				bootDescriptor.getComponentClass(),
+				() -> buildDiscriminatorType(
+						bootDescriptor,
+						creationContext
+				)
 		);
 
 		return new ExplicitColumnDiscriminatorMappingImpl(
@@ -757,14 +761,14 @@ public class EmbeddableMappingTypeImpl extends AbstractEmbeddableMapping impleme
 		);
 	}
 
-	private DiscriminatorType<?> buildDiscriminatorType(
+	private static DiscriminatorType<?> buildDiscriminatorType(
 			Component bootDescriptor,
 			RuntimeModelCreationContext creationContext) {
 		final JavaTypeRegistry javaTypeRegistry = creationContext.getSessionFactory().getTypeConfiguration().getJavaTypeRegistry();
 		final JavaType<String> domainJavaType = javaTypeRegistry.resolveDescriptor( Class.class );
 		final BasicType<?> discriminatorType = getDiscriminatorType( bootDescriptor );
 		final DiscriminatorConverter<String, ?> converter = EmbeddableDiscriminatorConverter.fromValueMappings(
-				getNavigableRole().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
+				qualify( bootDescriptor.getComponentClassName(), EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
 				domainJavaType,
 				discriminatorType,
 				bootDescriptor.getDiscriminatorValues(),

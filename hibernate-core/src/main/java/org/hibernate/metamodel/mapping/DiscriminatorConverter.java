@@ -7,7 +7,6 @@
 package org.hibernate.metamodel.mapping;
 
 import org.hibernate.metamodel.RepresentationMode;
-import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.type.descriptor.converter.spi.BasicValueConverter;
 import org.hibernate.type.descriptor.java.JavaType;
 
@@ -20,21 +19,21 @@ import java.util.function.Function;
  */
 public abstract class DiscriminatorConverter<O,R> implements BasicValueConverter<O,R> {
 
-	private final NavigableRole discriminatorRole;
+	private final String discriminatedType;
 	private final JavaType<O> domainJavaType;
 	private final JavaType<R> relationalJavaType;
 
 	public DiscriminatorConverter(
-			NavigableRole discriminatorRole,
+			String discriminatedType,
 			JavaType<O> domainJavaType,
 			JavaType<R> relationalJavaType) {
-		this.discriminatorRole = discriminatorRole;
+		this.discriminatedType = discriminatedType;
 		this.domainJavaType = domainJavaType;
 		this.relationalJavaType = relationalJavaType;
 	}
 
-	public NavigableRole getNavigableRole() {
-		return discriminatorRole;
+	public String getDiscriminatedType() {
+		return discriminatedType;
 	}
 
 	@Override
@@ -95,7 +94,7 @@ public abstract class DiscriminatorConverter<O,R> implements BasicValueConverter
 
 	@Override
 	public String toString() {
-		return "DiscriminatorConverter(" + discriminatorRole.getFullPath() + ")";
+		return "DiscriminatorConverter(" + discriminatedType + ")";
 	}
 
 	public abstract void forEachValueDetail(Consumer<DiscriminatorValueDetails> consumer);

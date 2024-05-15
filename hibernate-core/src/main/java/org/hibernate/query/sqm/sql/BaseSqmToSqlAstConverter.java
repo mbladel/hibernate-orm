@@ -3063,7 +3063,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			String treatTargetTypeName,
 			boolean projection) {
 		final AbstractEntityPersister persister;
-		if ( tableGroup.isVirtual() ) {
+		if ( tableGroup.getModelPart() instanceof EmbeddableValuedModelPart ) {
 			persister = null;
 			final EmbeddableDomainType<?> embeddableDomainType = creationContext.getSessionFactory()
 					.getRuntimeMetamodels()
@@ -7241,8 +7241,10 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		final MappingModelExpressible<?> inferredValueMapping = getInferredValueMapping();
 		// The inferred value mapping for literal embeddable types will either be the
 		// discriminator mapping for polymorphic embeddables or the Class<?> basic type
-		final BasicType<?> basicType = (BasicType<?>) castNonNull( inferredValueMapping ).getSingleJdbcMapping();
-		return new EmbeddableTypeLiteral( expression.getEmbeddableDomainType(), basicType );
+		final BasicType<?> basicType = inferredValueMapping != null ?
+				(BasicType<?>) inferredValueMapping.getSingleJdbcMapping() :
+				expression.getNodeType();
+		return new EmbeddableTypeLiteral( expression.getExpressible(), basicType );
 	}
 
 	@Override
@@ -7546,7 +7548,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				final Map<String, EntityNameUse> entityNames;
 				if ( conjunctTreatUsages == null || ( entityNames = conjunctTreatUsages.get( entry.getKey() ) ) == null ) {
 					remove = true;
-					continue;
+					break;
 				}
 				// Intersect the two sets and transfer the common elements to the intersection
 				final Iterator<Map.Entry<String, EntityNameUse>> intersectedIter = intersected.entrySet().iterator();
@@ -7564,7 +7566,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				}
 				if ( intersected.isEmpty() ) {
 					remove = true;
-					continue;
+					break;
 				}
 				entityNames.keySet().removeAll( intersected.keySet() );
 				if ( entityNames.isEmpty() ) {
@@ -7573,6 +7575,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			}
 
 			if ( remove ) {
+				entityNameUsesToPropagate.remove( entry.getKey() );
 				iterator.remove();
 			}
 		}

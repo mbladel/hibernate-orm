@@ -31,7 +31,7 @@ import org.hibernate.type.descriptor.java.JavaType;
  */
 public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConverter<O, R> {
 	public static <O, R> EmbeddableDiscriminatorConverter<O, R> fromValueMappings(
-			NavigableRole role,
+			String discriminatedType,
 			JavaType<O> domainJavaType,
 			BasicType<R> underlyingJdbcMapping,
 			Map<Object, String> valueMappings,
@@ -43,7 +43,7 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 				cls.classForName( embeddableClassName )
 		) ) );
 		return new EmbeddableDiscriminatorConverter<>(
-				role,
+				discriminatedType,
 				domainJavaType,
 				underlyingJdbcMapping.getJavaTypeDescriptor(),
 				valueDetailsList
@@ -54,11 +54,11 @@ public class EmbeddableDiscriminatorConverter<O, R> extends DiscriminatorConvert
 	private final Map<String, EmbeddableDiscriminatorValueDetailsImpl> embeddableClassNameToDetailsMap;
 
 	public EmbeddableDiscriminatorConverter(
-			NavigableRole discriminatorRole,
+			String discriminatorName,
 			JavaType<O> domainJavaType,
 			JavaType<R> relationalJavaType,
 			List<EmbeddableDiscriminatorValueDetailsImpl> valueMappings) {
-		super( discriminatorRole, domainJavaType, relationalJavaType );
+		super( discriminatorName, domainJavaType, relationalJavaType );
 
 		this.discriminatorValueToDetailsMap = new HashMap<>( valueMappings.size() );
 		this.embeddableClassNameToDetailsMap = new HashMap<>( valueMappings.size() );
