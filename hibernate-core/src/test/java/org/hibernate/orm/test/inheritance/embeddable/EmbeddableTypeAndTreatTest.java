@@ -16,8 +16,6 @@ import org.junit.jupiter.api.Test;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Tuple;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Marco Belladelli
  */
 @DomainModel( annotatedClasses = {
-		EmbeddableTypeTreatTest.TestEntity.class,
+		EmbeddableTypeAndTreatTest.TestEntity.class,
 		SimpleEmbeddable.class,
 		ParentEmbeddable.class,
 		ChildOneEmbeddable.class,
@@ -33,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 		ChildTwoEmbeddable.class,
 } )
 @SessionFactory
-public class EmbeddableTypeTreatTest {
+public class EmbeddableTypeAndTreatTest {
 	@Test
 	public void testType(SessionFactoryScope scope) {
 		// todo marco : add significant assertions

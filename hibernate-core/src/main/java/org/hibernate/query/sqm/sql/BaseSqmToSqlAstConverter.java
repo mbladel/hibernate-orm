@@ -7394,7 +7394,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 					disjunctEntityNameUsesArray = new Map[predicate.getPredicates().size()];
 					entityNameUsesToPropagate = previousTableGroupEntityNameUses == null
 						? new IdentityHashMap<>()
-						: previousTableGroupEntityNameUses;
+						: new IdentityHashMap<>( previousTableGroupEntityNameUses );
 				}
 				if ( i == 0 ) {
 					// Collect the table groups for which filters are registered
@@ -7592,6 +7592,12 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 						)
 				);
 			}
+		}
+
+		// Restore the parent context entity name uses state
+		tableGroupEntityNameUses.clear();
+		if ( previousTableGroupEntityNameUses != null ) {
+			tableGroupEntityNameUses.putAll( previousTableGroupEntityNameUses );
 		}
 		// Propagate the union of the entity name uses upwards
 		for ( Map.Entry<TableGroup, Map<String, EntityNameUse>> entry : entityNameUsesToPropagate.entrySet() ) {
