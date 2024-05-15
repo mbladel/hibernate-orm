@@ -22,7 +22,6 @@ import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.produce.function.FunctionArgumentException;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.from.SqmFrom;
-import org.hibernate.query.sqm.tree.from.SqmTreatablePath;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.type.descriptor.java.JavaType;
 
@@ -31,9 +30,7 @@ import org.hibernate.type.descriptor.java.JavaType;
  */
 public class SqmEmbeddedValuedSimplePath<T>
 		extends AbstractSqmSimplePath<T>
-		implements SqmExpressible<T>, SqmTreatablePath<T> {
-	private List<SqmEmbeddedValuedSimplePath<?>> treats;
-
+		implements SqmExpressible<T> {
 	public SqmEmbeddedValuedSimplePath(
 			NavigablePath navigablePath,
 			SqmPathSource<T> referencedPathSource,
@@ -107,44 +104,12 @@ public class SqmEmbeddedValuedSimplePath<T>
 
 	@Override
 	public <S extends T> SqmTreatedPath<T, S> treatAs(Class<S> treatJavaType) throws PathException {
-		final EmbeddableDomainType<S> treatTarget = nodeBuilder().getDomainModel().embeddable( treatJavaType );
-		final SqmTreatedEmbeddedValuedSimplePath<T, S> treat = findTreat( treatTarget, null );
-		if ( treat == null ) {
-			return addTreat( new SqmTreatedEmbeddedValuedSimplePath<>( this, treatTarget ) );
-		}
-		return treat;
+		return getTreatedPath( nodeBuilder().getDomainModel().embeddable( treatJavaType ) );
 	}
 
 	@Override
 	public <S extends T> SqmTreatedPath<T, S> treatAs(EntityDomainType<S> treatTarget) throws PathException {
 		throw new FunctionArgumentException( "Embeddable paths cannot be TREAT-ed to an entity type" );
-	}
-
-	protected <S, X extends SqmFrom<?, S>> X findTreat(EmbeddableDomainType<S> targetType, String alias) {
-		if ( treats != null ) {
-			for ( SqmEmbeddedValuedSimplePath<?> treat : treats ) {
-				if ( treat.getModel() == targetType ) {
-					if ( Objects.equals( treat.getExplicitAlias(), alias ) ) {
-						//noinspection unchecked
-						return (X) treat;
-					}
-				}
-			}
-		}
-		return null;
-	}
-
-	protected <X extends SqmEmbeddedValuedSimplePath<?>> X addTreat(X treat) {
-		if ( treats == null ) {
-			treats = new ArrayList<>();
-		}
-		treats.add( treat );
-		return treat;
-	}
-
-	@Override
-	public List<SqmEmbeddedValuedSimplePath<?>> getSqmTreats() {
-		return treats;
 	}
 
 	@Override

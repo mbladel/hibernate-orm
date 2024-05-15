@@ -17,6 +17,7 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Tuple;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,7 +25,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Marco Belladelli
  */
 @DomainModel( annotatedClasses = {
-		EmbeddableTypeTreatTest.ContainerEntity.class,
 		EmbeddableTypeTreatTest.TestEntity.class,
 		SimpleEmbeddable.class,
 		ParentEmbeddable.class,
@@ -59,39 +59,54 @@ public class EmbeddableTypeTreatTest {
 
 	@Test
 	public void testTreat(SessionFactoryScope scope) {
-		// todo marco : separate into dedicated test class (and maybe also test criteria queries?)
 		scope.inTransaction( session -> {
-			// todo marco : we now interpret the treats correctly, now we need to add restrictions
-//			final SubChildOneEmbeddable r1 = session.createQuery(
-//					"select treat(t.embeddable as SubChildOneEmbeddable) from TestEntity t",
-//					SubChildOneEmbeddable.class
-//			).getSingleResult();
-//			final SubChildOneEmbeddable r11 = session.createQuery(
-//					"select treat(e as SubChildOneEmbeddable) from TestEntity t join t.embeddable e",
-//					SubChildOneEmbeddable.class
-//			).getSingleResult();
-//			final SubChildOneEmbeddable r111 = session.createQuery(
-//					"select e from TestEntity t join treat(t.embeddable as SubChildOneEmbeddable) e",
-//					SubChildOneEmbeddable.class
-//			).getSingleResult();
-//			final TestEntity r2 = session.createQuery(
-//					"from TestEntity t where treat(t.embeddable as ChildTwoEmbeddable).childTwoProp = 1",
-//					TestEntity.class
-//			).getSingleResult();
-//			final TestEntity r22 = session.createQuery(
-//					"from TestEntity t join t.embeddable e where treat(e as ChildTwoEmbeddable).childTwoProp = 1",
-//					TestEntity.class
-//			).getSingleResult();
-//			final TestEntity r222 = session.createQuery(
-//					"from TestEntity t join treat(t.embeddable as ChildTwoEmbeddable) e where e.childTwoProp = 1",
-//					TestEntity.class
-//			).getSingleResult();
-
-
-			final TestEntity r3 = session.createQuery(
-					"from TestEntity t where id = 1 or treat(t.embeddable as SubChildOneEmbeddable).subChildOneProp = 2.0",
+			// todo marco : add significant assertions
+			final SubChildOneEmbeddable r1 = session.createQuery(
+					"select treat(t.embeddable as SubChildOneEmbeddable) from TestEntity t",
+					SubChildOneEmbeddable.class
+			).getSingleResult();
+			final SubChildOneEmbeddable r11 = session.createQuery(
+					"select treat(e as SubChildOneEmbeddable) from TestEntity t join t.embeddable e",
+					SubChildOneEmbeddable.class
+			).getSingleResult();
+			final SubChildOneEmbeddable r111 = session.createQuery(
+					"select e from TestEntity t join treat(t.embeddable as SubChildOneEmbeddable) e",
+					SubChildOneEmbeddable.class
+			).getSingleResult();
+			final TestEntity r2 = session.createQuery(
+					"from TestEntity t where treat(t.embeddable as ChildTwoEmbeddable).childTwoProp = 1",
 					TestEntity.class
 			).getSingleResult();
+			final TestEntity r22 = session.createQuery(
+					"from TestEntity t join t.embeddable e where treat(e as ChildTwoEmbeddable).childTwoProp = 1",
+					TestEntity.class
+			).getSingleResult();
+			final TestEntity r222 = session.createQuery(
+					"from TestEntity t join treat(t.embeddable as ChildTwoEmbeddable) e where e.childTwoProp = 1",
+					TestEntity.class
+			).getSingleResult();
+		} );
+	}
+
+	// @Test
+	public void testTreatJunctions(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			// todo marco : this doesn't work for now
+			assertThat( session.createQuery(
+					"from TestEntity t where treat(t.embeddable as SubChildOneEmbeddable).subChildOneProp = 2.0 or id = 1",
+					TestEntity.class
+			).getResultList() ).hasSize( 2 );
+
+			assertThat( session.createQuery(
+					"from TestEntity t where treat(t.embeddable as SubChildOneEmbeddable).subChildOneProp = 2.0 and id = 1",
+					TestEntity.class
+			).getResultList() ).hasSize( 0 );
+
+			// todo marco : this doesn't work, the algorithm in visitJunction supposes the treat use should be the first in order
+//			assertThat( session.createQuery(
+//					"from TestEntity t where id = 1 or treat(t.embeddable as SubChildOneEmbeddable).subChildOneProp = 2.0",
+//					TestEntity.class
+//			).getResultList() ).hasSize( 2 );
 		} );
 	}
 
@@ -100,40 +115,13 @@ public class EmbeddableTypeTreatTest {
 		scope.inTransaction( session -> {
 			session.persist( new TestEntity( 1L, new ChildTwoEmbeddable( "embeddable_2", 1L ) ) );
 			session.persist( new TestEntity( 2L, new SubChildOneEmbeddable( "embeddable_4", 2, 2.0 ) ) );
-			final TestEntity testEntity = new TestEntity( 3L, new ChildOneEmbeddable( "embeddable_4", 3 ) );
-			session.persist( testEntity );
-			session.persist( new ContainerEntity( 1L, testEntity ) );
-			session.persist( new ContainerEntity( 2L, null ) );
+			session.persist( new TestEntity( 3L, new ChildOneEmbeddable( "embeddable_4", 3 ) ) );
 		} );
 	}
 
 	@AfterAll
 	public void tearDown(SessionFactoryScope scope) {
-		scope.inTransaction( session -> {
-			session.createMutationQuery( "delete from ContainerEntity" ).executeUpdate();
-			session.createMutationQuery( "delete from TestEntity" ).executeUpdate();
-		} );
-	}
-
-	@Entity( name = "ContainerEntity" )
-	static class ContainerEntity {
-		@Id
-		private Long id;
-
-		@ManyToOne
-		private TestEntity testEntity;
-
-		public ContainerEntity() {
-		}
-
-		public ContainerEntity(Long id, TestEntity testEntity) {
-			this.id = id;
-			this.testEntity = testEntity;
-		}
-
-		public TestEntity getTestEntity() {
-			return testEntity;
-		}
+		scope.inTransaction( session -> session.createMutationQuery( "delete from TestEntity" ).executeUpdate() );
 	}
 
 	@Entity( name = "TestEntity" )

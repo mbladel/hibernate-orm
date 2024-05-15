@@ -19,12 +19,12 @@ import org.hibernate.spi.NavigablePath;
  */
 public class SqmTreatedEmbeddedValuedSimplePath<T, S extends T> extends SqmEmbeddedValuedSimplePath<S>
 		implements SqmTreatedPath<T, S> {
-	private final SqmEmbeddedValuedSimplePath<T> wrappedPath;
+	private final SqmPath<T> wrappedPath;
 	private final EmbeddableDomainType<S> treatTarget;
 
 	@SuppressWarnings( { "unchecked" } )
 	public SqmTreatedEmbeddedValuedSimplePath(
-			SqmEmbeddedValuedSimplePath<T> wrappedPath,
+			SqmPath<T> wrappedPath,
 			EmbeddableDomainType<S> treatTarget) {
 		super(
 				wrappedPath.getNavigablePath().treatAs( treatTarget.getTypeName() ),
@@ -39,7 +39,7 @@ public class SqmTreatedEmbeddedValuedSimplePath<T, S extends T> extends SqmEmbed
 	@SuppressWarnings( { "unchecked" } )
 	private SqmTreatedEmbeddedValuedSimplePath(
 			NavigablePath navigablePath,
-			SqmEmbeddedValuedSimplePath<T> wrappedPath,
+			SqmPath<T> wrappedPath,
 			EmbeddableDomainType<S> treatTarget) {
 		super(
 				navigablePath,

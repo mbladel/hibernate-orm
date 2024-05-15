@@ -3064,7 +3064,6 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			boolean projection) {
 		final AbstractEntityPersister persister;
 		if ( tableGroup.isVirtual() ) {
-			// todo marco : not sure this is a valid check for embeddables
 			persister = null;
 			final EmbeddableDomainType<?> embeddableDomainType = creationContext.getSessionFactory()
 					.getRuntimeMetamodels()
@@ -3231,9 +3230,6 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				if ( partMappingType instanceof EntityPersister ) {
 					( (EntityPersister) partMappingType ).pruneForSubclasses( tableGroup, entityNameUses );
 				}
-
-				// todo marco : embeddables are already handles in consumeConjunctTreatTypeRestrictions
-				//  is that enough?
 			}
 		}
 	}
@@ -3709,11 +3705,14 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			Consumer<TableGroup> implicitJoinChecker) {
 		final SqmPath<?> sqmPath = (SqmPath<?>) path;
 		final SqmPath<?> parentPath;
+		final boolean treated;
 		if ( sqmPath instanceof SqmTreatedPath<?, ?> ) {
 			parentPath = ( (SqmTreatedPath<?, ?>) sqmPath ).getWrappedPath();
+			treated = true;
 		}
 		else {
 			parentPath = sqmPath.getLhs();
+			treated = false;
 		}
 		if ( parentPath == null ) {
 			if ( sqmPath instanceof SqmFunctionPath<?> ) {
@@ -3758,13 +3757,13 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			if ( newTableGroup != null ) {
 				implicitJoinChecker.accept( newTableGroup );
 				registerPathAttributeEntityNameUsage( sqmPath, newTableGroup );
-				if ( sqmPath instanceof SqmTreatedPath<?, ?> ) {
+				if ( treated ) {
 					fromClauseIndex.register( sqmPath, newTableGroup );
 				}
 			}
 			return newTableGroup;
 		}
-		else if ( sqmPath instanceof SqmTreatedPath<?, ?> ) {
+		else if ( treated ) {
 			fromClauseIndex.register( sqmPath, parentTableGroup );
 		}
 
@@ -5262,17 +5261,9 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			final EntityMappingType entityMapping;
 			final EmbeddableMappingType embeddableMapping;
 			if ( modelPart instanceof PluralAttributeMapping ) {
-				final MappingType partMappingType = ( (PluralAttributeMapping) modelPart ).getElementDescriptor()
+				entityMapping = (EntityMappingType) ( (PluralAttributeMapping) modelPart ).getElementDescriptor()
 						.getPartMappingType();
-				if ( partMappingType instanceof EntityMappingType ) {
-					entityMapping = (EntityMappingType) partMappingType;
-					embeddableMapping = null;
-				}
-				else {
-					// todo marco : handle polymorphic embeddable element collections?
-					entityMapping = null;
-					embeddableMapping = null;
-				}
+				embeddableMapping = null;
 			}
 			else if ( modelPart instanceof EntityValuedModelPart ) {
 				entityMapping = ( (EntityValuedModelPart) modelPart ).getEntityMappingType();
@@ -5283,16 +5274,12 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 				entityMapping = null;
 			}
 			else {
-				entityMapping = null;
-				embeddableMapping = null;
+				throw new IllegalStateException( "Unrecognized model part for treated table group: " + tableGroup );
 			}
 
 			final DiscriminatorPathInterpretation<?> typeExpression;
 			if ( entityMapping != null ) {
-				typeNames = determineEntityNamesForTreatTypeRestriction(
-						(EntityMappingType) tableGroup.getModelPart().getPartMappingType(),
-						entry.getValue()
-				);
+				typeNames = determineEntityNamesForTreatTypeRestriction( entityMapping, entry.getValue() );
 				if ( typeNames.isEmpty() ) {
 					continue;
 				}
@@ -5303,17 +5290,18 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 						this
 				);
 			}
-			else if ( embeddableMapping != null ) {
-				typeNames = entry.getValue().keySet(); // todo marco : maybe we can optimize this like we do for entities
+			else {
+				assert embeddableMapping != null;
+				typeNames = determineEmbeddableNamesForTreatTypeRestriction( embeddableMapping, entry.getValue() );
+				if ( typeNames.isEmpty() ) {
+					continue;
+				}
 				typeExpression = new DiscriminatorPathInterpretation<>(
 						tableGroup.getNavigablePath().append( EntityDiscriminatorMapping.DISCRIMINATOR_ROLE_NAME ),
 						embeddableMapping.getDiscriminatorMapping(),
 						tableGroup,
 						this
 				);
-			}
-			else {
-				throw new IllegalStateException( "Unrecognized model part for treated table group: " + tableGroup );
 			}
 
 			// We need to check if this is a treated left or full join, which case we should
@@ -5409,6 +5397,29 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			entityNames.add( baseEntityNameToAdd );
 		}
 		return entityNames;
+	}
+
+	private Set<String> determineEmbeddableNamesForTreatTypeRestriction(
+			EmbeddableMappingType embeddableMappingType,
+			Map<String, EntityNameUse> entityNameUses) {
+		final EmbeddableDomainType<?> embeddableDomainType = creationContext.getSessionFactory()
+				.getRuntimeMetamodels()
+				.getJpaMetamodel()
+				.embeddable( embeddableMappingType.getJavaType().getJavaTypeClass() );
+		final Set<String> entityNameUsesSet = new HashSet<>( entityNameUses.keySet() );
+//		for ( Map.Entry<String, EntityNameUse> entry : entityNameUses.entrySet() ) {
+//			if ( entry.getValue().getKind() == EntityNameUse.UseKind.EXPRESSION ) {
+//				// Entries with EXPRESSION use kind were downgraded and should not be rendered globally
+//				continue;
+//			}
+//			entityNameUsesSet.add( entry.getKey() );
+//		}
+		ManagedDomainType<?> superType = embeddableDomainType;
+		while ( superType != null ) {
+			entityNameUsesSet.remove( superType.getTypeName() );
+			superType = superType.getSuperType();
+		}
+		return entityNameUsesSet;
 	}
 
 	private Predicate createTreatTypeRestriction(SqmPath<?> lhs, EntityDomainType<?> treatTarget) {
