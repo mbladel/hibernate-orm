@@ -7536,48 +7536,55 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			return disjunction;
 		}
 
-		// Build the intersection of the conjunct treat usages,
-		// so that we can push that up and infer during pruning, which entity subclasses can be omitted
-		final Iterator<Map.Entry<TableGroup, Map<String, EntityNameUse>>> iterator = tableGroupEntityNameUses.entrySet().iterator();
-		while ( iterator.hasNext() ) {
-			final Map.Entry<TableGroup, Map<String, EntityNameUse>> entry = iterator.next();
-			final Map<String, EntityNameUse> intersected = new HashMap<>( entry.getValue() );
-			entry.setValue( intersected );
-			boolean remove = false;
-			for ( Map<TableGroup, Map<String, EntityNameUse>> conjunctTreatUsages : disjunctEntityNameUsesArray ) {
-				final Map<String, EntityNameUse> entityNames;
-				if ( conjunctTreatUsages == null || ( entityNames = conjunctTreatUsages.get( entry.getKey() ) ) == null ) {
-					remove = true;
-					break;
-				}
-				// Intersect the two sets and transfer the common elements to the intersection
-				final Iterator<Map.Entry<String, EntityNameUse>> intersectedIter = intersected.entrySet().iterator();
-				while ( intersectedIter.hasNext() ) {
-					final Map.Entry<String, EntityNameUse> intersectedEntry = intersectedIter.next();
-					final EntityNameUse intersectedUseKind = intersectedEntry.getValue();
-					final EntityNameUse useKind = entityNames.get( intersectedEntry.getKey() );
-					if ( useKind == null ) {
-						intersectedIter.remove();
+		if ( !tableGroupEntityNameUses.isEmpty() ) {
+			// Build the intersection of the conjunct treat usages,
+			// so that we can push that up and infer during pruning, which entity subclasses can be omitted
+			final Iterator<Map.Entry<TableGroup, Map<String, EntityNameUse>>> iterator = tableGroupEntityNameUses.entrySet().iterator();
+			while ( iterator.hasNext() ) {
+				final Map.Entry<TableGroup, Map<String, EntityNameUse>> entry = iterator.next();
+				final Map<String, EntityNameUse> intersected = new HashMap<>( entry.getValue() );
+				entry.setValue( intersected );
+				boolean remove = false;
+				for ( Map<TableGroup, Map<String, EntityNameUse>> conjunctTreatUsages : disjunctEntityNameUsesArray ) {
+					final Map<String, EntityNameUse> entityNames;
+					if ( conjunctTreatUsages == null || ( entityNames = conjunctTreatUsages.get( entry.getKey() ) ) == null ) {
+						remove = true;
+						break;
 					}
-					else {
-						// Possibly downgrade a FILTER use to EXPRESSION if one of the disjunctions does not use FILTER
-						intersectedEntry.setValue( intersectedUseKind.weaker( useKind ) );
+					// Intersect the two sets and transfer the common elements to the intersection
+					final Iterator<Map.Entry<String, EntityNameUse>> intersectedIter = intersected.entrySet()
+							.iterator();
+					while ( intersectedIter.hasNext() ) {
+						final Map.Entry<String, EntityNameUse> intersectedEntry = intersectedIter.next();
+						final EntityNameUse intersectedUseKind = intersectedEntry.getValue();
+						final EntityNameUse useKind = entityNames.get( intersectedEntry.getKey() );
+						if ( useKind == null ) {
+							intersectedIter.remove();
+						}
+						else {
+							// Possibly downgrade a FILTER use to EXPRESSION if one of the disjunctions does not use FILTER
+							intersectedEntry.setValue( intersectedUseKind.weaker( useKind ) );
+						}
+					}
+					if ( intersected.isEmpty() ) {
+						remove = true;
+						break;
+					}
+					entityNames.keySet().removeAll( intersected.keySet() );
+					if ( entityNames.isEmpty() ) {
+						conjunctTreatUsages.remove( entry.getKey() );
 					}
 				}
-				if ( intersected.isEmpty() ) {
-					remove = true;
-					break;
-				}
-				entityNames.keySet().removeAll( intersected.keySet() );
-				if ( entityNames.isEmpty() ) {
-					conjunctTreatUsages.remove( entry.getKey() );
-				}
-			}
 
-			if ( remove ) {
-				entityNameUsesToPropagate.remove( entry.getKey() );
-				iterator.remove();
+				if ( remove ) {
+					entityNameUsesToPropagate.remove( entry.getKey() );
+					iterator.remove();
+				}
 			}
+		}
+		else {
+			// If there's no baseline to construct the intersection from don't propagate
+			entityNameUsesToPropagate.clear();
 		}
 
 		// Prepend the treat type usages to the respective conjuncts
