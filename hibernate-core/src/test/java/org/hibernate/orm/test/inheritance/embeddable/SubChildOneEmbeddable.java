@@ -17,7 +17,6 @@ import jakarta.persistence.Embeddable;
 //tag::embeddable-inheritance-sub-child-one-example[]
 @Embeddable
 @DiscriminatorValue( "sub_child_one" )
-@Imported
 class SubChildOneEmbeddable extends ChildOneEmbeddable {
 	private Double subChildOneProp;
 

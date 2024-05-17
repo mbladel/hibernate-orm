@@ -14,7 +14,6 @@ import jakarta.persistence.Embeddable;
  * @author Marco Belladelli
  */
 @Embeddable
-@Imported
 class ChildTwoEmbeddable extends ParentEmbeddable {
 	private Long childTwoProp;
 

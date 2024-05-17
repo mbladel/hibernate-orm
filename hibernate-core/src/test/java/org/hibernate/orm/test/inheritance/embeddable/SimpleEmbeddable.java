@@ -14,7 +14,6 @@ import jakarta.persistence.Embeddable;
  * @author Marco Belladelli
  */
 @Embeddable
-@Imported
 public class SimpleEmbeddable {
 	private String data;
 
