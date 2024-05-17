@@ -101,7 +101,7 @@ public class SqmSingularJoin<O,T> extends AbstractSqmAttributeJoin<O,T> {
 	}
 
 	@Override
-	public <S extends T> AbstractSqmTreatedSingularJoin<O,T,S> treatAs(EntityDomainType<S> treatTarget) {
+	public <S extends T> SqmTreatedSingularEntityJoin<O,T,S> treatAs(EntityDomainType<S> treatTarget) {
 		return treatAs( treatTarget, null );
 	}
 
@@ -111,7 +111,7 @@ public class SqmSingularJoin<O,T> extends AbstractSqmAttributeJoin<O,T> {
 	}
 
 	@Override
-	public <S extends T> AbstractSqmTreatedSingularJoin<O,T,S> treatAs(EntityDomainType<S> treatTarget, String alias) {
+	public <S extends T> SqmTreatedSingularEntityJoin<O,T,S> treatAs(EntityDomainType<S> treatTarget, String alias) {
 		return treatAs( treatTarget, alias, false );
 	}
 
@@ -127,8 +127,8 @@ public class SqmSingularJoin<O,T> extends AbstractSqmAttributeJoin<O,T> {
 	}
 
 	@Override
-	public <S extends T> AbstractSqmTreatedSingularJoin<O,T,S> treatAs(EntityDomainType<S> treatTarget, String alias, boolean fetch) {
-		final AbstractSqmTreatedSingularJoin<O, T, S> treat = findTreat( treatTarget, alias );
+	public <S extends T> SqmTreatedSingularEntityJoin<O,T,S> treatAs(EntityDomainType<S> treatTarget, String alias, boolean fetch) {
+		final SqmTreatedSingularEntityJoin<O, T, S> treat = findTreat( treatTarget, alias );
 		if ( treat == null ) {
 			return addTreat( new SqmTreatedSingularEntityJoin<>( this, treatTarget, alias, fetch ) );
 		}

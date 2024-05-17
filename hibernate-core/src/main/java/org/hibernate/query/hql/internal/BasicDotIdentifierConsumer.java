@@ -185,14 +185,12 @@ public class BasicDotIdentifierConsumer implements DotIdentifierConsumer {
 			final String importableName = jpaMetamodel.qualifyImportableName( path );
 			final NodeBuilder nodeBuilder = creationContext.getNodeBuilder();
 			if ( importableName != null ) {
-				final EntityDomainType<?> entityDomainType = jpaMetamodel.entity( importableName );
-				if ( entityDomainType != null ) {
-					return new SqmLiteralEntityType<>( entityDomainType, nodeBuilder );
+				final ManagedDomainType<?> managedType = jpaMetamodel.managedType( importableName );
+				if ( managedType instanceof EntityDomainType<?> ) {
+					return new SqmLiteralEntityType<>( ( (EntityDomainType<?>) managedType ), nodeBuilder );
 				}
-
-				final EmbeddableDomainType<?> embeddableDomainType = jpaMetamodel.embeddable( importableName );
-				if ( embeddableDomainType != null ) {
-					return new SqmLiteralEmbeddableType<>( embeddableDomainType, nodeBuilder );
+				else if ( managedType instanceof EmbeddableDomainType<?> ) {
+					return new SqmLiteralEmbeddableType<>( ( (EmbeddableDomainType<?>) managedType ), nodeBuilder );
 				}
 			}
 
