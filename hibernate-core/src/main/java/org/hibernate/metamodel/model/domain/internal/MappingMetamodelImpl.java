@@ -217,7 +217,6 @@ public class MappingMetamodelImpl extends QueryParameterBindingTypeResolverImpl
 				this,
 				entityProxyInterfaceMap,
 				determineJpaStaticMetaModelPopulationSetting( settings ),
-				determineJpaMetaModelPopulationSetting( settings ),
 				bootModel.getNamedEntityGraphs().values(),
 				context
 		);
