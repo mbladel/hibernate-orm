@@ -514,6 +514,10 @@ public class EntityBinder {
 						propertyAccessor,
 						true
 				);
+				final Component idClassComponent = (Component) persistentClass.getIdentifier();
+				if ( idClassComponent.isSimpleRecord() ) {
+					mapper.setSimpleRecord( true );
+				}
 				setIgnoreIdAnnotations( ignoreIdAnnotations );
 				for ( Property property : mapper.getProperties() ) {
 					idPropertiesIfIdClass.add( property.getName() );
