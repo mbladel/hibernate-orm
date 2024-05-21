@@ -6,8 +6,8 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
-import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.SingularPersistentAttribute;
+import org.hibernate.metamodel.model.domain.TreatableDomainType;
 import org.hibernate.query.hql.spi.SqmCreationProcessingState;
 import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
@@ -17,60 +17,70 @@ import org.hibernate.spi.NavigablePath;
 /**
  * @author Steve Ebersole
  */
-public class SqmTreatedSingularEntityJoin<O, T, S extends T> extends AbstractSqmTreatedSingularJoin<O, T, S>
-		implements SqmTreatedEntityPath<T, S> {
-	private final EntityDomainType<S> treatTarget;
+public class SqmTreatedSingularJoin<O,T, S extends T> extends SqmSingularJoin<O,S> implements SqmTreatedPath<T,S> {
+	private final SqmSingularJoin<O,T> wrappedPath;
+	private final TreatableDomainType<S> treatTarget;
 
-	public SqmTreatedSingularEntityJoin(
+	public SqmTreatedSingularJoin(
 			SqmSingularJoin<O,T> wrappedPath,
-			EntityDomainType<S> treatTarget,
+			TreatableDomainType<S> treatTarget,
 			String alias) {
 		this( wrappedPath, treatTarget, alias, false );
 	}
 
-	public SqmTreatedSingularEntityJoin(
+	public SqmTreatedSingularJoin(
 			SqmSingularJoin<O,T> wrappedPath,
-			EntityDomainType<S> treatTarget,
+			TreatableDomainType<S> treatTarget,
 			String alias,
 			boolean fetched) {
+		//noinspection unchecked
 		super(
-				wrappedPath,
+				wrappedPath.getLhs(),
 				wrappedPath.getNavigablePath().treatAs(
-						treatTarget.getHibernateEntityName(),
+						treatTarget.getTypeName(),
 						alias
 				),
+				(SingularPersistentAttribute<O, S>) wrappedPath.getAttribute(),
 				alias,
-				fetched
+				wrappedPath.getSqmJoinType(),
+				fetched,
+				wrappedPath.nodeBuilder()
 		);
 		this.treatTarget = treatTarget;
+		this.wrappedPath = wrappedPath;
 	}
 
-	private SqmTreatedSingularEntityJoin(
+	private SqmTreatedSingularJoin(
 			NavigablePath navigablePath,
 			SqmSingularJoin<O,T> wrappedPath,
-			EntityDomainType<S> treatTarget,
+			TreatableDomainType<S> treatTarget,
 			String alias,
 			boolean fetched) {
+		//noinspection unchecked
 		super(
-				wrappedPath,
+				wrappedPath.getLhs(),
 				navigablePath,
+				(SingularPersistentAttribute<O, S>) wrappedPath.getAttribute(),
 				alias,
-				fetched
+				wrappedPath.getSqmJoinType(),
+				fetched,
+				wrappedPath.nodeBuilder()
 		);
 		this.treatTarget = treatTarget;
+		this.wrappedPath = wrappedPath;
 	}
 
 	@Override
-	public SqmTreatedSingularEntityJoin<O, T, S> copy(SqmCopyContext context) {
-		final SqmTreatedSingularEntityJoin<O, T, S> existing = context.getCopy( this );
+	public SqmTreatedSingularJoin<O, T, S> copy(SqmCopyContext context) {
+		final SqmTreatedSingularJoin<O, T, S> existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
-		final SqmTreatedSingularEntityJoin<O, T, S> path = context.registerCopy(
+		final SqmTreatedSingularJoin<O, T, S> path = context.registerCopy(
 				this,
-				new SqmTreatedSingularEntityJoin<>(
+				new SqmTreatedSingularJoin<>(
 						getNavigablePath(),
-						getWrappedPath().copy( context ),
+						wrappedPath.copy( context ),
 						treatTarget,
 						getExplicitAlias(),
 						isFetched()
@@ -81,7 +91,12 @@ public class SqmTreatedSingularEntityJoin<O, T, S extends T> extends AbstractSqm
 	}
 
 	@Override
-	public EntityDomainType<S> getTreatTarget() {
+	public SqmSingularJoin<O,T> getWrappedPath() {
+		return wrappedPath;
+	}
+
+	@Override
+	public TreatableDomainType<S> getTreatTarget() {
 		return treatTarget;
 	}
 
@@ -91,7 +106,7 @@ public class SqmTreatedSingularEntityJoin<O, T, S extends T> extends AbstractSqm
 	}
 
 	@Override
-	public EntityDomainType<S> getReferencedPathSource() {
+	public TreatableDomainType<S> getReferencedPathSource() {
 		return treatTarget;
 	}
 
@@ -102,15 +117,15 @@ public class SqmTreatedSingularEntityJoin<O, T, S extends T> extends AbstractSqm
 
 	@Override
 	public SqmAttributeJoin<O, S> makeCopy(SqmCreationProcessingState creationProcessingState) {
-		return new SqmTreatedSingularEntityJoin<>( getWrappedPath(), treatTarget, getAlias() );
+		return new SqmTreatedSingularJoin<>( wrappedPath, treatTarget, getAlias() );
 	}
 
 	@Override
 	public void appendHqlString(StringBuilder sb) {
 		sb.append( "treat(" );
-		getWrappedPath().appendHqlString( sb );
+		wrappedPath.appendHqlString( sb );
 		sb.append( " as " );
-		sb.append( treatTarget.getName() );
+		sb.append( treatTarget.getTypeName() );
 		sb.append( ')' );
 	}
 }

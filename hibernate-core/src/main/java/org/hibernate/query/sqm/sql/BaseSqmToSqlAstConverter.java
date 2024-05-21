@@ -173,7 +173,6 @@ import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.domain.SqmPluralPartJoin;
 import org.hibernate.query.sqm.tree.domain.SqmPluralValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmSimplePath;
-import org.hibernate.query.sqm.tree.domain.SqmTreatedEntityPath;
 import org.hibernate.query.sqm.tree.domain.SqmTreatedPath;
 import org.hibernate.query.sqm.tree.expression.Conversion;
 import org.hibernate.query.sqm.tree.expression.JpaCriteriaParameter;
@@ -429,6 +428,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import static jakarta.persistence.metamodel.Type.PersistenceType.ENTITY;
 import static java.util.Collections.singletonList;
 import static org.hibernate.boot.model.internal.SoftDeleteHelper.createNonSoftDeletedRestriction;
 import static org.hibernate.generator.EventType.INSERT;
@@ -2967,33 +2967,35 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			final String attributeName = resolvedModel.getPathName();
 			final EntityMappingType entityType = (EntityMappingType) tableGroup.getModelPart().getPartMappingType();
 			final EntityMappingType parentType;
-			if ( parentPath instanceof SqmTreatedEntityPath<?, ?> ) {
+			if ( parentPath instanceof SqmTreatedPath<?, ?> ) {
 				// A treated attribute usage i.e. `treat(alias as Subtype).attribute = 1`
+				final ManagedDomainType<?> treatTarget = ( (SqmTreatedPath<?, ?>) parentPath ).getTreatTarget();
+				if ( treatTarget.getPersistenceType() == ENTITY ) {
+					parentType = creationContext.getMappingMetamodel().getEntityDescriptor( treatTarget.getTypeName() );
 
-				final EntityDomainType<?> treatTarget = ( (SqmTreatedEntityPath<?, ?>) parentPath ).getTreatTarget();
+					// The following is an optimization to avoid rendering treat conditions into predicates.
+					// Imagine an HQL predicate like `treat(alias as Subtype).attribute is null or alias.name = '...'`.
+					// If the `attribute` is basic, we will render a case wrapper around the column expression
+					// and hence we can safely skip adding the `type(alias) = Subtype and ...` condition to the SQL.
 
-				parentType = creationContext.getMappingMetamodel()
-						.getEntityDescriptor( treatTarget.getHibernateEntityName() );
-
-				// The following is an optimization to avoid rendering treat conditions into predicates.
-				// Imagine an HQL predicate like `treat(alias as Subtype).attribute is null or alias.name = '...'`.
-				// If the `attribute` is basic, we will render a case wrapper around the column expression
-				// and hence we can safely skip adding the `type(alias) = Subtype and ...` condition to the SQL.
-
-				final ModelPart subPart = parentType.findSubPart( attributeName );
-				final EntityNameUse entityNameUse;
-				// We only apply this optimization for basic valued model parts for now
-				if ( subPart.asBasicValuedModelPart() != null ) {
-					entityNameUse = EntityNameUse.OPTIONAL_TREAT;
+					final ModelPart subPart = parentType.findSubPart( attributeName );
+					final EntityNameUse entityNameUse;
+					// We only apply this optimization for basic valued model parts for now
+					if ( subPart.asBasicValuedModelPart() != null ) {
+						entityNameUse = EntityNameUse.OPTIONAL_TREAT;
+					}
+					else {
+						entityNameUse = EntityNameUse.BASE_TREAT;
+					}
+					registerEntityNameUsage(
+							tableGroup,
+							entityNameUse,
+							treatTarget.getTypeName()
+					);
 				}
 				else {
-					entityNameUse = EntityNameUse.BASE_TREAT;
+					parentType = entityType;
 				}
-				registerEntityNameUsage(
-						tableGroup,
-						entityNameUse,
-						treatTarget.getHibernateEntityName()
-				);
 			}
 			else {
 				// A simple attribute usage e.g. `alias.attribute = 1`
@@ -3429,14 +3431,17 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			joinForPredicate = TableGroupJoinHelper.determineJoinForPredicateApply( joinedTableGroupJoin );
 		}
 		// Since joins on treated paths will never cause table pruning, we need to add a join condition for the treat
-		if ( sqmJoin.getLhs() instanceof SqmTreatedEntityPath<?, ?> ) {
-			final SqmTreatedEntityPath<?, ?> treatedPath = (SqmTreatedEntityPath<?, ?>) sqmJoin.getLhs();
-			joinForPredicate.applyPredicate(
-					createTreatTypeRestriction(
-							treatedPath.getWrappedPath(),
-							treatedPath.getTreatTarget()
-					)
-			);
+		if ( sqmJoin.getLhs() instanceof SqmTreatedPath<?, ?> ) {
+			final SqmTreatedPath<?, ?> treatedPath = (SqmTreatedPath<?, ?>) sqmJoin.getLhs();
+			final ManagedDomainType<?> treatTarget = treatedPath.getTreatTarget();
+			if ( treatTarget.getPersistenceType() == ENTITY ) {
+				joinForPredicate.applyPredicate(
+						createTreatTypeRestriction(
+								treatedPath.getWrappedPath(),
+								(EntityDomainType<?>) treatTarget
+						)
+				);
+			}
 		}
 
 		if ( transitive ) {
@@ -3856,8 +3861,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		final FromClauseIndex fromClauseIndex = getFromClauseIndex();
 		final ModelPart subPart = parentTableGroup.getModelPart().findSubPart(
 				joinedPath.getReferencedPathSource().getPathName(),
-				lhsPath instanceof SqmTreatedEntityPath
-						? resolveEntityPersister( ( (SqmTreatedEntityPath<?, ?>) lhsPath ).getTreatTarget() )
+				lhsPath instanceof SqmTreatedPath<?, ?> && ( (SqmTreatedPath<?, ?>) lhsPath ).getTreatTarget().getPersistenceType() == ENTITY
+						? resolveEntityPersister( (EntityDomainType<?>) ( (SqmTreatedPath<?, ?>) lhsPath ).getTreatTarget() )
 						: null
 		);
 
@@ -4242,11 +4247,12 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			}
 
 			final EntityMappingType treatedMapping;
-			if ( path instanceof SqmTreatedEntityPath ) {
+			if ( path instanceof SqmTreatedPath<?, ?> && ( (SqmTreatedPath<?, ?>) path ).getTreatTarget().getPersistenceType() == ENTITY ) {
+				final ManagedDomainType<?> treatTarget = ( (SqmTreatedPath<?, ?>) path ).getTreatTarget();
 				treatedMapping = creationContext.getSessionFactory()
 						.getRuntimeMetamodels()
 						.getMappingMetamodel()
-						.findEntityDescriptor( ( (SqmTreatedEntityPath<?,?>) path ).getTreatTarget().getHibernateEntityName() );
+						.findEntityDescriptor( treatTarget.getTypeName() );
 			}
 			else {
 				treatedMapping = interpretationModelPart.getEntityMappingType();

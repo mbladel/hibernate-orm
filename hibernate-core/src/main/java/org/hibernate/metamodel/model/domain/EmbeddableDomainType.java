@@ -22,7 +22,7 @@ import jakarta.persistence.metamodel.EmbeddableType;
  * @author Steve Ebersole
  */
 public interface EmbeddableDomainType<J>
-		extends ManagedDomainType<J>, EmbeddableType<J>, SqmExpressible<J>, SqmPathSource<J> {
+		extends TreatableDomainType<J>, EmbeddableType<J>, SqmExpressible<J> {
 	@Override
 	default EmbeddableDomainType<J> getSqmType() {
 		return this;

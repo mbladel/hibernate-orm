@@ -23,7 +23,6 @@ import org.hibernate.query.sqm.UnknownPathException;
 import org.hibernate.query.sqm.sql.SqmToSqlAstConverter;
 import org.hibernate.query.sqm.tree.domain.SqmBasicValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
-import org.hibernate.query.sqm.tree.domain.SqmTreatedEntityPath;
 import org.hibernate.query.sqm.tree.domain.SqmTreatedPath;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.SqlAstWalker;
@@ -34,6 +33,7 @@ import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableReference;
 import org.hibernate.sql.ast.tree.update.Assignable;
 
+import static jakarta.persistence.metamodel.Type.PersistenceType.ENTITY;
 import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 import static org.hibernate.query.sqm.internal.SqmUtil.getTargetMappingIfNeeded;
 
@@ -52,8 +52,8 @@ public class BasicValuedPathInterpretation<T> extends AbstractSqmPathInterpretat
 		final TableGroup tableGroup = sqlAstCreationState.getFromClauseAccess().getTableGroup( lhs.getNavigablePath() );
 		EntityMappingType treatTarget = null;
 		final ModelPartContainer modelPartContainer;
-		if ( lhs instanceof SqmTreatedEntityPath<?, ?> ) {
-			final EntityDomainType<?> treatTargetDomainType = ( (SqmTreatedEntityPath<?, ?>) lhs ).getTreatTarget();
+		if ( lhs instanceof SqmTreatedPath<?, ?> && ( (SqmTreatedPath<?, ?>) lhs ).getTreatTarget().getPersistenceType() == ENTITY ) {
+			final EntityDomainType<?> treatTargetDomainType = (EntityDomainType<?>) ( (SqmTreatedPath<?, ?>) lhs ).getTreatTarget();
 
 			final MappingMetamodel mappingMetamodel = sqlAstCreationState.getCreationContext()
 					.getSessionFactory()
