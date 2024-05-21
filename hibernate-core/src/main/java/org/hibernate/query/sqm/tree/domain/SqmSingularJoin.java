@@ -12,6 +12,7 @@ import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.metamodel.model.domain.SingularPersistentAttribute;
+import org.hibernate.metamodel.model.domain.TreatableDomainType;
 import org.hibernate.query.sqm.SemanticQueryWalker;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.query.hql.spi.SqmCreationProcessingState;
@@ -120,21 +121,11 @@ public class SqmSingularJoin<O,T> extends AbstractSqmAttributeJoin<O,T> {
 		final ManagedDomainType<S> treatTarget = nodeBuilder().getDomainModel().managedType( treatJavaType );
 		final SqmTreatedSingularJoin<O, T, S> treat = findTreat( treatTarget, alias );
 		if ( treat == null ) {
-			if ( treatTarget instanceof EntityDomainType<?> ) {
-				return addTreat( new SqmTreatedSingularJoin<>(
-						this,
-						(EntityDomainType<S>) treatTarget,
-						alias,
-						fetch
-				) );
+			if ( treatTarget instanceof TreatableDomainType<?> ) {
+				return addTreat( new SqmTreatedSingularJoin<>( this, (TreatableDomainType<S>) treatTarget, alias, fetch ) );
 			}
 			else {
-				return addTreat( new SqmTreatedSingularJoin<>(
-						this,
-						( (EmbeddableDomainType<S>) treatTarget ),
-						alias,
-						fetch
-				) );
+				throw new IllegalArgumentException( "Not a treatable type: " + treatJavaType.getName() );
 			}
 		}
 		return treat;

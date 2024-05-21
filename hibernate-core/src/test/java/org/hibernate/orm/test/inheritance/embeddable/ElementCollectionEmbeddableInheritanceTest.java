@@ -131,15 +131,14 @@ public class ElementCollectionEmbeddableInheritanceTest {
 	@Test
 	public void testTreat(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-//			assertThat( session.createQuery(
-//					"select treat(t.embeddables as SubChildOneEmbeddable) from TestEntity t",
-//					SubChildOneEmbeddable.class
-//			).getSingleResult().getSubChildOneProp() ).isEqualTo( 2.0 );
-//			assertThat( session.createQuery(
-//					"select t.id from TestEntity t where treat(t.embeddables as SubChildOneEmbeddable).subChildOneProp = 2.0",
-//					Long.class
-//			).getSingleResult() ).isEqualTo( 2L );
-			// todo marco : treat is not supported on plural paths, test with explicit join
+			assertThat( session.createQuery(
+					"select treat(e as SubChildOneEmbeddable) from TestEntity t join t.embeddables e",
+					SubChildOneEmbeddable.class
+			).getSingleResult().getSubChildOneProp() ).isEqualTo( 2.0 );
+			assertThat( session.createQuery(
+					"select t.id from TestEntity t join t.embeddables e where treat(e as SubChildOneEmbeddable).subChildOneProp = 2.0",
+					Long.class
+			).getSingleResult() ).isEqualTo( 2L );
 		} );
 	}
 
