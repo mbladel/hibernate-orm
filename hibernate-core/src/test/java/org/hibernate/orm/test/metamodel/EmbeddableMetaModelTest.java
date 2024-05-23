@@ -58,6 +58,8 @@ public class EmbeddableMetaModelTest {
 			assertNotNull( embeddable.getSuperType() );
 			assertEquals( MAPPED_SUPERCLASS, embeddable.getSuperType().getPersistenceType() );
 			assertEquals( Measurement.class, embeddable.getSuperType().getJavaType() );
+			assertNotNull( Height_.height );
+			assertNotNull( Measurement_.unit );
 		} );
 	}
 }

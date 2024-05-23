@@ -14,4 +14,12 @@ import jakarta.persistence.MappedSuperclass;
 @MappedSuperclass
 public abstract class Measurement {
 	private String unit;
+
+	public String getUnit() {
+		return unit;
+	}
+
+	public void setUnit(String unit) {
+		this.unit = unit;
+	}
 }
