@@ -352,7 +352,8 @@ public class EmbeddableBinder {
 				subpath,
 				inferredData,
 				propertyHolder,
-				context
+				context,
+				inheritanceStatePerClass
 		);
 
 		// propertyHolder here is the owner of the component property.
@@ -377,16 +378,20 @@ public class EmbeddableBinder {
 				collectClassElements( propertyAccessor, context, returnedClassOrElement, annotatedClass, isIdClass );
 
 		final InheritanceState inheritanceState = inheritanceStatePerClass.get( returnedClassOrElement );
-		// Main entry point for binding embeddable inheritance
-		bindDiscriminator(
-				component,
-				returnedClassOrElement,
-				propertyHolder,
-				subholder,
-				inferredData,
-				inheritanceState,
-				context
-		);
+		if ( inheritanceState != null ) {
+			inheritanceState.postProcess( component );
+			// Main entry point for binding embeddable inheritance
+			bindDiscriminator(
+					component,
+					returnedClassOrElement,
+					propertyHolder,
+					subholder,
+					inferredData,
+					inheritanceState,
+					context
+			);
+		}
+
 		if ( component.isPolymorphic() ) {
 			validateInheritanceIsSupported( subholder, compositeUserType );
 			final BasicType<?> discriminatorType = (BasicType<?>) component.getDiscriminator().getType();
@@ -448,10 +453,6 @@ public class EmbeddableBinder {
 
 		if ( compositeUserType != null ) {
 			processCompositeUserType( component, compositeUserType );
-		}
-
-		if ( inheritanceState != null ) {
-			inheritanceState.postProcess( component );
 		}
 
 		AggregateComponentBinder.processAggregate(
