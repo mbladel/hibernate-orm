@@ -24,6 +24,7 @@ import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.List;
 import org.hibernate.mapping.Map;
+import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.OneToMany;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Property;
@@ -45,6 +46,7 @@ import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.IdentifiableDomainType;
 import org.hibernate.metamodel.model.domain.ManagedDomainType;
+import org.hibernate.metamodel.model.domain.MappedSuperclassDomainType;
 import org.hibernate.metamodel.model.domain.PersistentAttribute;
 import org.hibernate.metamodel.model.domain.SimpleDomainType;
 import org.hibernate.metamodel.model.domain.SingularPersistentAttribute;
@@ -264,8 +266,19 @@ public class AttributeFactory {
 			}
 		}
 
+		final MappedSuperclass mappedSuperclass = component.getMappedSuperclass();
+		final MappedSuperclassDomainType<? super Y> superType;
+		if ( mappedSuperclass != null ) {
+			//noinspection unchecked
+			superType = (MappedSuperclassDomainType<? super Y>) context.locateMappedSuperclassType( mappedSuperclass );
+		}
+		else {
+			superType = null;
+		}
+
 		final EmbeddableTypeImpl<Y> embeddableType = new EmbeddableTypeImpl<>(
 				context.getJavaTypeRegistry().resolveManagedTypeDescriptor( embeddableClass ),
+				superType,
 				false,
 				context.getJpaMetamodel()
 		);

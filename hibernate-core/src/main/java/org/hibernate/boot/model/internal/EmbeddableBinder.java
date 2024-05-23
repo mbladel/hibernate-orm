@@ -375,6 +375,7 @@ public class EmbeddableBinder {
 		final XClass annotatedClass = inferredData.getPropertyClass();
 		final List<PropertyData> classElements =
 				collectClassElements( propertyAccessor, context, returnedClassOrElement, annotatedClass, isIdClass );
+		final InheritanceState inheritanceState = inheritanceStatePerClass.get( returnedClassOrElement );
 		// Main entry point for binding embeddable inheritance
 		bindDiscriminator(
 				component,
@@ -382,7 +383,7 @@ public class EmbeddableBinder {
 				propertyHolder,
 				subholder,
 				inferredData,
-				inheritanceStatePerClass,
+				inheritanceState,
 				context
 		);
 		if ( component.isPolymorphic() ) {
@@ -455,6 +456,7 @@ public class EmbeddableBinder {
 				columns,
 				context
 		);
+		inheritanceState.postProcess( component );
 		return component;
 	}
 
@@ -478,13 +480,8 @@ public class EmbeddableBinder {
 			PropertyHolder parentHolder,
 			PropertyHolder holder,
 			PropertyData propertyData,
-			Map<XClass, InheritanceState> inheritanceStatePerClass,
+			InheritanceState inheritanceState,
 			MetadataBuildingContext context) {
-		final InheritanceState inheritanceState = inheritanceStatePerClass.get( componentClass );
-		if ( inheritanceState == null ) {
-			return;
-		}
-
 		final AnnotatedDiscriminatorColumn discriminatorColumn = processEmbeddableDiscriminatorProperties(
 				componentClass,
 				propertyData,
