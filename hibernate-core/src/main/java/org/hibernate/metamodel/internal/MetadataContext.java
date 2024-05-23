@@ -211,7 +211,9 @@ public class MetadataContext {
 		identifiableTypesByName.put( mappedSuperclassType.getTypeName(), mappedSuperclassType );
 		mappedSuperclassByMappedSuperclassMapping.put( mappedSuperclass, mappedSuperclassType );
 		orderedMappings.add( mappedSuperclass );
-		mappedSuperClassTypeToPersistentClass.put( mappedSuperclassType, getEntityWorkedOn() );
+		if ( !stackOfPersistentClassesBeingProcessed.isEmpty() ) {
+			mappedSuperClassTypeToPersistentClass.put( mappedSuperclassType, getEntityWorkedOn() );
+		}
 
 		knownMappedSuperclasses.remove( mappedSuperclass );
 	}
