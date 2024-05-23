@@ -375,6 +375,7 @@ public class EmbeddableBinder {
 		final XClass annotatedClass = inferredData.getPropertyClass();
 		final List<PropertyData> classElements =
 				collectClassElements( propertyAccessor, context, returnedClassOrElement, annotatedClass, isIdClass );
+
 		final InheritanceState inheritanceState = inheritanceStatePerClass.get( returnedClassOrElement );
 		// Main entry point for binding embeddable inheritance
 		bindDiscriminator(
@@ -406,6 +407,7 @@ public class EmbeddableBinder {
 			component.setDiscriminatorValues( discriminatorValues );
 			component.setSubclassToSuperclass( subclassToSuperclass );
 		}
+
 		final List<PropertyData> baseClassElements =
 				collectBaseClassElements( baseInferredData, propertyAccessor, context, annotatedClass );
 		if ( baseClassElements != null
@@ -448,6 +450,10 @@ public class EmbeddableBinder {
 			processCompositeUserType( component, compositeUserType );
 		}
 
+		if ( inheritanceState != null ) {
+			inheritanceState.postProcess( component );
+		}
+
 		AggregateComponentBinder.processAggregate(
 				component,
 				propertyHolder,
@@ -456,7 +462,6 @@ public class EmbeddableBinder {
 				columns,
 				context
 		);
-		inheritanceState.postProcess( component );
 		return component;
 	}
 
@@ -482,6 +487,9 @@ public class EmbeddableBinder {
 			PropertyData propertyData,
 			InheritanceState inheritanceState,
 			MetadataBuildingContext context) {
+		if ( inheritanceState == null ) {
+			return;
+		}
 		final AnnotatedDiscriminatorColumn discriminatorColumn = processEmbeddableDiscriminatorProperties(
 				componentClass,
 				propertyData,
