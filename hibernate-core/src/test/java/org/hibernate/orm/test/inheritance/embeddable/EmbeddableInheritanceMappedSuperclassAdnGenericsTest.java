@@ -9,6 +9,7 @@ package org.hibernate.orm.test.inheritance.embeddable;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -25,14 +26,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Marco Belladelli
  */
 @DomainModel( annotatedClasses = {
-		EmbeddableInheritanceAndMappedSuperclassTest.AbstractSuperclass.class,
-		EmbeddableInheritanceAndMappedSuperclassTest.Range.class,
-		EmbeddableInheritanceAndMappedSuperclassTest.IntegerRange.class,
-		EmbeddableInheritanceAndMappedSuperclassTest.ToleranceRange.class,
-		EmbeddableInheritanceAndMappedSuperclassTest.TestEntity.class,
+		EmbeddableInheritanceMappedSuperclassAdnGenericsTest.AbstractSuperclass.class,
+		EmbeddableInheritanceMappedSuperclassAdnGenericsTest.Range.class,
+		EmbeddableInheritanceMappedSuperclassAdnGenericsTest.IntegerRange.class,
+		EmbeddableInheritanceMappedSuperclassAdnGenericsTest.ToleranceRange.class,
+		EmbeddableInheritanceMappedSuperclassAdnGenericsTest.TestEntity.class,
 } )
 @SessionFactory
-public class EmbeddableInheritanceAndMappedSuperclassTest {
+public class EmbeddableInheritanceMappedSuperclassAdnGenericsTest {
 	@Test
 	public void testFind(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
@@ -125,6 +126,11 @@ public class EmbeddableInheritanceAndMappedSuperclassTest {
 		} );
 	}
 
+	@AfterAll
+	public void tearDown(SessionFactoryScope scope) {
+		scope.inTransaction( session -> session.createMutationQuery( "delete from TestEntity" ).executeUpdate() );
+	}
+
 	@MappedSuperclass
 	static abstract class AbstractSuperclass {
 		private String name;
@@ -138,7 +144,8 @@ public class EmbeddableInheritanceAndMappedSuperclassTest {
 		}
 	}
 
-	@MappedSuperclass
+	@Embeddable
+	@DiscriminatorValue( "range" )
 	static class Range<T> extends AbstractSuperclass {
 		private T min;
 		private T max;
@@ -185,21 +192,21 @@ public class EmbeddableInheritanceAndMappedSuperclassTest {
 		private Long id;
 
 		@Embedded
-		private IntegerRange range;
+		private Range<Integer> range;
 
 		public TestEntity() {
 		}
 
-		public TestEntity(Long id, IntegerRange range) {
+		public TestEntity(Long id, Range<Integer> range) {
 			this.id = id;
 			this.range = range;
 		}
 
-		public IntegerRange getRange() {
+		public Range<Integer> getRange() {
 			return range;
 		}
 
-		public void setRange(IntegerRange range) {
+		public void setRange(Range<Integer> range) {
 			this.range = range;
 		}
 	}
