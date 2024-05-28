@@ -901,6 +901,7 @@ public class EntityInitializerImpl extends AbstractInitializer implements Entity
 				assert entityHolder.getEntityInitializer() == this;
 				// If this initializer owns the entity, we have to remove the entity holder,
 				// because the subsequent loading process will claim the entity
+				rowProcessingState.getJdbcValuesSourceProcessingState().getLoadingEntityHolders().remove( entityHolder );
 				session.getPersistenceContextInternal().removeEntityHolder( entityKey );
 				return session.internalLoad(
 						concreteDescriptor.getEntityName(),
