@@ -396,6 +396,7 @@ public class CacheEntityLoaderHelper {
 
 		final Object entity;
 
+		final PersistenceContext persistenceContext = source.getPersistenceContextInternal();
 		subclassPersister = factory.getRuntimeMetamodels()
 				.getMappingMetamodel()
 				.getEntityDescriptor( entry.getSubclass() );
@@ -403,7 +404,7 @@ public class CacheEntityLoaderHelper {
 			entity = instanceToLoad;
 		}
 		else {
-			final EntityHolder holder = source.getPersistenceContextInternal().getEntityHolder( entityKey );
+			final EntityHolder holder = persistenceContext.getEntityHolder( entityKey );
 			if ( holder != null && holder.getEntity() != null ) {
 				// Use the entity which might already be
 				entity = holder.getEntity();
@@ -435,7 +436,6 @@ public class CacheEntityLoaderHelper {
 				source
 		);
 
-		final PersistenceContext persistenceContext = source.getPersistenceContext();
 		final Object[] values;
 		final Object version;
 		final boolean isReadOnly;
@@ -471,12 +471,11 @@ public class CacheEntityLoaderHelper {
 			isReadOnly = source.isDefaultReadOnly();
 		}
 
-		persistenceContext.addEntry(
+		persistenceContext.addEntity(
 				entity,
 				( isReadOnly ? Status.READ_ONLY : Status.MANAGED ),
 				values,
-				null,
-				entityId,
+				entityKey,
 				version,
 				LockMode.NONE,
 				true,
