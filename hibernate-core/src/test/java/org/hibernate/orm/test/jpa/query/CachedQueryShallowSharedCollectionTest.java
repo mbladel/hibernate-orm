@@ -10,14 +10,15 @@ import java.util.Set;
 
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
-import org.hibernate.cache.spi.CacheImplementor;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.stat.Statistics;
 
 import org.hibernate.testing.orm.junit.EntityManagerFactoryScope;
+import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.Jpa;
 import org.hibernate.testing.orm.junit.Setting;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +28,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hibernate.jpa.HibernateHints.HINT_CACHEABLE;
@@ -42,13 +44,13 @@ import static org.hibernate.jpa.HibernateHints.HINT_CACHEABLE;
 		@Setting( name = AvailableSettings.USE_SECOND_LEVEL_CACHE, value = "true" ),
 		@Setting( name = AvailableSettings.QUERY_CACHE_LAYOUT, value = "auto" )
 }, generateStatistics = true )
+@Jira( "https://hibernate.atlassian.net/browse/HHH-18085" )
 public class CachedQueryShallowSharedCollectionTest {
 	private static final String ACCOUNT_BY_NAME = "from Account where name = :name";
 
 	@Test
 	public void testQueryInSameTransaction(EntityManagerFactoryScope scope) {
 		final Statistics stats = getStatistics( scope );
-		CacheImplementor cache = scope.getEntityManagerFactory().unwrap( SessionFactoryImplementor.class ).getCache();
 		stats.clear();
 
 		scope.inTransaction( entityManager -> {
@@ -104,7 +106,16 @@ public class CachedQueryShallowSharedCollectionTest {
 		} );
 	}
 
+	@AfterAll
+	public void tearDown(EntityManagerFactoryScope scope) {
+		scope.inTransaction( entityManager -> {
+			entityManager.createQuery( "delete from DomainAccount" ).executeUpdate();
+			entityManager.createQuery( "delete from Account" ).executeUpdate();
+		} );
+	}
+
 	@Entity( name = "Account" )
+	@Table( name = "account_table" )
 	@Cache( usage = CacheConcurrencyStrategy.READ_WRITE )
 	static class Account {
 		@Id
@@ -130,6 +141,7 @@ public class CachedQueryShallowSharedCollectionTest {
 	}
 
 	@Entity( name = "DomainAccount" )
+	@Table( name = "domains_account_table" )
 	@Cache( usage = CacheConcurrencyStrategy.READ_WRITE )
 	static class DomainAccount {
 		@Id
