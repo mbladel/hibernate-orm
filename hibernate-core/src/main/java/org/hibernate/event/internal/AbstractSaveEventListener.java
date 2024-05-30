@@ -294,7 +294,7 @@ public abstract class AbstractSaveEventListener<C>
 				id,
 				null,
 				LockMode.WRITE,
-				useIdentityColumn,
+				!useIdentityColumn,
 				persister,
 				false
 		);
