@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -141,13 +142,14 @@ public class SqmSubQuery<T> extends AbstractSqmSelectQuery<T> implements SqmSele
 				this,
 				new SqmSubQuery<>(
 						nodeBuilder(),
-						copyCteStatements( context ),
+						new LinkedHashMap<>( getCteStatements().size() ),
 						getResultType(),
 						parent.copy( context ),
 						getExpressible(),
 						getAlias()
 				)
 		);
+		copyCteStatements( context, statement );
 		statement.setQueryPart( getQueryPart().copy( context ) );
 		return statement;
 	}
