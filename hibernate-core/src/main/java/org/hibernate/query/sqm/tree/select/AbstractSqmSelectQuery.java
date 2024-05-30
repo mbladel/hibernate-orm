@@ -46,7 +46,7 @@ import static java.lang.Character.isAlphabetic;
 public abstract class AbstractSqmSelectQuery<T>
 		extends AbstractSqmNode
 		implements SqmSelectQuery<T> {
-	protected final Map<String, SqmCteStatement<?>> cteStatements;
+	private final Map<String, SqmCteStatement<?>> cteStatements;
 	private SqmQueryPart<T> sqmQueryPart;
 	private final Class<T> resultType;
 
@@ -81,10 +81,12 @@ public abstract class AbstractSqmSelectQuery<T>
 		this.sqmQueryPart = queryPart;
 	}
 
-	protected void copyCteStatements(SqmCopyContext context, AbstractSqmSelectQuery<?> target) {
+	protected Map<String, SqmCteStatement<?>> copyCteStatements(SqmCopyContext context) {
+		final Map<String, SqmCteStatement<?>> copies = new LinkedHashMap<>( cteStatements.size() );
 		for ( Map.Entry<String, SqmCteStatement<?>> entry : cteStatements.entrySet() ) {
-			target.cteStatements.put( entry.getKey(), entry.getValue().copy( context ) );
+			copies.put( entry.getKey(), entry.getValue().copy( context ) );
 		}
+		return copies;
 	}
 
 	@Override

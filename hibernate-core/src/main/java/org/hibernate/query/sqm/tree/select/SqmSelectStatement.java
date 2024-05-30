@@ -7,7 +7,6 @@
 package org.hibernate.query.sqm.tree.select;
 
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -139,13 +138,12 @@ public class SqmSelectStatement<T> extends AbstractSqmSelectQuery<T> implements 
 				this,
 				new SqmSelectStatement<>(
 						nodeBuilder(),
-						new LinkedHashMap<>( getCteStatements().size() ),
+						copyCteStatements( context ),
 						resultType,
 						getQuerySource(),
 						parameters
 				)
 		);
-		copyCteStatements( context, statement );
 		//noinspection unchecked
 		statement.setQueryPart( (SqmQueryPart<X>) getQueryPart().copy( context ) );
 		return statement;
