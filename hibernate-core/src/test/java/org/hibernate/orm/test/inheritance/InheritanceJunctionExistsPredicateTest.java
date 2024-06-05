@@ -10,8 +10,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -24,7 +26,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.persistence.TypedQuery;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,19 +39,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 		InheritanceJunctionExistsPredicateTest.EntityAContainer.class,
 		InheritanceJunctionExistsPredicateTest.EntityBContainer.class,
 } )
-@SessionFactory
+@SessionFactory( useCollectingStatementInspector = true )
+@Jira( "https://hibernate.atlassian.net/browse/HHH-18174" )
 public class InheritanceJunctionExistsPredicateTest {
 	@Test
-	public void test(SessionFactoryScope scope) {
-		scope.inTransaction( session -> {
-			final TypedQuery<EntityAContainer> query = session.createQuery(
-					"select c from EntityAContainer c "
-							+ "where exists (select 1 from c.entities e where e.identifier like 'child%') "
-							+ "or exists (select 1 from c.entities e)",
-					EntityAContainer.class
-			);
-			assertThat( query.getResultList() ).hasSize( 0 );
-		} );
+	public void testExistsDisjunction(SessionFactoryScope scope) {
+		scope.inTransaction( session -> assertThat( session.createQuery(
+				"select c from EntityAContainer c "
+						+ "where exists (select 1 from c.entities e where e.identifier like 'child%') "
+						+ "or exists (select 1 from c.entities e)",
+				EntityAContainer.class
+		).getResultList() ).hasSize( 0 ) );
+	}
+
+	@Test
+	public void testExistsConjunction(SessionFactoryScope scope) {
+		scope.inTransaction( session -> assertThat( session.createQuery(
+				"select c from EntityBContainer c "
+						+ "where exists (select 1 from c.entities e where e.identifier like 'child%') "
+						+ "and exists (select 1 from c.entities e)",
+				EntityBContainer.class
+		).getResultList() ).hasSize( 1 ) );
 	}
 
 	@BeforeAll
@@ -66,6 +75,15 @@ public class InheritanceJunctionExistsPredicateTest {
 			containerB.id = 1;
 			containerB.entities.add( entityB );
 			session.persist( containerB );
+		} );
+	}
+
+	@AfterAll
+	public void tearDown(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			session.createMutationQuery( "delete from AbstractEntity" ).executeUpdate();
+			session.createMutationQuery( "delete from EntityAContainer" ).executeUpdate();
+			session.createMutationQuery( "delete from EntityBContainer" ).executeUpdate();
 		} );
 	}
 
