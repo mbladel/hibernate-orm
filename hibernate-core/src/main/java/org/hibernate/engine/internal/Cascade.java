@@ -92,6 +92,7 @@ public final class Cascade {
 					&& ( ( entry.getLoadedState() == null
 					&& entry.getStatus() == Status.MANAGED
 					&& persister.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading() )
+					// No need to run check-on-flush for removed entities
 					|| action == CHECK_ON_FLUSH && entry.getStatus() == Status.DELETED ) ) {
 				return;
 			}

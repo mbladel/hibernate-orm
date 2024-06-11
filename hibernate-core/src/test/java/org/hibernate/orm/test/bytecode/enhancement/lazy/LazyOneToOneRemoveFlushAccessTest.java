@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.fail;
 		LazyOneToOneRemoveFlushAccessTest.ContainedEntity.class
 } )
 @SessionFactory
-// @BytecodeEnhanced( runNotEnhancedAsWell = true )
+@BytecodeEnhanced( runNotEnhancedAsWell = true )
 @Jira( "https://hibernate.atlassian.net/browse/HHH-18212" )
 public class LazyOneToOneRemoveFlushAccessTest {
 	@Test
@@ -72,16 +72,6 @@ public class LazyOneToOneRemoveFlushAccessTest {
 
 			containingEntity1.setContained( containedEntity );
 			containedEntity.setContaining( containingEntity1 );
-		} );
-	}
-
-	@AfterAll
-	public void tearDown(SessionFactoryScope scope) {
-		scope.inTransaction( session -> {
-			final ContainingEntity entity1 = session.find( ContainingEntity.class, 1 );
-			final ContainingEntity entity2 = session.find( ContainingEntity.class, 2 );
-			session.remove( entity1 );
-			session.remove( entity2 );
 		} );
 	}
 
