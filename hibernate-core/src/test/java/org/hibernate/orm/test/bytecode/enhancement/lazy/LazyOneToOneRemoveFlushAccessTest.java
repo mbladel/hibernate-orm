@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 		LazyOneToOneRemoveFlushAccessTest.ContainedEntity.class
 } )
 @SessionFactory
-@BytecodeEnhanced( runNotEnhancedAsWell = true )
+// @BytecodeEnhanced( runNotEnhancedAsWell = true )
 @Jira( "https://hibernate.atlassian.net/browse/HHH-18212" )
 public class LazyOneToOneRemoveFlushAccessTest {
 	@Test
@@ -47,6 +47,7 @@ public class LazyOneToOneRemoveFlushAccessTest {
 			assertThat( child ).isSameAs( containing );
 			// child.getContained() is not null here as the state for ContainingEntity#2 is not refreshed
 			// assertThat( child.getContained() ).isNull();
+			// child.contained = null;
 		} );
 	}
 
