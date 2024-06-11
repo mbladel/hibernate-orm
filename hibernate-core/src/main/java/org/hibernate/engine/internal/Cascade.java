@@ -89,9 +89,11 @@ public final class Cascade {
 			final PersistenceContext persistenceContext = eventSource.getPersistenceContextInternal();
 			final EntityEntry entry = persistenceContext.getEntry( parent );
 			if ( entry != null
-					&& entry.getLoadedState() == null
+					&& ( ( entry.getLoadedState() == null
 					&& entry.getStatus() == Status.MANAGED
-					&& persister.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading() ) {
+					&& persister.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading() )
+					// No need to run check-on-flush for removed entities
+					|| action == CHECK_ON_FLUSH && entry.getStatus() == Status.DELETED ) ) {
 				return;
 			}
 			final Type[] types = persister.getPropertyTypes();
