@@ -6,6 +6,8 @@
  */
 package org.hibernate.orm.test.bytecode.enhancement.lazy;
 
+import org.hibernate.TransientObjectException;
+
 import org.hibernate.testing.bytecode.enhancement.extension.BytecodeEnhanced;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.Jira;
@@ -22,6 +24,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 @DomainModel( annotatedClasses = {
 		LazyOneToOneRemoveFlushAccessTest.ContainingEntity.class,
@@ -33,22 +36,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class LazyOneToOneRemoveFlushAccessTest {
 	@Test
 	public void test(SessionFactoryScope scope) {
-		scope.inTransaction( session -> {
-			final ContainingEntity containing = session.find( ContainingEntity.class, 2 );
-			final ContainedEntity containedEntity = containing.getContained();
-
-			session.remove( containedEntity );
-			session.flush();
-
-			final ContainingEntity parent = containing.getParent();
-			// Lazy loading will load the child based on parent, which triggers the NPE of HHH-18212
-			final ContainingEntity child = parent.getChild();
-			assertThat( child.getId() ).isEqualTo( 2 );
-			assertThat( child ).isSameAs( containing );
-			// child.getContained() is not null here as the state for ContainingEntity#2 is not refreshed
-			// assertThat( child.getContained() ).isNull();
-			// child.contained = null;
-		} );
+		try {
+			scope.inTransaction( session -> {
+				final ContainingEntity containing = session.find( ContainingEntity.class, 2 );
+				final ContainedEntity containedEntity = containing.getContained();
+				session.remove( containedEntity );
+				session.flush();
+			} );
+			fail( "Not clearing containing.getContained() should trigger a transient object exception" );
+		}
+		catch (Exception e) {
+			assertThat( e.getCause() ).isInstanceOf( TransientObjectException.class )
+					.hasMessageContaining( "persistent instance references an unsaved transient instance" );
+		}
 	}
 
 	@BeforeAll

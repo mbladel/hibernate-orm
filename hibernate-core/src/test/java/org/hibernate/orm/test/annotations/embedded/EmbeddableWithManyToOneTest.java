@@ -61,17 +61,8 @@ public class EmbeddableWithManyToOneTest {
 	public void tearDown(SessionFactoryScope scope) {
 		scope.inTransaction(
 				session -> {
-					session.createQuery( "from EntityTest", EntityTest.class ).list().forEach(
-							entityTest -> {
-								session.delete( entityTest );
-							}
-					);
-
-					session.createQuery( "from EntityTest2", EntityTest2.class ).list().forEach(
-							entityTest -> {
-								session.delete( entityTest );
-							}
-					);
+					session.createMutationQuery( "delete from EntityTest" ).executeUpdate();
+					session.createMutationQuery( "delete from EntityTest2" ).executeUpdate();
 				}
 		);
 	}
