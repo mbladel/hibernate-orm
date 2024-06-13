@@ -183,5 +183,11 @@ public interface PersistenceSettings {
 	@Deprecated
 	String JPA_TRANSACTION_TYPE = "javax.persistence.transactionType";
 
-	String STRICT_UNOWNED_TRANSIENCE_ENABLED = "hibernate.strict_unowned_transience_enabled";
+	/**
+	 * Specifies whether unowned (i.e. {@code mapped-by}) associations should be considered
+	 * when validating transient entity instance references.
+	 *
+	 * @settingDefault {@code false}
+	 */
+	String STRICT_UNOWNED_TRANSIENT_CHECK = "hibernate.strict_unowned_transient_check";
 }

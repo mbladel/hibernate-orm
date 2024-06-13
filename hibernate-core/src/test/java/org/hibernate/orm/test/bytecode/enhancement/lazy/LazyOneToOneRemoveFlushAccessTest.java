@@ -37,14 +37,14 @@ import static org.assertj.core.api.Assertions.fail;
 public class LazyOneToOneRemoveFlushAccessTest {
 	@Test
 	@SessionFactory
-	@ServiceRegistry( settings = @Setting( name = AvailableSettings.STRICT_UNOWNED_TRANSIENCE_ENABLED, value = "true" ) )
+	@ServiceRegistry( settings = @Setting( name = AvailableSettings.STRICT_UNOWNED_TRANSIENT_CHECK, value = "true" ) )
 	public void testStrict(SessionFactoryScope scope) {
 		scope.inTransaction( session -> executeTest( session, true ) );
 	}
 
 	@Test
 	@SessionFactory
-	@ServiceRegistry( settings = @Setting( name = AvailableSettings.STRICT_UNOWNED_TRANSIENCE_ENABLED, value = "false" ) )
+	@ServiceRegistry( settings = @Setting( name = AvailableSettings.STRICT_UNOWNED_TRANSIENT_CHECK, value = "false" ) )
 	public void testNonStrict(SessionFactoryScope scope) {
 		scope.inTransaction( session -> executeTest( session, false ) );
 	}

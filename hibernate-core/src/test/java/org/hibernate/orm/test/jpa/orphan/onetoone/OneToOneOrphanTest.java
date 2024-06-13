@@ -6,9 +6,12 @@
  */
 package org.hibernate.orm.test.jpa.orphan.onetoone;
 
+import org.hibernate.cfg.AvailableSettings;
+
 import org.hibernate.testing.TestForIssue;
 import org.hibernate.testing.orm.junit.EntityManagerFactoryScope;
 import org.hibernate.testing.orm.junit.Jpa;
+import org.hibernate.testing.orm.junit.Setting;
 
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 @Jpa(annotatedClasses = {
 		A.class,
 		B.class
-})
+}, integrationSettings = @Setting( name = AvailableSettings.STRICT_UNOWNED_TRANSIENT_CHECK, value = "true" ) )
 public class OneToOneOrphanTest {
 
 	@Test

@@ -129,7 +129,7 @@ import static org.hibernate.cfg.AvailableSettings.USE_SQL_COMMENTS;
 import static org.hibernate.cfg.AvailableSettings.USE_STRUCTURED_CACHE;
 import static org.hibernate.cfg.AvailableSettings.USE_SUBSELECT_FETCH;
 import static org.hibernate.cfg.CacheSettings.QUERY_CACHE_LAYOUT;
-import static org.hibernate.cfg.PersistenceSettings.STRICT_UNOWNED_TRANSIENCE_ENABLED;
+import static org.hibernate.cfg.PersistenceSettings.STRICT_UNOWNED_TRANSIENT_CHECK;
 import static org.hibernate.cfg.QuerySettings.DEFAULT_NULL_ORDERING;
 import static org.hibernate.cfg.QuerySettings.PORTABLE_INTEGER_DIVISION;
 import static org.hibernate.engine.config.spi.StandardConverters.BOOLEAN;
@@ -623,7 +623,7 @@ public class SessionFactoryOptionsBuilder implements SessionFactoryOptions {
 		);
 
 		this.strictUnownedAssociationTransienceEnabled = getBoolean(
-				STRICT_UNOWNED_TRANSIENCE_ENABLED,
+				STRICT_UNOWNED_TRANSIENT_CHECK,
 				configurationSettings
 		);
 	}
