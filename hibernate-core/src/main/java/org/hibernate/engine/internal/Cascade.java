@@ -36,6 +36,7 @@ import org.hibernate.type.Type;
 import static org.hibernate.engine.internal.ManagedTypeHelper.isHibernateProxy;
 import static org.hibernate.engine.spi.CascadingActions.CHECK_ON_FLUSH;
 import static org.hibernate.pretty.MessageHelper.infoString;
+import static org.hibernate.type.ForeignKeyDirection.FROM_PARENT;
 import static org.hibernate.type.ForeignKeyDirection.TO_PARENT;
 
 /**
@@ -212,11 +213,14 @@ public final class Cascade {
 			final String propertyName,
 			final T anything,
 			final boolean isCascadeDeleteEnabled) throws HibernateException {
-		
+
 		if ( child != null ) {
 			if ( type.isAssociationType() ) {
 				final AssociationType associationType = (AssociationType) type;
-				if ( cascadeAssociationNow( cascadePoint, associationType ) ) {
+				final boolean strictUnowned = eventSource.getSessionFactory()
+						.getSessionFactoryOptions()
+						.isStrictUnownedAssociationTransienceEnabled();
+				if ( cascadeAssociationNow( action, cascadePoint, associationType, strictUnowned ) ) {
 					cascadeAssociation(
 							action,
 							cascadePoint,
@@ -377,8 +381,14 @@ public final class Cascade {
 		return type.isEntityType() && ( (EntityType) type ).isLogicalOneToOne();
 	}
 
-	private static boolean cascadeAssociationNow(final CascadePoint cascadePoint, AssociationType associationType) {
-		return associationType.getForeignKeyDirection().cascadeNow( cascadePoint );
+	private static boolean cascadeAssociationNow(
+			CascadingAction<?> action,
+			CascadePoint cascadePoint,
+			AssociationType associationType,
+			boolean isStrictUnownedTransienceEnabled) {
+		return associationType.getForeignKeyDirection().cascadeNow( cascadePoint )
+				// For check on flush, we should only check owned associations when strictness is enforced
+				&& ( action != CHECK_ON_FLUSH || isStrictUnownedTransienceEnabled || associationType.getForeignKeyDirection() == FROM_PARENT );
 	}
 
 	private static <T> void cascadeComponent(

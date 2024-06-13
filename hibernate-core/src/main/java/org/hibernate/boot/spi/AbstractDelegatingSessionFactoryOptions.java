@@ -449,6 +449,11 @@ public class AbstractDelegatingSessionFactoryOptions implements SessionFactoryOp
 	}
 
 	@Override
+	public boolean isStrictUnownedAssociationTransienceEnabled() {
+		return delegate.isStrictUnownedAssociationTransienceEnabled();
+	}
+
+	@Override
 	public boolean isUseOfJdbcNamedParametersEnabled() {
 		return delegate().isUseOfJdbcNamedParametersEnabled();
 	}

@@ -129,6 +129,7 @@ import static org.hibernate.cfg.AvailableSettings.USE_SQL_COMMENTS;
 import static org.hibernate.cfg.AvailableSettings.USE_STRUCTURED_CACHE;
 import static org.hibernate.cfg.AvailableSettings.USE_SUBSELECT_FETCH;
 import static org.hibernate.cfg.CacheSettings.QUERY_CACHE_LAYOUT;
+import static org.hibernate.cfg.PersistenceSettings.STRICT_UNOWNED_TRANSIENCE_ENABLED;
 import static org.hibernate.cfg.QuerySettings.DEFAULT_NULL_ORDERING;
 import static org.hibernate.cfg.QuerySettings.PORTABLE_INTEGER_DIVISION;
 import static org.hibernate.engine.config.spi.StandardConverters.BOOLEAN;
@@ -206,6 +207,7 @@ public class SessionFactoryOptionsBuilder implements SessionFactoryOptions {
 	private boolean orderUpdatesEnabled;
 	private boolean orderInsertsEnabled;
 	private boolean collectionsInDefaultFetchGroupEnabled = true;
+	private boolean strictUnownedAssociationTransienceEnabled;
 
 	// JPA callbacks
 	private final boolean callbacksEnabled;
@@ -618,6 +620,11 @@ public class SessionFactoryOptionsBuilder implements SessionFactoryOptions {
 				QUERY_STATISTICS_MAX_SIZE,
 				configurationSettings,
 				Statistics.DEFAULT_QUERY_STATISTICS_MAX_SIZE
+		);
+
+		this.strictUnownedAssociationTransienceEnabled = getBoolean(
+				STRICT_UNOWNED_TRANSIENCE_ENABLED,
+				configurationSettings
 		);
 	}
 
@@ -1253,6 +1260,11 @@ public class SessionFactoryOptionsBuilder implements SessionFactoryOptions {
 	@Override
 	public boolean isCollectionsInDefaultFetchGroupEnabled() {
 		return collectionsInDefaultFetchGroupEnabled;
+	}
+
+	@Override
+	public boolean isStrictUnownedAssociationTransienceEnabled() {
+		return strictUnownedAssociationTransienceEnabled;
 	}
 
 	@Override

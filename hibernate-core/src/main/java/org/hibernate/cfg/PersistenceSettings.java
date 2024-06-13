@@ -182,4 +182,6 @@ public interface PersistenceSettings {
 	 */
 	@Deprecated
 	String JPA_TRANSACTION_TYPE = "javax.persistence.transactionType";
+
+	String STRICT_UNOWNED_TRANSIENCE_ENABLED = "hibernate.strict_unowned_transience_enabled";
 }
