@@ -857,7 +857,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		return sortProperties( false );
 	}
 
-	public int[] sortProperties(boolean forceRetainOriginalOrder) {
+	private int[] sortProperties(boolean forceRetainOriginalOrder) {
 		if ( originalPropertyOrder != ArrayHelper.EMPTY_INT_ARRAY ) {
 			return originalPropertyOrder;
 		}
@@ -906,7 +906,8 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	}
 
 	public boolean isSimpleRecord() {
-		if ( simpleRecord == null ) {
+		Boolean simple = simpleRecord;
+		if ( simple == null ) {
 			// A simple record is given, when the properties match the order of the record component names
 			final Class<?> componentClass = resolveComponentClass();
 			if ( customInstantiator != null ) {
@@ -924,10 +925,9 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 					return simpleRecord = false;
 				}
 			}
-			simpleRecord = true;
+			simple = simpleRecord = true;
 		}
-
-		return simpleRecord;
+		return simple;
 	}
 
 	public Class<? extends EmbeddableInstantiator> getCustomInstantiator() {
