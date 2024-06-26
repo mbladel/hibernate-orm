@@ -54,6 +54,7 @@ public class ResultsHelper {
 			TableReference tableReference,
 			SelectableMapping selectableMapping,
 			String columnAlias) {
+		final int virtualSelections = resolver.getVirtualSelectionsCount();
 		return resolver.resolveSqlExpression(
 				createColumnReferenceKey(
 						tableReference,
@@ -62,7 +63,11 @@ public class ResultsHelper {
 				processingState -> {
 					final int jdbcPosition = jdbcValuesMetadata.resolveColumnPosition( columnAlias );
 					final int valuesArrayPosition = jdbcPositionToValuesArrayPosition( jdbcPosition );
-					return new ResultSetMappingSqlSelection( valuesArrayPosition, selectableMapping.getJdbcMapping() );
+					return new ResultSetMappingSqlSelection(
+							valuesArrayPosition + virtualSelections,
+							jdbcPosition,
+							selectableMapping.getJdbcMapping()
+					);
 				}
 		);
 	}
@@ -72,6 +77,7 @@ public class ResultsHelper {
 			TableReference tableReference,
 			SelectableMapping selectableMapping,
 			int valuesArrayPosition) {
+		assert resolver.getVirtualSelectionsCount() == 0;
 		return resolver.resolveSqlExpression(
 				createColumnReferenceKey(
 						tableReference,
