@@ -6,6 +6,8 @@
  */
 package org.hibernate.orm.test.mapping.basic;
 
+import java.util.List;
+
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.type.SqlTypes;
@@ -23,9 +25,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.is;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Christian Beikov
@@ -78,12 +78,31 @@ public abstract class PolymorphicJsonTests {
 				(session) -> {
 					EntityWithJson entityWithJsonA = session.find( EntityWithJson.class, 1 );
 					EntityWithJson entityWithJsonB = session.find( EntityWithJson.class, 2 );
-					assertThat( entityWithJsonA, instanceOf( EntityWithJsonA.class ) );
-					assertThat( entityWithJsonB, instanceOf( EntityWithJsonB.class ) );
-					assertThat( ( (EntityWithJsonA) entityWithJsonA ).property.value, is( "e1" ) );
-					assertThat( ( (EntityWithJsonB) entityWithJsonB ).property.value, is( 123 ) );
+					assertThat( entityWithJsonA ).isInstanceOf( EntityWithJsonA.class );
+					assertThat( entityWithJsonB ).isInstanceOf( EntityWithJsonB.class );
+					assertThat( ( (EntityWithJsonA) entityWithJsonA ).property.value ).isEqualTo( "e1" );
+					assertThat( ( (EntityWithJsonB) entityWithJsonB ).property.value ).isEqualTo( 123 );
 				}
 		);
+	}
+
+	@Test
+	public void verifyNativeQueryWorks(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final List<EntityWithJson> resultList = session.createNativeQuery(
+					"select * from EntityWithJson",
+					EntityWithJson.class
+			).getResultList();
+			assertThat( resultList ).hasSize( 2 ).allMatch( r -> {
+				if ( r instanceof EntityWithJsonA ) {
+					return ( (EntityWithJsonA) r ).property.value.equals( "e1" );
+				}
+				else if ( r instanceof EntityWithJsonB ) {
+					return ( (EntityWithJsonB) r ).property.value == 123;
+				}
+				return false;
+			} );
+		} );
 	}
 
 	@Entity(name = "EntityWithJson")
