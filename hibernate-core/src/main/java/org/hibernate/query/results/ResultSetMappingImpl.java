@@ -284,7 +284,7 @@ public class ResultSetMappingImpl implements ResultSetMapping {
 			}
 			// Only check for duplicates for the selections that we actually use
 			for ( SqlSelection sqlSelection : sqlSelections ) {
-				final String alias = aliases[sqlSelection.getValuesArrayPosition()];
+				final String alias = aliases[sqlSelection.getJdbcResultSetIndex() - 1];
 				if ( !knownDuplicateAliases.contains( alias ) && aliasHasDuplicates.get( alias ) == Boolean.TRUE ) {
 					throw new NonUniqueDiscoveredSqlAliasException(
 							"Encountered a duplicated sql alias [" + alias + "] during auto-discovery of a native-sql query"
@@ -296,7 +296,7 @@ public class ResultSetMappingImpl implements ResultSetMapping {
 		return new JdbcValuesMappingImpl(
 				sqlSelections,
 				domainResults,
-				rowSize,
+				rowSize + creationState.getVirtualSelectionsCount(),
 				creationState.getRegisteredLockModes()
 		);
 	}

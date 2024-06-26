@@ -9,6 +9,7 @@ package org.hibernate.query.results;
 import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -55,6 +56,7 @@ import org.hibernate.sql.results.graph.entity.EntityResultGraphNode;
 import org.hibernate.sql.results.graph.internal.ImmutableFetchList;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMetadata;
 import org.hibernate.type.descriptor.java.JavaType;
+import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.spi.TypeConfiguration;
 
 import static org.hibernate.query.results.ResultsHelper.attributeName;
@@ -73,7 +75,9 @@ public class DomainResultCreationStateImpl
 	private final JdbcValuesMetadata jdbcResultsMetadata;
 	private final Consumer<SqlSelection> sqlSelectionConsumer;
 	private final LoadQueryInfluencers loadQueryInfluencers;
-	private final Map<ColumnReferenceKey, ResultSetMappingSqlSelection> sqlSelectionMap = new HashMap<>();
+	private final Map<ColumnReferenceKey, SqlSelection> sqlSelectionMap = new HashMap<>();
+	private final Map<ColumnReferencePosition, Integer> selectionCountByPosition = new HashMap<>();
+	private int virtualSelectionsCount = 0;
 	private boolean allowPositionalSelections = true;
 
 	private final SqlAliasBaseManager sqlAliasBaseManager;
@@ -274,16 +278,15 @@ public class DomainResultCreationStateImpl
 	public Expression resolveSqlExpression(
 			ColumnReferenceKey key,
 			Function<SqlAstProcessingState, Expression> creator) {
-		final ResultSetMappingSqlSelection existing = sqlSelectionMap.get( key );
+		final SqlSelection existing = sqlSelectionMap.get( key );
 		if ( existing != null ) {
-			return existing;
+			return existing.getExpression();
 		}
 
 		final Expression created = creator.apply( this );
 
 		if ( created instanceof ResultSetMappingSqlSelection ) {
-			sqlSelectionMap.put( key, (ResultSetMappingSqlSelection) created );
-			sqlSelectionConsumer.accept( (ResultSetMappingSqlSelection) created );
+			addSelection( key, (ResultSetMappingSqlSelection) created );
 		}
 		else if ( created instanceof ColumnReference ) {
 			final ColumnReference columnReference = (ColumnReference) created;
@@ -329,6 +332,34 @@ public class DomainResultCreationStateImpl
 		}
 
 		return created;
+	}
+
+	private void addSelection(ColumnReferenceKey key, ResultSetMappingSqlSelection rsSelection) {
+		final int valuesArrayPosition = rsSelection.getValuesArrayPosition();
+		final ColumnReferencePosition position = new ColumnReferencePosition(
+				key.getTableQualifier(),
+				valuesArrayPosition
+		);
+		final Integer count = selectionCountByPosition.put( position, 1 );
+		// We are in the presence of a duplicated mapping for the same table,
+		// this can happen for polymorphic entity results
+		final SqlSelection sqlSelection;
+		if ( count != null ) {
+			sqlSelection = rsSelection.createSqlSelection(
+					rsSelection.getJdbcResultSetIndex(),
+					sqlSelectionMap.size(),
+					( (BasicExtractor<?>) rsSelection.getJdbcValueExtractor() ).getJavaType(),
+					true,
+					getCreationContext().getSessionFactory().getTypeConfiguration()
+			);
+			selectionCountByPosition.put( position, count + 1 );
+			virtualSelectionsCount++;
+		}
+		else {
+			sqlSelection = rsSelection;
+		}
+		sqlSelectionMap.put( key, sqlSelection );
+		sqlSelectionConsumer.accept( sqlSelection );
 	}
 
 	@Override
@@ -588,4 +619,40 @@ public class DomainResultCreationStateImpl
 		this.currentlyResolvingForeignKeySide = currentlyResolvingForeignKeySide;
 	}
 
+	public int getVirtualSelectionsCount() {
+		return virtualSelectionsCount;
+	}
+
+	static final class ColumnReferencePosition {
+		private final String tableQualifier;
+		private final int valuesArrayPosition;
+
+		public ColumnReferencePosition(String tableQualifier, int valuesArrayPosition) {
+			this.tableQualifier = tableQualifier;
+			this.valuesArrayPosition = valuesArrayPosition;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if ( this == o ) {
+				return true;
+			}
+			if ( o == null || getClass() != o.getClass() ) {
+				return false;
+			}
+
+			final ColumnReferencePosition that = (ColumnReferencePosition) o;
+			return valuesArrayPosition == that.valuesArrayPosition && Objects.equals(
+					tableQualifier,
+					that.tableQualifier
+			);
+		}
+
+		@Override
+		public int hashCode() {
+			int result = Objects.hashCode( tableQualifier );
+			result = 31 * result + valuesArrayPosition;
+			return result;
+		}
+	}
 }
