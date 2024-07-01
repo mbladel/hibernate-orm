@@ -11,6 +11,7 @@ import java.util.List;
 
 import org.hibernate.testing.TestForIssue;
 import org.hibernate.testing.orm.junit.EntityManagerFactoryScope;
+import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.Jpa;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 
@@ -112,6 +113,7 @@ public class CoalesceTest {
 	}
 
 	@Test
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-18321" )
 	public void testCoalesceInBinaryArithmetic(EntityManagerFactoryScope scope) {
 		scope.inTransaction( entityManager -> {
 			final CriteriaBuilder cb = entityManager.getCriteriaBuilder();
