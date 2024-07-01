@@ -6565,9 +6565,11 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		// Need to infer the operand types here first to decide how to transform the expression
 		final FromClauseIndex fromClauseIndex = fromClauseIndexStack.getCurrent();
 		inferrableTypeAccessStack.push( () -> determineValueMapping( rightOperand, fromClauseIndex ) );
+		final Expression lhs = toSqlExpression( leftOperand.accept( this ) );
 		final MappingModelExpressible<?> leftOperandType = determineValueMapping( leftOperand );
 		inferrableTypeAccessStack.pop();
 		inferrableTypeAccessStack.push( () -> determineValueMapping( leftOperand, fromClauseIndex ) );
+		final Expression rhs = toSqlExpression( rightOperand.accept( this ) );
 		final MappingModelExpressible<?> rightOperandType = determineValueMapping( rightOperand );
 		inferrableTypeAccessStack.pop();
 
@@ -6591,14 +6593,6 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			return transformDatetimeArithmetic( expression );
 		}
 		else {
-			// Infer one operand type through the other
-			inferrableTypeAccessStack.push( () -> determineValueMapping( rightOperand, fromClauseIndex ) );
-			final Expression lhs = toSqlExpression( leftOperand.accept( this ) );
-			inferrableTypeAccessStack.pop();
-			inferrableTypeAccessStack.push( () -> determineValueMapping( leftOperand, fromClauseIndex ) );
-			final Expression rhs = toSqlExpression( rightOperand.accept( this ) );
-			inferrableTypeAccessStack.pop();
-
 			if ( durationToRight && appliedByUnit != null ) {
 				return new BinaryArithmeticExpression(
 						lhs,
