@@ -7,9 +7,9 @@
 package org.hibernate.query.results;
 
 import java.util.AbstractMap;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -76,7 +76,7 @@ public class DomainResultCreationStateImpl
 	private final Consumer<SqlSelection> sqlSelectionConsumer;
 	private final LoadQueryInfluencers loadQueryInfluencers;
 	private final Map<ColumnReferenceKey, SqlSelection> sqlSelectionMap = new HashMap<>();
-	private final Map<ColumnReferencePosition, Integer> selectionCountByPosition = new HashMap<>();
+	private final Map<String, BitSet> selectionPositionsByTable = new HashMap<>();
 	private int virtualSelectionsCount = 0;
 	private boolean allowPositionalSelections = true;
 
@@ -286,7 +286,7 @@ public class DomainResultCreationStateImpl
 		final Expression created = creator.apply( this );
 
 		if ( created instanceof ResultSetMappingSqlSelection ) {
-			addSelection( key, (ResultSetMappingSqlSelection) created );
+			return addSelection( key, (ResultSetMappingSqlSelection) created );
 		}
 		else if ( created instanceof ColumnReference ) {
 			final ColumnReference columnReference = (ColumnReference) created;
@@ -334,17 +334,13 @@ public class DomainResultCreationStateImpl
 		return created;
 	}
 
-	private void addSelection(ColumnReferenceKey key, ResultSetMappingSqlSelection rsSelection) {
+	private Expression addSelection(ColumnReferenceKey key, ResultSetMappingSqlSelection rsSelection) {
 		final int valuesArrayPosition = rsSelection.getValuesArrayPosition();
-		final ColumnReferencePosition position = new ColumnReferencePosition(
-				key.getTableQualifier(),
-				valuesArrayPosition
-		);
-		final Integer count = selectionCountByPosition.put( position, 1 );
-		// We are in the presence of a duplicated mapping for the same table,
-		// this can happen for polymorphic entity results
+		final BitSet bitSet = selectionPositionsByTable.computeIfAbsent( key.getTableQualifier(), k -> new BitSet() );
 		final SqlSelection sqlSelection;
-		if ( count != null ) {
+		if ( bitSet.get( valuesArrayPosition ) ) {
+			// We are in the presence of a duplicated mapping for the same table,
+			// this can happen for polymorphic entity results
 			sqlSelection = rsSelection.createSqlSelection(
 					rsSelection.getJdbcResultSetIndex(),
 					sqlSelectionMap.size(),
@@ -352,14 +348,15 @@ public class DomainResultCreationStateImpl
 					true,
 					getCreationContext().getSessionFactory().getTypeConfiguration()
 			);
-			selectionCountByPosition.put( position, count + 1 );
 			virtualSelectionsCount++;
 		}
 		else {
 			sqlSelection = rsSelection;
+			bitSet.set( valuesArrayPosition );
 		}
 		sqlSelectionMap.put( key, sqlSelection );
 		sqlSelectionConsumer.accept( sqlSelection );
+		return sqlSelection.getExpression();
 	}
 
 	@Override
@@ -621,38 +618,5 @@ public class DomainResultCreationStateImpl
 
 	public int getVirtualSelectionsCount() {
 		return virtualSelectionsCount;
-	}
-
-	static final class ColumnReferencePosition {
-		private final String tableQualifier;
-		private final int valuesArrayPosition;
-
-		public ColumnReferencePosition(String tableQualifier, int valuesArrayPosition) {
-			this.tableQualifier = tableQualifier;
-			this.valuesArrayPosition = valuesArrayPosition;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if ( this == o ) {
-				return true;
-			}
-			if ( o == null || getClass() != o.getClass() ) {
-				return false;
-			}
-
-			final ColumnReferencePosition that = (ColumnReferencePosition) o;
-			return valuesArrayPosition == that.valuesArrayPosition && Objects.equals(
-					tableQualifier,
-					that.tableQualifier
-			);
-		}
-
-		@Override
-		public int hashCode() {
-			int result = Objects.hashCode( tableQualifier );
-			result = 31 * result + valuesArrayPosition;
-			return result;
-		}
 	}
 }
