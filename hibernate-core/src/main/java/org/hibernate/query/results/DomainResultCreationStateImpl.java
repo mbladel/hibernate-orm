@@ -25,6 +25,7 @@ import org.hibernate.metamodel.mapping.AssociationKey;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.CompositeIdentifierMapping;
 import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
+import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.EntityValuedModelPart;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
 import org.hibernate.metamodel.mapping.ModelPart;
@@ -286,7 +287,8 @@ public class DomainResultCreationStateImpl
 		final Expression created = creator.apply( this );
 
 		if ( created instanceof ResultSetMappingSqlSelection ) {
-			return addSelection( key, (ResultSetMappingSqlSelection) created );
+			final ResultSetMappingSqlSelection sqlSelection = (ResultSetMappingSqlSelection) created;
+			sqlSelectionMap.put( key, sqlSelection );
 		}
 		else if ( created instanceof ColumnReference ) {
 			final ColumnReference columnReference = (ColumnReference) created;
@@ -306,7 +308,6 @@ public class DomainResultCreationStateImpl
 			);
 
 			sqlSelectionMap.put( key, sqlSelection );
-			sqlSelectionConsumer.accept( sqlSelection );
 
 			return sqlSelection;
 		}
@@ -326,7 +327,6 @@ public class DomainResultCreationStateImpl
 			);
 
 			sqlSelectionMap.put( key, sqlSelection );
-			sqlSelectionConsumer.accept( sqlSelection );
 
 			return sqlSelection;
 		}
@@ -334,41 +334,66 @@ public class DomainResultCreationStateImpl
 		return created;
 	}
 
-	private Expression addSelection(ColumnReferenceKey key, ResultSetMappingSqlSelection rsSelection) {
-		final int valuesArrayPosition = rsSelection.getValuesArrayPosition();
-		final BitSet bitSet = selectionPositionsByTable.computeIfAbsent( key.getTableQualifier(), k -> new BitSet() );
-		final SqlSelection sqlSelection;
-		if ( bitSet.get( valuesArrayPosition ) ) {
-			// We are in the presence of a duplicated mapping for the same table,
-			// this can happen for polymorphic entity results
-			sqlSelection = rsSelection.createSqlSelection(
-					rsSelection.getJdbcResultSetIndex(),
-					sqlSelectionMap.size(),
-					( (BasicExtractor<?>) rsSelection.getJdbcValueExtractor() ).getJavaType(),
-					true,
-					getCreationContext().getSessionFactory().getTypeConfiguration()
-			);
-			virtualSelectionsCount++;
-		}
-		else {
-			sqlSelection = rsSelection;
-			bitSet.set( valuesArrayPosition );
-		}
-		sqlSelectionMap.put( key, sqlSelection );
-		sqlSelectionConsumer.accept( sqlSelection );
-		return sqlSelection.getExpression();
-	}
+//	private Expression addSelection(ColumnReferenceKey key, ResultSetMappingSqlSelection rsSelection) {
+//		final int valuesArrayPosition = rsSelection.getValuesArrayPosition();
+//		final SqlSelection sqlSelection;
+//		if ( bitSet.get( valuesArrayPosition ) ) {
+//			// We are in the presence of a duplicated mapping for the same table,
+//			// this can happen for polymorphic entity results
+//			sqlSelection = rsSelection.createSqlSelection(
+//					rsSelection.getJdbcResultSetIndex(),
+//					sqlSelectionMap.size(),
+//					( (BasicExtractor<?>) rsSelection.getJdbcValueExtractor() ).getJavaType(),
+//					true,
+//					getCreationContext().getSessionFactory().getTypeConfiguration()
+//			);
+//			virtualSelectionsCount++;
+//		}
+//		else {
+//			sqlSelection = rsSelection;
+//			bitSet.set( valuesArrayPosition );
+//		}
+//		sqlSelectionMap.put( key, sqlSelection );
+//		sqlSelectionConsumer.accept( sqlSelection );
+//		return sqlSelection.getExpression();
+//	}
 
 	@Override
 	public SqlSelection resolveSqlSelection(
 			Expression expression,
 			JavaType<?> javaType,
-			FetchParent fetchParent, TypeConfiguration typeConfiguration) {
+			FetchParent fetchParent,
+			TypeConfiguration typeConfiguration) {
 		if ( expression == null ) {
 			throw new IllegalArgumentException( "Expression cannot be null" );
 		}
-		assert expression instanceof ResultSetMappingSqlSelection;
-		return (SqlSelection) expression;
+		assert expression instanceof ResultSetMappingSqlSelection : "Unexpected expression type";
+		final ResultSetMappingSqlSelection sqlSelection = (ResultSetMappingSqlSelection) expression;
+		final EntityMappingType parentEntity = fetchParent.getReferencedMappingContainer().asEntityMappingType();
+		if ( parentEntity != null && parentEntity.getEntityPersister().getEntityMetamodel().isPolymorphic() ) {
+			final String tableName = parentEntity.getMappedTableDetails().getTableName();
+			final BitSet bitSet = selectionPositionsByTable.computeIfAbsent( tableName, k -> new BitSet() );
+			final int valuesArrayPosition = sqlSelection.getValuesArrayPosition();
+			if ( bitSet.get( valuesArrayPosition ) ) {
+				// We are in the presence of a duplicated mapping for the same table,
+				// this can happen for polymorphic entity results
+				final SqlSelection virtualSelection = sqlSelection.createSqlSelection(
+						sqlSelection.getJdbcResultSetIndex(),
+						valuesArrayPosition + 1, // todo marco : this is not correct, what if there are 3?
+						( (BasicExtractor<?>) sqlSelection.getJdbcValueExtractor() ).getJavaType(),
+						true,
+						getCreationContext().getSessionFactory().getTypeConfiguration()
+				);
+				virtualSelectionsCount++;
+				sqlSelectionConsumer.accept( virtualSelection );
+				return virtualSelection;
+			}
+			else {
+				bitSet.set( valuesArrayPosition );
+			}
+		}
+		sqlSelectionConsumer.accept( sqlSelection );
+		return sqlSelection;
 	}
 
 	private static class LegacyFetchResolverImpl implements LegacyFetchResolver {

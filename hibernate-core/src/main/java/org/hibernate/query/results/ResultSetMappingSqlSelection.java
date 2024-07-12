@@ -9,6 +9,7 @@ package org.hibernate.query.results;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.BasicValuedMapping;
 import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.metamodel.mapping.JdbcMappingContainer;
 import org.hibernate.metamodel.mapping.MappingModelExpressible;
 import org.hibernate.sql.ast.SqlAstWalker;
 import org.hibernate.sql.ast.spi.SqlExpressionAccess;
@@ -26,33 +27,29 @@ import org.hibernate.type.descriptor.ValueExtractor;
 public class ResultSetMappingSqlSelection implements SqlSelection, Expression, SqlExpressionAccess {
 	private final int valuesArrayPosition;
 	private final int jdbcPosition;
-	private final BasicValuedMapping valueMapping;
-	private final ValueExtractor valueExtractor;
+	private final JdbcMappingContainer mappingContainer;
 
 	public ResultSetMappingSqlSelection(int valuesArrayPosition, BasicValuedMapping valueMapping) {
 		this.valuesArrayPosition = valuesArrayPosition;
 		this.jdbcPosition = valuesArrayPosition + 1;
-		this.valueMapping = valueMapping;
-		this.valueExtractor = valueMapping.getJdbcMapping().getJdbcValueExtractor();
+		this.mappingContainer = valueMapping;
 	}
 
 	public ResultSetMappingSqlSelection(int valuesArrayPosition, JdbcMapping jdbcMapping) {
 		this.valuesArrayPosition = valuesArrayPosition;
 		this.jdbcPosition = valuesArrayPosition + 1;
-		this.valueMapping = null;
-		this.valueExtractor = jdbcMapping.getJdbcValueExtractor();
+		this.mappingContainer = jdbcMapping;
 	}
 
 	public ResultSetMappingSqlSelection(int valuesArrayPosition, int jdbcPosition, JdbcMapping jdbcMapping) {
 		this.valuesArrayPosition = valuesArrayPosition;
 		this.jdbcPosition = jdbcPosition;
-		this.valueMapping = null;
-		this.valueExtractor = jdbcMapping.getJdbcValueExtractor();
+		this.mappingContainer = jdbcMapping;
 	}
 
 	@Override
 	public ValueExtractor getJdbcValueExtractor() {
-		return valueExtractor;
+		return mappingContainer.getSingleJdbcMapping().getJdbcValueExtractor();
 	}
 
 	@Override
@@ -76,8 +73,8 @@ public class ResultSetMappingSqlSelection implements SqlSelection, Expression, S
 	}
 
 	@Override
-	public MappingModelExpressible getExpressionType() {
-		return valueMapping;
+	public JdbcMappingContainer getExpressionType() {
+		return mappingContainer;
 	}
 
 	@Override
