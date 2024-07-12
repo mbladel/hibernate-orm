@@ -26,24 +26,15 @@ import org.hibernate.type.descriptor.ValueExtractor;
  */
 public class ResultSetMappingSqlSelection implements SqlSelection, Expression, SqlExpressionAccess {
 	private final int valuesArrayPosition;
-	private final int jdbcPosition;
 	private final JdbcMappingContainer mappingContainer;
 
 	public ResultSetMappingSqlSelection(int valuesArrayPosition, BasicValuedMapping valueMapping) {
 		this.valuesArrayPosition = valuesArrayPosition;
-		this.jdbcPosition = valuesArrayPosition + 1;
 		this.mappingContainer = valueMapping;
 	}
 
 	public ResultSetMappingSqlSelection(int valuesArrayPosition, JdbcMapping jdbcMapping) {
 		this.valuesArrayPosition = valuesArrayPosition;
-		this.jdbcPosition = valuesArrayPosition + 1;
-		this.mappingContainer = jdbcMapping;
-	}
-
-	public ResultSetMappingSqlSelection(int valuesArrayPosition, int jdbcPosition, JdbcMapping jdbcMapping) {
-		this.valuesArrayPosition = valuesArrayPosition;
-		this.jdbcPosition = jdbcPosition;
 		this.mappingContainer = jdbcMapping;
 	}
 
@@ -60,11 +51,6 @@ public class ResultSetMappingSqlSelection implements SqlSelection, Expression, S
 	@Override
 	public int getValuesArrayPosition() {
 		return valuesArrayPosition;
-	}
-
-	@Override
-	public int getJdbcResultSetIndex() {
-		return jdbcPosition;
 	}
 
 	@Override

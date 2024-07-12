@@ -60,6 +60,8 @@ import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.jdbc.BasicExtractor;
 import org.hibernate.type.spi.TypeConfiguration;
 
+import jakarta.annotation.Nullable;
+
 import static org.hibernate.query.results.ResultsHelper.attributeName;
 
 /**
@@ -369,7 +371,9 @@ public class DomainResultCreationStateImpl
 		}
 		assert expression instanceof ResultSetMappingSqlSelection : "Unexpected expression type";
 		final ResultSetMappingSqlSelection sqlSelection = (ResultSetMappingSqlSelection) expression;
-		final EntityMappingType parentEntity = fetchParent.getReferencedMappingContainer().asEntityMappingType();
+		final EntityMappingType parentEntity = fetchParent != null ?
+				fetchParent.getReferencedMappingContainer().asEntityMappingType() :
+				null;
 		if ( parentEntity != null && parentEntity.getEntityPersister().getEntityMetamodel().isPolymorphic() ) {
 			final String tableName = parentEntity.getMappedTableDetails().getTableName();
 			final BitSet bitSet = selectionPositionsByTable.computeIfAbsent( tableName, k -> new BitSet() );
@@ -377,14 +381,14 @@ public class DomainResultCreationStateImpl
 			if ( bitSet.get( valuesArrayPosition ) ) {
 				// We are in the presence of a duplicated mapping for the same table,
 				// this can happen for polymorphic entity results
+				virtualSelectionsCount++;
 				final SqlSelection virtualSelection = sqlSelection.createSqlSelection(
 						sqlSelection.getJdbcResultSetIndex(),
-						valuesArrayPosition + 1, // todo marco : this is not correct, what if there are 3?
-						( (BasicExtractor<?>) sqlSelection.getJdbcValueExtractor() ).getJavaType(),
+						valuesArrayPosition + virtualSelectionsCount,
+						javaType,
 						true,
 						getCreationContext().getSessionFactory().getTypeConfiguration()
 				);
-				virtualSelectionsCount++;
 				sqlSelectionConsumer.accept( virtualSelection );
 				return virtualSelection;
 			}

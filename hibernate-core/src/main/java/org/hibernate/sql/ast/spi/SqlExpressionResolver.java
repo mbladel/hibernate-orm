@@ -133,10 +133,6 @@ public interface SqlExpressionResolver {
 			this.jdbcMapping = jdbcMapping;
 		}
 
-		public String getTableQualifier() {
-			return tableQualifier;
-		}
-
 		@Override
 		public boolean equals(Object o) {
 			if ( this == o ) {
