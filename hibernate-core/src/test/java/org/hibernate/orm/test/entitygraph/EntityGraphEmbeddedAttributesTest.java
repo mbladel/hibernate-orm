@@ -1,6 +1,17 @@
 package org.hibernate.orm.test.entitygraph;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import java.util.Map;
+import java.util.UUID;
+
+import org.hibernate.Hibernate;
+
+import org.hibernate.testing.orm.junit.EntityManagerFactoryScope;
+import org.hibernate.testing.orm.junit.JiraKey;
+import org.hibernate.testing.orm.junit.Jpa;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
@@ -9,135 +20,114 @@ import jakarta.persistence.EntityGraph;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
-import java.util.Map;
-import java.util.UUID;
-import org.hibernate.Hibernate;
-import org.hibernate.testing.orm.junit.EntityManagerFactoryScope;
-import org.hibernate.testing.orm.junit.JiraKey;
-import org.hibernate.testing.orm.junit.Jpa;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 
-@Jpa(
-    annotatedClasses = {
-      EntityGraphEmbeddedAttributesTest.TrackedProduct.class,
-      EntityGraphEmbeddedAttributesTest.Tracking.class,
-      EntityGraphEmbeddedAttributesTest.UserForTracking.class,
-    })
-@JiraKey("HHH-18391")
-class EntityGraphEmbeddedAttributesTest {
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.hibernate.jpa.SpecHints.HINT_SPEC_LOAD_GRAPH;
 
-  private static final int TRACKED_PRODUCT_ID = 1;
+@Jpa( annotatedClasses = {
+		EntityGraphEmbeddedAttributesTest.TrackedProduct.class,
+		EntityGraphEmbeddedAttributesTest.Tracking.class,
+		EntityGraphEmbeddedAttributesTest.UserForTracking.class,
+} )
+@JiraKey( "HHH-18391" )
+public class EntityGraphEmbeddedAttributesTest {
+	private static final int TRACKED_PRODUCT_ID = 1;
 
-  @BeforeEach
-  public void beforeEach(EntityManagerFactoryScope scope) {
-    scope.inTransaction(
-        entityManager -> {
-          EntityGraphEmbeddedAttributesTest.UserForTracking creator =
-              new EntityGraphEmbeddedAttributesTest.UserForTracking(1, "foo");
-          entityManager.persist(creator);
+	@Test
+	void testFetchGraph(EntityManagerFactoryScope scope) {
+		scope.inTransaction( entityManager -> {
+			final EntityGraph<TrackedProduct> trackedProductGraph = entityManager.createEntityGraph( TrackedProduct.class );
+			trackedProductGraph.addSubgraph( "tracking" ).addAttributeNodes( "creator" );
+			final TrackedProduct product = entityManager.find(
+					TrackedProduct.class,
+					TRACKED_PRODUCT_ID,
+					Map.of( "javax.persistence.fetchgraph", trackedProductGraph )
+			);
+			assertThat( Hibernate.isInitialized( product.tracking.creator ) ).isTrue();
+			assertThat( Hibernate.isInitialized( product.tracking.modifier ) ).isFalse();
+		} );
+	}
 
-          EntityGraphEmbeddedAttributesTest.UserForTracking modifier =
-              new EntityGraphEmbeddedAttributesTest.UserForTracking(2, "bar");
-          entityManager.persist(modifier);
+	@Test
+	void testLoadGraph(EntityManagerFactoryScope scope) {
+		scope.inTransaction( entityManager -> {
+			final EntityGraph<TrackedProduct> trackedProductGraph = entityManager.createEntityGraph( TrackedProduct.class );
+			trackedProductGraph.addSubgraph( "tracking" ).addAttributeNodes( "creator" );
+			final TrackedProduct product = entityManager.createQuery(
+					"from TrackedProduct",
+					TrackedProduct.class
+			).setHint( HINT_SPEC_LOAD_GRAPH, trackedProductGraph ).getSingleResult();
+			assertThat( Hibernate.isInitialized( product.tracking.creator ) ).isTrue();
+			assertThat( Hibernate.isInitialized( product.tracking.modifier ) ).isFalse();
+		} );
+	}
 
-          EntityGraphEmbeddedAttributesTest.Tracking tracking =
-              new EntityGraphEmbeddedAttributesTest.Tracking(creator, modifier);
+	@BeforeAll
+	void setUp(EntityManagerFactoryScope scope) {
+		scope.inTransaction( entityManager -> {
+			final UserForTracking creator = new UserForTracking( 1, "foo" );
+			entityManager.persist( creator );
 
-          EntityGraphEmbeddedAttributesTest.TrackedProduct product =
-              new EntityGraphEmbeddedAttributesTest.TrackedProduct(
-                  TRACKED_PRODUCT_ID, UUID.randomUUID().toString(), tracking);
-          entityManager.persist(product);
-        });
-  }
+			final UserForTracking modifier = new UserForTracking( 2, "bar" );
+			entityManager.persist( modifier );
 
-  @Test
-  @DisplayName("Entity fetch graph is well applied on Embedded attributes")
-  void testFetchGraph(EntityManagerFactoryScope scope) {
-    scope.inTransaction(
-        entityManager -> {
-          EntityGraph<EntityGraphEmbeddedAttributesTest.TrackedProduct> trackedProductGraph =
-              entityManager.createEntityGraph(
-                  EntityGraphEmbeddedAttributesTest.TrackedProduct.class);
-          trackedProductGraph.addSubgraph("tracking").addAttributeNodes("creator");
+			final Tracking tracking = new Tracking( creator, modifier );
 
-          EntityGraphEmbeddedAttributesTest.TrackedProduct product =
-              entityManager.find(
-                  EntityGraphEmbeddedAttributesTest.TrackedProduct.class,
-                  TRACKED_PRODUCT_ID,
-                  Map.of("javax.persistence.fetchgraph", trackedProductGraph));
+			final TrackedProduct product = new TrackedProduct( TRACKED_PRODUCT_ID, UUID.randomUUID().toString(), tracking );
+			entityManager.persist( product );
+		} );
+	}
 
-          assertThat(Hibernate.isInitialized(product.tracking.creator)).isTrue();
-          assertThat(Hibernate.isInitialized(product.tracking.modifier)).isFalse();
-        });
-  }
+	@Entity( name = "TrackedProduct" )
+	static class TrackedProduct {
+		@Id
+		private Integer id;
 
-  @Test
-  @DisplayName("Entity load graph is well applied on Embedded attributes")
-  void testLoadGraph(EntityManagerFactoryScope scope) {
-    scope.inTransaction(
-        entityManager -> {
-          EntityGraph<EntityGraphEmbeddedAttributesTest.TrackedProduct> trackedProductGraph =
-              entityManager.createEntityGraph(
-                  EntityGraphEmbeddedAttributesTest.TrackedProduct.class);
-          trackedProductGraph.addSubgraph("tracking").addAttributeNodes("creator");
+		@Embedded
+		private Tracking tracking;
 
-          EntityGraphEmbeddedAttributesTest.TrackedProduct product =
-              entityManager.find(
-                  EntityGraphEmbeddedAttributesTest.TrackedProduct.class,
-                  TRACKED_PRODUCT_ID,
-                  Map.of("javax.persistence.loadgraph", trackedProductGraph));
+		private String barcode;
 
-          assertThat(Hibernate.isInitialized(product.tracking.creator)).isTrue();
-          assertThat(Hibernate.isInitialized(product.tracking.modifier)).isFalse();
-        });
-  }
+		public TrackedProduct() {
+		}
 
-  @Entity(name = "TrackedProduct")
-  public static class TrackedProduct {
-    @Id private Integer id;
+		public TrackedProduct(Integer id, String barcode, Tracking tracking) {
+			this.id = id;
+			this.barcode = barcode;
+			this.tracking = tracking;
+		}
+	}
 
-    @Embedded private Tracking tracking;
+	@Embeddable
+	static class Tracking {
+		@ManyToOne( fetch = FetchType.LAZY )
+		private UserForTracking creator;
 
-    private String barcode;
+		@ManyToOne( fetch = FetchType.LAZY )
+		private UserForTracking modifier;
 
-    public TrackedProduct() {}
+		public Tracking() {
+		}
 
-    public TrackedProduct(Integer id, String barcode, Tracking tracking) {
-      this.id = id;
-      this.barcode = barcode;
-      this.tracking = tracking;
-    }
-  }
+		public Tracking(UserForTracking creator, UserForTracking modifier) {
+			this.creator = creator;
+			this.modifier = modifier;
+		}
+	}
 
-  @Embeddable
-  public static class Tracking {
-    @ManyToOne(fetch = FetchType.LAZY)
-    private UserForTracking creator;
+	@Entity( name = "UserForTracking" )
+	static class UserForTracking {
+		@Id
+		private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private UserForTracking modifier;
+		private String login;
 
-    public Tracking() {}
+		public UserForTracking() {
+		}
 
-    public Tracking(UserForTracking creator, UserForTracking modifier) {
-      this.creator = creator;
-      this.modifier = modifier;
-    }
-  }
-
-  @Entity(name = "UserForTracking")
-  public static class UserForTracking {
-    @Id private Integer id;
-
-    private String login;
-
-    public UserForTracking() {}
-
-    public UserForTracking(Integer id, String login) {
-      this.id = id;
-      this.login = login;
-    }
-  }
+		public UserForTracking(Integer id, String login) {
+			this.id = id;
+			this.login = login;
+		}
+	}
 }
