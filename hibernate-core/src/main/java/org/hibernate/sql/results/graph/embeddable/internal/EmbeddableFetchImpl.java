@@ -7,9 +7,11 @@
 package org.hibernate.sql.results.graph.embeddable.internal;
 
 import org.hibernate.engine.FetchTiming;
+import org.hibernate.graph.spi.GraphHelper;
 import org.hibernate.graph.spi.GraphImplementor;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
+import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.JpaMetamodel;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.SqlAstJoinType;
@@ -175,7 +177,8 @@ public class EmbeddableFetchImpl extends AbstractFetchParent
 
 	@Override
 	public boolean appliesTo(GraphImplementor<?> graphImplementor, JpaMetamodel metamodel) {
-		return getFetchParent().appliesTo( graphImplementor, metamodel );
+		return GraphHelper.appliesTo( graphImplementor, metamodel.embeddable( getResultJavaType().getTypeName() ) )
+				|| getFetchParent().appliesTo( graphImplementor, metamodel );
 	}
 
 	@Override
