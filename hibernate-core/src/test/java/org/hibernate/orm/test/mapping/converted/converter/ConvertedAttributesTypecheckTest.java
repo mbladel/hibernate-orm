@@ -43,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Jira( "https://hibernate.atlassian.net/browse/HHH-17693" )
 @Jira( "https://hibernate.atlassian.net/browse/HHH-17766" )
 public class ConvertedAttributesTypecheckTest {
-	private static Date TEST_DATE = new GregorianCalendar( 1996, Calendar.MAY, 20, 6, 30 ).getTime();
+	private static final Date TEST_DATE = new GregorianCalendar( 1996, Calendar.MAY, 20, 6, 30 ).getTime();
 
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
@@ -114,19 +114,18 @@ public class ConvertedAttributesTypecheckTest {
 	}
 
 	@Test
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-18400" )
 	public void test(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final CriteriaBuilder criteriaBuilder = session.getCriteriaBuilder();
 			final CriteriaQuery<TestEntity> criteriaQuery = criteriaBuilder.createQuery( TestEntity.class );
 			final Root<TestEntity> root = criteriaQuery.from( TestEntity.class );
 			final ParameterExpression<Date> dateParameter = criteriaBuilder.parameter( Date.class );
-			final TypedQuery<TestEntity> query = session
+			final TestEntity entity = session
 					.createQuery( criteriaQuery.where( criteriaBuilder.equal(
 							root.get( "convertedDate" ),
 							dateParameter
-					) ) );
-			query.setParameter( dateParameter, TEST_DATE );
-			final TestEntity entity = query.getSingleResult();
+					) ) ).setParameter( dateParameter, TEST_DATE ).getSingleResult();
 			assertThat( entity ).isNotNull();
 		} );
 	}
