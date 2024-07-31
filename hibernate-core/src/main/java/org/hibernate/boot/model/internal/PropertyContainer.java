@@ -96,9 +96,9 @@ public class PropertyContainer {
 		final Map<String,XProperty> persistentAttributesFromComponents = new HashMap<>();
 
 		final Map<String, XProperty> localAttributeMap;
-		// If the record class has only record components which match up with fields and no additional getters,
-		// we can retain the property order, to match up with the record component order
-		if ( !recordComponents.isEmpty() && recordComponents.size() == fields.size() && getters.isEmpty() ) {
+		// If the record class has only record components which match up with fields,
+		// we must retain the property order, to match up with the record component order
+		if ( !recordComponents.isEmpty() && recordComponents.size() == fields.size() ) {
 			localAttributeMap = new LinkedHashMap<>();
 		}
 		//otherwise we sort them in alphabetical order, since this is at least deterministic
