@@ -11,10 +11,12 @@ import org.hibernate.stat.spi.StatisticsImplementor;
 
 import org.hibernate.testing.orm.domain.gambit.BasicEntity;
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.hibernate.testing.orm.junit.Setting;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -26,11 +28,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DomainModel( annotatedClasses = {
 		BasicEntity.class
 } )
-@SessionFactory
+@SessionFactory( generateStatistics = true )
 @ServiceRegistry( settings = {
 		@Setting( name = AvailableSettings.USE_QUERY_CACHE, value = "true" ),
 		@Setting( name = AvailableSettings.USE_SECOND_LEVEL_CACHE, value = "true" )
 } )
+@Jira( "https://hibernate.atlassian.net/browse/HHH-18439" )
 public class QueryCacheNullValueTest {
 	@Test
 	public void testNullProperty(SessionFactoryScope scope) {
@@ -65,5 +68,10 @@ public class QueryCacheNullValueTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
 		scope.inTransaction( session -> session.persist( new BasicEntity( 1, null ) ) );
+	}
+
+	@AfterAll
+	public void tearDown(SessionFactoryScope scope) {
+		scope.getSessionFactory().getSchemaManager().truncateMappedObjects();
 	}
 }
