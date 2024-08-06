@@ -420,12 +420,12 @@ public abstract class AbstractSelectionQuery<R>
 		}
 
 		final JavaType<?> selectionExpressibleJavaType = selectionExpressible.getExpressibleJavaType();
-		assert selectionExpressibleJavaType != null;
+		if ( selectionExpressibleJavaType == null ) {
+			// nothing we can validate
+			return;
+		}
 
 		final Class<?> selectionExpressibleJavaTypeClass = selectionExpressibleJavaType.getJavaTypeClass();
-		if ( selectionExpressibleJavaTypeClass == Object.class ) {
-
-		}
 		if ( selectionExpressibleJavaTypeClass != Object.class ) {
 			// performs a series of opt-out checks for validity... each if branch and return indicates a valid case
 			if ( resultClass.isAssignableFrom( selectionExpressibleJavaTypeClass ) ) {
