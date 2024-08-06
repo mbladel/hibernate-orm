@@ -7,6 +7,7 @@
 package org.hibernate.loader.ast.internal;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -72,6 +73,7 @@ import org.hibernate.sql.ast.tree.predicate.PredicateContainer;
 import org.hibernate.sql.ast.tree.select.QueryPart;
 import org.hibernate.sql.ast.tree.select.QuerySpec;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
+import org.hibernate.sql.ast.tree.select.SortSpecification;
 import org.hibernate.sql.exec.internal.JdbcParameterImpl;
 import org.hibernate.sql.results.graph.BiDirectionalFetch;
 import org.hibernate.sql.results.graph.DomainResult;
@@ -954,6 +956,11 @@ public class LoaderSelectBuilder {
 					rowCardinality = isABag ? RowCardinality.BAG : RowCardinality.SET;
 				}
 
+				final QuerySpec querySpec = creationState.getInflightQueryPart().getFirstQuerySpec();
+				final int originalSortSpecifications = querySpec.hasSortSpecifications() ?
+						querySpec.getSortSpecifications().size() :
+						0;
+
 				final Fetch fetch = fetchParent.generateFetchableFetch(
 						fetchable,
 						fetchablePath,
@@ -966,13 +973,24 @@ public class LoaderSelectBuilder {
 				if ( fetch.getTiming() == FetchTiming.IMMEDIATE && joined ) {
 					if ( isFetchablePluralAttributeMapping ) {
 						final PluralAttributeMapping pluralAttributeMapping = (PluralAttributeMapping) fetchable;
-						final QuerySpec querySpec = creationState.getInflightQueryPart().getFirstQuerySpec();
 						applyOrdering(
 								querySpec,
 								fetchablePath,
 								pluralAttributeMapping,
 								creationState
 						);
+						if ( querySpec.hasSortSpecifications() ) {
+							final List<SortSpecification> sortSpecifications = querySpec.getSortSpecifications();
+							if ( sortSpecifications.size() - originalSortSpecifications > 1 ) {
+								// These are the specs added by the plural attribute mapping
+								final List<SortSpecification> newSpecs = sortSpecifications.subList(
+										originalSortSpecifications,
+										sortSpecifications.size()
+								);
+								// We need to reverse them to preserve the correct sort spec order
+								Collections.reverse( newSpecs );
+							}
+						}
 					}
 				}
 
