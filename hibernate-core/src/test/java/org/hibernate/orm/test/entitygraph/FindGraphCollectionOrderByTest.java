@@ -46,6 +46,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 		FindGraphCollectionOrderByTest.Level3.class,
 } )
 @SessionFactory
+@Jira( "https://hibernate.atlassian.net/browse/HHH-18436" )
 public class FindGraphCollectionOrderByTest {
 	@Test
 	public void testLoadGraph(SessionFactoryScope scope) {
