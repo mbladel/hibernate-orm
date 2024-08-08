@@ -956,11 +956,6 @@ public class LoaderSelectBuilder {
 					rowCardinality = isABag ? RowCardinality.BAG : RowCardinality.SET;
 				}
 
-				final QuerySpec querySpec = creationState.getInflightQueryPart().getFirstQuerySpec();
-				final int originalSortSpecifications = querySpec.hasSortSpecifications() ?
-						querySpec.getSortSpecifications().size() :
-						0;
-
 				final Fetch fetch = fetchParent.generateFetchableFetch(
 						fetchable,
 						fetchablePath,
@@ -969,30 +964,6 @@ public class LoaderSelectBuilder {
 						null,
 						creationState
 				);
-
-				if ( fetch.getTiming() == FetchTiming.IMMEDIATE && joined ) {
-					if ( isFetchablePluralAttributeMapping ) {
-						final PluralAttributeMapping pluralAttributeMapping = (PluralAttributeMapping) fetchable;
-						applyOrdering(
-								querySpec,
-								fetchablePath,
-								pluralAttributeMapping,
-								creationState
-						);
-						if ( querySpec.hasSortSpecifications() ) {
-							final List<SortSpecification> sortSpecifications = querySpec.getSortSpecifications();
-							if ( sortSpecifications.size() - originalSortSpecifications > 1 ) {
-								// These are the specs added by the plural attribute mapping
-								final List<SortSpecification> newSpecs = sortSpecifications.subList(
-										originalSortSpecifications,
-										sortSpecifications.size()
-								);
-								// We need to reverse them to preserve the correct sort spec order
-								Collections.reverse( newSpecs );
-							}
-						}
-					}
-				}
 
 				fetches.add( fetch );
 			}
@@ -1026,19 +997,6 @@ public class LoaderSelectBuilder {
 		}
 
 		return true;
-	}
-
-	private void applyOrdering(
-			QuerySpec querySpec,
-			NavigablePath navigablePath,
-			PluralAttributeMapping pluralAttributeMapping,
-			LoaderSqlAstCreationState sqlAstCreationState) {
-		assert pluralAttributeMapping.getAttributeName().equals( navigablePath.getLocalName() );
-
-		final TableGroup tableGroup = sqlAstCreationState.getFromClauseAccess().getTableGroup( navigablePath );
-		assert tableGroup != null;
-
-		applyOrdering( querySpec, tableGroup, pluralAttributeMapping, sqlAstCreationState );
 	}
 
 	private SelectStatement generateSelect(SubselectFetch subselect) {
