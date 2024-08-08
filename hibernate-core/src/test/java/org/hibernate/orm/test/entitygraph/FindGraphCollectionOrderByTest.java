@@ -6,12 +6,12 @@
  */
 package org.hibernate.orm.test.entitygraph;
 
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
 import org.hibernate.Hibernate;
+import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.jpa.AvailableHints;
 
 import org.hibernate.testing.orm.junit.DomainModel;
@@ -49,25 +49,35 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Jira( "https://hibernate.atlassian.net/browse/HHH-18436" )
 public class FindGraphCollectionOrderByTest {
 	@Test
-	public void testLoadGraph(SessionFactoryScope scope) {
-		executeTest( scope, AvailableHints.HINT_SPEC_LOAD_GRAPH );
+	public void testLoadGraphFind(SessionFactoryScope scope) {
+		executeTest( scope, AvailableHints.HINT_SPEC_LOAD_GRAPH, true );
 	}
 
 	@Test
-	public void testFetchGraph(SessionFactoryScope scope) {
-		executeTest( scope, AvailableHints.HINT_SPEC_FETCH_GRAPH );
+	public void testLoadGraphQuery(SessionFactoryScope scope) {
+		executeTest( scope, AvailableHints.HINT_SPEC_LOAD_GRAPH, false );
 	}
 
-	private void executeTest(SessionFactoryScope scope, String hint) {
+	@Test
+	public void testFetchGraphFind(SessionFactoryScope scope) {
+		executeTest( scope, AvailableHints.HINT_SPEC_FETCH_GRAPH, true );
+	}
+
+	@Test
+	public void testFetchGraphQuery(SessionFactoryScope scope) {
+		executeTest( scope, AvailableHints.HINT_SPEC_FETCH_GRAPH, false );
+	}
+
+
+	private void executeTest(SessionFactoryScope scope, String hint, boolean find) {
 		scope.inTransaction( session -> {
-			final Level1 root = session.find(
-					Level1.class,
-					1L,
-					Map.of(
-							hint,
-							session.getEntityGraph( "level1_loadAll" )
-					)
-			);
+			// todo marco : also test with query
+			final RootGraphImplementor<?> graph = session.getEntityGraph( "level1_loadAll" );
+			final Level1 root = find ? session.find( Level1.class, 1L, Map.of( hint, graph ) ) :
+					session.createQuery( "from Level1 where id = :id", Level1.class )
+							.setParameter( "id", 1L )
+							.setHint( hint, graph )
+							.getSingleResult();
 
 			assertThat( root.getChilds() ).matches( Hibernate::isInitialized ).hasSize( 3 );
 			long i = 1;
