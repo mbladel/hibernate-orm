@@ -12,6 +12,7 @@ import java.util.Set;
 import org.hibernate.query.NativeQuery;
 
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.junit.jupiter.api.AfterAll;
@@ -36,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 		NativeQueryJoinTableTest.Shelf.class, NativeQueryJoinTableTest.Book.class,
 } )
 @SessionFactory
+@Jira( "https://hibernate.atlassian.net/browse/HHH-18494" )
 public class NativeQueryJoinTableTest {
 	private static final String SHELF_ID = "shelf1";
 	private static final String FILE_ID = "file1";
@@ -47,7 +49,7 @@ public class NativeQueryJoinTableTest {
 					"select {book.*}, book_1_.shelfid from BOOK_T book, SHELF_BOOK book_1_ where book.fileid = book_1_.fileid",
 					Book.class
 			);
-			final Book retrievedBook = (Book) query.getSingleResult();
+			final Book retrievedBook = query.getSingleResult();
 			assertEquals( FILE_ID, retrievedBook.getFileId() );
 			assertEquals( "Birdwatchers Guide to Dodos", retrievedBook.getTitle() );
 			assertEquals( "nonfiction", retrievedBook.getShelf().getArea() );
