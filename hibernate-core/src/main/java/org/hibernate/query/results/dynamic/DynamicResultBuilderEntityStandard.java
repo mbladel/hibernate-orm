@@ -195,17 +195,14 @@ public class DynamicResultBuilderEntityStandard
 		}
 		final TableGroup tableGroup = fromClauseAccess.resolveTableGroup(
 				elementNavigablePath,
-				np -> {
-					final TableReference tableReference = entityMapping.createPrimaryTableReference(
-							new SqlAliasBaseConstant( tableAlias ),
-							creationState
-					);
-
-					if ( lockMode != null ) {
-						domainResultCreationState.getSqlAstCreationState().registerLockMode( tableAlias, lockMode );
-					}
-					return new TableGroupImpl( elementNavigablePath, tableAlias, tableReference, entityMapping );
-				}
+				_ -> entityMapping.createRootTableGroup(
+						true,
+						navigablePath,
+						tableAlias,
+						new SqlAliasBaseConstant( tableAlias ),
+						null,
+						creationState
+				)
 		);
 		final TableReference tableReference = tableGroup.getPrimaryTableReference();
 		final List<String> keyColumnAliases;
