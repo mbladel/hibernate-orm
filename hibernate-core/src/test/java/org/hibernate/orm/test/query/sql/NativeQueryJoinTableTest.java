@@ -7,7 +7,6 @@
 package org.hibernate.orm.test.query.sql;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.hibernate.query.NativeQuery;
@@ -19,7 +18,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
@@ -43,14 +41,29 @@ public class NativeQueryJoinTableTest {
 	private static final String FILE_ID = "file1";
 
 	@Test
-	public void testNativeQueryWithPlaceholders(SessionFactoryScope scope) {
+	public void testTypedQuery(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final NativeQuery<Book> query = session.createNativeQuery(
+					"select {book.*}, book_1_.shelfid from BOOK_T book, SHELF_BOOK book_1_ where book.fileid = book_1_.fileid",
+					Book.class
+			);
+			final Book retrievedBook = (Book) query.getSingleResult();
+			assertEquals( FILE_ID, retrievedBook.getFileId() );
+			assertEquals( "Birdwatchers Guide to Dodos", retrievedBook.getTitle() );
+			assertEquals( "nonfiction", retrievedBook.getShelf().getArea() );
+			assertEquals( 3, retrievedBook.getShelf().getShelfNumber() );
+			assertEquals( SHELF_ID, retrievedBook.getShelf().getShelfid() );
+			assertEquals( 5, retrievedBook.getShelf().getPosition() );
+		} );
+	}
+
+	@Test
+	public void testAddEntity(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final NativeQuery query = session.createNativeQuery(
 					"select {book.*}, book_1_.shelfid from BOOK_T book, SHELF_BOOK book_1_ where book.fileid = book_1_.fileid"
-					,
-					Book.class
 			);
-//			query.addEntity( "book", Book.class );
+			query.addEntity( "book", Book.class );
 			final Book retrievedBook = (Book) query.getSingleResult();
 			assertEquals( FILE_ID, retrievedBook.getFileId() );
 			assertEquals( "Birdwatchers Guide to Dodos", retrievedBook.getTitle() );
