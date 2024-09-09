@@ -19,6 +19,7 @@ import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.results.graph.DomainResult;
 import org.hibernate.sql.results.graph.DomainResultCreationState;
 import org.hibernate.sql.results.graph.basic.BasicResult;
+import org.hibernate.type.descriptor.converter.spi.BasicValueConverter;
 
 /**
  * Represents a literal in the SQL AST.  This form accepts a {@link BasicValuedMapping}
@@ -32,9 +33,23 @@ public class QueryLiteral<T> implements Literal, DomainResultProducer<T> {
 	private final SqlExpressible expressible;
 
 	public QueryLiteral(T value, SqlExpressible expressible) {
-		assert value == null || expressible.getJdbcMapping().getJdbcJavaType().isInstance( value );
+		assert valueInstanceOfExpressible( value, expressible );
 		this.value = value;
 		this.expressible = expressible;
+	}
+
+	private static <T> boolean valueInstanceOfExpressible(T value, SqlExpressible expressible) {
+		if ( value == null ) {
+			return true;
+		}
+
+		final JdbcMapping jdbcMapping = expressible.getJdbcMapping();
+		if ( jdbcMapping.getJdbcJavaType().isInstance( value )) {
+			return true;
+		}
+
+		final BasicValueConverter<?, ?> valueConverter = jdbcMapping.getValueConverter();
+		return valueConverter != null && valueConverter.getDomainJavaType().isInstance( value );
 	}
 
 	@Override

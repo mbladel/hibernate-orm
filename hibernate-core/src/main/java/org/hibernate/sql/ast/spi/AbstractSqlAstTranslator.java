@@ -5854,9 +5854,13 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 			}
 		}
 		else {
+			final Object literalValue = literal.getLiteralValue();
+			final BasicValueConverter<Object, ?> valueConverter = jdbcMapping.getValueConverter();
 			literalFormatter.appendJdbcLiteral(
 					this,
-					literal.getLiteralValue(),
+					valueConverter == null || jdbcMapping.getJdbcJavaType().isInstance( literalValue ) ?
+							literalValue :
+							valueConverter.toRelationalValue( literalValue ),
 					dialect,
 					getWrapperOptions()
 			);
