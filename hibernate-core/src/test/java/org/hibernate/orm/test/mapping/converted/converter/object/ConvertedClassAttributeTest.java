@@ -1,12 +1,11 @@
 /*
- * Hibernate, Relational Persistence for Idiomatic Java
- *
- * License: GNU Lesser General Public License (LGPL), version 2.1 or later
- * See the lgpl.txt file in the root directory or http://www.gnu.org/licenses/lgpl-2.1.html
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ * Copyright Red Hat Inc. and Hibernate Authors
  */
 package org.hibernate.orm.test.mapping.converted.converter.object;
 
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.junit.jupiter.api.AfterAll;
@@ -30,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 		Status.class,
 } )
 @SessionFactory
+@Jira( "https://hibernate.atlassian.net/browse/HHH-18564" )
 public class ConvertedClassAttributeTest {
 	@Test
 	public void testConvertedAttributeSelection(SessionFactoryScope scope) {
@@ -43,10 +43,21 @@ public class ConvertedClassAttributeTest {
 	}
 
 	@Test
-	public void testStaticQueryLiteralPredicate(SessionFactoryScope scope) {
+	public void testLiteralPredicateDomainForm(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			var result = session.createQuery(
 					String.format( "select t from EntityWithStatus t where t.status > %s.ONE", Status.class.getName() ),
+					EntityWithStatus.class
+			).getSingleResult();
+			assertThat( result.getStatus().getValue() ).isEqualTo( 2 );
+		} );
+	}
+
+	@Test
+	public void testLiteralPredicateRelationalForm(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			var result = session.createQuery(
+					"select t from EntityWithStatus t where t.status > 1",
 					EntityWithStatus.class
 			).getSingleResult();
 			assertThat( result.getStatus().getValue() ).isEqualTo( 2 );
