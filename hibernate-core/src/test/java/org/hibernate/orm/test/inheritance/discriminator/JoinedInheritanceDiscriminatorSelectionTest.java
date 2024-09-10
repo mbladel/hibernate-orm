@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SessionFactory( useCollectingStatementInspector = true )
 @Jira( "https://hibernate.atlassian.net/browse/HHH-17727" )
 @Jira( "https://hibernate.atlassian.net/browse/HHH-17806" )
+@Jira( "https://hibernate.atlassian.net/browse/HHH-18583" )
 public class JoinedInheritanceDiscriminatorSelectionTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
@@ -51,7 +52,7 @@ public class JoinedInheritanceDiscriminatorSelectionTest {
 
 	@AfterAll
 	public void tearDown(SessionFactoryScope scope) {
-		scope.inTransaction( session -> session.createMutationQuery( "delete from ParentEntity" ).executeUpdate() );
+		scope.getSessionFactory().getSchemaManager().truncateMappedObjects();
 	}
 
 	@Test
