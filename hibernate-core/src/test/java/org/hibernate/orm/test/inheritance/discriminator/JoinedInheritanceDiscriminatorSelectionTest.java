@@ -93,6 +93,23 @@ public class JoinedInheritanceDiscriminatorSelectionTest {
 					String.class
 			).getResultList() ).containsOnly( "parent", "child_a" );
 			inspector.assertNumberOfJoins( 0, 0 );
+			inspector.clear();
+
+			// With treat() we preserve the join
+
+			assertThat( session.createQuery(
+					"select p.name from ParentEntity p where treat(p as ChildA).id is not null",
+					String.class
+			).getResultList() ).containsExactlyInAnyOrder( "child_a", "sub_child_a" );
+			inspector.assertNumberOfJoins( 0, 1 );
+			inspector.clear();
+
+			assertThat( session.createQuery(
+					"select p.name from ParentEntity p where treat(p as ChildB).id is not null",
+					String.class
+			).getSingleResult() ).isEqualTo( "child_b" );
+			inspector.assertNumberOfJoins( 0, 1 );
+			inspector.clear();
 		} );
 	}
 
@@ -123,8 +140,9 @@ public class JoinedInheritanceDiscriminatorSelectionTest {
 		inspector.clear();
 
 		scope.inTransaction( session -> {
-			// NOTE: we currently always join all subclasses when selecting the entity instance. We could
-			//  maybe avoid this when we have a physical discriminator column and a type filter
+			// With type filters we still join all subclasses when selecting the entity instance
+			// because we are not aware of the type restriction when processing the selection
+
 			assertThat( session.createQuery(
 					"from ParentEntity p where type(p) = ParentEntity",
 					ParentEntity.class
@@ -144,6 +162,22 @@ public class JoinedInheritanceDiscriminatorSelectionTest {
 					ParentEntity.class
 			).getResultList() ).hasSize( 1 );
 			inspector.assertNumberOfJoins( 0, 3 );
+			inspector.clear();
+
+			// With treat() we only join the needed subclasses
+
+			assertThat( session.createQuery(
+					"select treat(p as ChildA) from ParentEntity p",
+					ParentEntity.class
+			).getResultList() ).hasSize( 2 );
+			inspector.assertNumberOfJoins( 0, 2 );
+			inspector.clear();
+
+			assertThat( session.createQuery(
+					"select treat(p as ChildB) from ParentEntity p",
+					ParentEntity.class
+			).getResultList() ).hasSize( 1 );
+			inspector.assertNumberOfJoins( 0, 1 );
 		} );
 	}
 
