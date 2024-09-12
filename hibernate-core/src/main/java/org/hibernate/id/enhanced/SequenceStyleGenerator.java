@@ -15,7 +15,6 @@ import java.util.Set;
 import org.hibernate.HibernateException;
 import org.hibernate.MappingException;
 import org.hibernate.boot.model.naming.Identifier;
-import org.hibernate.boot.model.naming.ObjectNameNormalizer;
 import org.hibernate.boot.model.relational.Database;
 import org.hibernate.boot.model.relational.QualifiedName;
 import org.hibernate.boot.model.relational.QualifiedNameParser;
@@ -27,6 +26,7 @@ import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.config.spi.ConfigurationService;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.generator.GeneratorCreationContext;
 import org.hibernate.id.BulkInsertionCapableIdentifierGenerator;
 import org.hibernate.id.IdentifierGenerator;
 import org.hibernate.id.PersistentIdentifierGenerator;
@@ -163,6 +163,7 @@ public class SequenceStyleGenerator
 	private DatabaseStructure databaseStructure;
 	private Optimizer optimizer;
 	private Type identifierType;
+	private Database database;
 
 	/**
 	 * Getter for property 'databaseStructure'.
@@ -195,6 +196,12 @@ public class SequenceStyleGenerator
 
 	// Configurable implementation ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+
+	@Override
+	public void create(GeneratorCreationContext creationContext) throws MappingException {
+		this.database = creationContext.getDatabase();
+	}
+
 	@Override
 	public void configure(Type type, Properties parameters, ServiceRegistry serviceRegistry) throws MappingException {
 		final JdbcEnvironment jdbcEnvironment = serviceRegistry.requireService( JdbcEnvironment.class );
@@ -217,8 +224,7 @@ public class SequenceStyleGenerator
 				physicalSequence,
 				optimizationStrategy,
 				serviceRegistry,
-				determineContributor( parameters ),
-				(ObjectNameNormalizer) parameters.get( IDENTIFIER_NORMALIZER )
+				determineContributor( parameters )
 		);
 
 		if ( physicalSequence
@@ -253,8 +259,7 @@ public class SequenceStyleGenerator
 			boolean physicalSequence,
 			OptimizerDescriptor optimizationStrategy,
 			ServiceRegistry serviceRegistry,
-			String contributor,
-			ObjectNameNormalizer normalizer) {
+			String contributor) {
 		final ConfigurationService configurationService = serviceRegistry.requireService( ConfigurationService.class );
 		final SequenceMismatchStrategy sequenceMismatchStrategy = configurationService.getSetting(
 				AvailableSettings.SEQUENCE_INCREMENT_SIZE_MISMATCH_STRATEGY,
@@ -265,7 +270,7 @@ public class SequenceStyleGenerator
 		if ( sequenceMismatchStrategy != SequenceMismatchStrategy.NONE
 				&& optimizationStrategy.isPooled()
 				&& physicalSequence ) {
-			final String databaseSequenceName = normalizer.database()
+			final String databaseSequenceName = database
 					.getPhysicalNamingStrategy()
 					.toPhysicalSequenceName( sequenceName.getObjectName(), jdbcEnvironment )
 					.getText();
