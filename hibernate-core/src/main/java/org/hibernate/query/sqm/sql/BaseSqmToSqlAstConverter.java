@@ -1290,11 +1290,6 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 					rootTableGroup
 			);
 
-			if ( !rootTableGroup.getTableReferenceJoins().isEmpty()
-					|| !rootTableGroup.getTableGroupJoins().isEmpty() ) {
-				throw new SemanticException( "Not expecting multiple table references for an SQM INSERT-SELECT" );
-			}
-
 			for ( SqmValues sqmValues : sqmStatement.getValuesList() ) {
 				final Values values = visitValues( sqmValues );
 				additionalInsertValues.applyValues( values );
