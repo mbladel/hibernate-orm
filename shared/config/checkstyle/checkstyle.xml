@@ -10,10 +10,11 @@
 
     <!-- Only defines "fatal" violations; there are additional "non-fatal" rules in checkstyle-non-fatal.xml -->
 
-    <module name="RegexpHeader">
-        <property name="header" value=""/>
-        <property name="fileExtensions" value="\/\*\n * SPDX-License-Identifier: LGPL-2.1-or-later\n \* Copyright Red Hat Inc. and Hibernate Authors\n \*\/java"/>
-    </module>
+<!--    enforced by spotless licenseHeaderFile-->
+<!--    <module name="RegexpHeader">-->
+<!--        <property name="header" value=""/>-->
+<!--        <property name="fileExtensions" value="\/\*\n * SPDX-License-Identifier: LGPL-2.1-or-later\n \* Copyright Red Hat Inc. and Hibernate Authors\n \*\/java"/>-->
+<!--    </module>-->
 
     <module name="RegexpHeader">
         <property name="header" value="&lt;\?xml version\=&quot;1.0&quot; encoding\=&quot;UTF-8&quot;\?&gt;\n&lt;!--\n  ~ Hibernate, Relational Persistence for Idiomatic Java\n  ~\n  ~ License: GNU Lesser General Public License \(LGPL\), version 2\.1 or later[\.]?\n  ~ See the lgpl.txt file in the root directory or [&lt;]?http:\/\/www\.gnu\.org\/licenses\/lgpl-2\.1\.html[&gt;]?[.]?\n  --&gt;"/>
@@ -25,11 +26,12 @@
         <!--
             High-priority warnings : fail the build...
         -->
-        <module name="RegexpSinglelineJava">
-            <property name="ignoreComments" value="true" />
-            <property name="format" value="^\t* +\t*\S" />
-            <property name="message" value="Line has leading space characters; indentation should be performed with tabs only." />
-        </module>
+<!--        enforced by indentWithTabs-->
+<!--        <module name="RegexpSinglelineJava">-->
+<!--            <property name="ignoreComments" value="true" />-->
+<!--            <property name="format" value="^\t* +\t*\S" />-->
+<!--            <property name="message" value="Line has leading space characters; indentation should be performed with tabs only." />-->
+<!--        </module>-->
 
         <module name="Regexp">
             <property name="format" value="/^(master|slave)$/"/>
@@ -91,14 +93,15 @@
        on different operating systems and that rule allows only one type. This rule
        is not actually checking for new lines, but it will work if we check that
        there are not white spaces at the end of a line with another rule. -->
-    <module name="RegexpMultiline">
-        <property name="format" value="\S\z" />
-        <property name="message" value="Missing new line at the end of file" />
-    </module>
+<!--    enforced by spotless endWithNewline-->
+<!--    <module name="RegexpMultiline">-->
+<!--        <property name="format" value="\S\z" />-->
+<!--        <property name="message" value="Missing new line at the end of file" />-->
+<!--    </module>-->
 
-    <module name="RegexpMultiline">
-        <property name="format" value="\S(r?\n){5,}\z" />
-        <property name="message" value="Files should end with no more than 5 (empty) new lines" />
-    </module>
+<!--    <module name="RegexpMultiline">-->
+<!--        <property name="format" value="\S(r?\n){5,}\z" />-->
+<!--        <property name="message" value="Files should end with no more than 5 (empty) new lines" />-->
+<!--    </module>-->
 
 </module>

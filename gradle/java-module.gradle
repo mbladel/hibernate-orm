@@ -195,8 +195,6 @@ tasks.withType( JavaCompile ) {
 	]
 }
 
-tasks.compileJava.dependsOn spotlessApply
-
 task compile(dependsOn: [compileJava, processResources, compileTestJava, processTestResources] )
 
 
@@ -483,6 +481,23 @@ spotless {
 	}
 }
 
+tasks.check.dependsOn spotlessApply
+
+tasks.register( "ciCheck" ) {
+	group "verification"
+	description "Checks for most CI environments"
+	dependsOn test
+}
+
+tasks.register( "ciCheckComplete" ) {
+	group "verification"
+	description "More complete checking for the H2 CI environment.  The extra work is only needed for one job in the group"
+
+	dependsOn ciCheck
+	dependsOn spotlessCheck
+	dependsOn checkstyleMain
+	dependsOn forbiddenApisMain
+}
 
 class CompilerStubsArgumentProvider implements CommandLineArgumentProvider {
 
