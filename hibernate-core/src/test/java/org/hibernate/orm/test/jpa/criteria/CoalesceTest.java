@@ -117,19 +117,47 @@ public class CoalesceTest {
 			final CriteriaQuery<Tuple> cquery = cb.createTupleQuery();
 			final Root<ComponentEntity> root = cquery.from( ComponentEntity.class );
 
-			cquery.multiselect(
+			cquery.select( cb.tuple(
 					root.get( "id" ),
 					cb.diff(
 							cb.coalesce( root.get( "componentA" ).get( "income" ), BigDecimal.ZERO ),
 							cb.coalesce( root.get( "componentA" ).get( "expense" ), BigDecimal.ZERO )
 					)
-			);
+			) );
 
 			final List<Tuple> resultList = entityManager.createQuery( cquery ).getResultList();
 			assertThat( resultList ).hasSize( 2 );
 			for ( Tuple result : resultList ) {
 				final Long id = result.get( 0, Long.class );
 				assertThat( result.get( 1, BigDecimal.class ).intValue() ).isEqualTo( id == 1L ? 0 : 1 );
+			}
+		} );
+	}
+
+	@Test
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-18321" )
+	public void testCoalesceInBinaryArithmeticParam(EntityManagerFactoryScope scope) {
+		scope.inTransaction( entityManager -> {
+			final CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+			final CriteriaQuery<Tuple> cquery = cb.createTupleQuery();
+			final Root<ComponentEntity> root = cquery.from( ComponentEntity.class );
+
+			final ParameterExpression<BigDecimal> defaultValue = cb.parameter( BigDecimal.class, "default-value" );
+
+			cquery.select( cb.tuple(
+					root.get( "id" ),
+					cb.diff(
+							defaultValue,
+							cb.coalesce( root.get( "componentA" ).get( "expense" ), defaultValue )
+					)
+			) );
+
+			final List<Tuple> resultList = entityManager.createQuery( cquery )
+					.setParameter( "default-value", BigDecimal.ZERO ).getResultList();
+			assertThat( resultList ).hasSize( 2 );
+			for ( Tuple result : resultList ) {
+				final Long id = result.get( 0, Long.class );
+				assertThat( result.get( 1, BigDecimal.class ).intValue() ).isEqualTo( id == 1L ? -1 : 0 );
 			}
 		} );
 	}
