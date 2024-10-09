@@ -78,7 +78,7 @@ public interface JpaMetamodel extends Metamodel {
 	<X> EntityDomainType<X> resolveHqlEntityReference(String entityName);
 
 	/**
-	 * Same as {@link #managedType} except {@code null} is returned rather
+	 * Same as {@link #managedType(Class)} except {@code null} is returned rather
 	 * than throwing an exception
 	 */
 	@Nullable <X> ManagedDomainType<X> findManagedType(Class<X> cls);
@@ -88,6 +88,18 @@ public interface JpaMetamodel extends Metamodel {
 	 * than throwing an exception
 	 */
 	@Nullable <X> EntityDomainType<X> findEntityType(Class<X> cls);
+
+	/**
+	 * Same as {@link #embeddable(Class)} except {@code null} is returned rather
+	 * than throwing an exception
+	 */
+	@Nullable <X> EmbeddableDomainType<X> findEmbeddableType(Class<X> cls);
+
+	/**
+	 * Same as {@link #managedType(String)} except {@code null} is returned rather
+	 * than throwing an exception
+	 */
+	@Nullable <X> ManagedDomainType<X> findManagedType(@Nullable String typeName);
 
 	/**
 	 * Same as {@link #entity(String)} except {@code null} is returned rather

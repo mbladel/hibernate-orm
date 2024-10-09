@@ -134,9 +134,18 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 	}
 
 	@Override
-	public <X> ManagedDomainType<X> managedType(String typeName) {
+	public @Nullable <X> ManagedDomainType<X> findManagedType(@Nullable String typeName) {
 		//noinspection unchecked
 		return typeName == null ? null : (ManagedDomainType<X>) managedTypeByName.get( typeName );
+	}
+
+	@Override
+	public <X> ManagedDomainType<X> managedType(String typeName) {
+		final ManagedDomainType<X> managedType = findManagedType( typeName );
+		if ( managedType == null ) {
+			throw new IllegalArgumentException("Not a managed type: " + typeName);
+		}
+		return managedType;
 	}
 
 	@Override
@@ -226,6 +235,16 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 	}
 
 	@Override
+	public <X> ManagedDomainType<X> managedType(Class<X> cls) {
+		final ManagedDomainType<X> type = findManagedType( cls );
+		if ( type == null ) {
+			// per JPA
+			throw new IllegalArgumentException( "Not a managed type: " + cls );
+		}
+		return type;
+	}
+
+	@Override
 	@Nullable public <X> EntityDomainType<X> findEntityType(Class<X> cls) {
 		final ManagedType<?> type = managedTypeByClass.get( cls );
 		if ( !( type instanceof EntityDomainType<?> ) ) {
@@ -236,35 +255,31 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 	}
 
 	@Override
-	public <X> ManagedDomainType<X> managedType(Class<X> cls) {
-		final ManagedType<?> type = managedTypeByClass.get( cls );
-		if ( type == null ) {
-			// per JPA
-			throw new IllegalArgumentException( "Not a managed type: " + cls );
+	public <X> EntityDomainType<X> entity(Class<X> cls) {
+		final EntityDomainType<X> entityType = findEntityType( cls );
+		if ( entityType == null ) {
+			throw new IllegalArgumentException( "Not an entity: " + cls.getName() );
 		}
-
-		//noinspection unchecked
-		return (ManagedDomainType<X>) type;
+		return entityType;
 	}
 
 	@Override
-	public <X> EntityDomainType<X> entity(Class<X> cls) {
+	public @Nullable <X> EmbeddableDomainType<X> findEmbeddableType(Class<X> cls) {
 		final ManagedType<?> type = managedTypeByClass.get( cls );
-		if ( !( type instanceof EntityDomainType<?> ) ) {
-			throw new IllegalArgumentException( "Not an entity: " + cls.getName() );
+		if ( !( type instanceof EmbeddableDomainType<?> ) ) {
+			return null;
 		}
 		//noinspection unchecked
-		return (EntityDomainType<X>) type;
+		return (EmbeddableDomainType<X>) type;
 	}
 
 	@Override
 	public <X> EmbeddableDomainType<X> embeddable(Class<X> cls) {
-		final ManagedType<?> type = managedTypeByClass.get( cls );
-		if ( !( type instanceof EmbeddableDomainType<?> ) ) {
+		EmbeddableDomainType<X> embeddableType = findEmbeddableType( cls );
+		if ( embeddableType == null ) {
 			throw new IllegalArgumentException( "Not an embeddable: " + cls.getName() );
 		}
-		//noinspection unchecked
-		return (EmbeddableDomainType<X>) type;
+		return embeddableType;
 	}
 
 	private Collection<ManagedDomainType<?>> getAllManagedTypes() {

@@ -478,6 +478,11 @@ public class MappingMetamodelImpl extends QueryParameterBindingTypeResolverImpl
 	}
 
 	@Override
+	public @Nullable <X> ManagedDomainType<X> findManagedType(@Nullable String typeName) {
+		return jpaMetamodel.findManagedType( typeName );
+	}
+
+	@Override
 	public <X> ManagedDomainType<X> managedType(String typeName) {
 		return jpaMetamodel.managedType( typeName );
 	}
@@ -520,6 +525,11 @@ public class MappingMetamodelImpl extends QueryParameterBindingTypeResolverImpl
 	@Override
 	public <X> EntityDomainType<X> findEntityType(Class<X> cls) {
 		return jpaMetamodel.findEntityType( cls );
+	}
+
+	@Override
+	public @Nullable <X> EmbeddableDomainType<X> findEmbeddableType(Class<X> cls) {
+		return jpaMetamodel.findEmbeddableType( cls );
 	}
 
 	@Override
