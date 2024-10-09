@@ -5,10 +5,10 @@
 package org.hibernate.orm.test.jpa.compliance;
 
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
-import jakarta.persistence.Table;
 import jakarta.persistence.metamodel.Attribute;
 import jakarta.persistence.metamodel.ManagedType;
 import jakarta.persistence.metamodel.MappedSuperclassType;
@@ -19,6 +19,7 @@ import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.JpaMetamodel;
 import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.testing.orm.junit.EntityManagerFactoryScope;
+import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.Jpa;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
-@Jpa(annotatedClasses = MetamodelTypesTest.Person.class)
+@Jpa(annotatedClasses = {
+		MetamodelTypesTest.BaseEntity.class,
+		MetamodelTypesTest.Person.class,
+		MetamodelTypesTest.Order.class,
+})
+@Jira( "https://hibernate.atlassian.net/browse/HHH-18683" )
 public class MetamodelTypesTest {
 	@Test
 	public void getJavaType(EntityManagerFactoryScope scope) {
@@ -52,8 +58,8 @@ public class MetamodelTypesTest {
 			final EntityDomainType<Person> personType = jpaMetamodel.entity( Person.class );
 			assertThat( personType ).isNotNull().isSameAs( jpaMetamodel.findEntityType( Person.class ) )
 					.extracting( EntityDomainType::getName ).isEqualTo( "Person" );
-			assertThat( jpaMetamodel.entity( personType.getName() ) ).isSameAs(
-					jpaMetamodel.findEntityType( personType.getName() ) ).isSameAs( personType );
+			assertThat( jpaMetamodel.entity( Person.class.getName() ) ).isSameAs(
+					jpaMetamodel.findEntityType( Person.class.getName() ) ).isSameAs( personType );
 
 			// Nonexistent entity type
 			assertThat( jpaMetamodel.findEntityType( Order.class ) ).isNull();
@@ -90,21 +96,21 @@ public class MetamodelTypesTest {
 					jpaMetamodel.findManagedType( BaseEntity.class.getName() ) ).isSameAs( baseEntityType );
 
 			// Nonexistent mapped superclass type
-			assertThat( jpaMetamodel.findManagedType( Order.class ) ).isNull();
+			assertThat( jpaMetamodel.findManagedType( MetamodelTypesTest.class ) ).isNull();
 			assertThat( jpaMetamodel.findManagedType( "AnotherEntity" ) ).isNull();
 			try {
 				jpaMetamodel.managedType( "AnotherEntity" );
 				fail( "Expected IllegalArgumentException for nonexistent entity type" );
 			}
 			catch (IllegalArgumentException e) {
-				assertThat( e ).hasMessageContaining( "Not an entity" );
+				assertThat( e ).hasMessageContaining( "Not a managed type" );
 			}
 			try {
 				jpaMetamodel.managedType( MetamodelTypesTest.class );
 				fail( "Expected IllegalArgumentException for embeddable type requested as entity" );
 			}
 			catch (IllegalArgumentException e) {
-				assertThat( e ).hasMessageContaining( "Not an entity" );
+				assertThat( e ).hasMessageContaining( "Not a managed type" );
 			}
 		} );
 	}
@@ -130,14 +136,14 @@ public class MetamodelTypesTest {
 				fail( "Expected IllegalArgumentException for nonexistent entity type" );
 			}
 			catch (IllegalArgumentException e) {
-				assertThat( e ).hasMessageContaining( "Not an entity" );
+				assertThat( e ).hasMessageContaining( "Not an embeddable" );
 			}
 			try {
 				jpaMetamodel.embeddable( Person.class );
 				fail( "Expected IllegalArgumentException for embeddable type requested as entity" );
 			}
 			catch (IllegalArgumentException e) {
-				assertThat( e ).hasMessageContaining( "Not an entity" );
+				assertThat( e ).hasMessageContaining( "Not an embeddable" );
 			}
 		} );
 	}
@@ -149,11 +155,13 @@ public class MetamodelTypesTest {
 	}
 
 	@Entity(name = "Person")
-	@Table(name = "PERSON_TABLE")
 	public static class Person extends BaseEntity {
 		private String name;
 
 		private int age;
+
+		@Embedded
+		private Order order;
 	}
 
 	@Embeddable
