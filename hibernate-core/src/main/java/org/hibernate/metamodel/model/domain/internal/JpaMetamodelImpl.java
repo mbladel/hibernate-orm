@@ -140,27 +140,46 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 	}
 
 	@Override
-	public EntityDomainType<?> entity(String entityName) {
+	@Nullable public EntityDomainType<?> findEntityType(@Nullable String entityName) {
 		if ( entityName == null ) {
 			return null;
 		}
 		final ManagedDomainType<?> managedType = managedTypeByName.get( entityName );
-		if ( !( managedType instanceof EntityDomainType<?> ) ) {
+		if ( !( managedType instanceof EntityDomainType<?> entityDomainType ) ) {
 			return null;
 		}
-		return (EntityDomainType<?>) managedType;
+		return entityDomainType;
 	}
 
 	@Override
-	public EmbeddableDomainType<?> embeddable(String embeddableName) {
+	public EntityDomainType<?> entity(String entityName) {
+		EntityDomainType<?> entityType = findEntityType( entityName );
+		if ( entityType == null ) {
+			// per JPA
+			throw new IllegalArgumentException("Not an entity: " + entityName);
+		}
+		return entityType;
+	}
+
+	@Override
+	@Nullable public EmbeddableDomainType<?> findEmbeddableType(@Nullable String embeddableName) {
 		if ( embeddableName == null ) {
 			return null;
 		}
 		final ManagedDomainType<?> managedType = managedTypeByName.get( embeddableName );
-		if ( !( managedType instanceof EmbeddableDomainType<?> ) ) {
+		if ( !( managedType instanceof EmbeddableDomainType<?> embeddableDomainType) ) {
 			return null;
 		}
-		return (EmbeddableDomainType<?>) managedType;
+		return embeddableDomainType;
+	}
+
+	@Override
+	public EmbeddableDomainType<?> embeddable(String embeddableName) {
+		EmbeddableDomainType<?> embeddableType = findEmbeddableType( embeddableName );
+		if ( embeddableType == null ) {
+			throw new IllegalArgumentException("Not an embeddable: " + embeddableName);
+		}
+		return embeddableType;
 	}
 
 	@Override
@@ -172,7 +191,7 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 			entityName = importInfo.importedName;
 		}
 
-		final EntityDomainType<?> entityDescriptor = entity( entityName );
+		final EntityDomainType<?> entityDescriptor = findEntityType( entityName );
 		if ( entityDescriptor != null ) {
 			//noinspection unchecked
 			return (EntityDomainType<X>) entityDescriptor;
@@ -201,13 +220,13 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 	}
 
 	@Override
-	public <X> ManagedDomainType<X> findManagedType(Class<X> cls) {
+	@Nullable public <X> ManagedDomainType<X> findManagedType(Class<X> cls) {
 		//noinspection unchecked
 		return (ManagedDomainType<X>) managedTypeByClass.get( cls );
 	}
 
 	@Override
-	public <X> EntityDomainType<X> findEntityType(Class<X> cls) {
+	@Nullable public <X> EntityDomainType<X> findEntityType(Class<X> cls) {
 		final ManagedType<?> type = managedTypeByClass.get( cls );
 		if ( !( type instanceof EntityDomainType<?> ) ) {
 			return null;
@@ -441,7 +460,7 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 					definition.getEntityName(),
 					definition.getJpaEntityName()
 			);
-			final EntityDomainType<?> entityType = entity( definition.getEntityName() );
+			final EntityDomainType<?> entityType = findEntityType( definition.getEntityName() );
 			if ( entityType == null ) {
 				throw new IllegalArgumentException(
 						"Attempted to register named entity graph [" + definition.getRegisteredName()

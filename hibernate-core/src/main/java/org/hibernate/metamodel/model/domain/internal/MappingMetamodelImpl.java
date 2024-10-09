@@ -17,6 +17,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.EntityNameResolver;
 import org.hibernate.HibernateException;
 import org.hibernate.MappingException;
@@ -482,8 +483,18 @@ public class MappingMetamodelImpl extends QueryParameterBindingTypeResolverImpl
 	}
 
 	@Override
+	public @Nullable EntityDomainType<?> findEntityType(@Nullable String entityName) {
+		return jpaMetamodel.findEntityType( entityName );
+	}
+
+	@Override
 	public EntityDomainType<?> entity(String entityName) {
 		return jpaMetamodel.entity( entityName );
+	}
+
+	@Override
+	public @Nullable EmbeddableDomainType<?> findEmbeddableType(@Nullable String embeddableName) {
+		return jpaMetamodel.findEmbeddableType( embeddableName );
 	}
 
 	@Override

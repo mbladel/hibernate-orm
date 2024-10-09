@@ -81,13 +81,25 @@ public interface JpaMetamodel extends Metamodel {
 	 * Same as {@link #managedType} except {@code null} is returned rather
 	 * than throwing an exception
 	 */
-	<X> ManagedDomainType<X> findManagedType(Class<X> cls);
+	@Nullable <X> ManagedDomainType<X> findManagedType(Class<X> cls);
 
 	/**
-	 * Same as {@link #entity} except {@code null} is returned rather
+	 * Same as {@link #entity(Class)} except {@code null} is returned rather
 	 * than throwing an exception
 	 */
-	<X> EntityDomainType<X> findEntityType(Class<X> cls);
+	@Nullable <X> EntityDomainType<X> findEntityType(Class<X> cls);
+
+	/**
+	 * Same as {@link #entity(String)} except {@code null} is returned rather
+	 * than throwing an exception
+	 */
+	@Nullable EntityDomainType<?> findEntityType(@Nullable String entityName);
+
+	/**
+	 * Same as {@link #embeddable(String)} except {@code null} is returned rather
+	 * than throwing an exception
+	 */
+	@Nullable EmbeddableDomainType<?> findEmbeddableType(@Nullable String embeddableName);
 
 	String qualifyImportableName(String queryName);
 
