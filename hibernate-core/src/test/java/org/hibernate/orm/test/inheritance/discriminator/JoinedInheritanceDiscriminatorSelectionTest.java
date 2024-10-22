@@ -121,27 +121,27 @@ public class JoinedInheritanceDiscriminatorSelectionTest {
 		inspector.clear();
 
 		scope.inTransaction( session -> {
-			// NOTE: we currently always join all subclasses when selecting the entity instance. We could
-			//  maybe avoid this when we have a physical discriminator column and a type filter
+			// NOTE: we currently always join all subclasses that have properties when selecting the entity instance.
+			// We could maybe avoid this when we have a physical discriminator column and a type filter
 			assertThat( session.createQuery(
 					"from ParentEntity p where type(p) = ParentEntity",
 					ParentEntity.class
 			).getResultList() ).hasSize( 1 );
-			inspector.assertNumberOfJoins( 0, 3 );
+			inspector.assertNumberOfJoins( 0, 2 );
 			inspector.clear();
 
 			assertThat( session.createQuery(
 					"from ParentEntity p where type(p) = ChildA",
 					ParentEntity.class
 			).getResultList() ).hasSize( 1 );
-			inspector.assertNumberOfJoins( 0, 3 );
+			inspector.assertNumberOfJoins( 0, 2 );
 			inspector.clear();
 
 			assertThat( session.createQuery(
 					"from ParentEntity p where type(p) = SubChildA",
 					ParentEntity.class
 			).getResultList() ).hasSize( 1 );
-			inspector.assertNumberOfJoins( 0, 3 );
+			inspector.assertNumberOfJoins( 0, 2 );
 		} );
 	}
 
