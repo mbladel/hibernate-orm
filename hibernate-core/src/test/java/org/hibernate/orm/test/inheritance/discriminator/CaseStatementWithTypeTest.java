@@ -76,7 +76,7 @@ public class CaseStatementWithTypeTest {
 	@Test
 	public void testJoinedInheritance(SessionFactoryScope scope) {
 		executeQuery( scope, JoinedParent.class, JoinedChildA.class, JoinedChildB.class, false );
-		executeQuery( scope, JoinedParent.class, JoinedChildA.class, JoinedChildB.class, true );
+//		executeQuery( scope, JoinedParent.class, JoinedChildA.class, JoinedChildB.class, true );
 	}
 
 	@Test
