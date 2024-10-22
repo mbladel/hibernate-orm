@@ -36,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 		JoinedInheritanceTreatQueryTest.Description.class,
 } )
 @Jira( "https://hibernate.atlassian.net/browse/HHH-16574" )
+@Jira( "https://hibernate.atlassian.net/browse/HHH-18745" )
 public class JoinedInheritanceTreatQueryTest {
 	@BeforeAll
 	public void setUp(SessionFactoryScope scope) {
