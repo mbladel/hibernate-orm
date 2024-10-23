@@ -7256,7 +7256,8 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 						entityMappingType.getRootEntityDescriptor().getEntityName()
 				);
 			}
-			if ( checkValue instanceof EntityTypeLiteral typeLiteral ) {
+			else if ( checkValue instanceof EntityTypeLiteral typeLiteral ) {
+				// Register an expression type usage for the literal subtype to prevent pruning its table group
 				registerEntityNameUsage(
 						tableGroup,
 						EntityNameUse.EXPRESSION,
