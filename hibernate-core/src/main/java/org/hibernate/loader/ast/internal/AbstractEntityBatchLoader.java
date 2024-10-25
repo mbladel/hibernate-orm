@@ -4,7 +4,6 @@
  */
 package org.hibernate.loader.ast.internal;
 
-import org.hibernate.Hibernate;
 import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
 import org.hibernate.engine.spi.EntityKey;
@@ -13,6 +12,7 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.loader.ast.spi.EntityBatchLoader;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 
+import static org.hibernate.engine.internal.ManagedTypeHelper.isInitialized;
 import static org.hibernate.loader.ast.internal.MultiKeyLoadHelper.hasSingleId;
 import static org.hibernate.loader.ast.internal.MultiKeyLoadLogging.MULTI_KEY_LOAD_LOGGER;
 
@@ -71,7 +71,7 @@ public abstract class AbstractEntityBatchLoader<T>
 		if ( hasSingleId ) {
 			return entity;
 		}
-		else if ( Hibernate.isInitialized( entity ) ) {
+		else if ( isInitialized( entity, sessionFactory ) ) {
 			return entity;
 		}
 		else {

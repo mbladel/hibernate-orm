@@ -11,7 +11,6 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.Properties;
 
-import org.hibernate.Hibernate;
 import org.hibernate.HibernateException;
 import org.hibernate.MappingException;
 import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
@@ -30,6 +29,8 @@ import org.hibernate.type.descriptor.jdbc.BlobJdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcLiteralFormatter;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.usertype.DynamicParameterizedType;
+
+import static org.hibernate.engine.internal.ManagedTypeHelper.isInitialized;
 
 /**
  * @author Brett Meyer
@@ -273,7 +274,7 @@ public class SerializableToBlobType<T extends Serializable> implements BasicType
 	@Override
 	@SuppressWarnings("unchecked")
 	public final String toLoggableString(Object value, SessionFactoryImplementor factory) {
-		if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY || !Hibernate.isInitialized( value ) ) {
+		if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY || !isInitialized( value, factory ) ) {
 			return  "<uninitialized>";
 		}
 		return javaType.extractLoggableRepresentation( (T) value );

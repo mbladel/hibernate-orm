@@ -6,18 +6,18 @@ package org.hibernate.sql.results.graph.entity.internal;
 
 import org.hibernate.EntityFilterException;
 import org.hibernate.FetchNotFoundException;
-import org.hibernate.Hibernate;
 import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.bytecode.enhance.spi.interceptor.EnhancementAsProxyLazinessInterceptor;
+import org.hibernate.engine.internal.ManagedTypeHelper;
 import org.hibernate.engine.spi.EntityHolder;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.PersistenceContext;
+import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
 import org.hibernate.persister.entity.EntityPersister;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
@@ -30,9 +30,8 @@ import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
-import static org.hibernate.sql.results.graph.entity.internal.EntityInitializerImpl.getAttributeInterceptor;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptableOrNull;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 public abstract class AbstractBatchEntitySelectFetchInitializer<Data extends AbstractBatchEntitySelectFetchInitializer.AbstractBatchEntitySelectFetchInitializerData>
 		extends EntitySelectFetchInitializer<Data> implements EntityInitializer<Data> {
@@ -140,15 +139,16 @@ public abstract class AbstractBatchEntitySelectFetchInitializer<Data extends Abs
 		}
 		final RowProcessingState rowProcessingState = data.getRowProcessingState();
 		// Only need to extract the identifier if the identifier has a many to one
-		final LazyInitializer lazyInitializer = extractLazyInitializer( instance );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( instance, rowProcessingState.getSession().getFactory() );
 		data.entityKey = null;
 		data.entityIdentifier = null;
 		if ( lazyInitializer == null ) {
 			// Entity is most probably initialized
 			data.setInstance( instance );
-			if ( concreteDescriptor.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading()
-					&& isPersistentAttributeInterceptable( instance )
-					&& getAttributeInterceptor( instance ) instanceof EnhancementAsProxyLazinessInterceptor enhancementInterceptor ) {
+			final PersistentAttributeInterceptable interceptable = concreteDescriptor.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading() ?
+					asPersistentAttributeInterceptableOrNull( instance, rowProcessingState.getSession() .getFactory() ) :
+					null;
+			if ( interceptable != null && interceptable.$$_hibernate_getInterceptor() instanceof EnhancementAsProxyLazinessInterceptor enhancementInterceptor ) {
 				if ( enhancementInterceptor.isInitialized() ) {
 					data.setState( State.INITIALIZED );
 				}
@@ -201,12 +201,12 @@ public abstract class AbstractBatchEntitySelectFetchInitializer<Data extends Abs
 		}
 		data.setState( State.INITIALIZED );
 		if ( data.batchDisabled ) {
-			Hibernate.initialize( data.getInstance() );
+			ManagedTypeHelper.initialize( data.getInstance(), data.getSession().getFactory() );
 		}
 	}
 
 	protected Object getExistingInitializedInstance(Data data) {
-		final SharedSessionContractImplementor session = data.getRowProcessingState().getSession();
+		final SharedSessionContractImplementor session = data.getSession();
 		final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
 		final EntityHolder holder = persistenceContext.getEntityHolder( data.entityKey );
 		if ( holder != null && holder.getEntity() != null && holder.isEventuallyInitialized() ) {
@@ -220,7 +220,7 @@ public abstract class AbstractBatchEntitySelectFetchInitializer<Data extends Abs
 
 	protected void registerToBatchFetchQueue(Data data) {
 		assert data.entityKey != null;
-		data.getRowProcessingState().getSession().getPersistenceContextInternal()
+		data.getSession().getPersistenceContextInternal()
 				.getBatchFetchQueue().addBatchLoadableEntityKey( data.entityKey );
 	}
 
@@ -237,7 +237,7 @@ public abstract class AbstractBatchEntitySelectFetchInitializer<Data extends Abs
 			data.setState( State.MISSING );
 		}
 		else {
-			final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( instance );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( instance, concreteDescriptor.getFactory() );
 			if ( lazyInitializer != null && lazyInitializer.isUninitialized() ) {
 				data.entityKey = new EntityKey( lazyInitializer.getIdentifier(), concreteDescriptor );
 				registerToBatchFetchQueue( data );

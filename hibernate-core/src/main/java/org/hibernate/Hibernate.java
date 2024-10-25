@@ -18,8 +18,8 @@ import java.util.TreeSet;
 import java.util.function.Supplier;
 
 import jakarta.persistence.metamodel.Attribute;
+
 import org.hibernate.bytecode.enhance.spi.interceptor.BytecodeLazyAttributeInterceptor;
-import org.hibernate.bytecode.enhance.spi.interceptor.EnhancementAsProxyLazinessInterceptor;
 import org.hibernate.collection.spi.PersistentBag;
 import org.hibernate.collection.spi.PersistentList;
 import org.hibernate.collection.spi.PersistentMap;
@@ -27,15 +27,17 @@ import org.hibernate.collection.spi.PersistentSet;
 import org.hibernate.collection.spi.PersistentSortedMap;
 import org.hibernate.collection.spi.PersistentSortedSet;
 import org.hibernate.collection.spi.PersistentCollection;
-import org.hibernate.engine.spi.PersistentAttributeInterceptor;
+import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.collection.spi.LazyInitializable;
 
-import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptableOrNull;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPrimeAmongSecondarySupertypesOrNull;
+import static org.hibernate.engine.internal.ManagedTypeHelper.initializeProxy;
+import static org.hibernate.engine.internal.ManagedTypeHelper.isInitializedProxy;
 import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
 
 /**
@@ -111,6 +113,8 @@ public final class Hibernate {
 		throw new UnsupportedOperationException();
 	}
 
+	// todo marco : static methods doing checks in this class could benefit from the SF version
+
 	/**
 	 * Force initialization of a proxy or persistent collection. In the case of a
 	 * many-valued association, only the collection itself is initialized. It is not
@@ -122,20 +126,9 @@ public final class Hibernate {
 	 * for example, if the {@code Session} was closed
 	 */
 	public static void initialize(Object proxy) throws HibernateException {
-		if ( proxy != null ) {
-			final LazyInitializer lazyInitializer = extractLazyInitializer( proxy );
-			if ( lazyInitializer != null ) {
-				lazyInitializer.initialize();
-			}
-			else if ( proxy instanceof LazyInitializable lazyInitializable ) {
-				lazyInitializable.forceInitialization();
-			}
-			else if ( isPersistentAttributeInterceptable( proxy ) ) {
-				if ( getAttributeInterceptor( proxy )
-						instanceof EnhancementAsProxyLazinessInterceptor enhancementInterceptor ) {
-					enhancementInterceptor.forceInitialize( proxy, null );
-				}
-			}
+		final boolean initialized = initializeProxy( asPrimeAmongSecondarySupertypesOrNull( proxy ) );
+		if ( !initialized && proxy instanceof LazyInitializable lazyInitializable ) {
+			lazyInitializable.forceInitialization();
 		}
 	}
 
@@ -148,16 +141,9 @@ public final class Hibernate {
 	 * @return true if the argument is already initialized, or is not a proxy or collection
 	 */
 	public static boolean isInitialized(Object proxy) {
-		final LazyInitializer lazyInitializer = extractLazyInitializer( proxy );
-		if ( lazyInitializer != null ) {
-			return !lazyInitializer.isUninitialized();
-		}
-		else if ( isPersistentAttributeInterceptable( proxy ) ) {
-			final boolean uninitialized =
-					getAttributeInterceptor( proxy )
-							instanceof EnhancementAsProxyLazinessInterceptor enhancementInterceptor
-					&& !enhancementInterceptor.isInitialized();
-			return !uninitialized;
+		final Boolean initialized = isInitializedProxy( asPrimeAmongSecondarySupertypesOrNull( proxy ) );
+		if ( initialized != null ) {
+			return Boolean.TRUE.equals( initialized );
 		}
 		else if ( proxy instanceof LazyInitializable lazyInitializable ) {
 			return lazyInitializable.wasInitialized();
@@ -297,7 +283,7 @@ public final class Hibernate {
 	 */
 	public static boolean isInstance(Object proxy, Class<?> entityClass) {
 		return entityClass.isInstance( proxy )
-			|| entityClass.isAssignableFrom( getClass( proxy ) );
+			|| entityClass.isAssignableFrom( getClassLazy( proxy ) );
 	}
 
 	/**
@@ -339,9 +325,10 @@ public final class Hibernate {
 			entity = proxy;
 		}
 
+		final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptableOrNull( entity );
 		final boolean attributeUnloaded =
-				isPersistentAttributeInterceptable( entity )
-						&& getAttributeInterceptor( entity )
+				interceptable != null
+						&& interceptable.$$_hibernate_getInterceptor()
 								instanceof BytecodeLazyAttributeInterceptor lazyAttributeInterceptor
 						&& !lazyAttributeInterceptor.isAttributeLoaded( attributeName );
 		return !attributeUnloaded;
@@ -358,8 +345,9 @@ public final class Hibernate {
 	public static void initializeProperty(Object proxy, String attributeName) {
 		final LazyInitializer lazyInitializer = extractLazyInitializer( proxy );
 		final Object entity = lazyInitializer != null ? lazyInitializer.getImplementation() : proxy;
-		if ( isPersistentAttributeInterceptable( entity ) ) {
-			getAttributeInterceptor( entity ).readObject( entity, attributeName, null );
+		final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptableOrNull( entity );
+		if ( interceptable != null ) {
+			interceptable.$$_hibernate_getInterceptor().readObject( entity, attributeName, null );
 		}
 	}
 
@@ -568,9 +556,5 @@ public final class Hibernate {
 		else {
 			throw new IllegalArgumentException("illegal collection interface type");
 		}
-	}
-
-	private static PersistentAttributeInterceptor getAttributeInterceptor(Object entity) {
-		return asPersistentAttributeInterceptable( entity ).$$_hibernate_getInterceptor();
 	}
 }

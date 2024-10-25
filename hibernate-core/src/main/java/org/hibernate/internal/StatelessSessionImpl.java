@@ -29,6 +29,7 @@ import org.hibernate.engine.spi.EntityHolder;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.LoadQueryInfluencers;
 import org.hibernate.engine.spi.PersistenceContext;
+import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.transaction.internal.jta.JtaStatusHelper;
 import org.hibernate.engine.transaction.jta.platform.spi.JtaPlatform;
 import org.hibernate.event.spi.PostDeleteEvent;
@@ -66,8 +67,7 @@ import org.hibernate.tuple.entity.EntityMetamodel;
 import jakarta.persistence.EntityGraph;
 import jakarta.transaction.SystemException;
 
-import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptableOrNull;
 import static org.hibernate.engine.internal.Versioning.incrementVersion;
 import static org.hibernate.engine.internal.Versioning.seedVersion;
 import static org.hibernate.engine.internal.Versioning.setVersion;
@@ -76,7 +76,7 @@ import static org.hibernate.generator.EventType.INSERT;
 import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 import static org.hibernate.pretty.MessageHelper.collectionInfoString;
 import static org.hibernate.pretty.MessageHelper.infoString;
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * Concrete implementation of the {@link StatelessSession} API.
@@ -744,7 +744,7 @@ public class StatelessSessionImpl extends AbstractSharedSessionContract implemen
 						if ( LOG.isTraceEnabled() ) {
 							LOG.trace( "Entity proxy found in session cache" );
 						}
-						if ( LOG.isDebugEnabled() && extractLazyInitializer( proxy ).isUnwrap() ) {
+						if ( LOG.isDebugEnabled() && extractLazyInitializer( proxy, getFactory() ).isUnwrap() ) {
 							LOG.debug( "Ignoring NO_PROXY to honor laziness" );
 						}
 
@@ -802,7 +802,7 @@ public class StatelessSessionImpl extends AbstractSharedSessionContract implemen
 	public void fetch(Object association) {
 		checkOpen();
 		final PersistenceContext persistenceContext = getPersistenceContext();
-		final LazyInitializer initializer = extractLazyInitializer( association );
+		final LazyInitializer initializer = extractLazyInitializer( association, getFactory() );
 		if ( initializer != null ) {
 			if ( initializer.isUninitialized() ) {
 				final String entityName = initializer.getEntityName();
@@ -825,42 +825,51 @@ public class StatelessSessionImpl extends AbstractSharedSessionContract implemen
 				}
 			}
 		}
-		else if ( isPersistentAttributeInterceptable( association ) ) {
-			if ( asPersistentAttributeInterceptable( association ).$$_hibernate_getInterceptor()
-					instanceof EnhancementAsProxyLazinessInterceptor proxyInterceptor ) {
-				proxyInterceptor.setSession( this );
-				try {
-					proxyInterceptor.forceInitialize( association, null );
-					// TODO: statistics?? call statistics.fetchEntity()
-				}
-				finally {
-					proxyInterceptor.unsetSession();
-					if ( persistenceContext.isLoadFinished() ) {
-						persistenceContext.clear();
+		else {
+			final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptableOrNull(
+					association,
+					getFactory()
+			);
+			if ( interceptable != null ) {
+				if ( interceptable.$$_hibernate_getInterceptor() instanceof EnhancementAsProxyLazinessInterceptor proxyInterceptor ) {
+					proxyInterceptor.setSession( this );
+					try {
+						proxyInterceptor.forceInitialize( association, null );
+						// TODO: statistics?? call statistics.fetchEntity()
+					}
+					finally {
+						proxyInterceptor.unsetSession();
+						if ( persistenceContext.isLoadFinished() ) {
+							persistenceContext.clear();
+						}
 					}
 				}
 			}
-		}
-		else if ( association instanceof PersistentCollection<?> persistentCollection ) {
-			if ( !persistentCollection.wasInitialized() ) {
-				final CollectionPersister collectionDescriptor = getFactory().getMappingMetamodel()
-						.getCollectionDescriptor( persistentCollection.getRole() );
-				final Object key = persistentCollection.getKey();
-				persistenceContext.addUninitializedCollection( collectionDescriptor, persistentCollection, key );
-				persistentCollection.setCurrentSession( this );
-				try {
-					collectionDescriptor.initialize( key, this );
-					handlePotentiallyEmptyCollection( persistentCollection, getPersistenceContextInternal(), key,
-							collectionDescriptor );
-					final StatisticsImplementor statistics = getFactory().getStatistics();
-					if ( statistics.isStatisticsEnabled() ) {
-						statistics.fetchCollection( collectionDescriptor.getRole() );
+			else if ( association instanceof PersistentCollection<?> persistentCollection ) {
+				if ( !persistentCollection.wasInitialized() ) {
+					final CollectionPersister collectionDescriptor = getFactory().getMappingMetamodel()
+							.getCollectionDescriptor( persistentCollection.getRole() );
+					final Object key = persistentCollection.getKey();
+					persistenceContext.addUninitializedCollection( collectionDescriptor, persistentCollection, key );
+					persistentCollection.setCurrentSession( this );
+					try {
+						collectionDescriptor.initialize( key, this );
+						handlePotentiallyEmptyCollection(
+								persistentCollection,
+								getPersistenceContextInternal(),
+								key,
+								collectionDescriptor
+						);
+						final StatisticsImplementor statistics = getFactory().getStatistics();
+						if ( statistics.isStatisticsEnabled() ) {
+							statistics.fetchCollection( collectionDescriptor.getRole() );
+						}
 					}
-				}
-				finally {
-					persistentCollection.unsetSession( this );
-					if ( persistenceContext.isLoadFinished() ) {
-						persistenceContext.clear();
+					finally {
+						persistentCollection.unsetSession( this );
+						if ( persistenceContext.isLoadFinished() ) {
+							persistenceContext.clear();
+						}
 					}
 				}
 			}
@@ -901,7 +910,7 @@ public class StatelessSessionImpl extends AbstractSharedSessionContract implemen
 
 	@Override
 	public String bestGuessEntityName(Object object) {
-		final LazyInitializer lazyInitializer = extractLazyInitializer( object );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( object, getFactory() );
 		if ( lazyInitializer != null ) {
 			object = lazyInitializer.getImplementation();
 		}

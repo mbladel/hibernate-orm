@@ -13,6 +13,7 @@ import org.hibernate.engine.spi.CollectionEntry;
 import org.hibernate.engine.spi.CollectionKey;
 import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.PersistenceContext;
+import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.event.spi.EventSource;
@@ -24,8 +25,7 @@ import org.hibernate.type.CollectionType;
 import org.hibernate.type.CompositeType;
 import org.hibernate.type.Type;
 
-import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptableOrNull;
 import static org.hibernate.persister.entity.AbstractEntityPersister.getCollectionKey;
 
 /**
@@ -91,9 +91,12 @@ public class WrapVisitor extends ProxyVisitor {
 				return null;
 			}
 			else {
-				if ( isPersistentAttributeInterceptable( entity ) ) {
-					final PersistentAttributeInterceptor attributeInterceptor =
-							asPersistentAttributeInterceptable( entity ).$$_hibernate_getInterceptor();
+				final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptableOrNull(
+						entity,
+						session.getFactory()
+				);
+				if ( interceptable != null ) {
+					final PersistentAttributeInterceptor attributeInterceptor = interceptable.$$_hibernate_getInterceptor();
 					if ( attributeInterceptor instanceof EnhancementAsProxyLazinessInterceptor ) {
 						return null;
 					}

@@ -69,6 +69,7 @@ import org.hibernate.generator.Generator;
 import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.integrator.spi.Integrator;
 import org.hibernate.integrator.spi.IntegratorService;
+import org.hibernate.internal.util.collections.CachingClassValue;
 import org.hibernate.jpa.internal.ExceptionMapperLegacyJpaImpl;
 import org.hibernate.jpa.internal.PersistenceUnitUtilImpl;
 import org.hibernate.mapping.Collection;
@@ -133,7 +134,7 @@ import static org.hibernate.internal.SessionFactorySettings.getSessionFactoryNam
 import static org.hibernate.internal.SessionFactorySettings.getSettings;
 import static org.hibernate.internal.SessionFactorySettings.maskOutSensitiveInformation;
 import static org.hibernate.jpa.HibernateHints.HINT_TENANT_ID;
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 import static org.hibernate.resource.jdbc.spi.PhysicalConnectionHandlingMode.DELAYED_ACQUISITION_AND_RELEASE_AFTER_STATEMENT;
 
 /**
@@ -197,6 +198,8 @@ public class SessionFactoryImpl extends QueryParameterBindingTypeResolverImpl im
 	private final transient EntityNameResolver entityNameResolver;
 
 	private final transient SchemaManager schemaManager;
+
+	private final transient ConcurrentHashMap<Class<?>, CachingClassValue<?>> metadataCaches = new ConcurrentHashMap<>();
 
 	public SessionFactoryImpl(
 			final MetadataImplementor bootMetamodel,
@@ -655,7 +658,7 @@ public class SessionFactoryImpl extends QueryParameterBindingTypeResolverImpl im
 
 	@Override
 	public String bestGuessEntityName(Object object) {
-		final LazyInitializer initializer = extractLazyInitializer( object );
+		final LazyInitializer initializer = extractLazyInitializer( object, this );
 		if ( initializer != null ) {
 			// it is possible for this method to be called during flush processing,
 			// so make certain that we do not accidentally initialize an uninitialized proxy
@@ -665,6 +668,12 @@ public class SessionFactoryImpl extends QueryParameterBindingTypeResolverImpl im
 			object = initializer.getImplementation();
 		}
 		return entityNameResolver.resolveEntityName( object );
+	}
+
+	@Override
+	public <V> CachingClassValue<V> getClassMetadata(Class<V> metaType, Function<Class<?>, V> computer) {
+		//noinspection unchecked
+		return (CachingClassValue<V>) metadataCaches.computeIfAbsent( metaType, k -> new CachingClassValue<>( computer ) );
 	}
 
 	@Override
@@ -766,6 +775,7 @@ public class SessionFactoryImpl extends QueryParameterBindingTypeResolverImpl im
 			if ( eventEngine != null ) {
 				eventEngine.stop();
 			}
+			clearMetadataCaches();
 		}
 		finally {
 			status = Status.CLOSED;
@@ -773,6 +783,13 @@ public class SessionFactoryImpl extends QueryParameterBindingTypeResolverImpl im
 
 		observer.sessionFactoryClosed( this );
 		serviceRegistry.destroy();
+	}
+
+	private void clearMetadataCaches() {
+		for ( final CachingClassValue<?> value : metadataCaches.values() ) {
+			// It's important to remove all ClassValue entries to avoid ClassLoader leaks
+			value.dispose();
+		}
 	}
 
 	@Override

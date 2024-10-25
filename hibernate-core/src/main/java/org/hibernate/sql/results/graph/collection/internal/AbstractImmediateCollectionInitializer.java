@@ -295,8 +295,7 @@ public abstract class AbstractImmediateCollectionInitializer<Data extends Abstra
 
 	protected void initializeShallowCached(Data data) {
 		assert data.shallowCached;
-		final PersistenceContext persistenceContext = data.getRowProcessingState().getSession()
-				.getPersistenceContextInternal();
+		final PersistenceContext persistenceContext = data.getSession().getPersistenceContextInternal();
 		// If this is a query cache hit with the shallow query cache layout,
 		// we have to lazy load the collection instead
 		final PersistentCollection<?> collectionInstance = data.getCollectionInstance();

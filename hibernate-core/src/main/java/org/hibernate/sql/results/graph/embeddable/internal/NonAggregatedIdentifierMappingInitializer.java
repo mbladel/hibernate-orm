@@ -17,7 +17,6 @@ import org.hibernate.metamodel.mapping.NonAggregatedIdentifierMapping;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
 import org.hibernate.metamodel.spi.EmbeddableInstantiator;
 import org.hibernate.metamodel.spi.ValueAccess;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.spi.EntityIdentifierNavigablePath;
 import org.hibernate.spi.NavigablePath;
@@ -38,6 +37,7 @@ import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 import static org.hibernate.sql.results.graph.entity.internal.BatchEntityInsideEmbeddableSelectFetchInitializer.BATCH_PROPERTY;
 
 /**
@@ -345,7 +345,7 @@ public class NonAggregatedIdentifierMappingInitializer extends AbstractInitializ
 			assert parent.isEntityInitializer();
 			final Object parentInstance = parent.getResolvedInstance( data.getRowProcessingState() );
 			assert parentInstance != null;
-			final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( parentInstance );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( parentInstance, sessionFactory );
 			// If the composite instance has a lazy initializer attached, this means that the embeddable is actually virtual
 			// and the compositeInstance == entity, so we have to inject the row state into the entity when it finishes resolution
 			if ( lazyInitializer != null ) {

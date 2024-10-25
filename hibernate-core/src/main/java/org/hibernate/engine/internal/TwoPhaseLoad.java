@@ -14,7 +14,7 @@ import org.hibernate.engine.spi.Status;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.proxy.LazyInitializer;
 
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * Functionality relating to the Hibernate two-phase loading process, that may be reused by persisters
@@ -61,7 +61,7 @@ public final class TwoPhaseLoad {
 		final Object proxy = entityHolder.getProxy();
 		if ( proxy != null ) {
 			// there is already a proxy for this impl
-			final LazyInitializer lazyInitializer = extractLazyInitializer( proxy );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( proxy, session.getFactory() );
 			assert lazyInitializer != null;
 			lazyInitializer.setImplementation( object );
 		}

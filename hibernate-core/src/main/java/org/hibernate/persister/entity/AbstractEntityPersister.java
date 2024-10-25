@@ -65,6 +65,7 @@ import org.hibernate.engine.spi.NaturalIdResolutions;
 import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
+import org.hibernate.engine.spi.PrimeAmongSecondarySupertypes;
 import org.hibernate.engine.spi.SelfDirtinessTracker;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SessionImplementor;
@@ -289,10 +290,8 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
 import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.processIfManagedEntity;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPrimeAmongSecondarySupertypesOrNull;
 import static org.hibernate.engine.internal.ManagedTypeHelper.processIfPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.processIfSelfDirtinessTracker;
 import static org.hibernate.generator.EventType.INSERT;
 import static org.hibernate.generator.EventType.UPDATE;
 import static org.hibernate.internal.util.ReflectHelper.isAbstractClass;
@@ -4099,18 +4098,31 @@ public abstract class AbstractEntityPersister
 
 	@Override
 	public void afterInitialize(Object entity, SharedSessionContractImplementor session) {
-		if ( isPersistentAttributeInterceptable( entity ) && getRepresentationStrategy().getMode() == POJO ) {
-			final BytecodeLazyAttributeInterceptor interceptor = getEntityMetamodel().getBytecodeEnhancementMetadata()
-					.extractLazyInterceptor( entity );
-			assert interceptor != null;
-			if ( interceptor.getLinkedSession() == null ) {
-				interceptor.setSession( session );
+		final PrimeAmongSecondarySupertypes prime = asPrimeAmongSecondarySupertypesOrNull(
+				entity,
+				session.getFactory()
+		);
+		if ( prime != null ) {
+			final PersistentAttributeInterceptable interceptable = prime.asPersistentAttributeInterceptable();
+			if ( interceptable != null && getRepresentationStrategy().getMode() == POJO ) {
+				final BytecodeLazyAttributeInterceptor interceptor = getEntityMetamodel().getBytecodeEnhancementMetadata()
+						.extractLazyInterceptor( entity );
+				assert interceptor != null;
+				if ( interceptor.getLinkedSession() == null ) {
+					interceptor.setSession( session );
+				}
+			}
+
+			// clear the fields that are marked as dirty in the dirtiness tracker
+			final SelfDirtinessTracker selfDirtinessTracker = prime.asSelfDirtinessTracker();
+			if ( selfDirtinessTracker != null ) {
+				clearDirtyAttributes( selfDirtinessTracker );
+			}
+			final ManagedEntity managedEntity = prime.asManagedEntity();
+			if ( managedEntity != null ) {
+				useTracker( managedEntity );
 			}
 		}
-
-		// clear the fields that are marked as dirty in the dirtiness tracker
-		processIfSelfDirtinessTracker( entity, AbstractEntityPersister::clearDirtyAttributes );
-		processIfManagedEntity( entity, AbstractEntityPersister::useTracker );
 	}
 
 	private static void clearDirtyAttributes(final SelfDirtinessTracker entity) {
@@ -4340,7 +4352,7 @@ public abstract class AbstractEntityPersister
 
 	protected void linkToSession(Object entity, SharedSessionContractImplementor session) {
 		if ( session != null ) {
-			processIfPersistentAttributeInterceptable( entity, this::setSession, session );
+			processIfPersistentAttributeInterceptable( entity, this::setSession, session, session.getFactory() );
 		}
 	}
 

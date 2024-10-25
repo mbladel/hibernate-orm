@@ -8,8 +8,8 @@ import java.util.function.BiConsumer;
 
 import org.hibernate.EntityFilterException;
 import org.hibernate.FetchNotFoundException;
-import org.hibernate.Hibernate;
 import org.hibernate.annotations.NotFoundAction;
+import org.hibernate.engine.internal.ManagedTypeHelper;
 import org.hibernate.engine.spi.EntityHolder;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.PersistenceContext;
@@ -19,7 +19,6 @@ import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
 import org.hibernate.persister.entity.EntityPersister;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
@@ -34,7 +33,8 @@ import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.isInitialized;
 
 /**
  * @author Andrea Boriero
@@ -160,7 +160,7 @@ public class EntitySelectFetchInitializer<Data extends EntitySelectFetchInitiali
 		}
 		else {
 			final RowProcessingState rowProcessingState = data.getRowProcessingState();
-			final LazyInitializer lazyInitializer = extractLazyInitializer( data.getInstance() );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( data.getInstance(), concreteDescriptor.getFactory() );
 			if ( lazyInitializer == null ) {
 				data.setState( State.INITIALIZED );
 				if ( keyIsEager ) {
@@ -198,7 +198,7 @@ public class EntitySelectFetchInitializer<Data extends EntitySelectFetchInitiali
 			return;
 		}
 		data.setState( State.INITIALIZED );
-		Hibernate.initialize( data.getInstance() );
+		ManagedTypeHelper.initialize( data.getInstance(), data.getSession().getFactory() );
 	}
 
 	protected void initialize(EntitySelectFetchInitializerData data) {
@@ -211,7 +211,7 @@ public class EntitySelectFetchInitializer<Data extends EntitySelectFetchInitiali
 		if ( holder != null ) {
 			data.setInstance( persistenceContext.proxyFor( holder, concreteDescriptor ) );
 			if ( holder.getEntityInitializer() == null ) {
-				if ( data.getInstance() != null && Hibernate.isInitialized( data.getInstance() ) ) {
+				if ( data.getInstance() != null && isInitialized( data.getInstance(), session.getFactory() ) ) {
 					data.setState( State.INITIALIZED );
 					return;
 				}
@@ -261,7 +261,7 @@ public class EntitySelectFetchInitializer<Data extends EntitySelectFetchInitiali
 		}
 
 		final boolean unwrapProxy = toOneMapping.isUnwrapProxy() && isEnhancedForLazyLoading;
-		final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( data.getInstance() );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( data.getInstance(), session.getFactory() );
 		if ( lazyInitializer != null ) {
 			lazyInitializer.setUnwrap( unwrapProxy );
 		}
@@ -283,7 +283,7 @@ public class EntitySelectFetchInitializer<Data extends EntitySelectFetchInitiali
 			// No need to initialize this
 			data.entityIdentifier = null;
 			data.setInstance( instance );
-			Hibernate.initialize( instance );
+			ManagedTypeHelper.initialize( instance, data.getSession().getFactory() );
 		}
 	}
 

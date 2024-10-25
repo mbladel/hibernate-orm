@@ -14,12 +14,12 @@ import org.hibernate.bytecode.enhance.spi.CollectionTracker;
 import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.engine.spi.SelfDirtinessTracker;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.engine.spi.Status;
 import org.hibernate.persister.entity.EntityPersister;
 
-import static org.hibernate.engine.internal.ManagedTypeHelper.asSelfDirtinessTracker;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isSelfDirtinessTracker;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asSelfDirtinessTrackerOrNull;
 
 /**
  * Interceptor that loads attributes lazily
@@ -113,7 +113,7 @@ public class LazyAttributeLoadingInterceptor extends AbstractLazyLoadInterceptor
 							session
 					);
 
-					takeCollectionSizeSnapshot( target, attributeName, loadedValue );
+					takeCollectionSizeSnapshot( target, attributeName, loadedValue, session.getFactory() );
 					return loadedValue;
 				},
 				getEntityName(),
@@ -156,22 +156,28 @@ public class LazyAttributeLoadingInterceptor extends AbstractLazyLoadInterceptor
 		return getClass().getSimpleName() + "(entityName=" + getEntityName() + " ,lazyFields=" + lazyFields + ')';
 	}
 
-	private void takeCollectionSizeSnapshot(Object target, String fieldName, Object value) {
-		if ( value instanceof Collection && isSelfDirtinessTracker( target ) ) {
-			// This must be called first, so that we remember that there is a collection out there,
-			// even if we don't know its size (see below).
-			final SelfDirtinessTracker targetSDT = asSelfDirtinessTracker( target );
-			CollectionTracker tracker = targetSDT.$$_hibernate_getCollectionTracker();
-			if ( tracker == null ) {
-				targetSDT.$$_hibernate_clearDirtyAttributes();
-				tracker = targetSDT.$$_hibernate_getCollectionTracker();
-			}
+	private void takeCollectionSizeSnapshot(
+			Object target,
+			String fieldName,
+			Object value,
+			SessionFactoryImplementor factory) {
+		if ( value instanceof Collection ) {
+			final SelfDirtinessTracker targetSDT = asSelfDirtinessTrackerOrNull( target, factory );
+			if ( targetSDT != null ) {
+				// This must be called first, so that we remember that there is a collection out there,
+				// even if we don't know its size (see below).
+				CollectionTracker tracker = targetSDT.$$_hibernate_getCollectionTracker();
+				if ( tracker == null ) {
+					targetSDT.$$_hibernate_clearDirtyAttributes();
+					tracker = targetSDT.$$_hibernate_getCollectionTracker();
+				}
 
-			if ( value instanceof PersistentCollection && !( (PersistentCollection<?>) value ).wasInitialized() ) {
-				// Cannot take a snapshot of an un-initialized collection.
-				return;
+				if ( value instanceof PersistentCollection && !( (PersistentCollection<?>) value ).wasInitialized() ) {
+					// Cannot take a snapshot of an un-initialized collection.
+					return;
+				}
+				tracker.add( fieldName, ( (Collection<?>) value ).size() );
 			}
-			tracker.add( fieldName, ( (Collection<?>) value ).size() );
 		}
 	}
 

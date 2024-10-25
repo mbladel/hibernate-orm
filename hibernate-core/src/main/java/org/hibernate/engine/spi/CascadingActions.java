@@ -388,7 +388,7 @@ public class CascadingActions {
 	};
 
 	private static boolean isChildTransient(EventSource session, Object child, String entityName) {
-		if ( isHibernateProxy( child ) ) {
+		if ( isHibernateProxy( child, session.getFactory() ) ) {
 			// a proxy is always non-transient
 			// and ForeignKeys.isTransient()
 			// is not written to expect a proxy

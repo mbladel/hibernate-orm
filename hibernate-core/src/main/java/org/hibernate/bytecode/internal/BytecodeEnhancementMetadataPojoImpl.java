@@ -32,8 +32,6 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
 import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptableType;
-import static org.hibernate.engine.internal.ManagedTypeHelper.processIfManagedEntity;
-import static org.hibernate.engine.internal.ManagedTypeHelper.processIfSelfDirtinessTracker;
 
 /**
  * BytecodeEnhancementMetadata implementation for {@link org.hibernate.metamodel.RepresentationMode#POJO POJO} models
@@ -154,8 +152,14 @@ public final class BytecodeEnhancementMetadataPojoImpl implements BytecodeEnhanc
 		final PersistentAttributeInterceptable entity = asPersistentAttributeInterceptable( persister.instantiate( identifier, session ) );
 
 		// clear the fields that are marked as dirty in the dirtiness tracker
-		processIfSelfDirtinessTracker( entity, BytecodeEnhancementMetadataPojoImpl::clearDirtyAttributes );
-		processIfManagedEntity( entity, BytecodeEnhancementMetadataPojoImpl::useTracker );
+		final SelfDirtinessTracker tracker = entity.asSelfDirtinessTracker();
+		if ( tracker != null ) {
+			clearDirtyAttributes( tracker );
+		}
+		final ManagedEntity managedEntity = entity.asManagedEntity();
+		if ( managedEntity != null ) {
+			useTracker( managedEntity );
+		}
 
 		// add the entity (proxy) instance to the PC
 		persistenceContext.addEnhancedProxy( entityKey, entity );

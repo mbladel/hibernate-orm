@@ -50,8 +50,7 @@ public class SelectEagerCollectionInitializer extends AbstractNonJoinCollectionI
 			if ( collectionAttributeMapping.getCollectionDescriptor()
 					.getCollectionSemantics()
 					.getCollectionClassification() == CollectionClassification.ARRAY ) {
-				collection = data.getRowProcessingState().getSession().getPersistenceContextInternal()
-						.getCollectionHolder( instance );
+				collection = data.getSession().getPersistenceContextInternal().getCollectionHolder( instance );
 			}
 			else {
 				collection = (PersistentCollection<?>) instance;

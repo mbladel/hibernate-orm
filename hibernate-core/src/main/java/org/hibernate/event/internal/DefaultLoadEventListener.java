@@ -18,6 +18,7 @@ import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.event.spi.EventSource;
 import org.hibernate.event.spi.LoadEvent;
@@ -34,12 +35,11 @@ import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.MappingType;
 import org.hibernate.metamodel.mapping.NonAggregatedIdentifierMapping;
 import org.hibernate.persister.entity.EntityPersister;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.stat.spi.StatisticsImplementor;
 
-import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptableOrNull;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 import static org.hibernate.pretty.MessageHelper.infoString;
 
 /**
@@ -309,7 +309,7 @@ public class DefaultLoadEventListener implements LoadEventListener {
 			final Object proxy = holder == null ? null : holder.getProxy();
 			if ( proxy != null ) {
 				LOG.trace( "Entity proxy found in session cache" );
-				if ( LOG.isDebugEnabled() && HibernateProxy.extractLazyInitializer( proxy ).isUnwrap() ) {
+				if ( LOG.isDebugEnabled() && extractLazyInitializer( proxy, session.getFactory() ).isUnwrap() ) {
 					LOG.debug( "Ignoring NO_PROXY to honor laziness" );
 				}
 				return persistenceContext.narrowProxy( proxy, persister, keyToLoad, null );
@@ -369,7 +369,7 @@ public class DefaultLoadEventListener implements LoadEventListener {
 		if ( LOG.isTraceEnabled() ) {
 			LOG.trace( "Entity proxy found in session cache" );
 		}
-		final LazyInitializer li = HibernateProxy.extractLazyInitializer( proxy );
+		final LazyInitializer li = extractLazyInitializer( proxy, event.getFactory() );
 		if ( li.isUnwrap() ) {
 			return li.getImplementation();
 		}
@@ -530,7 +530,7 @@ public class DefaultLoadEventListener implements LoadEventListener {
 			final Object entity = persistenceContextEntry.getEntity();
 			if ( entity != null ) {
 				if ( persistenceContextEntry.isManaged() ) {
-					initializeIfNecessary( entity );
+					initializeIfNecessary( entity, session.getFactory() );
 					return entity;
 				}
 				else {
@@ -543,9 +543,12 @@ public class DefaultLoadEventListener implements LoadEventListener {
 		}
 	}
 
-	private static void initializeIfNecessary(Object entity) {
-		if ( isPersistentAttributeInterceptable( entity ) ) {
-			final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptable( entity );
+	private static void initializeIfNecessary(Object entity, SessionFactoryImplementor factory) {
+		final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptableOrNull(
+				entity,
+				factory
+		);
+		if ( interceptable != null ) {
 			final PersistentAttributeInterceptor interceptor = interceptable.$$_hibernate_getInterceptor();
 			if ( interceptor instanceof EnhancementAsProxyLazinessInterceptor ) {
 				( (EnhancementAsProxyLazinessInterceptor) interceptor ).forceInitialize( entity, null );
@@ -612,7 +615,7 @@ public class DefaultLoadEventListener implements LoadEventListener {
 		//		persister/loader/initializer sensitive to this fact - possibly
 		//		passing LoadType along
 
-		final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( entity );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( entity, event.getFactory() );
 		if ( lazyInitializer != null ) {
 			entity = lazyInitializer.getImplementation();
 		}

@@ -106,9 +106,7 @@ public class ArrayInitializer extends AbstractImmediateCollectionInitializer<Abs
 	public void initializeInstanceFromParent(Object parentInstance, ImmediateCollectionInitializerData data) {
 		final Object[] array = (Object[]) getInitializedPart().getValue( parentInstance );
 		assert array != null;
-		data.setCollectionInstance( data.getRowProcessingState().getSession()
-				.getPersistenceContextInternal()
-				.getCollectionHolder( array ) );
+		data.setCollectionInstance( data.getSession().getPersistenceContextInternal().getCollectionHolder( array ) );
 		data.setState( State.INITIALIZED );
 		initializeSubInstancesFromParent( data );
 	}
