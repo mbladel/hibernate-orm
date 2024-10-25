@@ -197,8 +197,8 @@ public abstract class AbstractSaveEventListener<C> implements CallbackRegistryCo
 		// but before we retrieve an assigned id
 		callbackRegistry.preCreate( entity );
 
-		processIfSelfDirtinessTracker( entity, SelfDirtinessTracker::$$_hibernate_clearDirtyAttributes );
-		processIfManagedEntity( entity, (managedEntity) -> managedEntity.$$_hibernate_setUseTracker( true ) );
+		processIfSelfDirtinessTracker( entity, SelfDirtinessTracker::$$_hibernate_clearDirtyAttributes, source.getFactory() );
+		processIfManagedEntity( entity, (managedEntity) -> managedEntity.$$_hibernate_setUseTracker( true ), source.getFactory() );
 
 		final Generator generator = persister.getGenerator();
 		if ( !generator.generatesOnInsert() || generator instanceof CompositeNestedGeneratedValueGenerator ) {

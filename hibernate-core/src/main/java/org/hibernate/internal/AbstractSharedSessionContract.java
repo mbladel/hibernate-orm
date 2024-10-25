@@ -275,7 +275,7 @@ public abstract class AbstractSharedSessionContract implements SharedSessionCont
 	}
 
 	private JdbcCoordinatorImpl createJdbcCoordinator(SessionCreationOptions options) {
-		return new JdbcCoordinatorImpl( options.getConnection(), this, getJdbcServices() );
+		return new JdbcCoordinatorImpl( options.getConnection(), this, getJdbcServices(), getSessionFactory() );
 	}
 
 	private JdbcSessionContextImpl createJdbcSessionContext(StatementInspector statementInspector) {
@@ -1656,7 +1656,7 @@ public abstract class AbstractSharedSessionContract implements SharedSessionCont
 		sessionEventsManager = new SessionEventListenerManagerImpl( baseline );
 
 		jdbcSessionContext = createJdbcSessionContext( (StatementInspector) ois.readObject() );
-		jdbcCoordinator = JdbcCoordinatorImpl.deserialize( ois, this );
+		jdbcCoordinator = JdbcCoordinatorImpl.deserialize( ois, this, factory );
 
 		cacheTransactionSync = factory.getCache().getRegionFactory().createTransactionContext( this );
 		transactionCoordinator =

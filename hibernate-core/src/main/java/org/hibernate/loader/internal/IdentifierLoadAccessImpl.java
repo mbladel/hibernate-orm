@@ -31,7 +31,7 @@ import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.spi.TypeConfiguration;
 
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * Standard implementation of load-by-id
@@ -157,7 +157,7 @@ public class IdentifierLoadAccessImpl<T> implements IdentifierLoadAccess<T>, Jav
 			// if session cache contains proxy for non-existing object
 			result = null;
 		}
-		initializeIfNecessary( result );
+		initializeIfNecessary( result, session );
 		return (T) result;
 	}
 
@@ -178,9 +178,9 @@ public class IdentifierLoadAccessImpl<T> implements IdentifierLoadAccess<T>, Jav
 		}
 	}
 
-	private void initializeIfNecessary(Object result) {
+	private void initializeIfNecessary(Object result, SessionImplementor session) {
 		if ( result != null ) {
-			final LazyInitializer lazyInitializer = extractLazyInitializer( result );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( result, session.getFactory() );
 			if ( lazyInitializer != null ) {
 				if ( lazyInitializer.isUninitialized() ) {
 					lazyInitializer.initialize();

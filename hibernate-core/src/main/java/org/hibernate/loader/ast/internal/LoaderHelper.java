@@ -38,6 +38,8 @@ import org.hibernate.sql.results.internal.RowTransformerStandardImpl;
 import org.hibernate.sql.results.spi.ListResultsConsumer;
 import org.hibernate.type.descriptor.java.JavaType;
 
+import static org.hibernate.engine.internal.ManagedTypeHelper.initialize;
+
 /**
  * @author Steve Ebersole
  */
@@ -89,7 +91,7 @@ public class LoaderHelper {
 				if ( persister.isVersioned() && entry.getVersion() == null ) {
 					// This should be an empty entry created for an uninitialized bytecode proxy
 					if ( !Hibernate.isPropertyInitialized( object, persister.getVersionMapping().getPartName() ) ) {
-						Hibernate.initialize( object );
+						initialize( object, session.getFactory() );
 						entry = session.getPersistenceContextInternal().getEntry( object );
 						assert entry.getVersion() != null;
 					}

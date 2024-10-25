@@ -66,6 +66,7 @@ import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.LoadQueryInfluencers;
 import org.hibernate.engine.spi.PersistenceContext;
+import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SessionImplementor;
@@ -178,8 +179,7 @@ import static org.hibernate.cfg.AvailableSettings.JPA_SHARED_CACHE_RETRIEVE_MODE
 import static org.hibernate.cfg.AvailableSettings.JPA_SHARED_CACHE_STORE_MODE;
 import static org.hibernate.cfg.AvailableSettings.STATEMENT_BATCH_SIZE;
 import static org.hibernate.cfg.AvailableSettings.USE_SUBSELECT_FETCH;
-import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptableOrNull;
 import static org.hibernate.event.spi.LoadEventListener.IMMEDIATE_LOAD;
 import static org.hibernate.event.spi.LoadEventListener.INTERNAL_LOAD_EAGER;
 import static org.hibernate.event.spi.LoadEventListener.INTERNAL_LOAD_LAZY;
@@ -197,7 +197,7 @@ import static org.hibernate.jpa.SpecHints.HINT_SPEC_QUERY_TIMEOUT;
 import static org.hibernate.jpa.internal.util.CacheModeHelper.interpretCacheMode;
 import static org.hibernate.internal.LockOptionsHelper.applyPropertiesToLockOptions;
 import static org.hibernate.pretty.MessageHelper.infoString;
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * Concrete implementation of the {@link Session} API.
@@ -581,7 +581,7 @@ public class SessionImpl
 			throw new NullPointerException( "null object passed to getCurrentLockMode()" );
 		}
 
-		final LazyInitializer lazyInitializer = extractLazyInitializer( object );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( object, getFactory() );
 		if ( lazyInitializer != null ) {
 			object = lazyInitializer.getImplementation( this );
 			if ( object == null ) {
@@ -1040,7 +1040,7 @@ public class SessionImpl
 		fireLoadNoChecks( event, IMMEDIATE_LOAD );
 		final Object result = event.getResult();
 		releaseLoadEvent( event );
-		final LazyInitializer lazyInitializer = extractLazyInitializer( result );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( result, getFactory() );
 		return lazyInitializer != null ? lazyInitializer.getImplementation() : result;
 	}
 
@@ -1560,7 +1560,7 @@ public class SessionImpl
 	public Object getIdentifier(Object object) {
 		checkOpen();
 		checkTransactionSynchStatus();
-		final LazyInitializer lazyInitializer = extractLazyInitializer( object );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( object, getFactory() );
 		if ( lazyInitializer != null ) {
 			if ( lazyInitializer.getSession() != this ) {
 				throw new IllegalArgumentException( "Given proxy is not associated with the persistence context" );
@@ -1584,15 +1584,20 @@ public class SessionImpl
 	@Override
 	public Object getContextEntityIdentifier(Object object) {
 		checkOpenOrWaitingForAutoClose();
-		final LazyInitializer lazyInitializer = extractLazyInitializer( object );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( object, getFactory() );
 		if ( lazyInitializer != null ) {
 			return lazyInitializer.getInternalIdentifier();
 		}
-		else if ( isPersistentAttributeInterceptable( object ) ) {
-			final PersistentAttributeInterceptor interceptor =
-					asPersistentAttributeInterceptable( object ).$$_hibernate_getInterceptor();
-			if ( interceptor instanceof EnhancementAsProxyLazinessInterceptor ) {
-				return ( (EnhancementAsProxyLazinessInterceptor) interceptor ).getIdentifier();
+		else {
+			final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptableOrNull(
+					object,
+					getFactory()
+			);
+			if ( interceptable != null ) {
+				final PersistentAttributeInterceptor interceptor = interceptable.$$_hibernate_getInterceptor();
+				if ( interceptor instanceof EnhancementAsProxyLazinessInterceptor ) {
+					return ( (EnhancementAsProxyLazinessInterceptor) interceptor ).getIdentifier();
+				}
 			}
 		}
 
@@ -1610,7 +1615,7 @@ public class SessionImpl
 		}
 
 		try {
-			final LazyInitializer lazyInitializer = extractLazyInitializer( object );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( object, getFactory() );
 			if ( lazyInitializer != null ) {
 				// don't use proxiesByKey, since not all
 				// proxies that point to this session's
@@ -1678,7 +1683,7 @@ public class SessionImpl
 		}
 
 		try {
-			final LazyInitializer lazyInitializer = extractLazyInitializer( object );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( object, getFactory() );
 			if ( lazyInitializer == null && persistenceContext.getEntry( object ) == null ) {
 				// check if it is an entity -> if not throw an exception (per JPA)
 				try {
@@ -1784,7 +1789,7 @@ public class SessionImpl
 
 	@Override
 	public String bestGuessEntityName(Object object) {
-		final LazyInitializer lazyInitializer = extractLazyInitializer( object );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( object, getFactory() );
 		if ( lazyInitializer != null ) {
 			// it is possible for this method to be called during flush processing,
 			// so make certain that we do not accidentally initialize an uninitialized proxy
@@ -1801,7 +1806,7 @@ public class SessionImpl
 
 	@Override
 	public String bestGuessEntityName(Object object, EntityEntry entry) {
-		final LazyInitializer lazyInitializer = extractLazyInitializer( object );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( object, getFactory() );
 		if ( lazyInitializer != null ) {
 			// it is possible for this method to be called during flush processing,
 			// so make certain that we do not accidentally initialize an uninitialized proxy
@@ -1819,7 +1824,7 @@ public class SessionImpl
 	public String getEntityName(Object object) {
 		checkOpen();
 //		checkTransactionSynchStatus();
-		final LazyInitializer lazyInitializer = extractLazyInitializer( object );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( object, getFactory() );
 		if ( lazyInitializer != null ) {
 			if ( !persistenceContext.containsProxy( object ) ) {
 				throw new IllegalArgumentException( "Given proxy is not associated with the persistence context" );
@@ -1837,7 +1842,7 @@ public class SessionImpl
 	@Override @SuppressWarnings("unchecked")
 	public <T> T getReference(T object) {
 		checkOpen();
-		final LazyInitializer lazyInitializer = extractLazyInitializer( object );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( object, getFactory() );
 		if ( lazyInitializer != null ) {
 			return (T) getReference( lazyInitializer.getPersistentClass(), lazyInitializer.getIdentifier() );
 		}

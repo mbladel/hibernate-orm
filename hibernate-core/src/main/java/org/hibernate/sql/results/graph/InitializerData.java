@@ -5,6 +5,7 @@
 package org.hibernate.sql.results.graph;
 
 
+import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -32,6 +33,10 @@ public abstract class InitializerData {
 
 	public RowProcessingState getRowProcessingState() {
 		return rowProcessingState;
+	}
+
+	public SharedSessionContractImplementor getSession() {
+		return getRowProcessingState().getSession();
 	}
 
 	public Initializer.State getState() {

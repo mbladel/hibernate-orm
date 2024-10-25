@@ -13,7 +13,6 @@ import java.time.ZonedDateTime;
 import java.util.Locale;
 import java.util.Map;
 
-import org.hibernate.Hibernate;
 import org.hibernate.HibernateException;
 import org.hibernate.MappingException;
 import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
@@ -36,6 +35,8 @@ import org.hibernate.type.descriptor.java.MutabilityPlan;
 import org.hibernate.type.descriptor.jdbc.JdbcLiteralFormatter;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 import org.hibernate.type.MappingContext;
+
+import static org.hibernate.engine.internal.ManagedTypeHelper.isInitialized;
 
 /**
  * @author Christian Beikov
@@ -273,7 +274,7 @@ public class ConvertedBasicTypeImpl<J> implements ConvertedBasicType<J>,
 	@Override
 	@SuppressWarnings("unchecked")
 	public final String toLoggableString(Object value, SessionFactoryImplementor factory) {
-		if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY || !Hibernate.isInitialized( value ) ) {
+		if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY || !isInitialized( value, factory ) ) {
 			return  "<uninitialized>";
 		}
 		return converter.getDomainJavaType().extractLoggableRepresentation( (J) value );

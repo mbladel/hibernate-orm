@@ -41,7 +41,7 @@ public class EntitySelectFetchByUniqueKeyInitializer extends EntitySelectFetchIn
 		final String entityName = concreteDescriptor.getEntityName();
 		final String uniqueKeyPropertyName = fetchedAttribute.getReferencedPropertyName();
 
-		final SharedSessionContractImplementor session = data.getRowProcessingState().getSession();
+		final SharedSessionContractImplementor session = data.getSession();
 
 		final EntityUniqueKey euk = new EntityUniqueKey(
 				entityName,

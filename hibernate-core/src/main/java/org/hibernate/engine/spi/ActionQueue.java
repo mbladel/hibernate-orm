@@ -57,7 +57,7 @@ import org.hibernate.type.Type;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * Responsible for maintaining the queue of actions related to events.
@@ -894,7 +894,7 @@ public class ActionQueue {
 	}
 
 	public void unScheduleDeletion(EntityEntry entry, Object rescuedEntity) {
-		final LazyInitializer lazyInitializer = extractLazyInitializer( rescuedEntity );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( rescuedEntity, session.getFactory() );
 		if ( lazyInitializer != null ) {
 			if ( !lazyInitializer.isUninitialized() ) {
 				rescuedEntity = lazyInitializer.getImplementation( session );

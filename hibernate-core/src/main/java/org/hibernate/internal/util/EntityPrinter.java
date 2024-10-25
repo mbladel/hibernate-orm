@@ -7,7 +7,6 @@ package org.hibernate.internal.util;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.hibernate.Hibernate;
 import org.hibernate.HibernateException;
 import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
 import org.hibernate.engine.spi.EntityHolder;
@@ -18,6 +17,8 @@ import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.type.Type;
+
+import static org.hibernate.engine.internal.ManagedTypeHelper.isInitialized;
 
 /**
  * Renders entities and query parameters to a nicely readable string.
@@ -62,7 +63,7 @@ public final class EntityPrinter {
 					if ( values[i] == LazyPropertyInitializer.UNFETCHED_PROPERTY ) {
 						strValue = values[i].toString();
 					}
-					else if ( !Hibernate.isInitialized( values[i] ) ) {
+					else if ( !isInitialized( values[i], factory ) ) {
 						strValue = "<uninitialized>";
 					}
 					else {

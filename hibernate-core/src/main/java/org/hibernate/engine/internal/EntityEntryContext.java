@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import static org.hibernate.engine.internal.ManagedTypeHelper.asManagedEntity;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asManagedEntityOrNull;
 import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptableOrNull;
 import static org.hibernate.engine.internal.ManagedTypeHelper.isManagedEntity;
 
@@ -96,8 +97,11 @@ public class EntityEntryContext {
 		ManagedEntity managedEntity = getAssociatedManagedEntity( entity );
 		final boolean alreadyAssociated = managedEntity != null;
 		if ( !alreadyAssociated ) {
-			if ( isManagedEntity( entity ) ) {
-				final ManagedEntity managed = asManagedEntity( entity );
+			final ManagedEntity managed = asManagedEntityOrNull(
+					entity,
+					persistenceContext.getSession().getFactory()
+			);
+			if ( managed != null ) {
 				if ( entityEntry.getPersister().isMutable() ) {
 					managedEntity = managed;
 					// We know that managedEntity is not associated with the same PersistenceContext.
@@ -156,8 +160,11 @@ public class EntityEntryContext {
 	}
 
 	private ManagedEntity getAssociatedManagedEntity(Object entity) {
-		if ( isManagedEntity( entity ) ) {
-			final ManagedEntity managedEntity = asManagedEntity( entity );
+		final ManagedEntity managedEntity = asManagedEntityOrNull(
+				entity,
+				persistenceContext.getSession().getFactory()
+		);
+		if ( managedEntity != null ) {
 			if ( managedEntity.$$_hibernate_getEntityEntry() == null ) {
 				// it is not associated
 				return null;
@@ -258,7 +265,7 @@ public class EntityEntryContext {
 			immutableManagedEntityXref.remove( entity );
 
 		}
-		else if ( ! ( isManagedEntity( entity ) ) ) {
+		else if ( !isManagedEntity( entity, persistenceContext.getSession().getFactory() ) ) {
 			nonEnhancedEntityXref.remove( entity );
 		}
 
@@ -352,7 +359,7 @@ public class EntityEntryContext {
 			final ManagedEntity current = nextManagedEntity;
 			nextManagedEntity = current.$$_hibernate_getNextManagedEntity();
 			Object toProcess = current.$$_hibernate_getEntityInstance();
-			unsetSession( asPersistentAttributeInterceptableOrNull( toProcess ) );
+			unsetSession( asPersistentAttributeInterceptableOrNull( toProcess, persistenceContext.getSession().getSessionFactory() ) );
 			clearManagedEntity( current );//careful this also unlinks from the "next" entry in the list
 		}
 	}

@@ -40,6 +40,7 @@ import org.hibernate.event.spi.EntityCopyObserverFactory;
 import org.hibernate.event.spi.EventEngine;
 import org.hibernate.graph.RootGraph;
 import org.hibernate.graph.spi.RootGraphImplementor;
+import org.hibernate.internal.util.collections.CachingClassValue;
 import org.hibernate.event.service.spi.EventListenerGroups;
 import org.hibernate.metamodel.MappingMetamodel;
 import org.hibernate.metamodel.model.domain.JpaMetamodel;
@@ -250,6 +251,11 @@ public class SessionFactoryDelegatingImpl implements SessionFactoryImplementor, 
 	@Override
 	public String bestGuessEntityName(Object object) {
 		return delegate.bestGuessEntityName( object );
+	}
+
+	@Override
+	public <V> CachingClassValue<V> getClassMetadata(Class<V> metaType, Function<Class<?>, V> computer) {
+		return delegate.getClassMetadata( metaType, computer );
 	}
 
 	@Override

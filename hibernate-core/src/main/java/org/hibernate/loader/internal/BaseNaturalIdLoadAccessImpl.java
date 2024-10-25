@@ -27,9 +27,9 @@ import org.hibernate.loader.ast.spi.NaturalIdLoadOptions;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.NaturalIdMapping;
 import org.hibernate.persister.entity.EntityPersister;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 import static org.hibernate.engine.spi.NaturalIdResolutions.INVALID_NATURAL_ID_REFERENCE;
 
 /**
@@ -237,7 +237,7 @@ public abstract class BaseNaturalIdLoadAccessImpl<T> implements NaturalIdLoadOpt
 						? (T) getIdentifierLoadAccess().load(cachedResolution)
 						: (T) entityPersister().getNaturalIdLoader().load( normalizedNaturalIdValue, this, session );
 				if ( loaded != null ) {
-					final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( loaded );
+					final LazyInitializer lazyInitializer = extractLazyInitializer( loaded, session.getFactory() );
 					final EntityEntry entry = lazyInitializer != null
 							? persistenceContext.getEntry( lazyInitializer.getImplementation() )
 							: persistenceContext.getEntry( loaded );

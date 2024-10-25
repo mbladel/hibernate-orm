@@ -6,7 +6,6 @@ package org.hibernate.sql.results.graph.entity.internal;
 
 import java.util.function.BiConsumer;
 
-import org.hibernate.Hibernate;
 import org.hibernate.engine.spi.EntityHolder;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.PersistenceContext;
@@ -30,7 +29,9 @@ import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.initialize;
+import static org.hibernate.engine.internal.ManagedTypeHelper.isInitialized;
 
 /**
  * Initializer for discriminated mappings.
@@ -165,7 +166,7 @@ public class DiscriminatedEntityInitializer
 
 		data.setState( State.INITIALIZED );
 
-		final SharedSessionContractImplementor session = data.getRowProcessingState().getSession();
+		final SharedSessionContractImplementor session = data.getSession();
 		final EntityKey entityKey = new EntityKey( data.entityIdentifier, data.concreteDescriptor );
 
 		final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
@@ -174,7 +175,7 @@ public class DiscriminatedEntityInitializer
 			final Object instance = holder.getEntity();
 			data.setInstance( instance );
 			if ( holder.getEntityInitializer() == null ) {
-				if ( instance != null && Hibernate.isInitialized( instance ) ) {
+				if ( instance != null && isInitialized( instance, session.getFactory() ) ) {
 					return;
 				}
 			}
@@ -208,11 +209,11 @@ public class DiscriminatedEntityInitializer
 		}
 		else {
 			final RowProcessingState rowProcessingState = data.getRowProcessingState();
-			final LazyInitializer lazyInitializer = extractLazyInitializer( instance );
+			final SharedSessionContractImplementor session = rowProcessingState.getSession();
+			final LazyInitializer lazyInitializer = extractLazyInitializer( instance, session.getFactory() );
 			if ( lazyInitializer == null ) {
 				data.setState( State.INITIALIZED );
 				if ( keyIsEager ) {
-					final SharedSessionContractImplementor session = rowProcessingState.getSession();
 					data.concreteDescriptor = session.getEntityPersister( null, instance );
 					data.entityIdentifier = data.concreteDescriptor.getIdentifier( instance, session );
 				}
@@ -253,7 +254,7 @@ public class DiscriminatedEntityInitializer
 			return;
 		}
 		data.setState( State.INITIALIZED );
-		data.setInstance( data.getRowProcessingState().getSession().internalLoad(
+		data.setInstance( data.getSession().internalLoad(
 				data.concreteDescriptor.getEntityName(),
 				data.entityIdentifier,
 				eager,
@@ -281,7 +282,7 @@ public class DiscriminatedEntityInitializer
 			data.entityIdentifier = null;
 			data.concreteDescriptor = null;
 			if ( eager ) {
-				Hibernate.initialize( instance );
+				initialize( instance, data.getSession().getFactory() );
 			}
 		}
 	}

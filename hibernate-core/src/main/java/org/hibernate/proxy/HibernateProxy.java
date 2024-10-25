@@ -10,6 +10,8 @@ import org.hibernate.engine.spi.PrimeAmongSecondarySupertypes;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import static org.hibernate.engine.internal.ManagedTypeHelper.asHibernateProxyOrNull;
+
 /**
  * Interface implemented directly by entity proxies, exposing
  * access to the associated {@link LazyInitializer}.
@@ -28,13 +30,8 @@ public interface HibernateProxy extends Serializable, PrimeAmongSecondarySuperty
 	 *         object is a proxy, or {@code null} otherwise.
 	 */
 	static @Nullable LazyInitializer extractLazyInitializer(final @Nullable Object object) {
-		if ( object instanceof PrimeAmongSecondarySupertypes t ) {
-			final HibernateProxy hibernateProxy = t.asHibernateProxy();
-			if ( hibernateProxy != null ) {
-				return hibernateProxy.getHibernateLazyInitializer();
-			}
-		}
-		return null;
+		final HibernateProxy hibernateProxy = asHibernateProxyOrNull( object );
+		return hibernateProxy != null ? hibernateProxy.getHibernateLazyInitializer() : null;
 	}
 
 	/**

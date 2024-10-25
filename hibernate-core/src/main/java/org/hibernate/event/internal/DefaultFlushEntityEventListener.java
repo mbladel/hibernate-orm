@@ -18,7 +18,8 @@ import org.hibernate.engine.internal.Versioning;
 import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.ManagedEntity;
 import org.hibernate.engine.spi.PersistenceContext;
-import org.hibernate.engine.spi.PersistentAttributeInterceptor;
+import org.hibernate.engine.spi.PersistentAttributeInterceptable;
+import org.hibernate.engine.spi.PrimeAmongSecondarySupertypes;
 import org.hibernate.engine.spi.SelfDirtinessTracker;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SessionImplementor;
@@ -38,16 +39,14 @@ import org.hibernate.stat.spi.StatisticsImplementor;
 import org.hibernate.type.Type;
 
 import static org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer.UNFETCHED_PROPERTY;
-import static org.hibernate.engine.internal.ManagedTypeHelper.asManagedEntity;
-import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.asSelfDirtinessTracker;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isSelfDirtinessTracker;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptableOrNull;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPrimeAmongSecondarySupertypesOrNull;
 import static org.hibernate.engine.internal.ManagedTypeHelper.processIfSelfDirtinessTracker;
 import static org.hibernate.engine.internal.ManagedTypeHelper.processIfManagedEntity;
 import static org.hibernate.engine.internal.Versioning.getVersion;
 import static org.hibernate.engine.internal.Versioning.incrementVersion;
 import static org.hibernate.engine.internal.Versioning.setVersion;
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 import static org.hibernate.internal.util.collections.ArrayHelper.EMPTY_INT_ARRAY;
 import static org.hibernate.pretty.MessageHelper.infoString;
 
@@ -100,7 +99,7 @@ public class DefaultFlushEntityEventListener implements FlushEntityEventListener
 			Object[] current,
 			Object[] loaded,
 			SessionImplementor session) {
-		if ( !isUninitializedEnhanced( entity ) ) {
+		if ( !isUninitializedEnhanced( entity, session.getFactory() ) ) {
 			final NaturalIdMapping naturalIdMapping = persister.getNaturalIdMapping();
 			if ( naturalIdMapping != null && entry.getStatus() != Status.READ_ONLY ) {
 				naturalIdMapping.verifyFlushState( entry.getId(), current, loaded, session );
@@ -108,12 +107,14 @@ public class DefaultFlushEntityEventListener implements FlushEntityEventListener
 		}
 	}
 
-	private static boolean isUninitializedEnhanced(Object entity) {
-		if ( isPersistentAttributeInterceptable( entity ) ) {
-			final PersistentAttributeInterceptor interceptor =
-					asPersistentAttributeInterceptable( entity ).$$_hibernate_getInterceptor();
+	private static boolean isUninitializedEnhanced(Object entity, SessionFactoryImplementor factory) {
+		final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptableOrNull(
+				entity,
+				factory
+		);
+		if ( interceptable != null ) {
 			// the entity is an un-initialized enhancement-as-proxy reference
-			return interceptor instanceof EnhancementAsProxyLazinessInterceptor;
+			return interceptable.$$_hibernate_getInterceptor() instanceof EnhancementAsProxyLazinessInterceptor;
 		}
 		else {
 			return false;
@@ -216,8 +217,8 @@ public class DefaultFlushEntityEventListener implements FlushEntityEventListener
 			}
 			else {
 				final Object entity = event.getEntity();
-				processIfSelfDirtinessTracker( entity, SelfDirtinessTracker::$$_hibernate_clearDirtyAttributes );
-				processIfManagedEntity( entity, DefaultFlushEntityEventListener::useTracker );
+				processIfSelfDirtinessTracker( entity, SelfDirtinessTracker::$$_hibernate_clearDirtyAttributes, event.getFactory() );
+				processIfManagedEntity( entity, DefaultFlushEntityEventListener::useTracker, event.getFactory() );
 				event.getFactory().getCustomEntityDirtinessStrategy()
 						.resetDirty( entity, entry.getPersister(), event.getSession() );
 				return false;
@@ -536,9 +537,19 @@ public class DefaultFlushEntityEventListener implements FlushEntityEventListener
 		}
 		else {
 			final Object entity = event.getEntity();
-			return isSelfDirtinessTracker( entity ) && asManagedEntity( entity ).$$_hibernate_useTracker()
-					? getDirtyPropertiesFromSelfDirtinessTracker( asSelfDirtinessTracker( entity ), event )
-					: getDirtyPropertiesFromCustomEntityDirtinessStrategy( event );
+			final PrimeAmongSecondarySupertypes prime = asPrimeAmongSecondarySupertypesOrNull(
+					entity,
+					event.getFactory()
+			);
+			if ( prime != null
+					&& prime.asSelfDirtinessTracker() != null
+					&& castNonNull( prime.asManagedEntity() ).$$_hibernate_useTracker() ) {
+				return getDirtyPropertiesFromSelfDirtinessTracker(
+						castNonNull( prime.asSelfDirtinessTracker() ),
+						event
+				);
+			}
+			return getDirtyPropertiesFromCustomEntityDirtinessStrategy( event );
 		}
 	}
 

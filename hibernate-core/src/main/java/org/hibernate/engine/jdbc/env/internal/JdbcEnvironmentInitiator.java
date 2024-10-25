@@ -330,7 +330,7 @@ public class JdbcEnvironmentInitiator implements StandardServiceInitiator<JdbcEn
 		);
 		temporaryJdbcSessionOwner.transactionCoordinator = registry.requireService( TransactionCoordinatorBuilder.class )
 				.buildTransactionCoordinator(
-						new JdbcCoordinatorImpl( null, temporaryJdbcSessionOwner, jdbcServices ),
+						new JdbcCoordinatorImpl( null, temporaryJdbcSessionOwner, jdbcServices, null ),
 						() -> false
 				);
 

@@ -21,7 +21,6 @@ import org.hibernate.internal.log.LoggingHelper;
 import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
 import org.hibernate.persister.entity.EntityPersister;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
@@ -40,6 +39,7 @@ import org.hibernate.type.Type;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import static org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer.UNFETCHED_PROPERTY;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 import static org.hibernate.sql.results.graph.entity.internal.EntityInitializerImpl.determineConcreteEntityDescriptor;
 
 /**
@@ -247,7 +247,7 @@ public class EntityDelayedFetchInitializer
 							false
 					);
 
-					final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( instance );
+					final LazyInitializer lazyInitializer = extractLazyInitializer( instance, session.getFactory() );
 					if ( lazyInitializer != null ) {
 						lazyInitializer.setUnwrap( referencedModelPart.isUnwrapProxy() && concreteDescriptor.isInstrumented() );
 					}

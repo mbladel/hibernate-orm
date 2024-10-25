@@ -18,8 +18,9 @@ import org.hibernate.event.spi.EvictEventListener;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.persister.entity.EntityPersister;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
+
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 import static org.hibernate.pretty.MessageHelper.infoString;
 
@@ -48,7 +49,7 @@ public class DefaultEvictEventListener implements EvictEventListener {
 		if ( object == null ) {
 			throw new NullPointerException( "null passed to Session.evict()" );
 		}
-		final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( object );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( object, source.getFactory() );
 		if ( lazyInitializer != null ) {
 			final Object id = lazyInitializer.getInternalIdentifier();
 			if ( id == null ) {

@@ -26,7 +26,6 @@ import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.NonAggregatedIdentifierMapping;
 import org.hibernate.metamodel.mapping.SelectableMappings;
 import org.hibernate.persister.entity.EntityPersister;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.query.sqm.sql.SqmToSqlAstConverter;
 import org.hibernate.spi.NavigablePath;
@@ -47,6 +46,8 @@ import org.hibernate.sql.results.graph.embeddable.internal.NonAggregatedIdentifi
 import org.hibernate.sql.results.graph.embeddable.internal.NonAggregatedIdentifierMappingResult;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
+
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * A "non-aggregated" composite identifier.
@@ -242,7 +243,7 @@ public class NonAggregatedIdentifierMappingImpl extends AbstractCompositeIdentif
 	@Override
 	public Object getIdentifier(Object entity, MergeContext mergeContext) {
 		if ( hasContainingClass() ) {
-			final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( entity );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( entity, sessionFactory );
 			if ( lazyInitializer != null ) {
 				return lazyInitializer.getIdentifier();
 			}

@@ -8,7 +8,6 @@ import java.util.BitSet;
 
 import org.hibernate.engine.FetchTiming;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
@@ -24,6 +23,8 @@ import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 import org.hibernate.type.descriptor.java.JavaType;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
+
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * @author Andrea Boriero
@@ -139,7 +140,7 @@ public class CircularBiDirectionalFetchImpl implements BiDirectionalFetch {
 				initializer.resolveInstance( data );
 			}
 			final Object initializedInstance = initializer.getResolvedInstance( data );
-			final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( initializedInstance );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( initializedInstance, initializer.getEntityDescriptor().getFactory() );
 			if ( lazyInitializer != null ) {
 				final Class<?> concreteProxyClass = initializer.getConcreteDescriptor( data ).getConcreteProxyClass();
 				if ( concreteProxyClass.isInstance( initializedInstance ) ) {

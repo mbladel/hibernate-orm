@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import org.hibernate.Hibernate;
 import org.hibernate.HibernateException;
 import org.hibernate.Incubating;
 import org.hibernate.Internal;
@@ -49,7 +48,8 @@ import static org.hibernate.internal.util.collections.ArrayHelper.EMPTY_BOOLEAN_
 import static org.hibernate.internal.util.collections.ArrayHelper.EMPTY_INT_ARRAY;
 import static org.hibernate.internal.util.collections.CollectionHelper.mapOfSize;
 import static org.hibernate.pretty.MessageHelper.collectionInfoString;
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.isInitialized;
 
 /**
  * A type that handles Hibernate {@code PersistentCollection}s (including arrays).
@@ -92,7 +92,7 @@ public abstract class CollectionType extends AbstractType implements Association
 		while ( elems.hasNext() ) {
 			final Object maybeProxy = elems.next();
 			// worrying about proxies is perhaps a little bit of overkill here...
-			final LazyInitializer initializer = extractLazyInitializer( maybeProxy );
+			final LazyInitializer initializer = extractLazyInitializer( maybeProxy, session.getFactory() );
 			final Object element =
 					initializer != null && !initializer.isUninitialized()
 							? initializer.getImplementation()
@@ -194,7 +194,7 @@ public abstract class CollectionType extends AbstractType implements Association
 	}
 
 	protected String renderLoggableString(Object value, SessionFactoryImplementor factory) {
-		if ( !Hibernate.isInitialized( value ) ) {
+		if ( !isInitialized( value, factory ) ) {
 			return "<uninitialized>";
 		}
 		else {
@@ -207,7 +207,7 @@ public abstract class CollectionType extends AbstractType implements Association
 	}
 
 	private static String elementString(SessionFactoryImplementor factory, Object element, Type elemType) {
-		return element == UNFETCHED_PROPERTY || !Hibernate.isInitialized( element )
+		return element == UNFETCHED_PROPERTY || !isInitialized( element, factory )
 				? "<uninitialized>"
 				: elemType.toLoggableString( element, factory );
 	}
@@ -636,7 +636,7 @@ public abstract class CollectionType extends AbstractType implements Association
 		if ( original == null ) {
 			return replaceNullOriginal( target, session );
 		}
-		else if ( !Hibernate.isInitialized( original ) ) {
+		else if ( !isInitialized( original, session.getFactory() ) ) {
 			return replaceUninitializedOriginal( original, target, session, copyCache );
 		}
 		else {

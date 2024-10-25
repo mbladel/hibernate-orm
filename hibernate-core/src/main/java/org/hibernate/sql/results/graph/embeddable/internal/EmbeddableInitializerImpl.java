@@ -10,6 +10,7 @@ import java.util.function.BiConsumer;
 
 import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
 import org.hibernate.engine.internal.ManagedTypeHelper;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
@@ -18,7 +19,6 @@ import org.hibernate.metamodel.spi.EmbeddableInstantiator;
 import org.hibernate.metamodel.spi.ValueAccess;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.property.access.spi.Setter;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
@@ -41,6 +41,7 @@ import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 import static org.hibernate.sql.results.graph.embeddable.EmbeddableLoadingLogger.EMBEDDED_LOAD_LOGGER;
 import static org.hibernate.sql.results.graph.entity.internal.BatchEntityInsideEmbeddableSelectFetchInitializer.BATCH_PROPERTY;
 
@@ -56,6 +57,7 @@ public class EmbeddableInitializerImpl extends AbstractInitializer<EmbeddableIni
 	private final @Nullable InitializerParent<InitializerData> parent;
 	private final boolean isResultInitializer;
 	private final boolean isPartOfKey;
+	private final SessionFactoryImplementor sessionFactory;
 
 	protected final DomainResultAssembler<?>[][] assemblers;
 	protected final BasicResultAssembler<?> discriminatorAssembler;
@@ -113,6 +115,7 @@ public class EmbeddableInitializerImpl extends AbstractInitializer<EmbeddableIni
 
 		this.isPartOfKey = embedded.isEntityIdentifierMapping() || Initializer.isPartOfKey( navigablePath, parent );
 		// We never want to create empty composites for the FK target or PK, otherwise collections would break
+		this.sessionFactory = creationState.getSqlAstCreationContext().getSessionFactory();
 		final Collection<EmbeddableMappingType.ConcreteEmbeddableType> concreteEmbeddableTypes = embeddableMappingType.getConcreteEmbeddableTypes();
 		final DomainResultAssembler<?>[][] assemblers = new DomainResultAssembler[concreteEmbeddableTypes.isEmpty() ? 1 : concreteEmbeddableTypes.size()][];
 		final @Nullable Initializer<InitializerData>[][] subInitializers = new Initializer[assemblers.length][];
@@ -383,7 +386,7 @@ public class EmbeddableInitializerImpl extends AbstractInitializer<EmbeddableIni
 		if ( embedded.getParentInjectionAttributePropertyAccess() != null || embedded instanceof VirtualModelPart ) {
 			handleParentInjection( data );
 
-			final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( data.getInstance() );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( data.getInstance(), sessionFactory );
 			// If the composite instance has a lazy initializer attached, this means that the embeddable is actually virtual
 			// and the compositeInstance == entity, so we have to inject the row state into the entity when it finishes resolution
 			if ( lazyInitializer != null ) {

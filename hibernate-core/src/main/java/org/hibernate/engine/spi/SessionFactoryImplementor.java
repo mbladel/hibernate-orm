@@ -5,6 +5,7 @@
 package org.hibernate.engine.spi;
 
 import java.util.Collection;
+import java.util.function.Function;
 
 import org.hibernate.CustomEntityDirtinessStrategy;
 import org.hibernate.Incubating;
@@ -22,6 +23,7 @@ import org.hibernate.event.service.spi.EventListenerRegistry;
 import org.hibernate.event.spi.EntityCopyObserverFactory;
 import org.hibernate.event.spi.EventEngine;
 import org.hibernate.graph.spi.RootGraphImplementor;
+import org.hibernate.internal.util.collections.CachingClassValue;
 import org.hibernate.event.service.spi.EventListenerGroups;
 import org.hibernate.metamodel.model.domain.JpaMetamodel;
 import org.hibernate.metamodel.spi.MappingMetamodelImplementor;
@@ -296,4 +298,5 @@ public interface SessionFactoryImplementor extends SessionFactory {
 	 */
 	String bestGuessEntityName(Object object);
 
+	<V> CachingClassValue<V> getClassMetadata(Class<V> metaType, Function<Class<?>, V> computer);
 }

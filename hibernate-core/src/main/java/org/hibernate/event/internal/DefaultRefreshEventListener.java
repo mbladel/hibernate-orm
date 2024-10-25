@@ -36,8 +36,8 @@ import org.hibernate.type.CollectionType;
 import org.hibernate.type.ComponentType;
 import org.hibernate.type.Type;
 
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 import static org.hibernate.pretty.MessageHelper.infoString;
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
 
 /**
  * Defines the default refresh event listener used by hibernate for refreshing entities
@@ -69,7 +69,7 @@ public class DefaultRefreshEventListener implements RefreshEventListener {
 			// cascade refresh and the refresh of the parent will take care of initializing the lazy
 			// entity and setting the correct lock on it, this is needed only when the refresh is called directly on a lazy entity
 			if ( refreshedAlready.isEmpty() ) {
-				final LazyInitializer lazyInitializer = extractLazyInitializer( object );
+				final LazyInitializer lazyInitializer = extractLazyInitializer( object, source.getFactory() );
 				final EntityPersister persister;
 				if ( lazyInitializer != null ) {
 					persister = source.getEntityPersister( lazyInitializer.getEntityName(), object );

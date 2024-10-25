@@ -13,7 +13,6 @@ import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.Map;
 
-import org.hibernate.Hibernate;
 import org.hibernate.HibernateException;
 import org.hibernate.MappingException;
 import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
@@ -31,6 +30,8 @@ import org.hibernate.type.descriptor.jdbc.JdbcLiteralFormatter;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
+
+import static org.hibernate.engine.internal.ManagedTypeHelper.isInitialized;
 
 /**
  * Convenience base class for {@link BasicType} implementations.
@@ -259,7 +260,7 @@ public abstract class AbstractStandardBasicType<T>
 	@Override
 	@SuppressWarnings("unchecked")
 	public final String toLoggableString(Object value, SessionFactoryImplementor factory) {
-		if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY || !Hibernate.isInitialized( value ) ) {
+		if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY || !isInitialized( value, factory ) ) {
 			return  "<uninitialized>";
 		}
 		return javaType.extractLoggableRepresentation( (T) value );

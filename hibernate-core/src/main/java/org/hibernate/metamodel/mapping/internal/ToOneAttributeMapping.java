@@ -63,7 +63,6 @@ import org.hibernate.persister.entity.EntityNameUse;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.persister.entity.JoinedSubclassEntityPersister;
 import org.hibernate.property.access.spi.PropertyAccess;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.query.sqm.sql.SqmToSqlAstConverter;
 import org.hibernate.spi.EntityIdentifierNavigablePath;
@@ -115,6 +114,7 @@ import org.hibernate.type.descriptor.java.JavaType;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import static org.hibernate.boot.model.internal.SoftDeleteHelper.createNonSoftDeletedRestriction;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * @author Steve Ebersole
@@ -2466,7 +2466,10 @@ public class ToOneAttributeMapping
 	 * when possible.
 	 */
 	protected Object lazyInitialize(Object domainValue) {
-		final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( domainValue );
+		final LazyInitializer lazyInitializer = extractLazyInitializer(
+				domainValue,
+				entityMappingType.getEntityPersister().getFactory()
+		);
 		if ( lazyInitializer != null ) {
 			return lazyInitializer.getImplementation();
 		}

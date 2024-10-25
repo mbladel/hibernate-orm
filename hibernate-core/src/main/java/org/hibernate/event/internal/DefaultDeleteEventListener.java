@@ -47,7 +47,7 @@ import org.hibernate.type.TypeHelper;
 
 import static org.hibernate.engine.internal.Collections.skipRemoval;
 import static org.hibernate.pretty.MessageHelper.infoString;
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * Defines the default delete event listener used by hibernate for deleting entities
@@ -92,7 +92,7 @@ public class DefaultDeleteEventListener implements DeleteEventListener,	Callback
 
 	private boolean optimizeUnloadedDelete(DeleteEvent event) {
 		final Object object = event.getObject();
-		final LazyInitializer lazyInitializer = extractLazyInitializer( object );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( object, event.getFactory() );
 		if ( lazyInitializer != null ) {
 			if ( lazyInitializer.isUninitialized() ) {
 				final EventSource source = event.getSession();

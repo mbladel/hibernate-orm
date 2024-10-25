@@ -20,10 +20,10 @@ import org.hibernate.type.EntityType;
 import org.hibernate.type.Type;
 
 import static org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer.UNFETCHED_PROPERTY;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 import static org.hibernate.engine.internal.ManagedTypeHelper.isHibernateProxy;
 import static org.hibernate.engine.internal.ManagedTypeHelper.processIfSelfDirtinessTracker;
 import static org.hibernate.internal.util.StringHelper.qualify;
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
 
 /**
  * Algorithms related to foreign key constraint transparency
@@ -96,7 +96,7 @@ public final class ForeignKeys {
 			// When bytecode-enhancement is used for dirty-checking, the change should
 			// only be tracked when returnedValue was nullified (1).
 			if ( value != returnedValue && returnedValue == null ) {
-				processIfSelfDirtinessTracker( self, SelfDirtinessTracker::$$_hibernate_trackChange, propertyName );
+				processIfSelfDirtinessTracker( self, SelfDirtinessTracker::$$_hibernate_trackChange, propertyName, session.getFactory() );
 			}
 			return returnedValue;
 		}
@@ -212,7 +212,7 @@ public final class ForeignKeys {
 			}
 
 			final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
-			final LazyInitializer lazyInitializer = extractLazyInitializer( object );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( object, session.getFactory() );
 			if ( lazyInitializer != null ) {
 				// if it's an uninitialized proxy it can only be
 				// transient if we did an unloaded-delete on the
@@ -275,8 +275,11 @@ public final class ForeignKeys {
 	 * @return {@code true} if the given entity is not transient (meaning it is either detached/persistent)
 	 */
 	public static boolean isNotTransient(
-			String entityName, Object entity, Boolean assumed, SharedSessionContractImplementor session) {
-		return isHibernateProxy( entity )
+			String entityName,
+			Object entity,
+			Boolean assumed,
+			SharedSessionContractImplementor session) {
+		return isHibernateProxy( entity, session.getFactory() )
 			|| session.getPersistenceContextInternal().isEntryFor( entity )
 			// todo : shouldn't assumed be reversed here?
 			|| !isTransient( entityName, entity, assumed, session );

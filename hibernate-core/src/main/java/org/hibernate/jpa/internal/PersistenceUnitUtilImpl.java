@@ -11,6 +11,7 @@ import jakarta.persistence.metamodel.Attribute;
 import org.hibernate.Hibernate;
 import org.hibernate.MappingException;
 import org.hibernate.engine.spi.EntityEntry;
+import org.hibernate.engine.spi.ManagedEntity;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.jpa.internal.util.PersistenceUtilHelper;
 import org.hibernate.persister.entity.EntityPersister;
@@ -19,12 +20,12 @@ import org.hibernate.proxy.LazyInitializer;
 import org.jboss.logging.Logger;
 
 import static jakarta.persistence.spi.LoadState.NOT_LOADED;
-import static org.hibernate.engine.internal.ManagedTypeHelper.asManagedEntity;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isManagedEntity;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asManagedEntityOrNull;
+import static org.hibernate.engine.internal.ManagedTypeHelper.initialize;
 import static org.hibernate.jpa.internal.util.PersistenceUtilHelper.getLoadState;
 import static org.hibernate.jpa.internal.util.PersistenceUtilHelper.isLoadedWithReference;
 import static org.hibernate.jpa.internal.util.PersistenceUtilHelper.isLoadedWithoutReference;
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * @author Steve Ebersole
@@ -77,7 +78,7 @@ public class PersistenceUnitUtilImpl implements PersistenceUnitUtil, Serializabl
 
 	@Override
 	public void load(Object entity) {
-		Hibernate.initialize( entity );
+		initialize( entity, sessionFactory );
 	}
 
 	@Override
@@ -96,28 +97,31 @@ public class PersistenceUnitUtilImpl implements PersistenceUnitUtil, Serializabl
 			throw new IllegalArgumentException( "Passed entity cannot be null" );
 		}
 
-		final LazyInitializer lazyInitializer = extractLazyInitializer( entity );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( entity, sessionFactory );
 		if ( lazyInitializer != null ) {
 			return lazyInitializer.getInternalIdentifier();
 		}
-		else if ( isManagedEntity( entity ) ) {
-			final EntityEntry entityEntry = asManagedEntity( entity ).$$_hibernate_getEntityEntry();
-			if ( entityEntry != null ) {
-				return entityEntry.getId();
+		else {
+			final ManagedEntity managedEntity = asManagedEntityOrNull( entity, sessionFactory );
+			if ( managedEntity != null ) {
+				final EntityEntry entityEntry = managedEntity.$$_hibernate_getEntityEntry();
+				if ( entityEntry != null ) {
+					return entityEntry.getId();
+				}
+				else {
+					// HHH-11426 - best effort to deal with the case of detached entities
+					log.debug( "jakarta.persistence.PersistenceUnitUtil.getIdentifier may not be able to read identifier of a detached entity" );
+					return getIdentifierFromPersister( entity );
+				}
 			}
 			else {
-				// HHH-11426 - best effort to deal with the case of detached entities
-				log.debug( "jakarta.persistence.PersistenceUnitUtil.getIdentifier may not be able to read identifier of a detached entity" );
+				log.debug(
+						"jakarta.persistence.PersistenceUnitUtil.getIdentifier is only intended to work with enhanced entities " +
+								"(although Hibernate also adapts this support to its proxies); " +
+								"however the passed entity was not enhanced (nor a proxy).. may not be able to read identifier"
+				);
 				return getIdentifierFromPersister( entity );
 			}
-		}
-		else {
-			log.debug(
-					"jakarta.persistence.PersistenceUnitUtil.getIdentifier is only intended to work with enhanced entities " +
-							"(although Hibernate also adapts this support to its proxies); " +
-							"however the passed entity was not enhanced (nor a proxy).. may not be able to read identifier"
-			);
-			return getIdentifierFromPersister( entity );
 		}
 	}
 
@@ -127,26 +131,24 @@ public class PersistenceUnitUtilImpl implements PersistenceUnitUtil, Serializabl
 			throw new IllegalArgumentException( "Passed entity cannot be null" );
 		}
 
-		final LazyInitializer lazyInitializer = extractLazyInitializer( entity );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( entity, sessionFactory );
 		if ( lazyInitializer != null ) {
 			return getVersionFromPersister( lazyInitializer.getImplementation() );
 		}
-		else if ( isManagedEntity( entity ) ) {
-			final EntityEntry entityEntry = asManagedEntity( entity ).$$_hibernate_getEntityEntry();
-			if ( entityEntry != null ) {
-				return entityEntry.getVersion();
-			}
-			else {
-				return getVersionFromPersister( entity );
-			}
-		}
 		else {
+			final ManagedEntity managedEntity = asManagedEntityOrNull( entity, sessionFactory );
+			if ( managedEntity != null ) {
+				final EntityEntry entityEntry = managedEntity.$$_hibernate_getEntityEntry();
+				if ( entityEntry != null ) {
+					return entityEntry.getVersion();
+				}
+			}
 			return getVersionFromPersister( entity );
 		}
 	}
 
 	private Object getIdentifierFromPersister(Object entity) {
-		final Class<?> entityClass = Hibernate.getClass( entity );
+		final Class<?> entityClass = Hibernate.getClassLazy( entity );
 		final EntityPersister persister;
 		try {
 			persister =
@@ -163,7 +165,7 @@ public class PersistenceUnitUtilImpl implements PersistenceUnitUtil, Serializabl
 	}
 
 	private Object getVersionFromPersister(Object entity) {
-		final Class<?> entityClass = Hibernate.getClass( entity );
+		final Class<?> entityClass = Hibernate.getClassLazy( entity );
 		final EntityPersister persister;
 		try {
 			persister =

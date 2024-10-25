@@ -8,6 +8,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.AttributeMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
@@ -16,7 +17,6 @@ import org.hibernate.metamodel.mapping.NonAggregatedIdentifierMapping;
 import org.hibernate.metamodel.mapping.internal.ToOneAttributeMapping;
 import org.hibernate.metamodel.spi.EmbeddableInstantiator;
 import org.hibernate.metamodel.spi.ValueAccess;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.spi.EntityIdentifierNavigablePath;
 import org.hibernate.spi.NavigablePath;
@@ -37,6 +37,7 @@ import org.hibernate.sql.results.jdbc.spi.RowProcessingState;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 import static org.hibernate.sql.results.graph.entity.internal.BatchEntityInsideEmbeddableSelectFetchInitializer.BATCH_PROPERTY;
 
 /**
@@ -51,6 +52,7 @@ public class NonAggregatedIdentifierMappingInitializer extends AbstractInitializ
 	private final EmbeddableMappingType representationEmbeddable;
 	private final EmbeddableInstantiator embeddableInstantiator;
 	private final @Nullable InitializerParent<?> parent;
+	private final SessionFactoryImplementor sessionFactory;
 	private final boolean isResultInitializer;
 
 	private final DomainResultAssembler<?>[] assemblers;
@@ -121,6 +123,7 @@ public class NonAggregatedIdentifierMappingInitializer extends AbstractInitializ
 		this.representationEmbeddable = embedded.getMappedIdEmbeddableTypeDescriptor();
 		this.embeddableInstantiator = representationEmbeddable.getRepresentationStrategy().getInstantiator();
 		this.hasIdClass = embedded.hasContainingClass() && virtualIdEmbeddable != representationEmbeddable;
+		this.sessionFactory = creationState.getSqlAstCreationContext().getSessionFactory();
 
 		final int size = virtualIdEmbeddable.getNumberOfFetchables();
 		final DomainResultAssembler<?>[] assemblers = new DomainResultAssembler[size];
@@ -341,7 +344,7 @@ public class NonAggregatedIdentifierMappingInitializer extends AbstractInitializ
 			assert parent.isEntityInitializer();
 			final Object parentInstance = parent.getResolvedInstance( data.getRowProcessingState() );
 			assert parentInstance != null;
-			final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( parentInstance );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( parentInstance, sessionFactory );
 			// If the composite instance has a lazy initializer attached, this means that the embeddable is actually virtual
 			// and the compositeInstance == entity, so we have to inject the row state into the entity when it finishes resolution
 			if ( lazyInitializer != null ) {

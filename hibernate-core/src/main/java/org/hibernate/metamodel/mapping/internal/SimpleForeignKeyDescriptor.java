@@ -10,13 +10,14 @@ import java.util.Locale;
 import java.util.function.BiConsumer;
 import java.util.function.IntFunction;
 
-import org.hibernate.Hibernate;
 import org.hibernate.bytecode.enhance.spi.interceptor.EnhancementAsProxyLazinessInterceptor;
 import org.hibernate.cache.MutableCacheKeyBuilder;
 import org.hibernate.engine.FetchStyle;
 import org.hibernate.engine.FetchTiming;
 import org.hibernate.engine.internal.CacheHelper;
+import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
+import org.hibernate.engine.spi.PrimeAmongSecondarySupertypes;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.IndexedConsumer;
 import org.hibernate.metamodel.mapping.AssociationKey;
@@ -59,9 +60,8 @@ import org.hibernate.sql.results.graph.FetchParent;
 import org.hibernate.sql.results.graph.basic.BasicResult;
 import org.hibernate.type.descriptor.java.JavaType;
 
-import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPrimeAmongSecondarySupertypesOrNull;
+import static org.hibernate.engine.internal.ManagedTypeHelper.getLazyInitializer;
 
 /**
  * @author Steve Ebersole
@@ -495,7 +495,17 @@ public class SimpleForeignKeyDescriptor implements ForeignKeyDescriptor, BasicVa
 		if ( targetObject == null ) {
 			return null;
 		}
-		final LazyInitializer lazyInitializer = extractLazyInitializer( targetObject );
+
+		final PrimeAmongSecondarySupertypes prime;
+		// session object might be null during query translation, see BaseSqmToSqlAstConverter#associationLiteral
+		if ( session != null ) {
+			prime = asPrimeAmongSecondarySupertypesOrNull( targetObject, session.getFactory() );
+		}
+		else {
+			prime = asPrimeAmongSecondarySupertypesOrNull( targetObject );
+		}
+
+		final LazyInitializer lazyInitializer = prime != null ? getLazyInitializer( prime ) : null;
 		if ( lazyInitializer != null ) {
 			if ( refersToPrimaryKey ) {
 				return lazyInitializer.getIdentifier();
@@ -509,12 +519,14 @@ public class SimpleForeignKeyDescriptor implements ForeignKeyDescriptor, BasicVa
 			return ( (EntityIdentifierMapping) modelPart ).getIdentifierIfNotUnsaved( targetObject, session );
 		}
 
-		if ( lazyInitializer == null && isPersistentAttributeInterceptable( targetObject ) ) {
-			final PersistentAttributeInterceptor interceptor =
-					asPersistentAttributeInterceptable( targetObject ).$$_hibernate_getInterceptor();
+		final PersistentAttributeInterceptable interceptable = prime != null ?
+				prime.asPersistentAttributeInterceptable() :
+				null;
+		if ( lazyInitializer == null && interceptable != null ) {
+			final PersistentAttributeInterceptor interceptor = interceptable.$$_hibernate_getInterceptor();
 			if ( interceptor instanceof EnhancementAsProxyLazinessInterceptor lazinessInterceptor
 					&& !lazinessInterceptor.isInitialized() ) {
-				Hibernate.initialize( targetObject );
+				lazinessInterceptor.forceInitialize( targetObject, null );
 			}
 		}
 

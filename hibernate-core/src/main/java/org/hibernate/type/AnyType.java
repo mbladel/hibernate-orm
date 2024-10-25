@@ -6,7 +6,6 @@ package org.hibernate.type;
 
 import org.hibernate.EntityNameResolver;
 import org.hibernate.FetchMode;
-import org.hibernate.Hibernate;
 import org.hibernate.HibernateException;
 import org.hibernate.MappingException;
 import org.hibernate.PropertyNotFoundException;
@@ -31,10 +30,11 @@ import java.util.Map;
 import java.util.Objects;
 
 import static org.hibernate.engine.internal.ForeignKeys.getEntityIdentifierIfNotUnsaved;
+import static org.hibernate.engine.internal.ManagedTypeHelper.isInitialized;
 import static org.hibernate.internal.util.collections.ArrayHelper.join;
 import static org.hibernate.metamodel.internal.FullNameImplicitDiscriminatorStrategy.FULL_NAME_STRATEGY;
 import static org.hibernate.pretty.MessageHelper.infoString;
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * Handles "any" mappings
@@ -180,7 +180,7 @@ public class AnyType extends AbstractType implements CompositeType, AssociationT
 
 		// this code is largely copied from Session's bestGuessEntityName
 		Object entity = object;
-		final LazyInitializer lazyInitializer = extractLazyInitializer( entity );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( entity, factory );
 		if ( lazyInitializer != null ) {
 			if ( lazyInitializer.isUninitialized() ) {
 				entityName = lazyInitializer.getEntityName();
@@ -289,7 +289,7 @@ public class AnyType extends AbstractType implements CompositeType, AssociationT
 			return "null";
 		}
 
-		if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY || !Hibernate.isInitialized( value ) ) {
+		if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY || !isInitialized( value, factory ) ) {
 			return "<uninitialized>";
 		}
 

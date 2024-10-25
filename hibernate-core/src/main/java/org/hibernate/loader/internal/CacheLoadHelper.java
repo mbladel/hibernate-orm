@@ -20,6 +20,7 @@ import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.EntityHolder;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.PersistenceContext;
+import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
@@ -35,15 +36,14 @@ import org.hibernate.type.Type;
 import org.hibernate.type.TypeHelper;
 
 import static org.hibernate.engine.internal.CacheHelper.fromSharedCache;
-import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptableOrNull;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 import static org.hibernate.engine.internal.ManagedTypeHelper.isManagedEntity;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
 import static org.hibernate.engine.internal.Versioning.getVersion;
 import static org.hibernate.loader.internal.CacheLoadHelper.PersistenceContextEntry.EntityStatus.INCONSISTENT_RTN_CLASS_MARKER;
 import static org.hibernate.loader.internal.CacheLoadHelper.PersistenceContextEntry.EntityStatus.MANAGED;
 import static org.hibernate.loader.internal.CacheLoadHelper.PersistenceContextEntry.EntityStatus.REMOVED_ENTITY_MARKER;
 import static org.hibernate.loader.ast.internal.LoaderHelper.upgradeLock;
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
 import static org.hibernate.sql.results.LoadingLogger.LOADING_LOGGER;
 import static org.hibernate.stat.internal.StatsHelper.getRootEntityRole;
 
@@ -224,7 +224,7 @@ public class CacheLoadHelper {
 			EntityKey entityKey) {
 		// make it circular-reference safe
 		final PersistenceContext persistenceContext = session.getPersistenceContext();
-		if ( isManagedEntity( entity ) ) {
+		if ( isManagedEntity( entity, session.getFactory() ) ) {
 			final EntityHolder entityHolder =
 					persistenceContext.addEntityHolder( entityKey, entity );
 			final EntityEntry entityEntry =
@@ -252,8 +252,9 @@ public class CacheLoadHelper {
 			Object instanceToLoad,
 			EntityKey entityKey) {
 
+		final SessionFactoryImplementor factory = source.getFactory();
 		final EntityPersister subclassPersister =
-				source.getFactory().getMappingMetamodel()
+				factory.getMappingMetamodel()
 						.getEntityDescriptor( entry.getSubclass() );
 		final PersistenceContext persistenceContext = source.getPersistenceContextInternal();
 		final EntityHolder oldHolder = persistenceContext.getEntityHolder( entityKey );
@@ -272,9 +273,12 @@ public class CacheLoadHelper {
 			}
 		}
 
-		if ( isPersistentAttributeInterceptable( entity ) ) {
-			PersistentAttributeInterceptor persistentAttributeInterceptor =
-					asPersistentAttributeInterceptable( entity ).$$_hibernate_getInterceptor();
+		final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptableOrNull(
+				entity,
+				factory
+		);
+		if ( interceptable != null ) {
+			PersistentAttributeInterceptor persistentAttributeInterceptor = interceptable.$$_hibernate_getInterceptor();
 			// if we do this after the entity has been initialized the
 			// BytecodeLazyAttributeInterceptor#isAttributeLoaded(String fieldName)
 			// would return false
@@ -292,7 +296,7 @@ public class CacheLoadHelper {
 		if ( proxy != null ) {
 			// there is already a proxy for this impl
 			// only set the status to read-only if the proxy is read-only
-			final LazyInitializer lazyInitializer = extractLazyInitializer( proxy );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( proxy, factory );
 			assert lazyInitializer != null;
 			lazyInitializer.setImplementation( entity );
 			isReadOnly = lazyInitializer.isReadOnly();

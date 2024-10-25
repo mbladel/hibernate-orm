@@ -22,6 +22,7 @@ import org.hibernate.engine.spi.EntityEntry;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.ManagedEntity;
 import org.hibernate.engine.spi.PersistenceContext;
+import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.engine.spi.SelfDirtinessTracker;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -47,14 +48,12 @@ import org.hibernate.type.ForeignKeyDirection;
 import org.hibernate.type.Type;
 import org.hibernate.type.TypeHelper;
 
-import static org.hibernate.engine.internal.ManagedTypeHelper.asManagedEntity;
 import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.asSelfDirtinessTracker;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptableOrNull;
 import static org.hibernate.engine.internal.ManagedTypeHelper.isHibernateProxy;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isSelfDirtinessTracker;
 import static org.hibernate.event.internal.EntityState.getEntityState;
-import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * Defines the default copy event listener used by hibernate for copying entities
@@ -106,7 +105,7 @@ public class DefaultMergeEventListener
 		// NOTE : `original` is the value being merged
 		if ( original != null ) {
 			final EventSource source = event.getSession();
-			final LazyInitializer lazyInitializer = extractLazyInitializer( original );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( original, source.getFactory() );
 			if ( lazyInitializer != null ) {
 				if ( lazyInitializer.isUninitialized() ) {
 					LOG.trace( "Ignoring uninitialized proxy" );
@@ -116,20 +115,25 @@ public class DefaultMergeEventListener
 					doMerge( event, copiedAlready, lazyInitializer.getImplementation() );
 				}
 			}
-			else if ( isPersistentAttributeInterceptable( original ) ) {
-				final PersistentAttributeInterceptor interceptor =
-						asPersistentAttributeInterceptable( original ).$$_hibernate_getInterceptor();
-				if ( interceptor instanceof EnhancementAsProxyLazinessInterceptor proxyInterceptor ) {
-					LOG.trace( "Ignoring uninitialized enhanced-proxy" );
-					event.setResult( source.byId( proxyInterceptor.getEntityName() )
-							.getReference( proxyInterceptor.getIdentifier() ) );
+			else {
+				final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptableOrNull(
+						original,
+						source.getFactory()
+				);
+				if ( interceptable != null ) {
+					final PersistentAttributeInterceptor interceptor = interceptable.$$_hibernate_getInterceptor();
+					if ( interceptor instanceof EnhancementAsProxyLazinessInterceptor proxyInterceptor ) {
+						LOG.trace( "Ignoring uninitialized enhanced-proxy" );
+						event.setResult( source.byId( proxyInterceptor.getEntityName() )
+										.getReference( proxyInterceptor.getIdentifier() ) );
+					}
+					else {
+						doMerge( event, copiedAlready, original );
+					}
 				}
 				else {
 					doMerge( event, copiedAlready, original );
 				}
-			}
-			else {
-				doMerge( event, copiedAlready, original );
 			}
 		}
 	}
@@ -314,9 +318,12 @@ public class DefaultMergeEventListener
 
 		event.setResult( copy );
 
-		if ( isPersistentAttributeInterceptable( copy ) ) {
-			final PersistentAttributeInterceptor interceptor =
-					asPersistentAttributeInterceptable( copy ).$$_hibernate_getInterceptor();
+		final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptableOrNull(
+				copy,
+				session.getFactory()
+		);
+		if ( interceptable != null ) {
+			final PersistentAttributeInterceptor interceptor = interceptable.$$_hibernate_getInterceptor();
 			if ( interceptor == null ) {
 				persister.getBytecodeEnhancementMetadata().injectInterceptor( copy, id, session );
 			}
@@ -428,7 +435,7 @@ public class DefaultMergeEventListener
 			cascadeOnMerge( source, persister, entity, copyCache );
 			copyValues( persister, entity, target, source, copyCache );
 			//copyValues works by reflection, so explicitly mark the entity instance dirty
-			markInterceptorDirty( entity, target );
+			markInterceptorDirty( entity, target, source.getFactory() );
 			event.setResult( result );
 		}
 	}
@@ -479,15 +486,16 @@ public class DefaultMergeEventListener
 			Object managed,
 			EntityPersister persister,
 			EventSource source) {
-		if ( isHibernateProxy( managed ) ) {
+		if ( isHibernateProxy( managed, source.getFactory() ) ) {
 			return source.getPersistenceContextInternal().unproxy( managed );
 		}
 
-		if ( isPersistentAttributeInterceptable( incoming )
-				&& persister.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading() ) {
-
-			final PersistentAttributeInterceptor incomingInterceptor =
-					asPersistentAttributeInterceptable( incoming ).$$_hibernate_getInterceptor();
+		final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptableOrNull(
+				incoming,
+				source.getFactory()
+		);
+		if ( interceptable != null && persister.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading() ) {
+			final PersistentAttributeInterceptor incomingInterceptor = interceptable.$$_hibernate_getInterceptor();
 			final PersistentAttributeInterceptor managedInterceptor =
 					asPersistentAttributeInterceptable( managed ).$$_hibernate_getInterceptor();
 
@@ -512,21 +520,29 @@ public class DefaultMergeEventListener
 		return managed;
 	}
 
-	private static void markInterceptorDirty(final Object entity, final Object target) {
-		// for enhanced entities, copy over the dirty attributes
-		if ( isSelfDirtinessTracker( entity ) && isSelfDirtinessTracker( target ) ) {
-			// clear, because setting the embedded attributes dirties them
-			final ManagedEntity managedEntity = asManagedEntity( target );
-			final SelfDirtinessTracker selfDirtinessTrackerTarget = asSelfDirtinessTracker( target );
-			if ( !selfDirtinessTrackerTarget.$$_hibernate_hasDirtyAttributes()
-					&& !asManagedEntity( entity ).$$_hibernate_useTracker() ) {
-				managedEntity.$$_hibernate_setUseTracker( false );
-			}
-			else {
-				managedEntity.$$_hibernate_setUseTracker( true );
-				selfDirtinessTrackerTarget.$$_hibernate_clearDirtyAttributes();
-				for ( String fieldName : asSelfDirtinessTracker( entity ).$$_hibernate_getDirtyAttributes() ) {
-					selfDirtinessTrackerTarget.$$_hibernate_trackChange( fieldName );
+	private static void markInterceptorDirty(
+			final Object entity,
+			final Object target,
+			final SessionFactoryImplementor factory) {
+		final PersistentAttributeInterceptable entityInt = asPersistentAttributeInterceptableOrNull( entity, factory );
+		final PersistentAttributeInterceptable targetInt = asPersistentAttributeInterceptableOrNull( target, factory );
+		if ( entityInt != null && targetInt != null ) {
+			final SelfDirtinessTracker entityTracker = entityInt.asSelfDirtinessTracker();
+			final SelfDirtinessTracker targetTracker = targetInt.asSelfDirtinessTracker();
+			// for enhanced entities, copy over the dirty attributes
+			if ( entityTracker != null && targetTracker != null ) {
+				// clear, because setting the embedded attributes dirties them
+				final ManagedEntity managedEntity = castNonNull( targetInt.asManagedEntity() );
+				if ( !targetTracker.$$_hibernate_hasDirtyAttributes()
+						&& !castNonNull( entityInt.asManagedEntity() ).$$_hibernate_useTracker() ) {
+					managedEntity.$$_hibernate_setUseTracker( false );
+				}
+				else {
+					managedEntity.$$_hibernate_setUseTracker( true );
+					targetTracker.$$_hibernate_clearDirtyAttributes();
+					for ( final String fieldName : entityTracker.$$_hibernate_getDirtyAttributes() ) {
+						targetTracker.$$_hibernate_trackChange( fieldName );
+					}
 				}
 			}
 		}

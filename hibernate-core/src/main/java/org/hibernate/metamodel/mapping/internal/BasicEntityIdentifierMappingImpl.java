@@ -26,7 +26,6 @@ import org.hibernate.metamodel.mapping.MappingType;
 import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.property.access.spi.PropertyAccess;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.spi.SqlAstCreationState;
@@ -44,6 +43,8 @@ import org.hibernate.sql.results.graph.basic.BasicFetch;
 import org.hibernate.sql.results.graph.basic.BasicResult;
 import org.hibernate.type.BasicType;
 import org.hibernate.type.descriptor.java.JavaType;
+
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * Mapping of a simple identifier
@@ -148,7 +149,7 @@ public class BasicEntityIdentifierMappingImpl implements BasicEntityIdentifierMa
 
 	@Override
 	public Object getIdentifier(Object entity) {
-		final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( entity );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( entity, sessionFactory );
 		if ( lazyInitializer != null ) {
 			return lazyInitializer.getIdentifier();
 		}

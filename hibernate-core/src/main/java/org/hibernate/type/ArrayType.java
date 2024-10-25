@@ -19,7 +19,8 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.metamodel.CollectionClassification;
 import org.hibernate.persister.collection.CollectionPersister;
 
-import static org.hibernate.Hibernate.isInitialized;
+import static org.hibernate.engine.internal.ManagedTypeHelper.isInitialized;
+
 import static org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer.UNFETCHED_PROPERTY;
 
 /**
@@ -88,7 +89,7 @@ public class ArrayType extends CollectionType {
 	}
 
 	private static String loggableString(SessionFactoryImplementor factory, Object element, Type elemType) {
-		return element == UNFETCHED_PROPERTY || !isInitialized( element )
+		return element == UNFETCHED_PROPERTY || !isInitialized( element, factory )
 				? "<uninitialized>"
 				: elemType.toLoggableString( element, factory );
 	}

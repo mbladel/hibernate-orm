@@ -12,7 +12,6 @@ import java.util.function.BiConsumer;
 
 import org.hibernate.EntityFilterException;
 import org.hibernate.FetchNotFoundException;
-import org.hibernate.Hibernate;
 import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
 import org.hibernate.StaleObjectStateException;
@@ -29,6 +28,7 @@ import org.hibernate.engine.spi.EntityHolder;
 import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.engine.spi.EntityUniqueKey;
 import org.hibernate.engine.spi.PersistenceContext;
+import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.engine.spi.SessionEventListenerManager;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
@@ -83,11 +83,12 @@ import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import static org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer.UNFETCHED_PROPERTY;
-import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptable;
-import static org.hibernate.engine.internal.ManagedTypeHelper.isPersistentAttributeInterceptable;
+import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptableOrNull;
+import static org.hibernate.engine.internal.ManagedTypeHelper.isInitialized;
 import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 import static org.hibernate.loader.internal.CacheLoadHelper.loadFromSecondLevelCache;
 import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * @author Andrea Boriero
@@ -777,13 +778,16 @@ public class EntityInitializerImpl extends AbstractInitializer<EntityInitializer
 		final Object instance = attributeMapping != null
 				? attributeMapping.getValue( parentInstance )
 				: parentInstance;
-		final SharedSessionContractImplementor session = data.getRowProcessingState().getSession();
+		final SharedSessionContractImplementor session = data.getSession();
 		if ( instance == null ) {
 			setMissing( data );
 		}
 		else {
 			data.setInstance( instance );
-			final Object entityInstanceForNotify = data.entityInstanceForNotify = Hibernate.unproxy( instance );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( instance, session.getFactory() );
+			final Object entityInstanceForNotify = data.entityInstanceForNotify = lazyInitializer != null ?
+					lazyInitializer.getImplementation() :
+					instance;
 			data.concreteDescriptor = session.getEntityPersister( null, entityInstanceForNotify );
 			resolveEntityKey(
 					data,
@@ -920,10 +924,10 @@ public class EntityInitializerImpl extends AbstractInitializer<EntityInitializer
 			return;
 		}
 		data.setInstance( instance );
-		final LazyInitializer lazyInitializer = extractLazyInitializer( instance );
 		final RowProcessingState rowProcessingState = data.getRowProcessingState();
 		final SharedSessionContractImplementor session = rowProcessingState.getSession();
 		final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
+		final LazyInitializer lazyInitializer = extractLazyInitializer( instance, session.getFactory() );
 		if ( lazyInitializer == null ) {
 			// Entity is most probably initialized
 			data.entityInstanceForNotify = instance;
@@ -944,9 +948,11 @@ public class EntityInitializerImpl extends AbstractInitializer<EntityInitializer
 						this
 				);
 			}
-			if ( data.concreteDescriptor.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading()
-					&& isPersistentAttributeInterceptable( data.entityInstanceForNotify )
-					&& getAttributeInterceptor( data.entityInstanceForNotify ) instanceof EnhancementAsProxyLazinessInterceptor enhancementInterceptor
+			final PersistentAttributeInterceptable interceptable = data.concreteDescriptor.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading() ?
+					asPersistentAttributeInterceptableOrNull( data.entityInstanceForNotify, session.getFactory() ) :
+					null;
+			if ( interceptable != null
+					&& interceptable.$$_hibernate_getInterceptor() instanceof EnhancementAsProxyLazinessInterceptor enhancementInterceptor
 					&& !enhancementInterceptor.isInitialized() ) {
 				data.setState( State.RESOLVED );
 			}
@@ -1086,13 +1092,15 @@ public class EntityInitializerImpl extends AbstractInitializer<EntityInitializer
 				registerReloadedEntity( data );
 			}
 			else {
+				final SharedSessionContractImplementor session = data.getSession();
 				data.setInstance( proxy );
-				if ( Hibernate.isInitialized( proxy ) ) {
+				if ( isInitialized( proxy, session.getFactory() ) ) {
 					data.setState( State.INITIALIZED );
-					data.entityInstanceForNotify = Hibernate.unproxy( proxy );
+					final LazyInitializer lazyInitializer = extractLazyInitializer( proxy, session.getFactory() );
+					data.entityInstanceForNotify = lazyInitializer != null ? lazyInitializer.getImplementation() : null;
 				}
 				else {
-					final LazyInitializer lazyInitializer = extractLazyInitializer( proxy );
+					final LazyInitializer lazyInitializer = extractLazyInitializer( proxy, entityDescriptor.getFactory() );
 					assert lazyInitializer != null;
 					data.entityInstanceForNotify = resolveEntityInstance2( data );
 					lazyInitializer.setImplementation( data.entityInstanceForNotify );
@@ -1178,7 +1186,7 @@ public class EntityInitializerImpl extends AbstractInitializer<EntityInitializer
 	}
 
 	private boolean isExistingEntityInitialized(Object existingEntity) {
-		return Hibernate.isInitialized( existingEntity );
+		return isInitialized( existingEntity, entityDescriptor.getFactory() );
 	}
 
 	/**
@@ -1261,10 +1269,7 @@ public class EntityInitializerImpl extends AbstractInitializer<EntityInitializer
 	}
 
 	protected Object instantiateEntity(EntityInitializerData data) {
-		return data.getRowProcessingState().getSession().instantiate(
-				data.concreteDescriptor,
-				data.entityKey.getIdentifier()
-		);
+		return data.getSession().instantiate( data.concreteDescriptor, data.entityKey.getIdentifier() );
 	}
 
 	private Object resolveToOptionalInstance(EntityInitializerData data) {
@@ -1291,7 +1296,7 @@ public class EntityInitializerImpl extends AbstractInitializer<EntityInitializer
 
 	private Object resolveInstanceFromCache(EntityInitializerData data) {
 		return loadFromSecondLevelCache(
-				data.getRowProcessingState().getSession().asEventSource(),
+				data.getSession().asEventSource(),
 				null,
 				data.lockMode,
 				entityDescriptor,
@@ -1329,8 +1334,7 @@ public class EntityInitializerImpl extends AbstractInitializer<EntityInitializer
 	}
 
 	protected boolean consistentInstance(EntityInitializerData data) {
-		final PersistenceContext persistenceContextInternal =
-				data.getRowProcessingState().getSession().getPersistenceContextInternal();
+		final PersistenceContext persistenceContextInternal =data.getSession().getPersistenceContextInternal();
 		// Only call PersistenceContext#getEntity within the assert expression, as it is costly
 		final Object entity = persistenceContextInternal.getEntity( data.entityKey );
 		return entity == null || entity == data.entityInstanceForNotify;
@@ -1349,9 +1353,12 @@ public class EntityInitializerImpl extends AbstractInitializer<EntityInitializer
 		preLoad( data, resolvedEntityState );
 
 		final Object entityInstanceForNotify = data.entityInstanceForNotify;
-		if ( isPersistentAttributeInterceptable( entityInstanceForNotify ) ) {
-			final PersistentAttributeInterceptor persistentAttributeInterceptor =
-					asPersistentAttributeInterceptable( entityInstanceForNotify ).$$_hibernate_getInterceptor();
+		final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptableOrNull(
+				data.entityInstanceForNotify,
+				session.getFactory()
+		);
+		if ( interceptable != null ) {
+			final PersistentAttributeInterceptor persistentAttributeInterceptor = interceptable.$$_hibernate_getInterceptor();
 			if ( persistentAttributeInterceptor == null
 					|| persistentAttributeInterceptor instanceof EnhancementAsProxyLazinessInterceptor ) {
 				// if we do this after the entity has been initialized the
@@ -1466,7 +1473,7 @@ public class EntityInitializerImpl extends AbstractInitializer<EntityInitializer
 			return true;
 		}
 		else {
-			final LazyInitializer lazyInitializer = extractLazyInitializer( data.getInstance() );
+			final LazyInitializer lazyInitializer = extractLazyInitializer( data.getInstance(), session.getFactory() );
 			if ( lazyInitializer != null ) {
 				// there is already a proxy for this impl
 				// only set the status to read-only if the proxy is read-only
@@ -1668,8 +1675,9 @@ public class EntityInitializerImpl extends AbstractInitializer<EntityInitializer
 			return true;
 		}
 		final RowProcessingState rowProcessingState = data.getRowProcessingState();
+		final SharedSessionContractImplementor session = rowProcessingState.getSession();
 		final EntityEntry entry = data.entityHolder.getEntityEntry();
-		assert entry == rowProcessingState.getSession().getPersistenceContextInternal().getEntry( data.entityInstanceForNotify );
+		assert entry == session.getPersistenceContextInternal().getEntry( data.entityInstanceForNotify );
 		if ( entry == null ) {
 			return false;
 		}
@@ -1678,9 +1686,12 @@ public class EntityInitializerImpl extends AbstractInitializer<EntityInitializer
 			return true;
 		}
 		else {
-			if ( isPersistentAttributeInterceptable( data.entityInstanceForNotify ) ) {
-				final PersistentAttributeInterceptor interceptor =
-						asPersistentAttributeInterceptable( data.entityInstanceForNotify ).$$_hibernate_getInterceptor();
+			final PersistentAttributeInterceptable interceptable = asPersistentAttributeInterceptableOrNull(
+					data.entityInstanceForNotify,
+					session.getFactory()
+			);
+			if ( interceptable != null ) {
+				final PersistentAttributeInterceptor interceptor = interceptable.$$_hibernate_getInterceptor();
 				if ( interceptor instanceof EnhancementAsProxyLazinessInterceptor ) {
 					// Avoid loading the same entity proxy twice for the same result set: it could lead to errors,
 					// because some code writes to its input (ID in hydrated state replaced by the loaded entity, in particular).
@@ -1795,10 +1806,6 @@ public class EntityInitializerImpl extends AbstractInitializer<EntityInitializer
 				}
 			}
 		}
-	}
-
-	public static PersistentAttributeInterceptor getAttributeInterceptor(Object entity) {
-		return asPersistentAttributeInterceptable( entity ).$$_hibernate_getInterceptor();
 	}
 
 	@Override

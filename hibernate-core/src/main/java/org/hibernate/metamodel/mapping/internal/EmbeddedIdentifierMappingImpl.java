@@ -13,12 +13,13 @@ import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.property.access.spi.PropertyAccess;
-import org.hibernate.proxy.HibernateProxy;
 import org.hibernate.proxy.LazyInitializer;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.spi.SqlSelection;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.results.graph.DomainResultCreationState;
+
+import static org.hibernate.engine.internal.ManagedTypeHelper.extractLazyInitializer;
 
 /**
  * Support for {@link jakarta.persistence.EmbeddedId}
@@ -83,7 +84,7 @@ public class EmbeddedIdentifierMappingImpl
 
 	@Override
 	public Object getIdentifier(Object entity) {
-		final LazyInitializer lazyInitializer = HibernateProxy.extractLazyInitializer( entity );
+		final LazyInitializer lazyInitializer = extractLazyInitializer( entity, sessionFactory );
 		if ( lazyInitializer != null ) {
 			return lazyInitializer.getIdentifier();
 		}
