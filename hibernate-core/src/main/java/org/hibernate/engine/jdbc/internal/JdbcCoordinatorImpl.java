@@ -28,8 +28,10 @@ import org.hibernate.engine.jdbc.spi.MutationStatementPreparer;
 import org.hibernate.engine.jdbc.spi.ResultSetReturn;
 import org.hibernate.engine.jdbc.spi.SqlExceptionHelper;
 import org.hibernate.engine.jdbc.spi.StatementPreparer;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
+import org.hibernate.internal.util.collections.CachingClassValue;
 import org.hibernate.jdbc.WorkExecutor;
 import org.hibernate.jdbc.WorkExecutorVisitable;
 import org.hibernate.resource.jdbc.ResourceRegistry;
@@ -57,6 +59,8 @@ public class JdbcCoordinatorImpl implements JdbcCoordinator {
 
 	private transient final JdbcServices jdbcServices;
 
+	private transient final SessionFactoryImplementor sessionFactory;
+
 	private transient Batch currentBatch;
 
 	private transient long transactionTimeOutInstant = -1;
@@ -77,7 +81,8 @@ public class JdbcCoordinatorImpl implements JdbcCoordinator {
 	public JdbcCoordinatorImpl(
 			Connection userSuppliedConnection,
 			JdbcSessionOwner owner,
-			JdbcServices jdbcServices) {
+			JdbcServices jdbcServices,
+			SessionFactoryImplementor sessionFactory) {
 		this.isUserSuppliedConnection = userSuppliedConnection != null;
 
 		final ResourceRegistry resourceRegistry =
@@ -95,16 +100,19 @@ public class JdbcCoordinatorImpl implements JdbcCoordinator {
 		}
 		this.owner = owner;
 		this.jdbcServices = jdbcServices;
+		this.sessionFactory = sessionFactory;
 	}
 
 	private JdbcCoordinatorImpl(
 			LogicalConnectionImplementor logicalConnection,
 			boolean isUserSuppliedConnection,
-			JdbcSessionOwner owner) {
+			JdbcSessionOwner owner,
+			SessionFactoryImplementor sessionFactory) {
 		this.logicalConnection = logicalConnection;
 		this.isUserSuppliedConnection = isUserSuppliedConnection;
 		this.owner = owner;
 		this.jdbcServices = owner.getJdbcSessionContext().getJdbcServices();
+		this.sessionFactory = sessionFactory;
 	}
 
 	@Override
@@ -317,12 +325,14 @@ public class JdbcCoordinatorImpl implements JdbcCoordinator {
 	@SuppressWarnings("unchecked")
 	public void registerLastQuery(Statement statement) {
 		LOG.tracev( "Registering last query statement [{0}]", statement );
-		if ( statement instanceof JdbcWrapper ) {
-			final JdbcWrapper<Statement> wrapper = (JdbcWrapper<Statement>) statement;
-			registerLastQuery( wrapper.getWrappedObject() );
-		}
-		else {
-			lastQuery = statement;
+		if ( statement != lastQuery ) {
+			if ( isJdbcWrapper( statement.getClass() ) ) {
+				final JdbcWrapper<Statement> wrapper = (JdbcWrapper<Statement>) statement;
+				registerLastQuery( wrapper.getWrappedObject() );
+			}
+			else {
+				lastQuery = statement;
+			}
 		}
 	}
 
@@ -364,7 +374,7 @@ public class JdbcCoordinatorImpl implements JdbcCoordinator {
 		// certain situations.
 		sqlExceptionHelper().logAndClearWarnings( statement );
 
-		if ( statement instanceof InvalidatableWrapper ) {
+		if ( isInvalidatableWrapper( statement.getClass() ) ) {
 			@SuppressWarnings("unchecked")
 			final InvalidatableWrapper<Statement> wrapper = (InvalidatableWrapper<Statement>) statement;
 			close( wrapper.getWrappedObject() );
@@ -405,7 +415,7 @@ public class JdbcCoordinatorImpl implements JdbcCoordinator {
 	protected void close(ResultSet resultSet) {
 		LOG.tracev( "Closing result set [{0}]", resultSet );
 
-		if ( resultSet instanceof InvalidatableWrapper ) {
+		if ( isInvalidatableWrapper( resultSet.getClass() ) ) {
 			@SuppressWarnings("unchecked")
 			final InvalidatableWrapper<ResultSet> wrapper = (InvalidatableWrapper<ResultSet>) resultSet;
 			close( wrapper.getWrappedObject() );
@@ -483,7 +493,8 @@ public class JdbcCoordinatorImpl implements JdbcCoordinator {
 	 */
 	public static JdbcCoordinatorImpl deserialize(
 			ObjectInputStream ois,
-			JdbcSessionOwner owner) throws IOException, ClassNotFoundException {
+			JdbcSessionOwner owner,
+			SessionFactoryImplementor sessionFactory) throws IOException, ClassNotFoundException {
 		final boolean isUserSuppliedConnection = ois.readBoolean();
 		final LogicalConnectionImplementor logicalConnection;
 		if ( isUserSuppliedConnection ) {
@@ -496,6 +507,36 @@ public class JdbcCoordinatorImpl implements JdbcCoordinator {
 					owner.getJdbcSessionContext()
 			);
 		}
-		return new JdbcCoordinatorImpl( logicalConnection, isUserSuppliedConnection, owner );
+		return new JdbcCoordinatorImpl( logicalConnection, isUserSuppliedConnection, owner, sessionFactory );
+	}
+
+	private static class JdbcWrapperMeta {
+		private final boolean isWrapper;
+		private final boolean isInvalidatableWrapper;
+
+		public JdbcWrapperMeta(Class<?> type) {
+			this.isWrapper = type.isAssignableFrom( JdbcWrapper.class );
+			this.isInvalidatableWrapper = type.isAssignableFrom( InvalidatableWrapper.class );
+		}
+	}
+
+	private boolean isJdbcWrapper(Class<?> type) {
+		if ( sessionFactory != null ) {
+			final CachingClassValue<JdbcWrapperMeta> metadata = sessionFactory.getClassMetadata( JdbcWrapperMeta.class,
+					JdbcWrapperMeta::new
+			);
+			return metadata.get( type ).isWrapper;
+		}
+		return type.isAssignableFrom( JdbcWrapper.class );
+	}
+
+	private boolean isInvalidatableWrapper(Class<?> type) {
+		if ( sessionFactory != null ) {
+			final CachingClassValue<JdbcWrapperMeta> metadata = sessionFactory.getClassMetadata( JdbcWrapperMeta.class,
+					JdbcWrapperMeta::new
+			);
+			return metadata.get( type ).isInvalidatableWrapper;
+		}
+		return type.isAssignableFrom( InvalidatableWrapper.class );
 	}
 }

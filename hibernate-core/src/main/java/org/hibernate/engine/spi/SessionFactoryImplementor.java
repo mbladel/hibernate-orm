@@ -5,6 +5,7 @@
 package org.hibernate.engine.spi;
 
 import java.util.Collection;
+import java.util.function.Function;
 
 import org.hibernate.CustomEntityDirtinessStrategy;
 import org.hibernate.HibernateException;
@@ -19,6 +20,7 @@ import org.hibernate.engine.profile.FetchProfile;
 import org.hibernate.event.spi.EventEngine;
 import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.internal.FastSessionServices;
+import org.hibernate.internal.util.collections.CachingClassValue;
 import org.hibernate.metamodel.spi.MappingMetamodelImplementor;
 import org.hibernate.metamodel.spi.RuntimeMetamodelsImplementor;
 import org.hibernate.proxy.EntityNotFoundDelegate;
@@ -179,4 +181,5 @@ public interface SessionFactoryImplementor
 	 */
 	String bestGuessEntityName(Object object);
 
+	<V> CachingClassValue<V> getClassMetadata(Class<V> metaType, Function<Class<?>, V> computer);
 }

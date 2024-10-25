@@ -69,6 +69,7 @@ import org.hibernate.generator.Generator;
 import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.integrator.spi.Integrator;
 import org.hibernate.integrator.spi.IntegratorService;
+import org.hibernate.internal.util.collections.CachingClassValue;
 import org.hibernate.jpa.internal.ExceptionMapperLegacyJpaImpl;
 import org.hibernate.jpa.internal.PersistenceUnitUtilImpl;
 import org.hibernate.mapping.Collection;
@@ -197,6 +198,8 @@ public class SessionFactoryImpl extends QueryParameterBindingTypeResolverImpl im
 	private final transient EntityNameResolver entityNameResolver;
 
 	private final transient SchemaManager schemaManager;
+
+	private final transient ConcurrentHashMap<Class<?>, CachingClassValue<?>> metadataCaches = new ConcurrentHashMap<>();
 
 	public SessionFactoryImpl(
 			final MetadataImplementor bootMetamodel,
@@ -668,6 +671,20 @@ public class SessionFactoryImpl extends QueryParameterBindingTypeResolverImpl im
 	}
 
 	@Override
+	public <V> CachingClassValue<V> getClassMetadata(Class<V> metaType, Function<Class<?>, V> computer) {
+		final CachingClassValue<?> existing = metadataCaches.get( metaType );
+		if ( existing != null ) {
+			//noinspection unchecked
+			return (CachingClassValue<V>) existing;
+		}
+		else {
+			final CachingClassValue<V> newCache = new CachingClassValue<>( computer );
+			metadataCaches.put( metaType, newCache );
+			return newCache;
+		}
+	}
+
+	@Override
 	public SessionFactoryOptions getSessionFactoryOptions() {
 		return sessionFactoryOptions;
 	}
@@ -766,6 +783,7 @@ public class SessionFactoryImpl extends QueryParameterBindingTypeResolverImpl im
 			if ( eventEngine != null ) {
 				eventEngine.stop();
 			}
+			clearMetadataCaches();
 		}
 		finally {
 			status = Status.CLOSED;
@@ -773,6 +791,13 @@ public class SessionFactoryImpl extends QueryParameterBindingTypeResolverImpl im
 
 		observer.sessionFactoryClosed( this );
 		serviceRegistry.destroy();
+	}
+
+	private void clearMetadataCaches() {
+		for ( final CachingClassValue<?> value : metadataCaches.values() ) {
+			// It's important to remove all ClassValue entries to avoid ClassLoader leaks
+			value.dispose();
+		}
 	}
 
 	@Override
