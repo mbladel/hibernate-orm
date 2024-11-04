@@ -82,7 +82,7 @@ public class AfterInsertTriggerTest {
 		@Id
 		private Integer id;
 
-		@Generated(event = {EventType.INSERT, EventType.UPDATE})
+		@Generated(event = {EventType.AFTER_INSERT, EventType.AFTER_UPDATE})
 		@Column(updatable = false)
 		private String afterInsert;
 

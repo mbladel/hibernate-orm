@@ -30,10 +30,22 @@ public enum EventType {
 	 */
 	INSERT,
 	/**
+	 * Same as {@link #INSERT}, but the value is generated after statement
+	 * execution. Use carefully as this means Hibernate will need to issue
+	 * a subsequent select statement to retrieve such generated values.
+	 */
+	AFTER_INSERT,
+	/**
 	 * An event that occurs when any {@code update} statements needed
 	 * to persist changes to a dirty entity instance are executed.
 	 * This indicates, for example, that a version number should be
 	 * incremented.
 	 */
-	UPDATE;
+	UPDATE,
+	/**
+	 * Same as {@link #UPDATE}, but the value is generated after statement
+	 * execution. Use carefully as this means Hibernate will need to issue
+	 * a subsequent select statement to retrieve such generated values.
+	 */
+	AFTER_UPDATE;
 }

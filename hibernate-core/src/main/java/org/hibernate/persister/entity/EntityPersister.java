@@ -1022,7 +1022,11 @@ public interface EntityPersister extends EntityMappingType, EntityMutationTarget
 	}
 
 	default List<? extends ModelPart> getGeneratedProperties(EventType timing) {
-		return timing == EventType.INSERT ? getInsertGeneratedProperties() : getUpdateGeneratedProperties();
+		return switch ( timing ) {
+			case INSERT -> getInsertGeneratedProperties();
+			case UPDATE -> getUpdateGeneratedProperties();
+			default -> throw new IllegalArgumentException();
+		};
 	}
 
 	default List<? extends ModelPart> getInsertGeneratedProperties() {

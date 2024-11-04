@@ -9,6 +9,8 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import java.io.Serializable;
 import java.util.EnumSet;
 
+import static org.hibernate.generator.EventType.AFTER_INSERT;
+import static org.hibernate.generator.EventType.AFTER_UPDATE;
 import static org.hibernate.generator.EventType.INSERT;
 import static org.hibernate.generator.EventType.UPDATE;
 
@@ -148,10 +150,12 @@ public interface Generator extends Serializable {
 	}
 
 	default boolean generatesOnInsert() {
-		return getEventTypes().contains(INSERT);
+		final EnumSet<EventType> eventTypes = getEventTypes();
+		return eventTypes.contains( INSERT ) || eventTypes.contains( AFTER_INSERT );
 	}
 
 	default boolean generatesOnUpdate() {
-		return getEventTypes().contains(UPDATE);
+		final EnumSet<EventType> eventTypes = getEventTypes();
+		return eventTypes.contains( UPDATE ) || eventTypes.contains( AFTER_UPDATE );
 	}
 }
