@@ -21,6 +21,7 @@ import java.util.StringTokenizer;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.collections.CollectionHelper;
+import org.hibernate.internal.util.collections.Stack;
 import org.hibernate.jpa.spi.JpaCompliance;
 import org.hibernate.metamodel.mapping.BasicValuedMapping;
 import org.hibernate.metamodel.mapping.Bindable;
@@ -168,35 +169,58 @@ public class SqmUtil {
 			SqmPath<?> sqmPath,
 			ModelPartContainer modelPartContainer,
 			SqmToSqlAstConverter sqlAstCreationState) {
-		final SqmQueryPart<?> queryPart = sqlAstCreationState.getCurrentSqmQueryPart();
-		if ( queryPart != null ) {
-			// We only need to do this for queries
-			final Clause clause = sqlAstCreationState.getCurrentClauseStack().getCurrent();
-			if ( clause != Clause.FROM && modelPartContainer.getPartMappingType() != modelPartContainer && sqmPath.getLhs() instanceof SqmFrom<?, ?> ) {
-				final ModelPart modelPart;
-				if ( modelPartContainer instanceof PluralAttributeMapping ) {
-					modelPart = getCollectionPart(
-							(PluralAttributeMapping) modelPartContainer,
-							castNonNull( sqmPath.getNavigablePath().getParent() )
-					);
-				}
-				else {
-					modelPart = modelPartContainer;
-				}
-				if ( modelPart instanceof EntityAssociationMapping association ) {
-					// If the path is one of the association's target key properties,
-					// we need to render the target side if in group/order by
-					if ( association.getTargetKeyPropertyNames().contains( sqmPath.getReferencedPathSource().getPathName() )
-							&& ( clause == Clause.GROUP || clause == Clause.ORDER
-							|| !isFkOptimizationAllowed( sqmPath.getLhs(), association )
-							|| queryPart.getFirstQuerySpec().groupByClauseContains( sqmPath.getNavigablePath(), sqlAstCreationState )
-							|| queryPart.getFirstQuerySpec().orderByClauseContains( sqmPath.getNavigablePath(), sqlAstCreationState ) ) ) {
-						return association.getAssociatedEntityMappingType();
-					}
+		// We only need to do this for queries
+		final Clause clause = sqlAstCreationState.getCurrentClauseStack().getCurrent();
+		if ( clause != Clause.FROM && modelPartContainer.getPartMappingType() != modelPartContainer && sqmPath.getLhs() instanceof SqmFrom<?, ?> ) {
+			final ModelPart modelPart;
+			if ( modelPartContainer instanceof PluralAttributeMapping pluralAttributeMapping ) {
+				modelPart = getCollectionPart(
+						pluralAttributeMapping,
+						castNonNull( sqmPath.getNavigablePath().getParent() )
+				);
+			}
+			else {
+				modelPart = modelPartContainer;
+			}
+			if ( modelPart instanceof EntityAssociationMapping association ) {
+				// If the path is one of the association's target key properties,
+				// we need to render the target side if in group/order by
+				if ( association.getTargetKeyPropertyNames().contains( sqmPath.getReferencedPathSource().getPathName() )
+						&& ( clause == Clause.GROUP || clause == Clause.ORDER
+						|| !isFkOptimizationAllowed( sqmPath.getLhs(), association )
+						|| clauseContainsPath( Clause.GROUP, sqmPath, sqlAstCreationState )
+						|| clauseContainsPath( Clause.ORDER, sqmPath, sqlAstCreationState ) ) ) {
+					return association.getAssociatedEntityMappingType();
 				}
 			}
 		}
 		return modelPartContainer;
+	}
+
+	private static boolean clauseContainsPath(
+			Clause clauseToCheck,
+			SqmPath<?> sqmPath,
+			SqmToSqlAstConverter sqlAstCreationState) {
+		final Stack<SqmQueryPart> queryPartStack = sqlAstCreationState.getSqmQueryPartStack();
+		final Boolean found = queryPartStack.findCurrentFirst( queryPart -> {
+			final SqmQuerySpec<?> querySpec = queryPart.getFirstQuerySpec();
+			switch ( clauseToCheck ) {
+				case GROUP:
+					if ( querySpec.groupByClauseContains( sqmPath.getNavigablePath(), sqlAstCreationState ) ) {
+						return true;
+					}
+					break;
+				case ORDER:
+					if ( querySpec.orderByClauseContains( sqmPath.getNavigablePath(), sqlAstCreationState ) ) {
+						return true;
+					}
+					break;
+				default:
+					throw new IllegalArgumentException( "Expecting clause to be either GROUP or ORDER" );
+			}
+			return null;
+		} );
+		return found == Boolean.TRUE;
 	}
 
 	private static CollectionPart getCollectionPart(PluralAttributeMapping attribute, NavigablePath path) {
