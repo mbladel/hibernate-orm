@@ -64,6 +64,7 @@ public class EmbeddableMetaModelTest {
 	}
 
 	@Test
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-18819" )
 	public void testIdClass(EntityManagerFactoryScope scope) {
 		scope.inTransaction( entityManager -> {
 			final EmbeddableDomainType<Weight> embeddable = (EmbeddableDomainType<Weight>) entityManager.getMetamodel()
