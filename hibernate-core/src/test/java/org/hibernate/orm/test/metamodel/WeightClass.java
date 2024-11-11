@@ -4,13 +4,15 @@
  */
 package org.hibernate.orm.test.metamodel;
 
+import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 
 /**
  * @author Marco Belladelli
  */
-@IdClass(Height.class)
+@Entity
+@IdClass(Weight.class)
 public class WeightClass {
 	@Id
 	private String unit;
