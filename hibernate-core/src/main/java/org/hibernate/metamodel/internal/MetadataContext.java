@@ -519,7 +519,7 @@ public class MetadataContext {
 			// Handle the actual id-attributes
 			final List<Property> cidProperties;
 			final int propertySpan;
-			final EmbeddableTypeImpl<?> idClassType;
+			final EmbeddableTypeImpl<Object> idClassType;
 			final Component identifierMapper = persistentClass.getIdentifierMapper();
 			if ( identifierMapper != null ) {
 				cidProperties = identifierMapper.getProperties();
@@ -573,12 +573,28 @@ public class MetadataContext {
 		return null;
 	}
 
-	private EmbeddableTypeImpl<?> applyIdClassMetadata(Component idClassComponent) {
-		final JavaType<?> javaType =
+	private <Y> EmbeddableTypeImpl<Y> applyIdClassMetadata(Component idClassComponent) {
+		final JavaType<Y> javaType =
 				getTypeConfiguration().getJavaTypeRegistry()
 						.resolveManagedTypeDescriptor( idClassComponent.getComponentClass() );
-		final EmbeddableTypeImpl<?> embeddableType =
-				new EmbeddableTypeImpl<>( javaType, null, null, false, getJpaMetamodel() );
+
+		final MappedSuperclass mappedSuperclass = idClassComponent.getMappedSuperclass();
+		final MappedSuperclassDomainType<? super Y> superType;
+		if ( mappedSuperclass != null ) {
+			//noinspection unchecked
+			superType = (MappedSuperclassDomainType<? super Y>) locateMappedSuperclassType( mappedSuperclass );
+		}
+		else {
+			superType = null;
+		}
+
+		final EmbeddableTypeImpl<Y> embeddableType = new EmbeddableTypeImpl<>(
+				javaType,
+				superType,
+				null,
+				false,
+				getJpaMetamodel()
+		);
 		registerEmbeddableType( embeddableType, idClassComponent );
 		return embeddableType;
 	}
