@@ -60,4 +60,17 @@ public class EmbeddableMetaModelTest {
 			assertNotNull( Measurement_.unit );
 		} );
 	}
+
+	@Test
+	public void testIdClass(EntityManagerFactoryScope scope) {
+		scope.inTransaction( entityManager -> {
+			final EmbeddableDomainType<Weight> embeddable = (EmbeddableDomainType<Weight>) entityManager.getMetamodel()
+					.embeddable( Weight.class );
+			assertNotNull( embeddable.getSuperType() );
+			assertEquals( MAPPED_SUPERCLASS, embeddable.getSuperType().getPersistenceType() );
+			assertEquals( Measurement.class, embeddable.getSuperType().getJavaType() );
+			assertNotNull( Weight_.weight );
+			assertNotNull( Measurement_.unit );
+		} );
+	}
 }
