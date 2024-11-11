@@ -26,6 +26,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 		Person.class,
 		Measurement.class,
 		Height.class,
+		WeightClass.class,
+		Weight.class,
 } )
 public class EmbeddableMetaModelTest {
 	@Test
