@@ -620,8 +620,8 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 			locateOrBuildEntityType( entityBinding, context, typeConfiguration );
 		}
 		bootMetamodel.visitRegisteredComponents( component -> {
-			if ( !component.isDynamic() ) {
-				// Process non-dynamic embeddable types to ensure consistency in nested mappings
+			if ( !component.isDynamic() && !component.isEmbedded() ) {
+				// Pre-process embeddable types to ensure consistency in nested mappings
 				locateOrBuildEmbeddableType( component, context, bootMetamodel, typeConfiguration );
 			}
 		} );

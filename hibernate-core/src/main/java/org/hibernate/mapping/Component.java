@@ -947,11 +947,12 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 	}
 
 	public boolean isGeneric() {
-		if ( isGeneric == null ) {
-			isGeneric = getComponentClassName() != null
+		Boolean generic = isGeneric;
+		if ( generic == null ) {
+			generic = isGeneric = getComponentClassName() != null
 					&& getComponentClass().getTypeParameters().length > 0;
 		}
-		return isGeneric;
+		return generic;
 	}
 
 	public void setGeneric(boolean generic) {
