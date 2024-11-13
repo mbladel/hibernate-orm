@@ -8,12 +8,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
-import java.util.HashMap;
 
 import org.hibernate.AssertionFailure;
 import org.hibernate.PropertyNotFoundException;
 import org.hibernate.boot.model.convert.spi.ConverterDescriptor;
-import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.mapping.AggregateColumn;
@@ -252,11 +250,13 @@ public class AttributeFactory {
 
 	private static <Y> EmbeddableDomainType<Y> classEmbeddableType(MetadataContext context, Component component) {
 		assert component.getComponentClassName() != null;
-		@SuppressWarnings("unchecked")
-		final Class<Y> embeddableClass = (Class<Y>) component.getComponentClass();
-
 		if ( !component.isGeneric() ) {
-			final EmbeddableDomainType<Y> cached = context.locateEmbeddable( embeddableClass, component );
+			//noinspection unchecked
+			final EmbeddableDomainType<Y> cached = context.locateEmbeddable(
+					(Class<Y>) component.getComponentClass(),
+					component
+			);
+			// Not all embeddable types are processed early, i.e. copies of generic components with changed classes
 			if ( cached != null ) {
 				return cached;
 			}
@@ -267,47 +267,13 @@ public class AttributeFactory {
 		if ( mappedSuperclass != null ) {
 			//noinspection unchecked
 			superType = (MappedSuperclassDomainType<? super Y>) context.locateMappedSuperclassType( mappedSuperclass );
+			assert superType != null;
 		}
 		else {
 			superType = null;
 		}
 
-		final DomainType<?> discriminatorType = component.isPolymorphic() ? component.getDiscriminatorType() : null;
-		final EmbeddableTypeImpl<Y> embeddableType = new EmbeddableTypeImpl<>(
-				context.getJavaTypeRegistry().resolveManagedTypeDescriptor( embeddableClass ),
-				superType,
-				discriminatorType,
-				false,
-				context.getJpaMetamodel()
-		);
-		context.registerEmbeddableType( embeddableType, component );
-
-		if ( component.isPolymorphic() ) {
-			final java.util.Collection<String> embeddableSubclasses = component.getDiscriminatorValues().values();
-			final java.util.Map<String, EmbeddableTypeImpl<?>> domainTypes = new HashMap<>();
-			domainTypes.put( embeddableType.getTypeName(), embeddableType );
-			final ClassLoaderService cls = context.getJpaMetamodel().getServiceRegistry().requireService(
-					ClassLoaderService.class
-			);
-			for ( final String subclassName : embeddableSubclasses ) {
-				if ( domainTypes.containsKey( subclassName ) ) {
-					assert subclassName.equals( embeddableType.getTypeName() );
-					continue;
-				}
-				final Class<?> subclass = cls.classForName( subclassName );
-				final EmbeddableTypeImpl<?> subType = new EmbeddableTypeImpl<>(
-						context.getJavaTypeRegistry().resolveManagedTypeDescriptor( subclass ),
-						domainTypes.get( component.getSuperclass( subclassName ) ),
-						discriminatorType,
-						false,
-						context.getJpaMetamodel()
-				);
-				domainTypes.put( subclassName, subType );
-				context.registerEmbeddableType( subType, component );
-			}
-		}
-
-		return embeddableType;
+		return context.buildEmbeddableType( component, superType );
 	}
 
 	private static <Y> EmbeddableTypeImpl<Y> dynamicEmbeddableType(MetadataContext context, Component component) {

@@ -34,6 +34,7 @@ import org.hibernate.graph.spi.SubGraphImplementor;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.jpa.spi.JpaCompliance;
+import org.hibernate.mapping.Component;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.metamodel.MappingMetamodel;
@@ -618,6 +619,12 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 		for ( PersistentClass entityBinding : bootMetamodel.getEntityBindings() ) {
 			locateOrBuildEntityType( entityBinding, context, typeConfiguration );
 		}
+		bootMetamodel.visitRegisteredComponents( component -> {
+			if ( !component.isDynamic() ) {
+				// Process non-dynamic embeddable types to ensure consistency in nested mappings
+				locateOrBuildEmbeddableType( component, context, bootMetamodel, typeConfiguration );
+			}
+		} );
 		handleUnusedMappedSuperclasses( context, typeConfiguration );
 
 		context.wrapUp();
@@ -754,6 +761,35 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 			return context.getTypeConfiguration().getJavaTypeRegistry()
 					.resolveEntityTypeDescriptor( javaTypeClass );
 		}
+	}
+
+	@SuppressWarnings("UnusedReturnValue")
+	private <Y> EmbeddableDomainType<Y> locateOrBuildEmbeddableType(
+			Component component,
+			MetadataContext context,
+			MetadataImplementor bootMetamodel,
+			TypeConfiguration typeConfiguration) {
+		assert component.getComponentClassName() != null;
+		//noinspection unchecked
+		final Class<Y> componentClass = (Class<Y>) component.getComponentClass();
+		final EmbeddableDomainType<Y> cached = context.locateEmbeddable( componentClass, component );
+		if ( cached != null ) {
+			return cached;
+		}
+
+		final MappedSuperclass mappedSuperclass = component.getMappedSuperclass();
+		final MappedSuperclassDomainType<? super Y> superType;
+		if ( mappedSuperclass != null ) {
+			superType = locateOrBuildMappedSuperclassType( mappedSuperclass, context, typeConfiguration );
+		}
+		else {
+			superType = null;
+		}
+
+		return context.buildEmbeddableType(
+				component.isGeneric() ? bootMetamodel.getGenericComponent( componentClass ) : component,
+				superType
+		);
 	}
 
 	private void handleUnusedMappedSuperclasses(MetadataContext context, TypeConfiguration typeConfiguration) {

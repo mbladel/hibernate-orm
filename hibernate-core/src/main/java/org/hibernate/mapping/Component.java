@@ -144,6 +144,7 @@ public class Component extends SimpleValue implements MetaAttributable, Sortable
 		this.metaAttributes = original.metaAttributes == null ? null : new HashMap<>( original.metaAttributes );
 		this.isKey = original.isKey;
 		this.roleName = original.roleName;
+		this.mappedSuperclass = original.mappedSuperclass;
 		this.discriminator = original.discriminator;
 		this.discriminatorValues = original.discriminatorValues;
 		this.subclassToSuperclass = original.subclassToSuperclass;

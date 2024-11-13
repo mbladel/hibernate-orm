@@ -24,6 +24,7 @@ import org.hibernate.mapping.Property;
 import org.hibernate.metamodel.MappingMetamodel;
 import org.hibernate.metamodel.model.domain.AbstractIdentifiableType;
 import org.hibernate.metamodel.model.domain.BasicDomainType;
+import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.IdentifiableDomainType;
@@ -893,5 +894,44 @@ public class MetadataContext {
 			}
 		}
 		return domainType;
+	}
+
+	public <J> EmbeddableDomainType<J> buildEmbeddableType(Component component, ManagedDomainType<? super J> superType) {
+		final DomainType<?> discriminatorType = component.isPolymorphic() ? component.getDiscriminatorType() : null;
+		final EmbeddableTypeImpl<J> embeddableType = new EmbeddableTypeImpl<>(
+				getJavaTypeRegistry().resolveManagedTypeDescriptor( component.getComponentClass() ),
+				superType,
+				discriminatorType,
+				false,
+				getJpaMetamodel()
+		);
+		registerEmbeddableType( embeddableType, component );
+
+		if ( component.isPolymorphic() ) {
+			final java.util.Collection<String> embeddableSubclasses = component.getDiscriminatorValues().values();
+			final java.util.Map<String, EmbeddableTypeImpl<?>> domainTypes = new HashMap<>();
+			domainTypes.put( embeddableType.getTypeName(), embeddableType );
+			final ClassLoaderService cls = getJpaMetamodel().getServiceRegistry().requireService(
+					ClassLoaderService.class
+			);
+			for ( final String subclassName : embeddableSubclasses ) {
+				if ( domainTypes.containsKey( subclassName ) ) {
+					assert subclassName.equals( embeddableType.getTypeName() );
+					continue;
+				}
+				final Class<?> subclass = cls.classForName( subclassName );
+				final EmbeddableTypeImpl<?> subType = new EmbeddableTypeImpl<>(
+						getJavaTypeRegistry().resolveManagedTypeDescriptor( subclass ),
+						domainTypes.get( component.getSuperclass( subclassName ) ),
+						discriminatorType,
+						false,
+						getJpaMetamodel()
+				);
+				domainTypes.put( subclassName, subType );
+				registerEmbeddableType( subType, component );
+			}
+		}
+
+		return embeddableType;
 	}
 }
