@@ -99,6 +99,7 @@ public class JoinReuseInCorrelatedSubqueryTest {
 	}
 
 	@Test
+	@Jira( "https://hibernate.atlassian.net/browse/HHH-18768" )
 	public void testCrossJoin(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
 			final List<Tuple> resultList = session.createQuery(
