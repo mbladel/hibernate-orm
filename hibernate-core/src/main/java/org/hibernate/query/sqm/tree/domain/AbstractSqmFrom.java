@@ -217,7 +217,9 @@ public abstract class AbstractSqmFrom<O,T> extends AbstractSqmPath<T> implements
 			joins = new ArrayList<>();
 		}
 		joins.add( join );
-		findRoot().addOrderedJoin( join );
+		if ( !isCorrelated() ) {
+			findRoot().addOrderedJoin( join );
+		}
 	}
 
 	@Internal

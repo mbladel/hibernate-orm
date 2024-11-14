@@ -2916,20 +2916,10 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			}
 			TableGroup lastTableGroup = tableGroup;
 			for ( SqmJoin<?, ?> join : sqmRoot.getOrderedJoins() ) {
-				final TableGroup ownerTableGroup;
-				if ( join.getLhs() == null ) {
-					ownerTableGroup = tableGroup;
-				}
-				else {
-					if ( join.getLhs() instanceof SqmCorrelation<?, ?> ) {
-						ownerTableGroup = fromClauseIndex.findTableGroup(
-								( (SqmCorrelation<?, ?>) join.getLhs() ).getCorrelatedRoot().getNavigablePath()
-						);
-					}
-					else {
-						ownerTableGroup = fromClauseIndex.findTableGroup( join.getLhs().getNavigablePath() );
-					}
-				}
+				final SqmPath<?> lhs = join.getLhs();
+				final TableGroup ownerTableGroup = lhs != null ?
+						fromClauseIndex.findTableGroup( lhs.getNavigablePath() ) :
+						tableGroup;
 				assert ownerTableGroup != null;
 				final TableGroup actualTableGroup = getActualTableGroup( ownerTableGroup, join );
 				lastTableGroup = consumeExplicitJoin( join, lastTableGroup, actualTableGroup, false );
