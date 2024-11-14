@@ -6,6 +6,7 @@ package org.hibernate.orm.test.query;
 
 import java.util.List;
 
+import jakarta.persistence.Tuple;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.SessionFactory;
@@ -30,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DomainModel( annotatedClasses = {
 		JoinReuseInCorrelatedSubqueryTest.EntityA.class,
 		JoinReuseInCorrelatedSubqueryTest.EntityB.class,
+		JoinReuseInCorrelatedSubqueryTest.EntityC.class,
 		JoinReuseInCorrelatedSubqueryTest.ReferencedEntity.class
 } )
 @Jira( "https://hibernate.atlassian.net/browse/HHH-16537" )
@@ -41,10 +43,12 @@ public class JoinReuseInCorrelatedSubqueryTest {
 			final ReferencedEntity ref2 = new ReferencedEntity( 2 );
 			session.persist( ref1 );
 			session.persist( ref2 );
-			final EntityB entityB1 = new EntityB( ref1.getId() );
+			final EntityB entityB1 = new EntityB( ref1.getId(), null );
 			session.persist( entityB1 );
 			session.persist( new EntityA( "entitya_1", entityB1 ) );
-			final EntityB entityB2 = new EntityB( ref2.getId() );
+			final EntityC entityC = new EntityC( 1);
+			session.persist( entityC );
+			final EntityB entityB2 = new EntityB( ref2.getId(), entityC );
 			session.persist( entityB2 );
 			session.persist( new EntityA( "entitya_2", entityB2 ) );
 		} );
@@ -52,11 +56,7 @@ public class JoinReuseInCorrelatedSubqueryTest {
 
 	@AfterAll
 	public void tearDown(SessionFactoryScope scope) {
-		scope.inTransaction( session -> {
-			session.createMutationQuery( "delete from EntityA" ).executeUpdate();
-			session.createMutationQuery( "delete from EntityB" ).executeUpdate();
-			session.createMutationQuery( "delete from ReferencedEntity" ).executeUpdate();
-		} );
+		scope.getSessionFactory().getSchemaManager().truncateMappedObjects();
 	}
 
 	@Test
@@ -98,6 +98,24 @@ public class JoinReuseInCorrelatedSubqueryTest {
 		} );
 	}
 
+	@Test
+	public void testCrossJoin(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final List<Tuple> resultList = session.createQuery(
+					"select a, r from EntityA a "
+							+ "join a.entityB b "
+							+ "join b.entityC c "
+							+ "cross join ReferencedEntity r " +
+							"where exists (select 1 from b.entityC c2)",
+					Tuple.class
+			).getResultList();
+			assertThat( resultList ).extracting( t -> t.get( 0, EntityA.class ) )
+					.extracting( EntityA::getName ).containsOnly( "entitya_2" );
+			assertThat( resultList ).extracting( t -> t.get( 1, ReferencedEntity.class ) )
+					.extracting( ReferencedEntity::getFoo ).containsExactly( 1, 2 );
+		} );
+	}
+
 	@Entity( name = "EntityA" )
 	public static class EntityA {
 		@Id
@@ -129,13 +147,35 @@ public class JoinReuseInCorrelatedSubqueryTest {
 		@GeneratedValue
 		private Integer id;
 
+		@ManyToOne
+		@JoinColumn( name = "entityc_id" )
+		private EntityC entityC;
+
 		@Column( name = "ref_number" )
 		private Integer reference;
 
 		public EntityB() {
 		}
 
-		public EntityB(Integer reference) {
+		public EntityB(Integer reference, EntityC entityC) {
+			this.reference = reference;
+			this.entityC = entityC;
+		}
+	}
+
+	@Entity( name = "EntityC" )
+	public static class EntityC {
+		@Id
+		@GeneratedValue
+		private Integer id;
+
+		@Column( name = "ref_number" )
+		private Integer reference;
+
+		public EntityC() {
+		}
+
+		public EntityC(Integer reference) {
 			this.reference = reference;
 		}
 	}
@@ -157,6 +197,10 @@ public class JoinReuseInCorrelatedSubqueryTest {
 
 		public Integer getId() {
 			return id;
+		}
+
+		public Integer getFoo() {
+			return foo;
 		}
 	}
 }
