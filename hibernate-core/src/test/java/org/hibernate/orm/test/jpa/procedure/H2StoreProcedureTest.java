@@ -4,14 +4,15 @@
  */
 package org.hibernate.orm.test.jpa.procedure;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Set;
-
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Parameter;
+import jakarta.persistence.ParameterMode;
+import jakarta.persistence.StoredProcedureQuery;
+import jakarta.persistence.Table;
+import org.hibernate.Session;
 import org.hibernate.dialect.H2Dialect;
-
+import org.hibernate.procedure.ProcedureCall;
 import org.hibernate.testing.orm.junit.EntityManagerFactoryScope;
 import org.hibernate.testing.orm.junit.Jpa;
 import org.hibernate.testing.orm.junit.RequiresDialect;
@@ -19,23 +20,19 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Parameter;
-import jakarta.persistence.ParameterMode;
-import jakarta.persistence.StoredProcedureQuery;
-import jakarta.persistence.Table;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Set;
 
-import static org.hamcrest.core.Is.is;
-import static org.hamcrest.core.IsNot.not;
-import static org.hamcrest.core.IsNull.nullValue;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Fail.fail;
 
 /**
  * @author Andrea Boriero
  */
-@Jpa( annotatedClasses = H2StoreProcedureTest.MyEntity.class)
+@Jpa(annotatedClasses = H2StoreProcedureTest.MyEntity.class)
 @RequiresDialect(H2Dialect.class)
 public class H2StoreProcedureTest {
 
@@ -43,10 +40,14 @@ public class H2StoreProcedureTest {
 	public void setUp(EntityManagerFactoryScope scope) {
 		scope.inTransaction(
 				entityManager -> {
-					entityManager.createNativeQuery( "CREATE ALIAS get_all_entities FOR \"" + H2StoreProcedureTest.class.getCanonicalName() + ".getAllEntities\";" )
+					entityManager.createNativeQuery(
+									"CREATE ALIAS get_all_entities FOR \"" + H2StoreProcedureTest.class.getCanonicalName() + ".getAllEntities\";" )
 							.executeUpdate();
-
-					entityManager.createNativeQuery( "CREATE ALIAS by_id FOR \"" + H2StoreProcedureTest.class.getCanonicalName() + ".entityById\";" )
+					entityManager.createNativeQuery(
+									"CREATE ALIAS by_id FOR \"" + H2StoreProcedureTest.class.getCanonicalName() + ".entityById\";" )
+							.executeUpdate();
+					entityManager.createNativeQuery(
+									"CREATE ALIAS invalid_proc FOR \"" + H2StoreProcedureTest.class.getCanonicalName() + ".invalidProcedure\";" )
 							.executeUpdate();
 					MyEntity entity = new MyEntity();
 					entity.id = 1;
@@ -74,6 +75,10 @@ public class H2StoreProcedureTest {
 		return conn.createStatement().executeQuery( "select * from MY_ENTITY where id = " + Long.toString( id ) );
 	}
 
+	public static void invalidProcedure() {
+		throw new RuntimeException( "This is a error from h2 stored procedure" );
+	}
+
 	@Test
 	public void testStoreProcedureGetParameters(EntityManagerFactoryScope scope) {
 		scope.inTransaction(
@@ -83,10 +88,10 @@ public class H2StoreProcedureTest {
 							MyEntity.class
 					);
 					final Set<Parameter<?>> parameters = query.getParameters();
-					assertThat( parameters.size(), is( 0 ) );
+					assertThat( parameters ).hasSize( 0 );
 
 					final List resultList = query.getResultList();
-					assertThat( resultList.size(), is( 1 ) );
+					assertThat( resultList ).hasSize( 1 );
 				}
 		);
 	}
@@ -101,13 +106,13 @@ public class H2StoreProcedureTest {
 					query.setParameter( 1, 1L );
 
 					final List resultList = query.getResultList();
-					assertThat( resultList.size(), is( 1 ) );
+					assertThat( resultList ).hasSize( 1 );
 
 					final Set<Parameter<?>> parameters = query.getParameters();
-					assertThat( parameters.size(), is( 1 ) );
+					assertThat( parameters ).hasSize( 1 );
 
 					final Parameter<?> parameter = query.getParameter( 1 );
-					assertThat( parameter, not( nullValue() ) );
+					assertThat( parameter ).isNotNull();
 
 					try {
 						query.getParameter( 2 );
@@ -118,6 +123,20 @@ public class H2StoreProcedureTest {
 					}
 				}
 		);
+	}
+
+	@Test
+	public void testInvalidStoredProcedure(EntityManagerFactoryScope scope) {
+		scope.inTransaction( entityManager -> {
+			try (final ProcedureCall query = entityManager.unwrap( Session.class )
+					.createStoredProcedureQuery( "invalid_proc" )) {
+				query.execute();
+				fail( "Failure expected" );
+			}
+			catch (Exception e) {
+				assertThat( e ).hasMessageContaining( "This is a error from h2 stored procedure" );
+			}
+		} );
 	}
 
 	@Entity(name = "MyEntity")
