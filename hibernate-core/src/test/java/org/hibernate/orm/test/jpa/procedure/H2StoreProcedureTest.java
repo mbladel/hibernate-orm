@@ -12,14 +12,21 @@ import jakarta.persistence.StoredProcedureQuery;
 import jakarta.persistence.Table;
 import org.hibernate.Session;
 import org.hibernate.dialect.H2Dialect;
+import org.hibernate.engine.jdbc.spi.SqlExceptionHelper;
+import org.hibernate.internal.CoreMessageLogger;
+import org.hibernate.internal.log.DeprecationLogger;
 import org.hibernate.procedure.ProcedureCall;
+import org.hibernate.testing.logger.LogInspectionHelper;
+import org.hibernate.testing.logger.TriggerOnPrefixLogListener;
 import org.hibernate.testing.orm.junit.EntityManagerFactoryScope;
 import org.hibernate.testing.orm.junit.Jpa;
 import org.hibernate.testing.orm.junit.RequiresDialect;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.lang.invoke.MethodHandles;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -35,6 +42,7 @@ import static org.assertj.core.api.Fail.fail;
 @Jpa(annotatedClasses = H2StoreProcedureTest.MyEntity.class)
 @RequiresDialect(H2Dialect.class)
 public class H2StoreProcedureTest {
+	private TriggerOnPrefixLogListener trigger;
 
 	@BeforeAll
 	public void setUp(EntityManagerFactoryScope scope) {
@@ -55,6 +63,12 @@ public class H2StoreProcedureTest {
 					entityManager.persist( entity );
 				}
 		);
+		trigger = new TriggerOnPrefixLogListener( "Exception calling user-defined function" );
+		LogInspectionHelper.registerListener( trigger, Logger.getMessageLogger(
+				MethodHandles.lookup(),
+				CoreMessageLogger.class,
+				SqlExceptionHelper.class.getName()
+		) );
 	}
 
 	@AfterAll
@@ -127,6 +141,7 @@ public class H2StoreProcedureTest {
 
 	@Test
 	public void testInvalidStoredProcedure(EntityManagerFactoryScope scope) {
+		trigger.reset();
 		scope.inTransaction( entityManager -> {
 			try (final ProcedureCall query = entityManager.unwrap( Session.class )
 					.createStoredProcedureQuery( "invalid_proc" )) {
@@ -135,6 +150,8 @@ public class H2StoreProcedureTest {
 			}
 			catch (Exception e) {
 				assertThat( e ).hasMessageContaining( "This is a error from h2 stored procedure" );
+				// assert the procedure was only called once
+				assertThat( trigger.triggerMessages() ).hasSize( 1 );
 			}
 		} );
 	}
