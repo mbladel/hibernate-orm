@@ -14,7 +14,6 @@ import org.hibernate.Session;
 import org.hibernate.dialect.H2Dialect;
 import org.hibernate.engine.jdbc.spi.SqlExceptionHelper;
 import org.hibernate.internal.CoreMessageLogger;
-import org.hibernate.internal.log.DeprecationLogger;
 import org.hibernate.procedure.ProcedureCall;
 import org.hibernate.testing.logger.LogInspectionHelper;
 import org.hibernate.testing.logger.TriggerOnPrefixLogListener;
