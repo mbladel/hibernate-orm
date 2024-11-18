@@ -610,6 +610,13 @@ public class ProcedureCallImpl<R>
 	}
 
 	@Override
+	public void close() {
+		if ( outputs != null ) {
+			outputs.release();
+		}
+	}
+
+	@Override
 	public ProcedureOutputs getOutputs() {
 		if ( outputs == null ) {
 			outputs = buildOutputs();
