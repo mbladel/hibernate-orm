@@ -16,6 +16,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 
+import net.bytebuddy.description.type.TypeDefinition;
 import net.bytebuddy.utility.OpenedClassReader;
 import org.hibernate.bytecode.enhance.internal.bytebuddy.EnhancerImpl.AnnotatedFieldDescription;
 import org.hibernate.bytecode.enhance.spi.EnhancementException;
@@ -55,15 +56,15 @@ final class BiDirectionalAssociationHandler implements Implementation {
 		if ( targetEntity == null ) {
 			return implementation;
 		}
-		String mappedBy = getMappedBy( persistentField, targetEntity, enhancementContext );
-		String bidirectionalAttributeName;
+		FieldDescription mappedBy = getMappedBy( persistentField, targetEntity, enhancementContext );
+		FieldDescription bidirectionalField;
 		if ( mappedBy == null ) {
-			bidirectionalAttributeName = getMappedByManyToMany( persistentField, targetEntity, enhancementContext );
+			bidirectionalField = getMappedByManyToMany( managedCtClass, persistentField, targetEntity, enhancementContext );
 		}
 		else {
-			bidirectionalAttributeName = mappedBy;
+			bidirectionalField = mappedBy;
 		}
-		if ( bidirectionalAttributeName == null || bidirectionalAttributeName.isEmpty() ) {
+		if ( bidirectionalField == null ) {
 			if ( log.isInfoEnabled() ) {
 				log.infof(
 						"Bi-directional association not managed for field [%s#%s]: Could not find target field in [%s]",
@@ -75,11 +76,8 @@ final class BiDirectionalAssociationHandler implements Implementation {
 			return implementation;
 		}
 
-		TypeDescription targetType = FieldLocator.ForClassHierarchy.Factory.INSTANCE.make( targetEntity )
-				.locate( bidirectionalAttributeName )
-				.getField()
-				.getType()
-				.asErasure();
+		TypeDescription targetType = bidirectionalField.getType().asErasure();
+		String bidirectionalAttributeName = bidirectionalField.getName();
 
 		if ( persistentField.hasAnnotation( OneToOne.class ) ) {
 			implementation = Advice.withCustomMapping()
@@ -201,28 +199,47 @@ final class BiDirectionalAssociationHandler implements Implementation {
 		}
 	}
 
-	private static String getMappedBy(AnnotatedFieldDescription target, TypeDescription targetEntity, ByteBuddyEnhancementContext context) {
+	private static FieldDescription getMappedBy(AnnotatedFieldDescription target, TypeDescription targetEntity, ByteBuddyEnhancementContext context) {
 		final String mappedBy = getMappedByFromAnnotation( target );
 		if ( mappedBy == null || mappedBy.isEmpty() ) {
 			return null;
 		}
 		else {
 			// HHH-13446 - mappedBy from annotation may not be a valid bi-directional association, verify by calling isValidMappedBy()
-			return isValidMappedBy( target, targetEntity, mappedBy, context ) ? mappedBy : null;
+			return getMappedByFieldIfValid( target, targetEntity, mappedBy, context );
 		}
 	}
 
-	private static boolean isValidMappedBy(AnnotatedFieldDescription persistentField, TypeDescription targetEntity, String mappedBy, ByteBuddyEnhancementContext context) {
+	private static FieldDescription getMappedByFieldIfValid(AnnotatedFieldDescription persistentField, TypeDescription targetEntity, String mappedBy, ByteBuddyEnhancementContext context) {
+		FieldDescription field = locateField( targetEntity, mappedBy );
+		AnnotatedFieldDescription annotatedF = new AnnotatedFieldDescription( context, field );
+		return context.isPersistentField( annotatedF ) && persistentField.getDeclaringType().asErasure()
+				.isAssignableTo( entityType( field.getType() ) ) ?
+				field :
+				null;
+	}
+
+	/**
+	 * Utility that recursively searches for a field in a type hierarchy. Preferred over
+	 * {@link FieldLocator.ForClassHierarchy} since it allows finding {@code private}
+	 * fields of super-types defined in different packages.
+	 * @param type the type containing the field
+	 * @param fieldName the field's name
+	 * @return the located field, or {@code null}
+	 */
+	private static FieldDescription locateField(TypeDescription type, String fieldName) {
 		try {
-			FieldDescription f = FieldLocator.ForClassHierarchy.Factory.INSTANCE.make( targetEntity ).locate( mappedBy ).getField();
-			AnnotatedFieldDescription annotatedF = new AnnotatedFieldDescription( context, f );
-
-			return context.isPersistentField( annotatedF ) && persistentField.getDeclaringType().asErasure().isAssignableTo( entityType( f.getType() ) );
+			return new FieldLocator.ForExactType( type ).locate( fieldName ).getField();
 		}
-		catch ( IllegalStateException e ) {
-			return false;
+		catch (IllegalStateException e) {
+			// ignored
 		}
+		TypeDefinition superclass = type.getSuperClass();
+		return superclass != null && !superclass.represents( Object.class ) ?
+				locateField( superclass.asErasure(), fieldName ) :
+				null;
 	}
+
 	private static String getMappedByFromAnnotation(AnnotatedFieldDescription target) {
 		try {
 			AnnotationDescription.Loadable<OneToOne> oto = target.getAnnotation( OneToOne.class );
@@ -246,22 +263,24 @@ final class BiDirectionalAssociationHandler implements Implementation {
 		return null;
 	}
 
-	private static String getMappedByManyToMany(AnnotatedFieldDescription target, TypeDescription targetEntity, ByteBuddyEnhancementContext context) {
+	private static FieldDescription getMappedByManyToMany(TypeDescription managedCtClass, AnnotatedFieldDescription target, TypeDescription targetEntity, ByteBuddyEnhancementContext context) {
 		for ( FieldDescription f : targetEntity.getDeclaredFields() ) {
 			AnnotatedFieldDescription annotatedF = new AnnotatedFieldDescription( context, f );
-			if ( context.isPersistentField( annotatedF )
-					&& target.getName().equals( getMappedBy( annotatedF, entityType( annotatedF.getType() ), context ) )
-					&& target.getDeclaringType().asErasure().isAssignableTo( entityType( annotatedF.getType() ) ) ) {
-				if ( log.isDebugEnabled() ) {
-					log.debugf(
-							"mappedBy association for field [%s#%s] is [%s#%s]",
-							target.getDeclaringType().asErasure().getName(),
-							target.getName(),
-							targetEntity.getName(),
-							f.getName()
-					);
+			if ( context.isPersistentField( annotatedF ) ) {
+				FieldDescription mappedBy = getMappedBy( annotatedF, entityType( annotatedF.getType() ), context );
+				if ( mappedBy != null && target.getName().equals( mappedBy.getName() )
+						&& managedCtClass.isAssignableTo( entityType( annotatedF.getType() ) ) ) {
+					if ( log.isDebugEnabled() ) {
+						log.debugf(
+								"mappedBy association for field [%s#%s] is [%s#%s]",
+								target.getDeclaringType().asErasure().getName(),
+								target.getName(),
+								targetEntity.getName(),
+								f.getName()
+						);
+					}
+					return f;
 				}
-				return f.getName();
 			}
 		}
 		return null;
