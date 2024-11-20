@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.SelectablePath;
+import org.hibernate.metamodel.mapping.SqlTypedMapping;
 import org.hibernate.sql.ast.SqlAstWalker;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.ast.spi.StringBuilderSqlAppender;
@@ -39,6 +40,7 @@ public class ColumnReference implements Expression, Assignable {
 	private final boolean isFormula;
 	private final @Nullable String readExpression;
 	private final JdbcMapping jdbcMapping;
+	private final SqlTypedMapping sqlTypedMapping;
 
 	public ColumnReference(TableReference tableReference, SelectableMapping selectableMapping) {
 		this(
@@ -47,7 +49,8 @@ public class ColumnReference implements Expression, Assignable {
 				selectableMapping.getSelectablePath(),
 				selectableMapping.isFormula(),
 				selectableMapping.getCustomReadExpression(),
-				selectableMapping.getJdbcMapping()
+				selectableMapping.getJdbcMapping(),
+				selectableMapping
 		);
 	}
 
@@ -58,7 +61,8 @@ public class ColumnReference implements Expression, Assignable {
 				null,
 				false,
 				null,
-				jdbcMapping
+				jdbcMapping,
+				null
 		);
 	}
 
@@ -69,7 +73,8 @@ public class ColumnReference implements Expression, Assignable {
 				selectableMapping.getSelectablePath(),
 				selectableMapping.isFormula(),
 				selectableMapping.getCustomReadExpression(),
-				selectableMapping.getJdbcMapping()
+				selectableMapping.getJdbcMapping(),
+				selectableMapping
 		);
 	}
 
@@ -80,7 +85,8 @@ public class ColumnReference implements Expression, Assignable {
 				selectableMapping.getSelectablePath(),
 				selectableMapping.isFormula(),
 				selectableMapping.getCustomReadExpression(),
-				jdbcMapping
+				jdbcMapping,
+				selectableMapping
 		);
 	}
 
@@ -96,7 +102,8 @@ public class ColumnReference implements Expression, Assignable {
 				null,
 				isFormula,
 				customReadExpression,
-				jdbcMapping
+				jdbcMapping,
+				null
 		);
 	}
 
@@ -106,7 +113,7 @@ public class ColumnReference implements Expression, Assignable {
 			boolean isFormula,
 			@Nullable String customReadExpression,
 			JdbcMapping jdbcMapping) {
-		this( qualifier, columnExpression, null, isFormula, customReadExpression, jdbcMapping );
+		this( qualifier, columnExpression, null, isFormula, customReadExpression, jdbcMapping, null );
 	}
 
 	public ColumnReference(
@@ -116,6 +123,17 @@ public class ColumnReference implements Expression, Assignable {
 			boolean isFormula,
 			@Nullable String customReadExpression,
 			JdbcMapping jdbcMapping) {
+		this( qualifier, columnExpression, selectablePath, isFormula, customReadExpression, jdbcMapping, null );
+	}
+
+	public ColumnReference(
+			@Nullable String qualifier,
+			String columnExpression,
+			@Nullable SelectablePath selectablePath,
+			boolean isFormula,
+			@Nullable String customReadExpression,
+			JdbcMapping jdbcMapping,
+			SqlTypedMapping sqlTypedMapping) {
 		this.qualifier = nullIfEmpty( qualifier );
 
 		if ( isFormula ) {
@@ -134,6 +152,7 @@ public class ColumnReference implements Expression, Assignable {
 		this.isFormula = isFormula;
 		this.readExpression = customReadExpression;
 		this.jdbcMapping = jdbcMapping;
+		this.sqlTypedMapping = sqlTypedMapping;
 	}
 
 	@Override
@@ -211,6 +230,10 @@ public class ColumnReference implements Expression, Assignable {
 
 	public JdbcMapping getJdbcMapping() {
 		return jdbcMapping;
+	}
+
+	public SqlTypedMapping getSqlTypedMapping() {
+		return sqlTypedMapping;
 	}
 
 	@Override

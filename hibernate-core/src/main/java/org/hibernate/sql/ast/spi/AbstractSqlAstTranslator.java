@@ -230,6 +230,7 @@ import org.hibernate.type.spi.TypeConfiguration;
 
 import jakarta.persistence.criteria.Nulls;
 
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 import static org.hibernate.persister.entity.DiscriminatorHelper.jdbcLiteral;
 import static org.hibernate.query.sqm.BinaryArithmeticOperator.DIVIDE_PORTABLE;
 import static org.hibernate.query.common.TemporalUnit.DAY;
@@ -5763,11 +5764,18 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 		}
 		final List<SqlAstNode> arguments = new ArrayList<>( 2 );
 		arguments.add( expression );
+		final CastTarget castTarget = getCastTarget( expression );
+		arguments.add( castTarget );
+		castFunction().render( this, arguments, (ReturnableType<?>) castTarget.getJdbcMapping(), this );
+	}
+
+	private static CastTarget getCastTarget(Expression expression) {
+		final SqlTypedMapping sqlTypedMapping = getSqlTypedMapping( expression );
+		final JdbcMapping jdbcMapping = castNonNull( expression.getExpressionType() ).getSingleJdbcMapping();
 		final CastTarget castTarget;
-		if ( expression instanceof SqlTypedMappingJdbcParameter parameter ) {
-			final SqlTypedMapping sqlTypedMapping = parameter.getSqlTypedMapping();
+		if ( sqlTypedMapping != null ) {
 			castTarget = new CastTarget(
-					parameter.getJdbcMapping(),
+					jdbcMapping,
 					sqlTypedMapping.getColumnDefinition(),
 					sqlTypedMapping.getLength(),
 					sqlTypedMapping.getTemporalPrecision() != null
@@ -5777,10 +5785,24 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 			);
 		}
 		else {
-			castTarget = new CastTarget( expression.getExpressionType().getSingleJdbcMapping() );
+			castTarget = new CastTarget( jdbcMapping );
 		}
-		arguments.add( castTarget );
-		castFunction().render( this, arguments, (ReturnableType<?>) castTarget.getJdbcMapping(), this );
+		return castTarget;
+	}
+
+	private static SqlTypedMapping getSqlTypedMapping(Expression expression) {
+		if ( expression instanceof SqlTypedMappingJdbcParameter parameter ) {
+			return parameter.getSqlTypedMapping();
+		}
+		else {
+			final ColumnReference columnReference = expression.getColumnReference();
+			if ( columnReference != null ) {
+				return columnReference.getSqlTypedMapping();
+			}
+			else {
+				return null;
+			}
+		}
 	}
 
 	@SuppressWarnings("unchecked")
