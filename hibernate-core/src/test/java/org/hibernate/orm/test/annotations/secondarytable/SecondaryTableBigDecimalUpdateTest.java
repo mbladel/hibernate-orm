@@ -6,6 +6,8 @@ package org.hibernate.orm.test.annotations.secondarytable;
 
 import java.math.BigDecimal;
 
+import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -21,6 +23,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @author Marco Belladelli
  */
+@DomainModel( annotatedClasses = {
+		SecondaryTableBigDecimalUpdateTest.PrimaryTable.class,
+		SecondaryTableBigDecimalUpdateTest.SecondaryTableCls.class,
+} )
+@SessionFactory
 public class SecondaryTableBigDecimalUpdateTest {
 	private static final BigDecimal PRIMARY_A = new BigDecimal( "3.088361" );
 	private static final BigDecimal PRIMARY_B = new BigDecimal( "3.088362" );
