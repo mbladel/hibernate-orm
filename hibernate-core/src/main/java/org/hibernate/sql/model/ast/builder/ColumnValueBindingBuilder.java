@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 import org.hibernate.engine.jdbc.mutation.ParameterUsage;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.model.ast.ColumnValueBinding;
 import org.hibernate.sql.model.ast.ColumnValueParameter;
@@ -33,6 +34,23 @@ public class ColumnValueBindingBuilder {
 	private static final String SPLIT_REGEX = "[^\\s\"']+|\"([^\"]*)\"|'([^']*)'";
 	private static final Pattern SPLIT_PATTERN = Pattern.compile( SPLIT_REGEX );
 
+
+	public static ColumnValueBinding createValueBinding(
+			MutatingTableReference mutatingTableReference,
+			SelectableMapping selectableMapping,
+			ParameterUsage parameterUsage,
+			Consumer<Object> parameterConsumer) {
+		final ColumnReference columnReference = new ColumnReference( mutatingTableReference, selectableMapping );
+		final ColumnWriteFragment columnWriteFragment = buildWriteFragment(
+				selectableMapping.getWriteExpression(),
+				selectableMapping.getJdbcMapping(),
+				mutatingTableReference,
+				columnReference,
+				parameterUsage,
+				parameterConsumer
+		);
+		return new ColumnValueBinding( columnReference, columnWriteFragment ) ;
+	}
 
 	public static ColumnValueBinding createValueBinding(
 			String columnName,

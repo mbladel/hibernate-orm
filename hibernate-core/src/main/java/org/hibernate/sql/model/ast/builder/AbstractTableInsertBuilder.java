@@ -9,6 +9,7 @@ import java.util.List;
 
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.sql.model.MutationTarget;
 import org.hibernate.sql.model.MutationType;
 import org.hibernate.sql.model.TableMapping;
@@ -68,8 +69,15 @@ public abstract class AbstractTableInsertBuilder
 
 	@Override
 	public void addValueColumn(String columnName, String columnWriteFragment, JdbcMapping jdbcMapping, boolean isLob) {
-		final ColumnValueBinding valueBinding = createValueBinding( columnName, columnWriteFragment, jdbcMapping );
+		addValueBinding( createValueBinding( columnName, columnWriteFragment, jdbcMapping ), isLob );
+	}
 
+	@Override
+	public void addValueColumn(SelectableMapping selectableMapping) {
+		addValueBinding( createValueBinding( selectableMapping ), selectableMapping.isLob() );
+	}
+
+	private void addValueBinding(ColumnValueBinding valueBinding, boolean isLob) {
 		if ( isLob && getJdbcServices().getDialect().forceLobAsLastValue() ) {
 			if ( lobValueBindingList == null ) {
 				lobValueBindingList = new ArrayList<>();

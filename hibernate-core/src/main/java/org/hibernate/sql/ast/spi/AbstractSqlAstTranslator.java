@@ -5770,8 +5770,8 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 	}
 
 	private static CastTarget getCastTarget(Expression expression) {
-		final SqlTypedMapping sqlTypedMapping = getSqlTypedMapping( expression );
 		final JdbcMapping jdbcMapping = castNonNull( expression.getExpressionType() ).getSingleJdbcMapping();
+		final SqlTypedMapping sqlTypedMapping = getSqlTypedMapping( expression );
 		final CastTarget castTarget;
 		if ( sqlTypedMapping != null ) {
 			castTarget = new CastTarget(

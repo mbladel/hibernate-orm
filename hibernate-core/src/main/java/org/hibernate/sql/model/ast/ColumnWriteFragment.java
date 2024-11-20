@@ -12,7 +12,10 @@ import java.util.Locale;
 import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.sql.ast.SqlAstWalker;
+import org.hibernate.sql.ast.tree.expression.ColumnReference;
 import org.hibernate.sql.ast.tree.expression.Expression;
+
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * Models a column's value expression within the SQL AST. Used to model:<ul>
@@ -54,6 +57,11 @@ public class ColumnWriteFragment implements Expression {
 	}
 
 	@Override
+	public @Nullable ColumnReference getColumnReference() {
+		return parameters.size() == 1 ? parameters.get( 0 ).getColumnReference() : null;
+	}
+
+	@Override
 	public JdbcMapping getExpressionType() {
 		return jdbcMapping;
 	}
@@ -65,32 +73,29 @@ public class ColumnWriteFragment implements Expression {
 
 	@Override
 	public String toString() {
-		switch ( parameters.size() ) {
-			case 0:
-				return String.format(
-						Locale.ROOT,
-						"ColumnWriteFragment(%s)@%s",
-						fragment,
-						hashCode()
-				);
-			case 1:
-				return String.format(
-						Locale.ROOT,
-						"ColumnWriteFragment(%s = %s (%s))@%s",
-						parameters.get( 0 ).getColumnReference().getColumnExpression(),
-						fragment,
-						parameters.get( 0 ).getUsage(),
-						hashCode()
-				);
-			default:
-				return String.format(
-						Locale.ROOT,
-						"ColumnWriteFragment(%s = %s (%s))@%s",
-						parameters,
-						fragment,
-						parameters.get( 0 ).getUsage(),
-						hashCode()
-				);
-		}
+		return switch ( parameters.size() ) {
+			case 0 -> String.format(
+					Locale.ROOT,
+					"ColumnWriteFragment(%s)@%s",
+					fragment,
+					hashCode()
+			);
+			case 1 -> String.format(
+					Locale.ROOT,
+					"ColumnWriteFragment(%s = %s (%s))@%s",
+					parameters.get( 0 ).getColumnReference().getColumnExpression(),
+					fragment,
+					parameters.get( 0 ).getUsage(),
+					hashCode()
+			);
+			default -> String.format(
+					Locale.ROOT,
+					"ColumnWriteFragment(%s = %s (%s))@%s",
+					parameters,
+					fragment,
+					parameters.get( 0 ).getUsage(),
+					hashCode()
+			);
+		};
 	}
 }

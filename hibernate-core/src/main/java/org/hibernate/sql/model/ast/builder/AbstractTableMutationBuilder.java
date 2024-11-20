@@ -11,6 +11,7 @@ import org.hibernate.engine.jdbc.mutation.ParameterUsage;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.sql.model.MutationTarget;
 import org.hibernate.sql.model.MutationType;
 import org.hibernate.sql.model.TableMapping;
@@ -100,6 +101,7 @@ public abstract class AbstractTableMutationBuilder<M extends TableMutation<?>> i
 			JdbcMapping jdbcMapping) {
 		return createValueBinding( columnName, columnWriteFragment, jdbcMapping, ParameterUsage.SET );
 	}
+
 	protected ColumnValueBinding createValueBinding(
 			String columnName,
 			String customWriteExpression,
@@ -111,6 +113,15 @@ public abstract class AbstractTableMutationBuilder<M extends TableMutation<?>> i
 				jdbcMapping,
 				getMutatingTable(),
 				parameterUsage,
+				parameters::apply
+		);
+	}
+
+	protected ColumnValueBinding createValueBinding(SelectableMapping selectableMapping) {
+		return ColumnValueBindingBuilder.createValueBinding(
+				getMutatingTable(),
+				selectableMapping,
+				ParameterUsage.SET,
 				parameters::apply
 		);
 	}
