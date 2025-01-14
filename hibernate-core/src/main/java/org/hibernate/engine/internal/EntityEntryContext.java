@@ -20,6 +20,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -27,6 +28,7 @@ import java.util.function.Consumer;
 import static org.hibernate.engine.internal.ManagedTypeHelper.asManagedEntity;
 import static org.hibernate.engine.internal.ManagedTypeHelper.asPersistentAttributeInterceptableOrNull;
 import static org.hibernate.engine.internal.ManagedTypeHelper.isManagedEntity;
+import static org.hibernate.internal.util.collections.CollectionHelper.arrayList;
 
 /**
  * Defines a context for maintaining the relation between an entity associated with the
@@ -49,7 +51,8 @@ public class EntityEntryContext {
 
 	private final transient PersistenceContext persistenceContext;
 
-	private transient IdentityHashMap<ManagedEntity,ImmutableManagedEntityHolder> immutableManagedEntityXref;
+	private transient ArrayList<ImmutableManagedEntityHolder> immutableManagedEntityXref = new ArrayList<>();
+	private transient int currentInstanceId = 1;
 
 	private transient ManagedEntity head;
 	private transient ManagedEntity tail;
@@ -98,6 +101,9 @@ public class EntityEntryContext {
 		if ( !alreadyAssociated ) {
 			if ( isManagedEntity( entity ) ) {
 				final ManagedEntity managed = asManagedEntity( entity );
+				// todo marco : we could do this when instantiating entities, but this should catch both that
+				//  and user-provided instances of bytecode-enhanced entities
+				managed.$$_hibernate_setInstanceId( nextManagedEntityInstanceId() );
 				if ( entityEntry.getPersister().isMutable() ) {
 					managedEntity = managed;
 					// We know that managedEntity is not associated with the same PersistenceContext.
@@ -107,23 +113,19 @@ public class EntityEntryContext {
 				else {
 					// Create a holder for PersistenceContext-related data.
 					managedEntity = new ImmutableManagedEntityHolder( managed );
-					if ( immutableManagedEntityXref == null ) {
-						immutableManagedEntityXref = new IdentityHashMap<>();
-					}
-					immutableManagedEntityXref.put(
-							managed,
-							(ImmutableManagedEntityHolder) managedEntity
-					);
+					putImmutableManagedEntity( managed, (ImmutableManagedEntityHolder) managedEntity );
 				}
 			}
 			else {
 				if ( nonEnhancedEntityXref == null ) {
 					nonEnhancedEntityXref = new IdentityHashMap<>();
 				}
-				managedEntity = new ManagedEntityImpl( entity );
+				managedEntity = new ManagedEntityImpl( entity, nextManagedEntityInstanceId() );
 				nonEnhancedEntityXref.put( entity, managedEntity );
 			}
 		}
+
+		assert managedEntity.$$_hibernate_getInstanceId() != 0;
 
 		// associate the EntityEntry with the entity
 		managedEntity.$$_hibernate_setEntityEntry( entityEntry );
@@ -171,11 +173,11 @@ public class EntityEntryContext {
 						: null;
 			}
 			else {
-				// if managedEntity is associated with this EntityEntryContext, then
-				// it will have an entry in immutableManagedEntityXref and its
-				// holder will be returned.
-				return immutableManagedEntityXref != null
-						? immutableManagedEntityXref.get( managedEntity )
+				// if managedEntity is associated with this EntityEntryContext, it may have
+				// an entry in immutableManagedEntityXref and an instance-id > 0,
+				// then its holder will be returned.
+				return immutableManagedEntityXref != null && managedEntity.$$_hibernate_getInstanceId() != 0
+						? immutableManagedEntityXref.get( managedEntity.$$_hibernate_getInstanceId() )
 						: null;
 			}
 		}
@@ -184,6 +186,22 @@ public class EntityEntryContext {
 					? nonEnhancedEntityXref.get( entity )
 					: null;
 		}
+	}
+
+	private int nextManagedEntityInstanceId() {
+		// todo marco : what if we reach Integer.MAX_VALUE ? Probably not realistic, but could theoretically happen
+		// todo marco : this can also be defined per entity-type, but should it ?
+		return currentInstanceId++;
+	}
+
+	private void putImmutableManagedEntity(ManagedEntity managed, ImmutableManagedEntityHolder holder) {
+		// todo marco : we should be able to apply the same treatment to PersistentCollections in the PC
+		if ( immutableManagedEntityXref == null ) {
+			immutableManagedEntityXref = arrayList( 10 );
+		}
+		// todo marco : maybe a different growing check should be performed ?
+		immutableManagedEntityXref.ensureCapacity( managed.$$_hibernate_getInstanceId() + 1 );
+		immutableManagedEntityXref.add( managed.$$_hibernate_getInstanceId(), holder );
 	}
 
 	private void checkNotAssociatedWithOtherPersistenceContextIfMutable(ManagedEntity managedEntity) {
@@ -255,8 +273,7 @@ public class EntityEntryContext {
 
 		if (managedEntity instanceof ImmutableManagedEntityHolder) {
 			assert entity == ( (ImmutableManagedEntityHolder) managedEntity ).managedEntity;
-			immutableManagedEntityXref.remove( entity );
-
+			immutableManagedEntityXref.remove( managedEntity.$$_hibernate_getInstanceId() );
 		}
 		else if ( ! ( isManagedEntity( entity ) ) ) {
 			nonEnhancedEntityXref.remove( entity );
@@ -484,19 +501,11 @@ public class EntityEntryContext {
 				else {
 					final ManagedEntity castedEntity = asManagedEntity( entity );
 					managedEntity = new ImmutableManagedEntityHolder( castedEntity );
-					if ( context.immutableManagedEntityXref == null ) {
-						context.immutableManagedEntityXref =
-								new IdentityHashMap<>();
-					}
-					context.immutableManagedEntityXref.put(
-							castedEntity,
-							(ImmutableManagedEntityHolder) managedEntity
-
-					);
+					context.putImmutableManagedEntity( castedEntity, (ImmutableManagedEntityHolder) managedEntity );
 				}
 			}
 			else {
-				managedEntity = new ManagedEntityImpl( entity );
+				managedEntity = new ManagedEntityImpl( entity, context.nextManagedEntityInstanceId() );
 				if ( context.nonEnhancedEntityXref == null ) {
 					context.nonEnhancedEntityXref = new IdentityHashMap<>();
 				}
@@ -555,9 +564,11 @@ public class EntityEntryContext {
 		private ManagedEntity previous;
 		private ManagedEntity next;
 		private boolean useTracker;
+		private final int instanceId;
 
-		public ManagedEntityImpl(Object entityInstance) {
+		public ManagedEntityImpl(Object entityInstance, int instanceId) {
 			this.entityInstance = entityInstance;
+			this.instanceId = instanceId;
 			useTracker = false;
 		}
 
@@ -604,6 +615,16 @@ public class EntityEntryContext {
 		@Override
 		public void $$_hibernate_setPreviousManagedEntity(ManagedEntity previous) {
 			this.previous = previous;
+		}
+
+		@Override
+		public int $$_hibernate_getInstanceId() {
+			return instanceId;
+		}
+
+		@Override
+		public void $$_hibernate_setInstanceId(int id) {
+			throw new IllegalStateException("Instance id is already set");
 		}
 	}
 
@@ -692,6 +713,16 @@ public class EntityEntryContext {
 			EntityEntry entityEntry = managedEntity.$$_hibernate_getEntityEntry();
 			return !(entityEntry instanceof ImmutableEntityEntry)
 				|| !entityEntry.getPersister().canUseReferenceCacheEntries();
+		}
+
+		@Override
+		public int $$_hibernate_getInstanceId() {
+			return managedEntity.$$_hibernate_getInstanceId();
+		}
+
+		@Override
+		public void $$_hibernate_setInstanceId(int id) {
+			managedEntity.$$_hibernate_setInstanceId( id );
 		}
 	}
 

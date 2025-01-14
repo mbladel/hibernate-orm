@@ -128,4 +128,7 @@ public interface ManagedEntity extends Managed {
 		return this;
 	}
 
+	int $$_hibernate_getInstanceId();
+
+	void $$_hibernate_setInstanceId(int id);
 }
