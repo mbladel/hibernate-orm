@@ -34,7 +34,6 @@ import org.hibernate.event.spi.FlushEvent;
 import org.hibernate.event.spi.PersistContext;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.EntityPrinter;
-import org.hibernate.internal.util.collections.IdentityMap;
 import org.hibernate.persister.entity.EntityPersister;
 
 import org.jboss.logging.Logger;
@@ -189,10 +188,7 @@ public abstract class AbstractFlushingEventListener {
 		final Map<PersistentCollection<?>, CollectionEntry> collectionEntries =
 				persistenceContext.getCollectionEntries();
 		if ( collectionEntries != null ) {
-			for ( Map.Entry<PersistentCollection<?>, CollectionEntry> entry :
-					( (IdentityMap<PersistentCollection<?>, CollectionEntry>) collectionEntries ).entryArray() ) {
-				entry.getValue().preFlush( entry.getKey() );
-			}
+			collectionEntries.forEach( (k, v) -> v.preFlush( k ) );
 		}
 	}
 
@@ -271,12 +267,11 @@ public abstract class AbstractFlushingEventListener {
 		}
 		else {
 			count = collectionEntries.size();
-			for ( Map.Entry<PersistentCollection<?>, CollectionEntry> me : ( (IdentityMap<PersistentCollection<?>, CollectionEntry>) collectionEntries ).entryArray() ) {
-				final CollectionEntry ce = me.getValue();
+			collectionEntries.forEach( (k, ce) -> {
 				if ( !ce.isReached() && !ce.isIgnore() ) {
-					Collections.processUnreachableCollection( me.getKey(), session );
+					Collections.processUnreachableCollection( k, session );
 				}
-			}
+			} );
 		}
 
 		// Schedule updates to collections:

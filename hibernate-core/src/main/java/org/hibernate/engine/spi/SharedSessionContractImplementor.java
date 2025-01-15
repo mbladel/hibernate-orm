@@ -580,5 +580,4 @@ public interface SharedSessionContractImplementor
 	default boolean isStatelessSession() {
 		return false;
 	}
-
 }

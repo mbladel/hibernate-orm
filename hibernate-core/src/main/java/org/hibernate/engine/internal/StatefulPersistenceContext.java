@@ -56,6 +56,7 @@ import org.hibernate.event.spi.PostLoadEventListener;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.internal.util.collections.IdentityMap;
+import org.hibernate.internal.util.collections.InstanceIdentityMap;
 import org.hibernate.metamodel.spi.MappingMetamodelImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.persister.entity.EntityPersister;
@@ -131,7 +132,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	private IdentityHashMap<Object, PersistentCollection<?>> arrayHolders;
 
 	// Identity map of CollectionEntry instances, by the collection wrapper
-	private IdentityMap<PersistentCollection<?>, CollectionEntry> collectionEntries;
+	private InstanceIdentityMap<PersistentCollection<?>, CollectionEntry> collectionEntries;
 
 	// Collection wrappers, by the CollectionKey
 	private HashMap<CollectionKey, PersistentCollection<?>> collectionsByKey;
@@ -161,6 +162,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	private int loadCounter;
 	private int removeOrphanBeforeUpdatesCounter;
 	private boolean flushing;
+	private int currentCollectionInstanceId = 0;
 
 	private boolean defaultReadOnly;
 	private boolean hasNonReadOnlyEntities;
@@ -255,7 +257,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 
 		final SharedSessionContractImplementor session = getSession();
 		if ( collectionEntries != null ) {
-			IdentityMap.onEachKey( collectionEntries, k -> k.unsetSession( session ) );
+			collectionEntries.forEach( (k,v) -> k.unsetSession( session ) );
 		}
 
 		arrayHolders = null;
@@ -613,7 +615,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 
 	@Override
 	public CollectionEntry getCollectionEntry(PersistentCollection<?> coll) {
-		return collectionEntries == null ? null : collectionEntries.get( coll );
+		return collectionEntries == null ? null : collectionEntries.get( coll.$$_hibernate_getInstanceId() );
 	}
 
 	@Override
@@ -725,7 +727,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 
 	@Override
 	public boolean containsCollection(PersistentCollection<?> collection) {
-		return collectionEntries != null && collectionEntries.containsKey( collection );
+		return collectionEntries != null && collectionEntries.containsKey( collection.$$_hibernate_getInstanceId() );
 	}
 
 	@Override
@@ -1093,16 +1095,16 @@ public class StatefulPersistenceContext implements PersistenceContext {
 			// or should it actually throw an exception?
 			old.unsetSession( session );
 			if ( collectionEntries != null ) {
-				collectionEntries.remove( old );
+				collectionEntries.remove( old.$$_hibernate_getInstanceId() );
 			}
 			// watch out for a case where old is still referenced
 			// somewhere in the object graph! (which is a user error)
 		}
 	}
 
-	private IdentityMap<PersistentCollection<?>, CollectionEntry> getOrInitializeCollectionEntries() {
+	private InstanceIdentityMap<PersistentCollection<?>, CollectionEntry> getOrInitializeCollectionEntries() {
 		if ( this.collectionEntries == null ) {
-			this.collectionEntries = IdentityMap.instantiateSequenced( INIT_COLL_SIZE );
+			this.collectionEntries = new InstanceIdentityMap( INIT_COLL_SIZE );
 		}
 		return this.collectionEntries;
 	}
@@ -1351,16 +1353,14 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	}
 
 	@Override
-	public void forEachCollectionEntry(BiConsumer<PersistentCollection<?>, CollectionEntry> action, boolean concurrent) {
+	public int nextCollectionInstanceId() {
+		return currentCollectionInstanceId++;
+	}
+
+	@Override
+	public void forEachCollectionEntry(BiConsumer<PersistentCollection<?>, CollectionEntry> action) {
 		if ( collectionEntries != null ) {
-			if ( concurrent ) {
-				for ( Entry<PersistentCollection<?>,CollectionEntry> entry : IdentityMap.concurrentEntries( collectionEntries ) ) {
-					action.accept( entry.getKey(), entry.getValue() );
-				}
-			}
-			else {
-				collectionEntries.forEach( action );
-			}
+			collectionEntries.forEach( action );
 		}
 	}
 
@@ -2149,7 +2149,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 
 	@Override
 	public CollectionEntry removeCollectionEntry(PersistentCollection<?> collection) {
-		return collectionEntries == null ? null : collectionEntries.remove(collection);
+		return collectionEntries == null ? null : collectionEntries.remove( collection.$$_hibernate_getInstanceId() );
 	}
 
 	@Override
