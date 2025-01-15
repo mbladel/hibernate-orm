@@ -14,6 +14,7 @@ import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
+import org.hibernate.internal.util.collections.InstanceIdentityMap;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -51,7 +52,7 @@ public class EntityEntryContext {
 
 	private final transient PersistenceContext persistenceContext;
 
-	private transient ArrayList<ImmutableManagedEntityHolder> immutableManagedEntityXref = new ArrayList<>();
+	private transient InstanceIdentityMap<ManagedEntity, ImmutableManagedEntityHolder> immutableManagedEntityXref;
 	private transient int currentInstanceId = 1;
 
 	private transient ManagedEntity head;
@@ -195,13 +196,10 @@ public class EntityEntryContext {
 	}
 
 	private void putImmutableManagedEntity(ManagedEntity managed, ImmutableManagedEntityHolder holder) {
-		// todo marco : we should be able to apply the same treatment to PersistentCollections in the PC
 		if ( immutableManagedEntityXref == null ) {
-			immutableManagedEntityXref = arrayList( 10 );
+			immutableManagedEntityXref = new InstanceIdentityMap<>();
 		}
-		// todo marco : maybe a different growing check should be performed ?
-		immutableManagedEntityXref.ensureCapacity( managed.$$_hibernate_getInstanceId() + 1 );
-		immutableManagedEntityXref.add( managed.$$_hibernate_getInstanceId(), holder );
+		immutableManagedEntityXref.put( managed, holder );
 	}
 
 	private void checkNotAssociatedWithOtherPersistenceContextIfMutable(ManagedEntity managedEntity) {
