@@ -79,6 +79,8 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 	private String sessionFactoryUuid;
 	private boolean allowLoadOutsideTransaction;
 
+	private int instanceId;
+
 	/**
 	 * Not called by Hibernate, but used by non-JDK serialization,
 	 * eg. SOAP libraries.
@@ -88,6 +90,7 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 
 	protected AbstractPersistentCollection(SharedSessionContractImplementor session) {
 		this.session = session;
+		this.instanceId = session.getPersistenceContextInternal().nextCollectionInstanceId();
 	}
 
 	@Override
@@ -1362,4 +1365,8 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 		this.owner = owner;
 	}
 
+	@Override
+	public int $$_hibernate_getInstanceId() {
+		return instanceId;
+	}
 }
