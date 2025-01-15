@@ -6,4 +6,5 @@ package org.hibernate.engine.spi;
 
 public interface InstanceIdentity {
 	int $$_hibernate_getInstanceId();
+	void $$_hibernate_setInstanceId(int instanceId);
 }

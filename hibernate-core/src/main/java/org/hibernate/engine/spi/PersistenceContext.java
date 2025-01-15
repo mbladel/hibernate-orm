@@ -553,9 +553,6 @@ public interface PersistenceContext {
 	@Internal
 	@Nullable Map<PersistentCollection<?>,CollectionEntry> getCollectionEntries();
 
-	@Internal
-	int nextCollectionInstanceId();
-
 	/**
 	 * Execute some action on each entry of the collectionEntries map, optionally iterating on a defensive copy.
 	 *

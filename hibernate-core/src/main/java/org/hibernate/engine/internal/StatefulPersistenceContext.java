@@ -161,7 +161,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	private int loadCounter;
 	private int removeOrphanBeforeUpdatesCounter;
 	private boolean flushing;
-	private int currentCollectionInstanceId = 0;
+	private int currentCollectionInstanceId = 1;
 
 	private boolean defaultReadOnly;
 	private boolean hasNonReadOnlyEntities;
@@ -1084,6 +1084,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	 * @param key The key of the collection's entry.
 	 */
 	private void addCollection(PersistentCollection<?> coll, CollectionEntry entry, Object key) {
+		coll.$$_hibernate_setInstanceId( nextCollectionInstanceId() );
 		getOrInitializeCollectionEntries().put( coll, entry );
 		final CollectionKey collectionKey = new CollectionKey( entry.getLoadedPersister(), key );
 		final PersistentCollection<?> old = addCollectionByKey( collectionKey, coll );
@@ -1116,6 +1117,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	 */
 	private void addCollection(PersistentCollection<?> collection, CollectionPersister persister) {
 		final CollectionEntry ce = new CollectionEntry( persister, collection );
+		collection.$$_hibernate_setInstanceId( nextCollectionInstanceId() );
 		getOrInitializeCollectionEntries().put( collection, ce );
 	}
 
@@ -1351,8 +1353,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 		return collectionEntries;
 	}
 
-	@Override
-	public int nextCollectionInstanceId() {
+	private int nextCollectionInstanceId() {
 		return currentCollectionInstanceId++;
 	}
 
@@ -2006,6 +2007,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 				final PersistentCollection<?> pc = (PersistentCollection<?>) ois.readObject();
 				final CollectionEntry ce = CollectionEntry.deserialize( ois, session );
 				pc.setCurrentSession( session );
+				pc.$$_hibernate_setInstanceId( rtn.nextCollectionInstanceId() );
 				rtn.getOrInitializeCollectionEntries().put( pc, ce );
 			}
 

@@ -90,7 +90,6 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 
 	protected AbstractPersistentCollection(SharedSessionContractImplementor session) {
 		this.session = session;
-		this.instanceId = session.getPersistenceContextInternal().nextCollectionInstanceId();
 	}
 
 	@Override
@@ -1368,5 +1367,10 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 	@Override
 	public int $$_hibernate_getInstanceId() {
 		return instanceId;
+	}
+
+	@Override
+	public void $$_hibernate_setInstanceId(int instanceId) {
+		this.instanceId = instanceId;
 	}
 }
