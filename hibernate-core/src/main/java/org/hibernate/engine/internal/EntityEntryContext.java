@@ -15,6 +15,7 @@ import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.collections.InstanceIdentityMap;
+import org.hibernate.internal.util.collections.StandardStack;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -51,7 +52,8 @@ public class EntityEntryContext {
 	private final transient PersistenceContext persistenceContext;
 
 	private transient InstanceIdentityMap<ManagedEntity, ImmutableManagedEntityHolder> immutableManagedEntityXref;
-	private transient int currentInstanceId = 1;
+	private final transient StandardStack<Integer> reusableInstanceIds = new StandardStack<>();
+	private transient int currentInstanceId;
 
 	private transient ManagedEntity head;
 	private transient ManagedEntity tail;
@@ -100,8 +102,6 @@ public class EntityEntryContext {
 		if ( !alreadyAssociated ) {
 			if ( isManagedEntity( entity ) ) {
 				final ManagedEntity managed = asManagedEntity( entity );
-				// todo marco : we could do this when instantiating entities, but this should catch both that
-				//  and user-provided instances of bytecode-enhanced entities
 				managed.$$_hibernate_setInstanceId( nextManagedEntityInstanceId() );
 				if ( entityEntry.getPersister().isMutable() ) {
 					managedEntity = managed;
@@ -111,6 +111,7 @@ public class EntityEntryContext {
 				}
 				else {
 					// Create a holder for PersistenceContext-related data.
+					// todo marco :
 					managedEntity = new ImmutableManagedEntityHolder( managed );
 					putImmutableManagedEntity( managed, (ImmutableManagedEntityHolder) managedEntity );
 				}
@@ -123,8 +124,6 @@ public class EntityEntryContext {
 				nonEnhancedEntityXref.put( entity, managedEntity );
 			}
 		}
-
-		assert managedEntity.$$_hibernate_getInstanceId() != 0;
 
 		// associate the EntityEntry with the entity
 		managedEntity.$$_hibernate_setEntityEntry( entityEntry );
@@ -173,9 +172,8 @@ public class EntityEntryContext {
 			}
 			else {
 				// if managedEntity is associated with this EntityEntryContext, it may have
-				// an entry in immutableManagedEntityXref and an instance-id > 0,
-				// then its holder will be returned.
-				return immutableManagedEntityXref != null && managedEntity.$$_hibernate_getInstanceId() != 0
+				// an entry in immutableManagedEntityXref and its holder will be returned.
+				return immutableManagedEntityXref != null
 						? immutableManagedEntityXref.get( managedEntity.$$_hibernate_getInstanceId() )
 						: null;
 			}
@@ -188,9 +186,7 @@ public class EntityEntryContext {
 	}
 
 	private int nextManagedEntityInstanceId() {
-		// todo marco : what if we reach Integer.MAX_VALUE ? Probably not realistic, but could theoretically happen
-		// todo marco : this can also be defined per entity-type, but should it ?
-		return currentInstanceId++;
+		return reusableInstanceIds.isEmpty() ? currentInstanceId++ : reusableInstanceIds.pop();
 	}
 
 	private void putImmutableManagedEntity(ManagedEntity managed, ImmutableManagedEntityHolder holder) {
@@ -267,13 +263,15 @@ public class EntityEntryContext {
 
 		dirty = true;
 
-		if (managedEntity instanceof ImmutableManagedEntityHolder) {
-			assert entity == ( (ImmutableManagedEntityHolder) managedEntity ).managedEntity;
+		if ( managedEntity instanceof ImmutableManagedEntityHolder ) {
+			assert entity == ((ImmutableManagedEntityHolder) managedEntity).managedEntity;
 			immutableManagedEntityXref.remove( managedEntity.$$_hibernate_getInstanceId() );
 		}
-		else if ( ! ( isManagedEntity( entity ) ) ) {
+		else if ( !isManagedEntity( entity ) ) {
 			nonEnhancedEntityXref.remove( entity );
 		}
+
+		reusableInstanceIds.push( managedEntity.$$_hibernate_getInstanceId() );
 
 		// prepare for re-linking...
 		final ManagedEntity previous = managedEntity.$$_hibernate_getPreviousManagedEntity();
@@ -400,7 +398,7 @@ public class EntityEntryContext {
 		count = 0;
 
 		reentrantSafeEntries = null;
-		currentInstanceId = 1;
+		currentInstanceId = 0;
 	}
 
 	private static void clearManagedEntity(final ManagedEntity node) {
@@ -719,7 +717,7 @@ public class EntityEntryContext {
 
 		@Override
 		public void $$_hibernate_setInstanceId(int id) {
-			managedEntity.$$_hibernate_setInstanceId( id );
+			throw new IllegalStateException("Instance id is already set");
 		}
 	}
 

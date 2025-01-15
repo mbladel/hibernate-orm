@@ -55,8 +55,8 @@ import org.hibernate.event.spi.PostLoadEvent;
 import org.hibernate.event.spi.PostLoadEventListener;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.collections.CollectionHelper;
-import org.hibernate.internal.util.collections.IdentityMap;
 import org.hibernate.internal.util.collections.InstanceIdentityMap;
+import org.hibernate.internal.util.collections.StandardStack;
 import org.hibernate.metamodel.spi.MappingMetamodelImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.persister.entity.EntityPersister;
@@ -134,6 +134,10 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	// Identity map of CollectionEntry instances, by the collection wrapper
 	private InstanceIdentityMap<PersistentCollection<?>, CollectionEntry> collectionEntries;
 
+	// current collection instance id and stack of reusable ones
+	private final StandardStack<Integer> reusableCollectionInstanceIds = new StandardStack<>();
+	private int currentCollectionInstanceId;
+
 	// Collection wrappers, by the CollectionKey
 	private HashMap<CollectionKey, PersistentCollection<?>> collectionsByKey;
 
@@ -162,7 +166,6 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	private int loadCounter;
 	private int removeOrphanBeforeUpdatesCounter;
 	private boolean flushing;
-	private int currentCollectionInstanceId = 1;
 
 	private boolean defaultReadOnly;
 	private boolean hasNonReadOnlyEntities;
@@ -1101,7 +1104,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 
 	private InstanceIdentityMap<PersistentCollection<?>, CollectionEntry> getOrInitializeCollectionEntries() {
 		if ( this.collectionEntries == null ) {
-			this.collectionEntries = new InstanceIdentityMap();
+			this.collectionEntries = new InstanceIdentityMap<>();
 		}
 		return this.collectionEntries;
 	}
@@ -1351,7 +1354,9 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	}
 
 	private int nextCollectionInstanceId() {
-		return currentCollectionInstanceId++;
+		return reusableCollectionInstanceIds.isEmpty() ?
+				currentCollectionInstanceId++ :
+				reusableCollectionInstanceIds.pop();
 	}
 
 	@Override
@@ -2154,7 +2159,14 @@ public class StatefulPersistenceContext implements PersistenceContext {
 
 	@Override
 	public CollectionEntry removeCollectionEntry(PersistentCollection<?> collection) {
-		return collectionEntries == null ? null : collectionEntries.remove( collection.$$_hibernate_getInstanceId() );
+		if ( collectionEntries != null ) {
+			final int instanceId = collection.$$_hibernate_getInstanceId();
+			reusableCollectionInstanceIds.push( instanceId );
+			return collectionEntries.remove( collection.$$_hibernate_getInstanceId() );
+		}
+		else {
+			return null;
+		}
 	}
 
 	@Override

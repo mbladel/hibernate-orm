@@ -28,9 +28,7 @@ import java.util.stream.Collectors;
  * we simply iterate the underlying array, it's also concurrent and reentrant safe.
  */
 public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K, V> {
-	private static final int PAGE_CAPACITY = 1 << 5; // 32
-	private static final int PAGE_SHIFT = Integer.numberOfTrailingZeros( PAGE_CAPACITY );
-	private static final int PAGE_MASK = PAGE_CAPACITY - 1;
+	private final PagedArray<Entry<K, V>> backingArray;
 
 	private static final class Entry<K, V> implements Map.Entry<K, V> {
 		private final K key;
@@ -57,80 +55,18 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 		}
 	}
 
-	private static final class EntryPage<K, V> {
-		private final Entry<K, V>[] entries;
-		private int lastNotEmptyOffset;
-
-		public EntryPage() {
-			entries = new Entry[PAGE_CAPACITY];
-			lastNotEmptyOffset = -1;
-		}
-
-		public void clear() {
-			Arrays.fill( entries, 0, lastNotEmptyOffset + 1, null );
-			lastNotEmptyOffset = -1;
-		}
-
-		public Entry<K, V> set(int offset, Entry<K, V> entry) {
-			if ( offset >= PAGE_CAPACITY ) {
-				throw new IllegalArgumentException( "The required offset is beyond page capacity" );
-			}
-			final Entry<K, V> old = entries[offset];
-			if ( entry != null ) {
-				if ( old == null ) {
-					if ( offset > lastNotEmptyOffset ) {
-						lastNotEmptyOffset = offset;
-					}
-				}
-			}
-			else if ( lastNotEmptyOffset == offset ) {
-				// must search backward for the first not empty slot, to mark it
-				int i = offset;
-				for ( ; i >= 0; i-- ) {
-					if ( entries[i] != null ) {
-						break;
-					}
-				}
-				lastNotEmptyOffset = i;
-			}
-			entries[offset] = entry;
-			return old;
-		}
-
-		public Entry<K, V> get(final int pageOffset) {
-			if ( pageOffset >= PAGE_CAPACITY ) {
-				throw new IllegalArgumentException( "The required pageOffset is beyond page capacity" );
-			}
-			if ( pageOffset > lastNotEmptyOffset ) {
-				return null;
-			}
-			return entries[pageOffset];
-		}
-	}
-
-	private final ArrayList<EntryPage<K, V>> entryPages;
-	private int size;
-
-	private static int toPageIndex(final int cacheIndex) {
-		return cacheIndex >> PAGE_SHIFT;
-	}
-
-	private static int toPageOffset(final int cacheIndex) {
-		return cacheIndex & PAGE_MASK;
-	}
-
 	public InstanceIdentityMap() {
-		entryPages = new ArrayList<>();
+		backingArray = new PagedArray<>();
 	}
 
 	@Override
 	public int size() {
-		return size;
+		return backingArray.size();
 	}
 
 	@Override
 	public boolean isEmpty() {
-		return size == 0;
+		return backingArray.isEmpty();
 	}
 
 	public boolean containsKey(int instanceId) {
@@ -162,15 +98,8 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	}
 
 	public V get(int instanceId) {
-		final int pageIndex = toPageIndex( instanceId );
-		if ( pageIndex < entryPages.size() ) {
-			final EntryPage<K, V> page = entryPages.get( pageIndex );
-			if ( page != null ) {
-				final Entry<K, V> entry = page.get( toPageOffset( instanceId ) );
-				return entry == null ? null : entry.getValue();
-			}
-		}
-		return null;
+		final Entry<K, V> entry = backingArray.get( instanceId );
+		return entry == null ? null : entry.getValue();
 	}
 
 	/**
@@ -187,55 +116,16 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 		throw new IllegalArgumentException( "Provided key does not support instance identity" );
 	}
 
-	private EntryPage<K, V> getOrCreateEntryPage(int instanceId) {
-		final int pages = entryPages.size();
-		final int pageIndex = toPageIndex( instanceId );
-		if ( pageIndex < pages ) {
-			final EntryPage<K, V> page = entryPages.get( pageIndex );
-			if ( page != null ) {
-				return page;
-			}
-			final EntryPage<K, V> newPage = new EntryPage<>();
-			entryPages.set( pageIndex, newPage );
-			return newPage;
-		}
-		entryPages.ensureCapacity( pageIndex + 1 );
-		for ( int i = pages; i < pageIndex; i++ ) {
-			entryPages.add( null );
-		}
-		final EntryPage<K, V> page = new EntryPage<>();
-		entryPages.add( page );
-		return page;
-	}
-
 	@Override
 	public V put(K key, V value) {
 		final int instanceId = key.$$_hibernate_getInstanceId();
-		final EntryPage<K, V> page = getOrCreateEntryPage( instanceId );
-		final int pageOffset = toPageOffset( instanceId );
-		final Entry<K, V> old = page.get( pageOffset );
-		page.set( pageOffset, new Entry<>( key, value ) );
-		size++;
+		final Entry<K, V> old = backingArray.set( instanceId, new Entry<>( key, value ) );
 		return old != null ? old.getValue() : null;
 	}
 
 	public V remove(int instanceId) {
-		V old = null;
-		final int pageIndex = toPageIndex( instanceId );
-		if ( pageIndex < entryPages.size() ) {
-			final EntryPage<K, V> page = entryPages.get( pageIndex );
-			final int pageOffset = toPageOffset( instanceId );
-			Entry<K, V> entry = page.set( pageOffset, null );
-			if ( entry != null ) {
-				old = entry.getValue();
-				size--;
-			}
-			if ( page.lastNotEmptyOffset == -1 ) {
-				// no need to keep the page around anymore
-				entryPages.set( pageIndex, null );
-			}
-		}
-		return old;
+		final Entry<K, V> old = backingArray.remove( instanceId );
+		return old != null ? old.getValue() : null;
 	}
 
 	/**
@@ -271,13 +161,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 
 	@Override
 	public void clear() {
-		// We need to null out everything to prevent GC nepotism (see https://github.com/jbossas/jboss-threads/pull/74)
-		for ( EntryPage<K, V> entryPage : entryPages ) {
-			entryPage.clear();
-		}
-		entryPages.clear();
-		entryPages.trimToSize(); // todo marco : should we do this ?
-		size = 0;
+		backingArray.clear();
 	}
 
 	/**
@@ -285,9 +169,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	 */
 	@Override
 	public Set<K> keySet() {
-		return entryPages.stream().filter( Objects::nonNull )
-				.flatMap( p -> Arrays.stream( p.entries, 0, p.lastNotEmptyOffset + 1 ) ).filter( Objects::nonNull )
-				.map( Entry::getKey ).collect( Collectors.toUnmodifiableSet() );
+		return backingArray.stream().map( Entry::getKey ).collect( Collectors.toUnmodifiableSet() );
 	}
 
 	/**
@@ -295,9 +177,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	 */
 	@Override
 	public Collection<V> values() {
-		return entryPages.stream().filter( Objects::nonNull )
-				.flatMap( p -> Arrays.stream( p.entries, 0, p.lastNotEmptyOffset + 1 ) ).filter( Objects::nonNull )
-				.map( Entry::getValue ).collect( Collectors.toUnmodifiableSet() );
+		return backingArray.stream().map( Entry::getValue ).collect( Collectors.toUnmodifiableSet() );
 	}
 
 	/**
@@ -305,38 +185,15 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	 */
 	@Override
 	public Set<Map.Entry<K, V>> entrySet() {
-		return entryPages.stream().filter( Objects::nonNull )
-				.flatMap( p -> Arrays.stream( p.entries, 0, p.lastNotEmptyOffset + 1 ) ).filter( Objects::nonNull )
-				.collect( Collectors.toUnmodifiableSet() );
+		return backingArray.stream().collect( Collectors.toUnmodifiableSet() );
 	}
 
 	public Map.Entry<K, V>[] toArray() {
-		final List<Entry<K, V>> list = new ArrayList<>();
-		for ( EntryPage<K, V> p : entryPages ) {
-			if ( p != null ) {
-				for ( int i = 0; i <= p.lastNotEmptyOffset; i++ ) {
-					final Entry<K, V> entry = p.entries[i];
-					if ( entry != null ) {
-						list.add( entry );
-					}
-				}
-			}
-		}
-		//noinspection unchecked
-		return list.toArray( new Map.Entry[0] );
+		return backingArray.toArray();
 	}
 
 	@Override
 	public void forEach(BiConsumer<? super K, ? super V> action) {
-		for ( EntryPage<K, V> entryPage : entryPages ) {
-			if ( entryPage != null ) {
-				for ( int i = 0; i <= entryPage.lastNotEmptyOffset; i++ ) {
-					final Entry<K, V> entry = entryPage.entries[i];
-					if ( entry != null ) {
-						action.accept( entry.getKey(), entry.getValue() );
-					}
-				}
-			}
-		}
+		backingArray.forEach( element -> action.accept( element.getKey(), element.getValue() ) );
 	}
 }
