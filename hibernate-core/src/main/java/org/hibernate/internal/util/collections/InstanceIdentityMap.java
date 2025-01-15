@@ -27,7 +27,7 @@ import java.util.stream.Stream;
  * we simply iterate the underlying array, it's also concurrent and reentrant safe.
  */
 public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K, V> {
-	private static final int INITIAL_CAPACITY = 8;
+	private static final int INITIAL_CAPACITY = 32;
 
 	private int size;
 	private Entry<K, V>[] entries;
@@ -106,7 +106,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	public V put(K key, V value) {
 		final int instanceId = key.$$_hibernate_getInstanceId();
 		if ( instanceId >= entries.length ) {
-			grow( instanceId );
+			grow( instanceId + 1 );
 		}
 		Entry<K, V> old = entries[instanceId];
 		entries[instanceId] = new Entry<>( key, value );
@@ -185,6 +185,8 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 
 	@Override
 	public void clear() {
+		// save this from GC nepotism (see https://github.com/jbossas/jboss-threads/pull/74)
+		Arrays.fill( entries, null );
 		entries = new Entry[INITIAL_CAPACITY];
 		size = 0;
 	}
@@ -222,13 +224,12 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 		}
 	}
 
-	public Map.Entry<K, V>[] toArray() {
-		return entries;
-	}
-
-	private void grow(int minimumCapacity) {
-		final int oldCapacity = Math.max( entries.length, minimumCapacity );
-		final int jump = (oldCapacity < 64) ? (oldCapacity + 2) : (oldCapacity >> 1);
-		entries = Arrays.copyOf( entries, oldCapacity + jump );
+	private void grow(int minCapacity) {
+		final int oldCapacity = entries.length;
+		final int jump = Math.max( oldCapacity, minCapacity - oldCapacity);
+		Entry<K, V>[] entries1 = Arrays.copyOf( entries, oldCapacity + jump );
+		// save this from GC nepotism (see https://github.com/jbossas/jboss-threads/pull/74)
+		Arrays.fill( entries, null );
+		entries = entries1;
 	}
 }
