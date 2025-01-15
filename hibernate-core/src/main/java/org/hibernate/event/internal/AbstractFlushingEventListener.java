@@ -329,7 +329,7 @@ public abstract class AbstractFlushingEventListener {
 								)
 						);
 					}
-				}, true );
+				} );
 
 		actionQueue.sortCollectionActions();
 
@@ -410,8 +410,7 @@ public abstract class AbstractFlushingEventListener {
 								new CollectionKey( collectionEntry.getLoadedPersister(), key );
 						persistenceContext.addCollectionByKey( collectionKey, persistentCollection );
 					}
-				},
-				true
+				}
 		);
 	}
 

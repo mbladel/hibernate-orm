@@ -1,8 +1,11 @@
+/*
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ * Copyright Red Hat Inc. and Hibernate Authors
+ */
 package org.hibernate.internal.util.collections;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -21,6 +24,7 @@ public class PagedArray<E> {
 
 	/**
 	 * Represents a page of {@link #PAGE_CAPACITY} in the overall array
+	 *
 	 * @param <E>
 	 */
 	private static final class Page<E> {
@@ -51,8 +55,8 @@ public class PagedArray<E> {
 					}
 				}
 			}
-			else if ( lastNotEmptyOffset == offset ) {
-				// must search backward for the first not empty slot, to mark it
+			else if ( old != null && lastNotEmptyOffset == offset ) {
+				// must search backward for the first not empty offset
 				int i = offset;
 				for ( ; i >= 0; i-- ) {
 					if ( elements[i] != null ) {
@@ -146,6 +150,7 @@ public class PagedArray<E> {
 			}
 		}
 		else if ( old != null ) {
+			// this is effectively a remove
 			size--;
 			if ( page.lastNotEmptyOffset == -1 ) {
 				// no need to keep the page around anymore
@@ -170,36 +175,23 @@ public class PagedArray<E> {
 
 	public Stream<E> stream() {
 		//noinspection unchecked
-		return (Stream<E>) elementPages.stream().filter( Objects::nonNull )
-				.flatMap( p -> Arrays.stream( p.elements, 0, p.lastNotEmptyOffset + 1 ) ).filter( Objects::nonNull );
+		return elementPages.stream().filter( Objects::nonNull )
+				.flatMap( p -> Arrays.stream( p.elements, 0, p.lastNotEmptyOffset + 1 ) ).filter( Objects::nonNull )
+				.map( e -> (E) e );
 	}
 
-	/**
-	 * Flatmap of the paged array on a normal object array
-	 */
-	public E[] toArray() {
-		final List<Object> list = new ArrayList<>();
-		for ( Page<E> page : elementPages ) {
-			if ( page != null ) {
-				for ( int i = 0; i <= page.lastNotEmptyOffset; i++ ) {
-					final Object element = page.elements[i];
-					if ( element != null ) {
-						list.add( element );
-					}
-				}
-			}
-		}
-		//noinspection unchecked
-		return (E[]) list.toArray( new Object[0] );
-	}
-
+	@SuppressWarnings("ForLoopReplaceableByForEach")
 	public void forEach(Consumer<? super E> action) {
-		for ( Page<E> page : elementPages ) {
+		// We want a regular for here to avoid concurrency problems with list iterators
+		for ( int i = 0; i < elementPages.size(); i++ ) {
+			final Page<E> page = elementPages.get( i );
 			if ( page != null ) {
-				for ( int i = 0; i <= page.lastNotEmptyOffset; i++ ) {
+				for ( int j = 0; j <= page.lastNotEmptyOffset; j++ ) {
 					//noinspection unchecked
-					final E element = (E) page.elements[i];
-					action.accept( element );
+					final E element = (E) page.elements[j];
+					if ( element != null ) {
+						action.accept( element );
+					}
 				}
 			}
 		}

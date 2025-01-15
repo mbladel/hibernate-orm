@@ -1360,16 +1360,9 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	}
 
 	@Override
-	public void forEachCollectionEntry(BiConsumer<PersistentCollection<?>, CollectionEntry> action, boolean concurrent) {
+	public void forEachCollectionEntry(BiConsumer<PersistentCollection<?>, CollectionEntry> action) {
 		if ( collectionEntries != null ) {
-			if ( concurrent ) {
-				for ( Entry<PersistentCollection<?>,CollectionEntry> entry : collectionEntries.toArray() ) {
-					action.accept( entry.getKey(), entry.getValue() );
-				}
-			}
-			else {
-				collectionEntries.forEach( action );
-			}
+			collectionEntries.forEach( action );
 		}
 	}
 

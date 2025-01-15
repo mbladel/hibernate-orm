@@ -6,10 +6,7 @@ package org.hibernate.internal.util.collections;
 
 import org.hibernate.engine.spi.InstanceIdentity;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -52,6 +49,17 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 		@Override
 		public V setValue(V value) {
 			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if ( o == this ) {
+				return true;
+			}
+
+			return o instanceof Map.Entry<?, ?> e
+				   && Objects.equals( key, e.getKey() )
+				   && Objects.equals( value, e.getValue() );
 		}
 	}
 
@@ -186,10 +194,6 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	@Override
 	public Set<Map.Entry<K, V>> entrySet() {
 		return backingArray.stream().collect( Collectors.toUnmodifiableSet() );
-	}
-
-	public Map.Entry<K, V>[] toArray() {
-		return backingArray.toArray();
 	}
 
 	@Override
