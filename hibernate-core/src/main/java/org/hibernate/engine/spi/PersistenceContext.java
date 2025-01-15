@@ -555,21 +555,10 @@ public interface PersistenceContext {
 
 	/**
 	 * Execute some action on each entry of the collectionEntries map, optionally iterating on a defensive copy.
-	 *
-	 * @param action the lambda to apply on each PersistentCollection,CollectionEntry map entry of the PersistenceContext.
-	 */
-	void forEachCollectionEntry(BiConsumer<PersistentCollection<?>, CollectionEntry> action);
-
-	/**
-	 * Execute some action on each entry of the collectionEntries map, optionally iterating on a defensive copy.
-	 *
 	 * @param action the lambda to apply on each PersistentCollection,CollectionEntry map entry of the PersistenceContext.
 	 * @param concurrent set this to false for improved efficiency, but that would make it illegal to make changes to the underlying collectionEntries map.
-	 * @deprecated No longer need to specify concurrency, use {@link #forEachCollectionEntry(BiConsumer)}
 	 */
-	default void forEachCollectionEntry(BiConsumer<PersistentCollection<?>, CollectionEntry> action, boolean concurrent) {
-		forEachCollectionEntry( action );
-	}
+	void forEachCollectionEntry(BiConsumer<PersistentCollection<?>,CollectionEntry> action, boolean concurrent);
 
 	/**
 	 * Get the mapping from collection key to collection instance

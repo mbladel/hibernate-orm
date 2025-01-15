@@ -6,14 +6,15 @@ package org.hibernate.internal.util.collections;
 
 import org.hibernate.engine.spi.InstanceIdentity;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Utility collection backed by a simple array that takes advantage of {@link InstanceIdentity}'s
@@ -27,94 +28,11 @@ import java.util.stream.Stream;
  * we simply iterate the underlying array, it's also concurrent and reentrant safe.
  */
 public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K, V> {
-	private static final int INITIAL_CAPACITY = 32;
+	private static final int PAGE_CAPACITY = 1 << 5; // 32
+	private static final int PAGE_SHIFT = Integer.numberOfTrailingZeros( PAGE_CAPACITY );
+	private static final int PAGE_MASK = PAGE_CAPACITY - 1;
 
-	private int size;
-	private Entry<K, V>[] entries;
-
-	public InstanceIdentityMap() {
-		//noinspection unchecked
-		entries = new Entry[INITIAL_CAPACITY];
-	}
-
-	public InstanceIdentityMap(int initialCapacity) {
-		//noinspection unchecked
-		entries = new Entry[Math.max( initialCapacity, INITIAL_CAPACITY )];
-	}
-
-	@Override
-	public int size() {
-		return size;
-	}
-
-	@Override
-	public boolean isEmpty() {
-		return size == 0;
-	}
-
-	public boolean containsKey(int instanceId) {
-		return entries.length > instanceId && entries[instanceId] != null;
-	}
-
-	/**
-	 * Returns true if this map contains a mapping for the specified key.
-	 *
-	 * @implNote This only works for {@link InstanceIdentity} keys, and it's inefficient
-	 * since we need to do a type check. Prefer using {@link #containsKey(int)}.
-	 */
-	@Override
-	public boolean containsKey(Object key) {
-		if ( key instanceof InstanceIdentity instance ) {
-			return containsKey( instance.$$_hibernate_getInstanceId() );
-		}
-		throw new IllegalArgumentException( "Provided key does not support instance identity" );
-	}
-
-	@Override
-	public boolean containsValue(Object value) {
-		for ( final Entry<K, V> entry : entries ) {
-			if ( entry.getValue() == value || (value != null && value.equals( entry.getValue() )) ) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	public V get(int instanceId) {
-		if ( instanceId < entries.length ) {
-			final Entry<K, V> entry = entries[instanceId];
-			return entry != null ? entry.getValue() : null;
-		}
-		return null;
-	}
-
-	/**
-	 * Returns the value to which the specified key is mapped, or null if this map contains no mapping for the key.
-	 *
-	 * @implNote This only works for {@link InstanceIdentity} keys, and it's inefficient
-	 * since we need to do a type check. Prefer using {@link #get(int)}.
-	 */
-	@Override
-	public V get(Object key) {
-		if ( key instanceof InstanceIdentity instance ) {
-			return get( instance.$$_hibernate_getInstanceId() );
-		}
-		throw new IllegalArgumentException( "Provided key does not support instance identity" );
-	}
-
-	@Override
-	public V put(K key, V value) {
-		final int instanceId = key.$$_hibernate_getInstanceId();
-		if ( instanceId >= entries.length ) {
-			grow( instanceId + 1 );
-		}
-		Entry<K, V> old = entries[instanceId];
-		entries[instanceId] = new Entry<>( key, value );
-		size++;
-		return old != null ? old.getValue() : null;
-	}
-
-	static class Entry<K, V> implements Map.Entry<K, V> {
+	private static final class Entry<K, V> implements Map.Entry<K, V> {
 		private final K key;
 		private final V value;
 
@@ -139,14 +57,182 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 		}
 	}
 
+	private static final class EntryPage<K, V> {
+		private final Entry<K, V>[] entries;
+		private int lastNotEmptyOffset;
+
+		public EntryPage() {
+			entries = new Entry[PAGE_CAPACITY];
+			lastNotEmptyOffset = -1;
+		}
+
+		public void clear() {
+			Arrays.fill( entries, 0, lastNotEmptyOffset + 1, null );
+			lastNotEmptyOffset = -1;
+		}
+
+		public Entry<K, V> set(int offset, Entry<K, V> entry) {
+			if ( offset >= PAGE_CAPACITY ) {
+				throw new IllegalArgumentException( "The required offset is beyond page capacity" );
+			}
+			final Entry<K, V> old = entries[offset];
+			if ( entry != null ) {
+				if ( old == null ) {
+					if ( offset > lastNotEmptyOffset ) {
+						lastNotEmptyOffset = offset;
+					}
+				}
+			}
+			else if ( lastNotEmptyOffset == offset ) {
+				// must search backward for the first not empty slot, to mark it
+				int i = offset;
+				for ( ; i >= 0; i-- ) {
+					if ( entries[i] != null ) {
+						break;
+					}
+				}
+				lastNotEmptyOffset = i;
+			}
+			entries[offset] = entry;
+			return old;
+		}
+
+		public Entry<K, V> get(final int pageOffset) {
+			if ( pageOffset >= PAGE_CAPACITY ) {
+				throw new IllegalArgumentException( "The required pageOffset is beyond page capacity" );
+			}
+			if ( pageOffset > lastNotEmptyOffset ) {
+				return null;
+			}
+			return entries[pageOffset];
+		}
+	}
+
+	private final ArrayList<EntryPage<K, V>> entryPages;
+	private int size;
+
+	private static int toPageIndex(final int cacheIndex) {
+		return cacheIndex >> PAGE_SHIFT;
+	}
+
+	private static int toPageOffset(final int cacheIndex) {
+		return cacheIndex & PAGE_MASK;
+	}
+
+	public InstanceIdentityMap() {
+		entryPages = new ArrayList<>();
+	}
+
+	@Override
+	public int size() {
+		return size;
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return size == 0;
+	}
+
+	public boolean containsKey(int instanceId) {
+		return get( instanceId ) != null;
+	}
+
+	/**
+	 * Returns true if this map contains a mapping for the specified key.
+	 *
+	 * @implNote This only works for {@link InstanceIdentity} keys, and it's inefficient
+	 * since we need to do a type check. Prefer using {@link #containsKey(int)}.
+	 */
+	@Override
+	public boolean containsKey(Object key) {
+		if ( key instanceof InstanceIdentity instance ) {
+			return containsKey( instance.$$_hibernate_getInstanceId() );
+		}
+		throw new IllegalArgumentException( "Provided key does not support instance identity" );
+	}
+
+	@Override
+	public boolean containsValue(Object value) {
+		for ( V v : values() ) {
+			if ( Objects.equals( value, v ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public V get(int instanceId) {
+		final int pageIndex = toPageIndex( instanceId );
+		if ( pageIndex < entryPages.size() ) {
+			final EntryPage<K, V> page = entryPages.get( pageIndex );
+			if ( page != null ) {
+				final Entry<K, V> entry = page.get( toPageOffset( instanceId ) );
+				return entry == null ? null : entry.getValue();
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Returns the value to which the specified key is mapped, or null if this map contains no mapping for the key.
+	 *
+	 * @implNote This only works for {@link InstanceIdentity} keys, and it's inefficient
+	 * since we need to do a type check. Prefer using {@link #get(int)}.
+	 */
+	@Override
+	public V get(Object key) {
+		if ( key instanceof InstanceIdentity instance ) {
+			return get( instance.$$_hibernate_getInstanceId() );
+		}
+		throw new IllegalArgumentException( "Provided key does not support instance identity" );
+	}
+
+	private EntryPage<K, V> getOrCreateEntryPage(int instanceId) {
+		final int pages = entryPages.size();
+		final int pageIndex = toPageIndex( instanceId );
+		if ( pageIndex < pages ) {
+			final EntryPage<K, V> page = entryPages.get( pageIndex );
+			if ( page != null ) {
+				return page;
+			}
+			final EntryPage<K, V> newPage = new EntryPage<>();
+			entryPages.set( pageIndex, newPage );
+			return newPage;
+		}
+		entryPages.ensureCapacity( pageIndex + 1 );
+		for ( int i = pages; i < pageIndex; i++ ) {
+			entryPages.add( null );
+		}
+		final EntryPage<K, V> page = new EntryPage<>();
+		entryPages.add( page );
+		return page;
+	}
+
+	@Override
+	public V put(K key, V value) {
+		final int instanceId = key.$$_hibernate_getInstanceId();
+		final EntryPage<K, V> page = getOrCreateEntryPage( instanceId );
+		final int pageOffset = toPageOffset( instanceId );
+		final Entry<K, V> old = page.get( pageOffset );
+		page.set( pageOffset, new Entry<>( key, value ) );
+		size++;
+		return old != null ? old.getValue() : null;
+	}
+
 	public V remove(int instanceId) {
 		V old = null;
-		if ( instanceId < entries.length ) {
-			final Entry<K, V> entry = entries[instanceId];
+		final int pageIndex = toPageIndex( instanceId );
+		if ( pageIndex < entryPages.size() ) {
+			final EntryPage<K, V> page = entryPages.get( pageIndex );
+			final int pageOffset = toPageOffset( instanceId );
+			Entry<K, V> entry = page.set( pageOffset, null );
 			if ( entry != null ) {
-				old = entries[instanceId].getValue();
-				entries[instanceId] = null;
+				old = entry.getValue();
 				size--;
+			}
+			if ( page.lastNotEmptyOffset == -1 ) {
+				// no need to keep the page around anymore
+				entryPages.set( pageIndex, null );
 			}
 		}
 		return old;
@@ -185,9 +271,12 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 
 	@Override
 	public void clear() {
-		// save this from GC nepotism (see https://github.com/jbossas/jboss-threads/pull/74)
-		Arrays.fill( entries, null );
-		entries = new Entry[INITIAL_CAPACITY];
+		// We need to null out everything to prevent GC nepotism (see https://github.com/jbossas/jboss-threads/pull/74)
+		for ( EntryPage<K, V> entryPage : entryPages ) {
+			entryPage.clear();
+		}
+		entryPages.clear();
+		entryPages.trimToSize(); // todo marco : should we do this ?
 		size = 0;
 	}
 
@@ -196,7 +285,9 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	 */
 	@Override
 	public Set<K> keySet() {
-		return Stream.of( entries ).filter( Objects::nonNull ).map( Entry::getKey ).collect( Collectors.toUnmodifiableSet() );
+		return entryPages.stream().filter( Objects::nonNull )
+				.flatMap( p -> Arrays.stream( p.entries, 0, p.lastNotEmptyOffset + 1 ) ).filter( Objects::nonNull )
+				.map( Entry::getKey ).collect( Collectors.toUnmodifiableSet() );
 	}
 
 	/**
@@ -204,7 +295,9 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	 */
 	@Override
 	public Collection<V> values() {
-		return Stream.of( entries ).filter( Objects::nonNull ).map( Entry::getValue ).collect( Collectors.toUnmodifiableSet() );
+		return entryPages.stream().filter( Objects::nonNull )
+				.flatMap( p -> Arrays.stream( p.entries, 0, p.lastNotEmptyOffset + 1 ) ).filter( Objects::nonNull )
+				.map( Entry::getValue ).collect( Collectors.toUnmodifiableSet() );
 	}
 
 	/**
@@ -212,24 +305,38 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	 */
 	@Override
 	public Set<Map.Entry<K, V>> entrySet() {
-		return Stream.of( entries ).filter( Objects::nonNull ).collect( Collectors.toUnmodifiableSet() );
+		return entryPages.stream().filter( Objects::nonNull )
+				.flatMap( p -> Arrays.stream( p.entries, 0, p.lastNotEmptyOffset + 1 ) ).filter( Objects::nonNull )
+				.collect( Collectors.toUnmodifiableSet() );
+	}
+
+	public Map.Entry<K, V>[] toArray() {
+		final List<Entry<K, V>> list = new ArrayList<>();
+		for ( EntryPage<K, V> p : entryPages ) {
+			if ( p != null ) {
+				for ( int i = 0; i <= p.lastNotEmptyOffset; i++ ) {
+					final Entry<K, V> entry = p.entries[i];
+					if ( entry != null ) {
+						list.add( entry );
+					}
+				}
+			}
+		}
+		//noinspection unchecked
+		return list.toArray( new Map.Entry[0] );
 	}
 
 	@Override
 	public void forEach(BiConsumer<? super K, ? super V> action) {
-		for ( final Entry<K, V> entry : entries ) {
-			if ( entry != null ) {
-				action.accept( entry.getKey(), entry.getValue() );
+		for ( EntryPage<K, V> entryPage : entryPages ) {
+			if ( entryPage != null ) {
+				for ( int i = 0; i <= entryPage.lastNotEmptyOffset; i++ ) {
+					final Entry<K, V> entry = entryPage.entries[i];
+					if ( entry != null ) {
+						action.accept( entry.getKey(), entry.getValue() );
+					}
+				}
 			}
 		}
-	}
-
-	private void grow(int minCapacity) {
-		final int oldCapacity = entries.length;
-		final int jump = Math.max( oldCapacity, minCapacity - oldCapacity);
-		Entry<K, V>[] entries1 = Arrays.copyOf( entries, oldCapacity + jump );
-		// save this from GC nepotism (see https://github.com/jbossas/jboss-threads/pull/74)
-		Arrays.fill( entries, null );
-		entries = entries1;
 	}
 }

@@ -55,6 +55,7 @@ import org.hibernate.event.spi.PostLoadEvent;
 import org.hibernate.event.spi.PostLoadEventListener;
 import org.hibernate.internal.CoreMessageLogger;
 import org.hibernate.internal.util.collections.CollectionHelper;
+import org.hibernate.internal.util.collections.IdentityMap;
 import org.hibernate.internal.util.collections.InstanceIdentityMap;
 import org.hibernate.metamodel.spi.MappingMetamodelImplementor;
 import org.hibernate.persister.collection.CollectionPersister;
@@ -1100,7 +1101,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 
 	private InstanceIdentityMap<PersistentCollection<?>, CollectionEntry> getOrInitializeCollectionEntries() {
 		if ( this.collectionEntries == null ) {
-			this.collectionEntries = new InstanceIdentityMap( INIT_COLL_SIZE );
+			this.collectionEntries = new InstanceIdentityMap();
 		}
 		return this.collectionEntries;
 	}
@@ -1354,9 +1355,16 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	}
 
 	@Override
-	public void forEachCollectionEntry(BiConsumer<PersistentCollection<?>, CollectionEntry> action) {
+	public void forEachCollectionEntry(BiConsumer<PersistentCollection<?>, CollectionEntry> action, boolean concurrent) {
 		if ( collectionEntries != null ) {
-			collectionEntries.forEach( action );
+			if ( concurrent ) {
+				for ( Entry<PersistentCollection<?>,CollectionEntry> entry : collectionEntries.toArray() ) {
+					action.accept( entry.getKey(), entry.getValue() );
+				}
+			}
+			else {
+				collectionEntries.forEach( action );
+			}
 		}
 	}
 
