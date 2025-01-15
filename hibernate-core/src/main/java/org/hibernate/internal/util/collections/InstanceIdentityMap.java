@@ -9,6 +9,7 @@ import org.hibernate.engine.spi.InstanceIdentity;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -56,7 +57,10 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	}
 
 	/**
-	 * Inefficient, prefer using {@link #containsKey(int)}
+	 * Returns true if this map contains a mapping for the specified key.
+	 *
+	 * @implNote This only works for {@link InstanceIdentity} keys, and it's inefficient
+	 * since we need to do a type check. Prefer using {@link #containsKey(int)}.
 	 */
 	@Override
 	public boolean containsKey(Object key) {
@@ -77,12 +81,18 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	}
 
 	public V get(int instanceId) {
-		final Entry<K, V> entry = entries[instanceId];
-		return entry != null ? entry.getValue() : null;
+		if ( instanceId < entries.length ) {
+			final Entry<K, V> entry = entries[instanceId];
+			return entry != null ? entry.getValue() : null;
+		}
+		return null;
 	}
 
 	/**
-	 * Inefficient, prefer using {@link #get(int)}
+	 * Returns the value to which the specified key is mapped, or null if this map contains no mapping for the key.
+	 *
+	 * @implNote This only works for {@link InstanceIdentity} keys, and it's inefficient
+	 * since we need to do a type check. Prefer using {@link #get(int)}.
 	 */
 	@Override
 	public V get(Object key) {
@@ -130,14 +140,24 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	}
 
 	public V remove(int instanceId) {
-		final V old = entries[instanceId].getValue();
-		entries[instanceId] = null;
-		size--;
+		V old = null;
+		if ( instanceId < entries.length ) {
+			final Entry<K, V> entry = entries[instanceId];
+			if ( entry != null ) {
+				old = entries[instanceId].getValue();
+				entries[instanceId] = null;
+				size--;
+			}
+		}
 		return old;
 	}
 
 	/**
-	 * Inefficient, prefer using {@link #remove(int)}
+	 * Removes the mapping for a key from this map if it is present (optional operation). Returns the value to which
+	 * this map previously associated the key, or null if the map contained no mapping for the key.
+	 *
+	 * @implNote This only works for {@link InstanceIdentity} keys, and it's inefficient
+	 * since we need to do a type check. Prefer using {@link #remove(int)}.
 	 */
 	@Override
 	public V remove(Object key) {
@@ -174,7 +194,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	 */
 	@Override
 	public Set<K> keySet() {
-		return Stream.of( entries ).map( Entry::getKey ).collect( Collectors.toUnmodifiableSet() );
+		return Stream.of( entries ).filter( Objects::nonNull ).map( Entry::getKey ).collect( Collectors.toUnmodifiableSet() );
 	}
 
 	/**
@@ -182,7 +202,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	 */
 	@Override
 	public Collection<V> values() {
-		return Stream.of( entries ).map( Entry::getValue ).collect( Collectors.toUnmodifiableSet() );
+		return Stream.of( entries ).filter( Objects::nonNull ).map( Entry::getValue ).collect( Collectors.toUnmodifiableSet() );
 	}
 
 	/**
@@ -190,7 +210,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	 */
 	@Override
 	public Set<Map.Entry<K, V>> entrySet() {
-		return Set.of( entries );
+		return Stream.of( entries ).filter( Objects::nonNull ).collect( Collectors.toUnmodifiableSet() );
 	}
 
 	@Override
