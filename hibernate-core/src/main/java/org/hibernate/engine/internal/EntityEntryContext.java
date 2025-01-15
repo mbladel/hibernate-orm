@@ -400,6 +400,7 @@ public class EntityEntryContext {
 		count = 0;
 
 		reentrantSafeEntries = null;
+		currentInstanceId = 1;
 	}
 
 	private static void clearManagedEntity(final ManagedEntity node) {
