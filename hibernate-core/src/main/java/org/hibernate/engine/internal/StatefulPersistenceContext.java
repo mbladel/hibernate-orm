@@ -1091,8 +1091,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	 * @param key The key of the collection's entry.
 	 */
 	private void addCollection(PersistentCollection<?> coll, CollectionEntry entry, Object key) {
-		coll.$$_hibernate_setInstanceId( nextCollectionInstanceId() );
-		getOrInitializeCollectionEntries().put( coll, entry );
+		putCollectionEntry( coll, entry );
 		final CollectionKey collectionKey = new CollectionKey( entry.getLoadedPersister(), key );
 		final PersistentCollection<?> old = addCollectionByKey( collectionKey, coll );
 		if ( old != null ) {
@@ -1105,11 +1104,12 @@ public class StatefulPersistenceContext implements PersistenceContext {
 		}
 	}
 
-	private InstanceIdentityMap<PersistentCollection<?>, CollectionEntry> getOrInitializeCollectionEntries() {
+	private void putCollectionEntry(PersistentCollection<?> collection, CollectionEntry entry) {
 		if ( this.collectionEntries == null ) {
 			this.collectionEntries = new InstanceIdentityMap<>();
 		}
-		return this.collectionEntries;
+		collection.$$_hibernate_setInstanceId( nextCollectionInstanceId() );
+		this.collectionEntries.put( collection, entry );
 	}
 
 	/**
@@ -1120,8 +1120,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	 */
 	private void addCollection(PersistentCollection<?> collection, CollectionPersister persister) {
 		final CollectionEntry ce = new CollectionEntry( persister, collection );
-		collection.$$_hibernate_setInstanceId( nextCollectionInstanceId() );
-		getOrInitializeCollectionEntries().put( collection, ce );
+		putCollectionEntry( collection, ce );
 	}
 
 	@Override
@@ -2012,8 +2011,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 				final PersistentCollection<?> pc = (PersistentCollection<?>) ois.readObject();
 				final CollectionEntry ce = CollectionEntry.deserialize( ois, session );
 				pc.setCurrentSession( session );
-				pc.$$_hibernate_setInstanceId( rtn.nextCollectionInstanceId() );
-				rtn.getOrInitializeCollectionEntries().put( pc, ce );
+				rtn.putCollectionEntry( pc, ce );
 			}
 
 			count = ois.readInt();
@@ -2158,7 +2156,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 		if ( collectionEntries != null ) {
 			final int instanceId = collection.$$_hibernate_getInstanceId();
 			reusableCollectionInstanceIds.push( instanceId );
-			return collectionEntries.remove( collection.$$_hibernate_getInstanceId() );
+			return collectionEntries.remove( instanceId );
 		}
 		else {
 			return null;
