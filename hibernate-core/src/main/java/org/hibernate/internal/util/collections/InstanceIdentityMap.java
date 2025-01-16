@@ -14,11 +14,11 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 /**
- * Utility collection backed by a simple array that takes advantage of {@link InstanceIdentity}'s
- * unique identifier to store objects and provider {@link Map} functionalities.
+ * Utility collection backed by {@link PagedArray} that takes advantage of {@link InstanceIdentity}'s
+ * unique identifier to store objects and provide {@link Map}-like functionalities.
  * <p>
- * Methods accessing / modifying the map with {@link Object} typed paramters,
- * will need to type check against the instance identity interface which might be inefficient,
+ * Methods accessing / modifying the map with {@link Object} typed parameters will need
+ * to type check against the instance identity interface which might be inefficient,
  * so it's recommended to use the position (int) based variant of those methods.
  * <p>
  * Iterating through the whole map is most efficient with {@link #forEach}, and since
@@ -58,8 +58,8 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 			}
 
 			return o instanceof Map.Entry<?, ?> e
-				   && Objects.equals( key, e.getKey() )
-				   && Objects.equals( value, e.getValue() );
+				&& Objects.equals( key, e.getKey() )
+				&& Objects.equals( value, e.getValue() );
 		}
 	}
 

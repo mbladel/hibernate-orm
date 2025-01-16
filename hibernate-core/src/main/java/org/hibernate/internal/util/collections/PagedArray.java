@@ -11,13 +11,17 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
- * Utility implementation of an array-like structure that can grow efficiently by a constant factor
- * of {@link #PAGE_CAPACITY}.
+ * Utility implementation of an array-like structure organized in sub-arrays (pages)
+ * that can grow efficiently by a constant factor of {@link #PAGE_CAPACITY}.
+ * Reading from and writing to the array is a simple O(2) operation.
  *
- * @param <E> the types of elements stored in this array
+ * @param <E> the type of elements stored in this array
+ * @implNote To optimize the memory footprint of the array, removed indexes should be reused
+ * to have the least number of pages allocated as possible.
  */
 public class PagedArray<E> {
-	// important that capacity is static final so JIT can inline converting indexes to page / offset
+	// It's important that capacity is a power of 2 to allow calculating page index and offset within the page
+	// with simple division and modulo operations; also static final so JIT can inline these operations.
 	private static final int PAGE_CAPACITY = 1 << 5; // 32
 	private static final int PAGE_SHIFT = Integer.numberOfTrailingZeros( PAGE_CAPACITY );
 	private static final int PAGE_MASK = PAGE_CAPACITY - 1;
@@ -49,10 +53,8 @@ public class PagedArray<E> {
 			//noinspection unchecked
 			final E old = (E) elements[offset];
 			if ( element != null ) {
-				if ( old == null ) {
-					if ( offset > lastNotEmptyOffset ) {
-						lastNotEmptyOffset = offset;
-					}
+				if ( offset > lastNotEmptyOffset ) {
+					lastNotEmptyOffset = offset;
 				}
 			}
 			else if ( old != null && lastNotEmptyOffset == offset ) {
@@ -108,12 +110,12 @@ public class PagedArray<E> {
 		return get( index ) != null;
 	}
 
-	public E get(int instanceId) {
-		final int pageIndex = toPageIndex( instanceId );
+	public E get(int index) {
+		final int pageIndex = toPageIndex( index );
 		if ( pageIndex < elementPages.size() ) {
 			final Page<E> page = elementPages.get( pageIndex );
 			if ( page != null ) {
-				return page.get( toPageOffset( instanceId ) );
+				return page.get( toPageOffset( index ) );
 			}
 		}
 		return null;
@@ -169,7 +171,7 @@ public class PagedArray<E> {
 			entryPage.clear();
 		}
 		elementPages.clear();
-		elementPages.trimToSize(); // todo marco : should we do this ?
+		elementPages.trimToSize();
 		size = 0;
 	}
 
