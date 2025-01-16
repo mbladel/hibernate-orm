@@ -399,6 +399,7 @@ public class EntityEntryContext {
 
 		reentrantSafeEntries = null;
 		currentInstanceId = 0;
+		reusableInstanceIds.clear();
 	}
 
 	private static void clearManagedEntity(final ManagedEntity node) {

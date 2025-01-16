@@ -86,12 +86,12 @@ public class PagedArray<E> {
 	private final ArrayList<Page<E>> elementPages;
 	private int size;
 
-	private static int toPageIndex(final int cacheIndex) {
-		return cacheIndex >> PAGE_SHIFT;
+	private static int toPageIndex(final int index) {
+		return index >> PAGE_SHIFT;
 	}
 
-	private static int toPageOffset(final int cacheIndex) {
-		return cacheIndex & PAGE_MASK;
+	private static int toPageOffset(final int index) {
+		return index & PAGE_MASK;
 	}
 
 	public PagedArray() {

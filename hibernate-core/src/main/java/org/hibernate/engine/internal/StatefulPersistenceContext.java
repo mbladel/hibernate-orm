@@ -261,6 +261,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 		final SharedSessionContractImplementor session = getSession();
 		if ( collectionEntries != null ) {
 			collectionEntries.forEach( (k,v) -> k.unsetSession( session ) );
+			collectionEntries.clear();
 		}
 
 		arrayHolders = null;
@@ -272,6 +273,8 @@ public class StatefulPersistenceContext implements PersistenceContext {
 		collectionsByKey = null;
 		nonlazyCollections = null;
 		collectionEntries = null;
+		currentCollectionInstanceId = 0;
+		reusableCollectionInstanceIds.clear();
 		unownedCollections = null;
 		nullifiableEntityKeys = null;
 		deletedUnloadedEntityKeys = null;
