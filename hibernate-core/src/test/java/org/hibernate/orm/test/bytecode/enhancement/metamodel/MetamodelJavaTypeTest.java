@@ -21,65 +21,46 @@ import java.util.Vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-	/**
-	 * @author Scott Marlow
-	 */
-	@BytecodeEnhanced
-	@SessionFactory
-	public class MetamodelJavaTypeTest {
+/**
+ * @author Scott Marlow
+ */
+@BytecodeEnhanced
+@SessionFactory
+@DomainModel(annotatedClasses = MetamodelJavaTypeTest.SimpleEntity.class)
+public class MetamodelJavaTypeTest {
+	@Test
+	public void basicManagedTest(SessionFactoryScope scope) {
+		SimpleEntity entity = new SimpleEntity();
+		scope.inTransaction( entityManager -> {
+			entityManager.persist( entity );
+			Metamodel metaModel = entityManager.getMetamodel();
+			ManagedType<SimpleEntity> managedType = metaModel.managedType( SimpleEntity.class );
+			Attribute<SimpleEntity, ?> attribute = managedType.getDeclaredAttribute( "total" );
+			Member member = attribute.getJavaMember();
+			assertEquals( "getTotal", member.getName() );
+		} );
+	}
 
-		@Test
-		@DomainModel( annotatedClasses = SimpleEntity.class )
-		public void basicManagedTest(SessionFactoryScope scope) {
-			SimpleEntity entity = new SimpleEntity();
-			scope.inTransaction( entityManager -> {
-				entityManager.persist( entity );
-				Metamodel metaModel = entityManager.getMetamodel();
-				ManagedType<SimpleEntity> managedType = metaModel.managedType( SimpleEntity.class );
-				Attribute<SimpleEntity,?> attribute = managedType.getDeclaredAttribute( "total" );
-				Member member = attribute.getJavaMember();
-				assertEquals( "getTotal", member.getName() );
-			} );
+	@Entity
+	static class SimpleEntity {
+		private int id;
+		private int total;
 
+		@Id
+		public int getId() {
+			return id;
 		}
 
-		// --- //
+		public void setId(int id) {
+			this.id = id;
+		}
 
-		@Entity
-		private static class SimpleEntity {
+		public int getTotal() {
+			return total;
+		}
 
-			int id;
-			int total;
-
-			Collection itemNames = new Vector();
-
-			public SimpleEntity() {
-			}
-
-			public SimpleEntity(int total) {
-				this.total = total;
-			}
-
-			public SimpleEntity(int id, int total) {
-				this.total = total;
-				this.id = id;
-			}
-
-			@Id
-			public int getId() {
-				return id;
-			}
-
-			public void setId(int id) {
-				this.id = id;
-			}
-
-			public int getTotal() {
-				return total;
-			}
-
-			public void setTotal(int total) {
-				this.total = total;
-			}
+		public void setTotal(int total) {
+			this.total = total;
 		}
 	}
+}
