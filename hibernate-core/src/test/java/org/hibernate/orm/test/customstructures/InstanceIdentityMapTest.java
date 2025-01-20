@@ -12,7 +12,7 @@ import org.hibernate.internal.util.collections.IdentityMap;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class IdentityMapTest {
+public class InstanceIdentityMapTest {
 
 	@Test
 	public void basicIdentityMapFunctionality() {
