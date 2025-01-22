@@ -261,7 +261,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 
 		final SharedSessionContractImplementor session = getSession();
 		if ( collectionEntries != null ) {
-			collectionEntries.forEach( (k, v) -> k.unsetSession( session ) );
+			collectionEntries.keySet().forEach( k -> k.unsetSession( session ) );
 		}
 
 		arrayHolders = null;

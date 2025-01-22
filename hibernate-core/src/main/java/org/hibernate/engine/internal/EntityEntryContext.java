@@ -14,8 +14,9 @@ import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.internal.CoreLogging;
 import org.hibernate.internal.CoreMessageLogger;
-import org.hibernate.internal.util.collections.InstanceIdentityMap;
+import org.hibernate.internal.util.collections.InstanceIdentityStore;
 import org.hibernate.internal.util.collections.StandardStack;
+import org.hibernate.persister.entity.EntityPersister;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -51,7 +52,7 @@ public class EntityEntryContext {
 
 	private final transient PersistenceContext persistenceContext;
 
-	private transient InstanceIdentityMap<ManagedEntity, ImmutableManagedEntityHolder> immutableManagedEntityXref;
+	private transient InstanceIdentityStore<ImmutableManagedEntityHolder> immutableManagedEntityXref;
 	// Current instance id and stack of reusable ones from removed entities.
 	// We reuse ids to avoid growing the identity map unnecessarily and leaving gaps in the underlying array
 	private transient StandardStack<Integer> reusableInstanceIds;
@@ -113,16 +114,19 @@ public class EntityEntryContext {
 				else {
 					// Create a holder for PersistenceContext-related data.
 					managedEntity = new ImmutableManagedEntityHolder( managed );
-					managed.$$_hibernate_setInstanceId( nextManagedEntityInstanceId() );
-					putImmutableManagedEntity( managed, (ImmutableManagedEntityHolder) managedEntity );
+					if ( !isReferenceCachingEnabled( entityEntry.getPersister() ) ) {
+						managed.$$_hibernate_setInstanceId( nextManagedEntityInstanceId() );
+						putImmutableManagedEntity( managed, (ImmutableManagedEntityHolder) managedEntity );
+					}
+					else {
+						// When reference caching is enabled we cannot set the instance-id on the entity instance
+						putManagedEntity( entity, managedEntity );
+					}
 				}
 			}
 			else {
-				if ( nonEnhancedEntityXref == null ) {
-					nonEnhancedEntityXref = new IdentityHashMap<>();
-				}
 				managedEntity = new ManagedEntityImpl( entity );
-				nonEnhancedEntityXref.put( entity, managedEntity );
+				putManagedEntity( entity, managedEntity );
 			}
 		}
 
@@ -156,6 +160,12 @@ public class EntityEntryContext {
 		}
 	}
 
+	private static boolean isReferenceCachingEnabled(EntityPersister persister) {
+		// Immutable entities which can use reference caching are treated as non-enhanced entities, as setting
+		// the instance-id on them would be problematic in different sessions
+		return persister.canUseReferenceCacheEntries() && persister.canReadFromCache();
+	}
+
 	private ManagedEntity getAssociatedManagedEntity(Object entity) {
 		if ( isManagedEntity( entity ) ) {
 			final ManagedEntity managedEntity = asManagedEntity( entity );
@@ -171,7 +181,7 @@ public class EntityEntryContext {
 						? managedEntity // it is associated
 						: null;
 			}
-			else {
+			else if ( !isReferenceCachingEnabled( entityEntry.getPersister() ) ) {
 				// if managedEntity is associated with this EntityEntryContext, it may have
 				// an entry in immutableManagedEntityXref and its holder will be returned.
 				return immutableManagedEntityXref != null
@@ -179,11 +189,16 @@ public class EntityEntryContext {
 						: null;
 			}
 		}
-		else {
-			return nonEnhancedEntityXref != null
-					? nonEnhancedEntityXref.get( entity )
-					: null;
+		return nonEnhancedEntityXref != null
+				? nonEnhancedEntityXref.get( entity )
+				: null;
+	}
+
+	private void putManagedEntity(Object entity, ManagedEntity managedEntity) {
+		if ( nonEnhancedEntityXref == null ) {
+			nonEnhancedEntityXref = new IdentityHashMap<>();
 		}
+		nonEnhancedEntityXref.put( entity, managedEntity );
 	}
 
 	private int nextManagedEntityInstanceId() {
@@ -194,9 +209,9 @@ public class EntityEntryContext {
 
 	private void putImmutableManagedEntity(ManagedEntity managed, ImmutableManagedEntityHolder holder) {
 		if ( immutableManagedEntityXref == null ) {
-			immutableManagedEntityXref = new InstanceIdentityMap<>();
+			immutableManagedEntityXref = new InstanceIdentityStore<>();
 		}
-		immutableManagedEntityXref.put( managed, holder );
+		immutableManagedEntityXref.add( managed, holder );
 	}
 
 	private void checkNotAssociatedWithOtherPersistenceContextIfMutable(ManagedEntity managedEntity) {
@@ -266,14 +281,19 @@ public class EntityEntryContext {
 
 		dirty = true;
 
-		if ( managedEntity instanceof ImmutableManagedEntityHolder ) {
-			assert entity == ((ImmutableManagedEntityHolder) managedEntity).managedEntity;
-			final int instanceId = managedEntity.$$_hibernate_getInstanceId();
-			immutableManagedEntityXref.remove( instanceId, entity );
-			if ( reusableInstanceIds == null ) {
-				reusableInstanceIds = new StandardStack<>();
+		if ( managedEntity instanceof ImmutableManagedEntityHolder holder ) {
+			assert entity == holder.managedEntity;
+			if ( !isReferenceCachingEnabled( holder.$$_hibernate_getEntityEntry().getPersister() ) ) {
+				final int instanceId = managedEntity.$$_hibernate_getInstanceId();
+				immutableManagedEntityXref.remove( instanceId, entity );
+				if ( reusableInstanceIds == null ) {
+					reusableInstanceIds = new StandardStack<>();
+				}
+				reusableInstanceIds.push( instanceId );
 			}
-			reusableInstanceIds.push( instanceId );
+			else {
+				nonEnhancedEntityXref.remove( entity );
+			}
 		}
 		else if ( !isManagedEntity( entity ) ) {
 			nonEnhancedEntityXref.remove( entity );
@@ -509,11 +529,9 @@ public class EntityEntryContext {
 			}
 			else {
 				managedEntity = new ManagedEntityImpl( entity );
-				if ( context.nonEnhancedEntityXref == null ) {
-					context.nonEnhancedEntityXref = new IdentityHashMap<>();
-				}
-				context.nonEnhancedEntityXref.put( entity, managedEntity );
+				context.putManagedEntity( entity, managedEntity );
 			}
+
 			managedEntity.$$_hibernate_setEntityEntry( entry );
 
 			if ( previous == null ) {

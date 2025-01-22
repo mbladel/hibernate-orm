@@ -8,96 +8,42 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.engine.spi.InstanceIdentity;
 
+import java.lang.reflect.Array;
+import java.util.AbstractCollection;
+import java.util.AbstractMap;
+import java.util.AbstractSet;
 import java.util.Collection;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
+
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
 /**
- * Utility collection backed by {@link PagedArray} that takes advantage of {@link InstanceIdentity}'s
- * unique identifier to store objects and provide {@link Map}-like functionalities.
+ * {@link Map} implementation of {@link InstanceIdentityStore}.
  * <p>
  * Methods accessing / modifying the map with {@link Object} typed parameters will need
  * to type check against the instance identity interface which might be inefficient,
  * so it's recommended to use the position (int) based variant of those methods.
- * <p>
- * Iterating through the whole map is most efficient with {@link #forEach}, and since
- * we simply iterate the underlying array, it's also concurrent and reentrant safe.
  */
-public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K, V> {
-	private static final class Entry<K, V> implements Map.Entry<K, V> {
-		private final K key;
-		private final V value;
-
-		public Entry(K key, V value) {
-			this.key = key;
-			this.value = value;
-		}
-
-		@Override
-		public K getKey() {
-			return key;
-		}
-
-		@Override
-		public V getValue() {
-			return value;
-		}
-
-		@Override
-		public V setValue(V value) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if ( o == this ) {
-				return true;
-			}
-
-			return o instanceof Map.Entry<?, ?> e
-				&& Objects.equals( key, e.getKey() )
-				&& Objects.equals( value, e.getValue() );
-		}
-
-		@Override
-		public int hashCode() {
-			int result = key.hashCode();
-			result = 31 * result + Objects.hashCode( value );
-			return result;
-		}
-	}
-
-	private final PagedArray<Entry<K, V>> backingArray;
-
-	public InstanceIdentityMap() {
-		backingArray = new PagedArray<>();
-	}
+public class InstanceIdentityMap<K extends InstanceIdentity, V> extends InstanceIdentityStore<V> implements Map<K, V> {
+	// Transient fields caching the views on this map the first time they're accessed.
+	// The views are stateless, so there's no reason to create more than one of each
+	private transient Set<K> keySet;
+	private transient Collection<V> values;
+	private transient Set<Map.Entry<K, V>> entrySet;
 
 	@Override
 	public int size() {
-		return backingArray.size();
+		return super.size();
 	}
 
 	@Override
 	public boolean isEmpty() {
-		return backingArray.isEmpty();
-	}
-
-
-	/**
-	 * Returns {@code true} if this map contains a mapping for the specified instance id.
-	 *
-	 * @param instanceId the instance id whose associated value is to be returned
-	 * @param key key instance to double-check instance equality
-	 * @return {@code true} if this map contains a mapping for the specified instance id
-	 * @implNote This method accesses the backing array with the provided instance id, but performs an instance
-	 * equality check ({@code ==}) with the provided key to ensure it corresponds to the mapped one
-	 */
-	public boolean containsKey(int instanceId, Object key) {
-		return get( instanceId, key ) != null;
+		return super.isEmpty();
 	}
 
 	/**
@@ -108,7 +54,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	@Override
 	public boolean containsKey(Object key) {
 		if ( key instanceof InstanceIdentity instance ) {
-			return containsKey( instance.$$_hibernate_getInstanceId(), instance );
+			return super.containsKey( instance.$$_hibernate_getInstanceId(), instance );
 		}
 		throw new ClassCastException( "Provided key does not support instance identity" );
 	}
@@ -124,23 +70,17 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	}
 
 	/**
-	 * Returns the value to which the specified instance id is mapped, or {@code null} if this map
-	 * contains no mapping for the instance id.
+	 * Tests if the specified key-value mapping is in the map.
 	 *
-	 * @param instanceId the instance id whose associated value is to be returned
-	 * @param key key instance to double-check instance equality
-	 * @return the value to which the specified instance id is mapped,
-	 * or {@code null} if this map contains no mapping for the instance id
-	 * @implNote This method accesses the backing array with the provided instance id, but performs an instance
-	 * equality check ({@code ==}) with the provided key to ensure it corresponds to the mapped one
+	 * @param key possible key, must be an instance of {@link InstanceIdentity}
+	 * @param value possible value
+	 * @return {@code true} if and only if the specified key-value mapping is in the map
 	 */
-	public @Nullable V get(int instanceId, Object key) {
-		if ( instanceId < 0 ) {
-			return null;
+	private boolean containsMapping(Object key, Object value) {
+		if ( key instanceof InstanceIdentity instance ) {
+			return get( instance.$$_hibernate_getInstanceId(), instance ) == value;
 		}
-
-		final Entry<K, V> entry = backingArray.get( instanceId );
-		return entry != null && entry.getKey() == key ? entry.getValue() : null;
+		throw new ClassCastException( "Provided key does not support instance identity" );
 	}
 
 	/**
@@ -151,38 +91,14 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	@Override
 	public @Nullable V get(Object key) {
 		if ( key instanceof InstanceIdentity instance ) {
-			return get( instance.$$_hibernate_getInstanceId(), instance );
+			return super.get( instance.$$_hibernate_getInstanceId(), instance );
 		}
 		throw new ClassCastException( "Provided key does not support instance identity" );
 	}
 
 	@Override
 	public @Nullable V put(K key, V value) {
-		final int instanceId = key.$$_hibernate_getInstanceId();
-		final Entry<K, V> old = backingArray.set( instanceId, new Entry<>( key, value ) );
-		return old != null ? old.getValue() : null;
-	}
-
-	/**
-	 * Removes the mapping for an instance id from this map if it is present (optional operation).
-	 *
-	 * @param instanceId the instance id whose associated value is to be returned
-	 * @param key key instance to double-check instance equality
-	 * @return the previous value associated with {@code instanceId}, or {@code null} if there was no mapping for it.
-	 * @implNote This method accesses the backing array with the provided instance id, but performs an instance
-	 * equality check ({@code ==}) with the provided key to ensure it corresponds to the mapped one
-	 */
-	public @Nullable V remove(int instanceId, Object key) {
-		final Entry<K, V> old = backingArray.remove( instanceId );
-		if ( old != null ) {
-			// Check that the provided instance really matches with the key contained in the map
-			if ( old.getKey() != key ) {
-				// If it doesn't, reset the array value to the old entry
-				backingArray.set( instanceId, old );
-			}
-			return old.getValue();
-		}
-		return null;
+		return super.add( key, value );
 	}
 
 	/**
@@ -193,14 +109,14 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 	@Override
 	public @Nullable V remove(Object key) {
 		if ( key instanceof InstanceIdentity instance ) {
-			return remove( instance.$$_hibernate_getInstanceId(), instance );
+			return super.remove( instance.$$_hibernate_getInstanceId(), instance );
 		}
 		throw new ClassCastException( "Provided key does not support instance identity" );
 	}
 
 	@Override
 	public void putAll(Map<? extends K, ? extends V> m) {
-		for ( Map.Entry<? extends K, ? extends V> entry : m.entrySet() ) {
+		for ( Entry<? extends K, ? extends V> entry : m.entrySet() ) {
 			put( entry.getKey(), entry.getValue() );
 		}
 	}
@@ -216,40 +132,201 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> implements Map<K
 
 	@Override
 	public void clear() {
-		backingArray.clear();
+		super.clear();
 	}
 
 	/**
-	 * Returns a read-only Set view of the keys contained in this map.
+	 * Returns a read-only {@link Set} view of the keys contained in this map.
 	 */
 	@Override
 	public @NonNull Set<K> keySet() {
-		return backingArray.stream().map( Entry::getKey ).collect( Collectors.toUnmodifiableSet() );
+		Set<K> ks = keySet;
+		if ( ks == null ) {
+			ks = new KeySet();
+			keySet = ks;
+		}
+		return ks;
 	}
 
 	/**
-	 * Returns a read-only Collection view of the values contained in this map.
+	 * Returns a read-only {@link Collection} view of the values contained in this map.
 	 */
 	@Override
 	public @NonNull Collection<V> values() {
-		return backingArray.stream().map( Entry::getValue ).collect( Collectors.toUnmodifiableSet() );
+		Collection<V> vs = values;
+		if ( vs == null ) {
+			vs = new Values();
+			values = vs;
+		}
+		return vs;
 	}
 
 	/**
-	 * Returns a read-only Set view of the mappings contained in this map.
+	 * Returns a read-only {@link Set} view of the mappings contained in this map
 	 */
 	@Override
-	public @NonNull Set<Map.Entry<K, V>> entrySet() {
-		return backingArray.stream().collect( Collectors.toUnmodifiableSet() );
+	public @NonNull Set<Entry<K, V>> entrySet() {
+		Set<Map.Entry<K, V>> es = entrySet;
+		if ( es == null ) {
+			es = new EntrySet();
+			entrySet = es;
+		}
+		return es;
 	}
+
+
 
 	@Override
 	public void forEach(BiConsumer<? super K, ? super V> action) {
-		backingArray.forEach( element -> action.accept( element.getKey(), element.getValue() ) );
+		for ( Page page : elementPages ) {
+			if ( page != null ) {
+				for ( int j = 0; j <= page.lastNonEmptyOffset(); j += 2 ) {
+					Object key;
+					if ( (key = page.get( j )) != null ) {
+						//noinspection unchecked
+						action.accept( (K) key, (V) page.get( j + 1 ) );
+					}
+				}
+			}
+		}
 	}
 
 	public Map.Entry<K, V>[] toArray() {
 		//noinspection unchecked
-		return backingArray.stream().toArray( Map.Entry[]::new );
+		return entrySet().toArray( new Map.Entry[0] );
+	}
+
+	private class KeyIterator extends InstanceIdentityIterator<K> {
+		public K next() {
+			return get( nextIndex() );
+		}
+	}
+
+	private class ValueIterator extends InstanceIdentityIterator<V> {
+		public V next() {
+			return get( nextIndex() + 1 );
+		}
+	}
+
+	private class EntryIterator extends InstanceIdentityIterator<Map.Entry<K, V>> {
+		public Map.Entry<K, V> next() {
+			return new Entry( nextIndex() );
+		}
+
+		private class Entry implements Map.Entry<K, V> {
+			private final int index;
+
+			private Entry(int index) {
+				this.index = index;
+			}
+
+			public K getKey() {
+				return get( index );
+			}
+
+			public V getValue() {
+				return get( index + 1 );
+			}
+
+			public V setValue(V value) {
+				throw new UnsupportedOperationException();
+			}
+
+			public boolean equals(Object o) {
+				return o instanceof Map.Entry<?, ?> e
+					   && Objects.equals( e.getKey(), getKey() )
+					   && Objects.equals( e.getValue(), getValue() );
+			}
+
+			public int hashCode() {
+				return castNonNull( getKey() ).hashCode() ^
+					   Objects.hashCode( getValue() );
+			}
+
+			public String toString() {
+				return getKey() + "=" + getValue();
+			}
+		}
+	}
+
+	private class KeySet extends AbstractSet<K> {
+		@Override
+		public @NonNull Iterator<K> iterator() {
+			return new KeyIterator();
+		}
+
+		@Override
+		public int size() {
+			return InstanceIdentityMap.this.size();
+		}
+
+		@Override
+		public boolean contains(Object o) {
+			return containsKey( o );
+		}
+	}
+
+	private class Values extends AbstractCollection<V> {
+		@Override
+		public @NonNull Iterator<V> iterator() {
+			return new ValueIterator();
+		}
+
+		@Override
+		public int size() {
+			return InstanceIdentityMap.this.size();
+		}
+	}
+
+	private class EntrySet extends AbstractSet<Map.Entry<K, V>> {
+		@Override
+		public @NonNull Iterator<Map.Entry<K, V>> iterator() {
+			return new EntryIterator();
+		}
+
+		@Override
+		public int size() {
+			return InstanceIdentityMap.this.size();
+		}
+
+		@Override
+		public boolean contains(Object o) {
+			return o instanceof Entry<?, ?> entry
+				   && containsMapping( entry.getKey(), entry.getValue() );
+		}
+
+		@Override
+		public @NonNull Object @NonNull [] toArray() {
+			return toArray( new Object[0] );
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public <T> @NonNull T @NonNull [] toArray(T[] a) {
+			int size = size();
+			if ( a.length < size ) {
+				a = (T[]) Array.newInstance( a.getClass().getComponentType(), size );
+			}
+			int ti = 0;
+			for ( Page page : elementPages ) {
+				if ( page != null ) {
+					for ( int j = 0; j <= page.lastNonEmptyOffset(); j += 2 ) {
+						Object key;
+						if ( (key = page.get( j )) != null ) {
+							a[ti++] = (T) new AbstractMap.SimpleImmutableEntry<>( key, page.get( j + 1 ) );
+						}
+					}
+				}
+			}
+			// fewer elements than expected or concurrent modification from other thread detected
+			if ( ti < size ) {
+				throw new ConcurrentModificationException();
+			}
+			// final null marker as per spec
+			if ( ti < a.length ) {
+				a[ti] = null;
+			}
+			return a;
+		}
 	}
 }
