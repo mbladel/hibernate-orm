@@ -4,22 +4,28 @@
  */
 package org.hibernate.internal.util.collections;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.engine.spi.InstanceIdentity;
 
+import java.lang.reflect.Array;
+import java.util.AbstractCollection;
 import java.util.AbstractMap;
+import java.util.AbstractSet;
 import java.util.Collection;
-import java.util.List;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
+
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
 /**
  * {@link Map} implementation of based on {@link InstanceIdentity}, similar to {@link InstanceIdentityStore}.
- * This collection also stores values using a growing array of {@link #PAGE_CAPACITY} but,
- * contrary to the store, it initializes {@link Map.Entry}s eagerly to optimize iteration
+ * This collection also stores values using an array-like structure that automatically grows as needed
+ * but, contrary to the store, it initializes {@link Map.Entry}s eagerly to optimize iteration
  * performance and avoid type-pollution issues when checking the type of contained objects.
  * <p>
  * Methods accessing / modifying the map with {@link Object} typed parameters will need
@@ -41,11 +47,11 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Abstract
 	}
 
 	/**
-	 * Returns {@code true} if this store contains a mapping for the specified instance id.
+	 * Returns {@code true} if this map contains a mapping for the specified instance id.
 	 *
 	 * @param instanceId the instance id whose associated value is to be returned
 	 * @param key key instance to double-check instance equality
-	 * @return {@code true} if this store contains a mapping for the specified instance id
+	 * @return {@code true} if this map contains a mapping for the specified instance id
 	 * @implNote This method accesses the backing array with the provided instance id, but performs an instance
 	 * equality check ({@code ==}) with the provided key to ensure it corresponds to the mapped one
 	 */
@@ -91,7 +97,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Abstract
 	}
 
 	/**
-	 * Returns the value to which the specified instance id is mapped, or {@code null} if this store
+	 * Returns the value to which the specified instance id is mapped, or {@code null} if this map
 	 * contains no mapping for the instance id.
 	 *
 	 * @param instanceId the instance id whose associated value is to be returned
@@ -129,7 +135,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Abstract
 	@Override
 	public @Nullable V put(K key, V value) {
 		if ( key == null ) {
-			throw new NullPointerException( "This store does not support null keys" );
+			throw new NullPointerException( "This map does not support null keys" );
 		}
 
 		final int instanceId = key.$$_hibernate_getInstanceId();
@@ -146,7 +152,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Abstract
 	}
 
 	/**
-	 * Removes the mapping for an instance id from this store if it is present (optional operation).
+	 * Removes the mapping for an instance id from this map if it is present (optional operation).
 	 *
 	 * @param instanceId the instance id whose associated value is to be returned
 	 * @param key key instance to double-check instance equality
@@ -159,7 +165,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Abstract
 		if ( page != null ) {
 			final int pageOffset = toPageOffset( instanceId );
 			final Map.Entry<K, V> entry = page.set( pageOffset, null );
-			// Check that the provided instance really matches with the key contained in the store
+			// Check that the provided instance really matches with the key contained in the map
 			if ( entry != null ) {
 				if ( entry.getKey() == key ) {
 					size--;
@@ -212,26 +218,168 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Abstract
 	@Override
 	public Set<K> keySet() {
 		// todo marco : these absolutely do not work, need to implement custom iterators / sets here
-		return stream().map( Entry::getKey ).collect( Collectors.toUnmodifiableSet() );
+		return new KeySet();
 	}
 
 	@Override
 	public Collection<V> values() {
-		return stream().map( Entry::getValue ).collect( Collectors.toUnmodifiableSet() );
+		return new Values();
 	}
 
 	@Override
 	public Set<Entry<K, V>> entrySet() {
-		return stream().collect( Collectors.toUnmodifiableSet() );
+		return new EntrySet();
 	}
 
 	@Override
 	public void forEach(BiConsumer<? super K, ? super V> action) {
-		super.forEach( element -> action.accept( element.getKey(), element.getValue() ) );
+		for ( final Page<Map.Entry<K, V>> page : elementPages ) {
+			if ( page != null ) {
+				for ( int j = 0; j <= page.lastNotEmptyOffset(); j++ ) {
+					final Entry<K, V> entry = page.get( j );
+					if ( entry != null ) {
+						action.accept( entry.getKey(), entry.getValue() );
+					}
+				}
+			}
+		}
 	}
 
 	public Map.Entry<K, V>[] toArray() {
 		//noinspection unchecked
-		return stream().toArray( Map.Entry[]::new );
+		return entrySet().toArray( new Map.Entry[0] );
+	}
+
+	private class KeyIterator extends PagedArrayIterator<K> {
+		public K next() {
+			return get( nextIndex() ).getKey();
+		}
+	}
+
+	private class ValueIterator extends PagedArrayIterator<V> {
+		public V next() {
+			return get( nextIndex() ).getValue();
+		}
+	}
+
+	private class EntryIterator extends PagedArrayIterator<Map.Entry<K, V>> {
+		public Map.Entry<K, V> next() {
+			return new Entry( nextIndex() );
+		}
+
+		private class Entry implements Map.Entry<K, V> {
+			private final int index;
+
+			private Entry(int index) {
+				this.index = index;
+			}
+
+			public K getKey() {
+				return get( index ).getKey();
+			}
+
+			public V getValue() {
+				return get( index ).getValue();
+			}
+
+			public V setValue(V value) {
+				throw new UnsupportedOperationException();
+			}
+
+			public boolean equals(Object o) {
+				return o instanceof Map.Entry<?, ?> e
+					   && Objects.equals( e.getKey(), getKey() )
+					   && Objects.equals( e.getValue(), getValue() );
+			}
+
+			public int hashCode() {
+				return castNonNull( getKey() ).hashCode() ^
+					   Objects.hashCode( getValue() );
+			}
+
+			public String toString() {
+				return getKey() + "=" + getValue();
+			}
+		}
+	}
+
+	private class KeySet extends AbstractSet<K> {
+		@Override
+		public @NonNull Iterator<K> iterator() {
+			return new KeyIterator();
+		}
+
+		@Override
+		public int size() {
+			return InstanceIdentityMap.this.size();
+		}
+
+		@Override
+		public boolean contains(Object o) {
+			return containsKey( o );
+		}
+	}
+
+	private class Values extends AbstractCollection<V> {
+		@Override
+		public @NonNull Iterator<V> iterator() {
+			return new ValueIterator();
+		}
+
+		@Override
+		public int size() {
+			return InstanceIdentityMap.this.size();
+		}
+	}
+
+	private class EntrySet extends AbstractSet<Entry<K, V>> {
+		@Override
+		public @NonNull Iterator<Entry<K, V>> iterator() {
+			return new EntryIterator();
+		}
+
+		@Override
+		public int size() {
+			return InstanceIdentityMap.this.size();
+		}
+
+		@Override
+		public boolean contains(Object o) {
+			return o instanceof Entry<?, ?> entry
+				   && containsMapping( entry.getKey(), entry.getValue() );
+		}
+
+		@Override
+		public @NonNull Object @NonNull [] toArray() {
+			return toArray( new Object[0] );
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public <T> @NonNull T @NonNull [] toArray(T[] a) {
+			int size = size();
+			if ( a.length < size ) {
+				a = (T[]) Array.newInstance( a.getClass().getComponentType(), size );
+			}
+			int i = 0;
+			for ( Page<Entry<K, V>> page : elementPages ) {
+				if ( page != null ) {
+					for ( int j = 0; j <= page.lastNotEmptyOffset(); j++ ) {
+						final Map.Entry<K, V> entry;
+						if ( (entry = page.get( j )) != null ) {
+							a[i++] = (T) entry;
+						}
+					}
+				}
+			}
+			// fewer elements than expected or concurrent modification from other thread detected
+			if ( i < size ) {
+				throw new ConcurrentModificationException();
+			}
+			if ( i < a.length ) {
+				a[i] = null;
+			}
+			return a;
+		}
 	}
 }

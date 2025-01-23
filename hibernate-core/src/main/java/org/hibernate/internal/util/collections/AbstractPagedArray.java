@@ -4,6 +4,8 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -83,12 +85,12 @@ public class AbstractPagedArray<E> {
 			return (E) elements[offset];
 		}
 
-		int lastNonEmptyOffset() {
+		int lastNotEmptyOffset() {
 			return lastNotEmptyOffset;
 		}
 	}
 
-	private final ArrayList<Page<E>> elementPages;
+	protected final ArrayList<Page<E>> elementPages;
 
 	public AbstractPagedArray() {
 		elementPages = new ArrayList<>();
@@ -169,17 +171,35 @@ public class AbstractPagedArray<E> {
 				.map( e -> (E) e );
 	}
 
-	public void forEach(Consumer<? super E> action) {
-		for ( final Page<E> page : elementPages ) {
-			if ( page != null ) {
-				for ( int j = 0; j <= page.lastNotEmptyOffset; j++ ) {
-					//noinspection unchecked
-					final E element = (E) page.elements[j];
-					if ( element != null ) {
-						action.accept( element );
+	protected abstract class PagedArrayIterator<T> implements Iterator<T> {
+		int index; // current absolute index in the array
+		boolean indexValid; // to avoid unnecessary next computation
+
+		public boolean hasNext() {
+			for ( int i = toPageIndex( index ); i < elementPages.size(); i++ ) {
+				final Page<E> page = elementPages.get( i );
+				if ( page != null ) {
+					for ( int j = toPageOffset( index ); j <= page.lastNotEmptyOffset; j++ ) {
+						if ( page.get( j ) != null ) {
+							index = i * PAGE_CAPACITY + j;
+							return indexValid = true;
+						}
 					}
 				}
 			}
+			index = elementPages.size() * PAGE_CAPACITY;
+			return false;
+		}
+
+		protected int nextIndex() {
+			if ( !indexValid && !hasNext() ) {
+				throw new NoSuchElementException();
+			}
+
+			indexValid = false;
+			int lastReturnedIndex = index;
+			index++;
+			return lastReturnedIndex;
 		}
 	}
 }

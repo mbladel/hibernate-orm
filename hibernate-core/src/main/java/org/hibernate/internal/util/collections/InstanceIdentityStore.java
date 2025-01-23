@@ -17,32 +17,14 @@ import org.hibernate.engine.spi.InstanceIdentity;
  * that would cause type-pollution issues at the call site that would degrade performance.
  */
 public class InstanceIdentityStore<V> extends AbstractPagedArray<Object> {
-	private int size;
-
+	/**
+	 * Utility to derive the key index from an instance-id, keys are stored in every 2 positions in the array
+	 *
+	 * @param instanceId the instance identifier
+	 * @return the index of the corresponding key instance in the array
+	 */
 	private static int toKeyIndex(int instanceId) {
 		return instanceId * 2;
-	}
-
-	public int size() {
-		return size;
-	}
-
-	public boolean isEmpty() {
-		return size == 0;
-	}
-
-
-	/**
-	 * Returns {@code true} if this store contains a mapping for the specified instance id.
-	 *
-	 * @param instanceId the instance id whose associated value is to be returned
-	 * @param key key instance to double-check instance equality
-	 * @return {@code true} if this store contains a mapping for the specified instance id
-	 * @implNote This method accesses the backing array with the provided instance id, but performs an instance
-	 * equality check ({@code ==}) with the provided key to ensure it corresponds to the mapped one
-	 */
-	public boolean containsKey(int instanceId, Object key) {
-		return get( instanceId, key ) != null;
 	}
 
 	/**
@@ -76,9 +58,8 @@ public class InstanceIdentityStore<V> extends AbstractPagedArray<Object> {
 	 *
 	 * @param key key with which the specified value is to be associated
 	 * @param value value to be associated with the specified key
-	 * @return the previous value associated with {@code key}, or {@code null} if there was none
 	 */
-	public <K extends InstanceIdentity> @Nullable V put(K key, V value) {
+	public <K extends InstanceIdentity> void put(K key, V value) {
 		if ( key == null ) {
 			throw new NullPointerException( "This store does not support null keys" );
 		}
@@ -87,12 +68,8 @@ public class InstanceIdentityStore<V> extends AbstractPagedArray<Object> {
 		final int keyIndex = toKeyIndex( instanceId );
 		final Page<Object> page = getOrCreateEntryPage( keyIndex );
 		final int pageOffset = toPageOffset( keyIndex );
-		final Object old = page.set( pageOffset, key );
-		if ( old == null ) {
-			size++;
-		}
-		//noinspection unchecked
-		return (V) page.set( pageOffset + 1, value );
+		page.set( pageOffset, key );
+		page.set( pageOffset + 1, value );
 	}
 
 	/**
@@ -100,11 +77,10 @@ public class InstanceIdentityStore<V> extends AbstractPagedArray<Object> {
 	 *
 	 * @param instanceId the instance id whose associated value is to be returned
 	 * @param key key instance to double-check instance equality
-	 * @return the previous value associated with {@code instanceId}, or {@code null} if there was no mapping for it.
 	 * @implNote This method accesses the backing array with the provided instance id, but performs an instance
 	 * equality check ({@code ==}) with the provided key to ensure it corresponds to the mapped one
 	 */
-	public @Nullable V remove(int instanceId, Object key) {
+	public void remove(int instanceId, Object key) {
 		final int keyIndex = toKeyIndex( instanceId );
 		final Page<Object> page = getPage( keyIndex );
 		if ( page != null ) {
@@ -112,21 +88,12 @@ public class InstanceIdentityStore<V> extends AbstractPagedArray<Object> {
 			Object k = page.set( pageOffset, null );
 			// Check that the provided instance really matches with the key contained in the store
 			if ( k == key ) {
-				size--;
-				//noinspection unchecked
-				return (V) page.set( pageOffset + 1, null );
+				page.set( pageOffset + 1, null );
 			}
 			else {
 				// If it doesn't, reset the array value to the old key
 				page.set( pageOffset, k );
 			}
 		}
-		return null;
-	}
-
-	@Override
-	public void clear() {
-		super.clear();
-		size = 0;
 	}
 }
