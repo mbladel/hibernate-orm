@@ -17,7 +17,7 @@ import java.util.NoSuchElementException;
  * The store is backed by an array-like structure, which automatically grows by a factor of
  * {@link #PAGE_CAPACITY} as needed to store new elements.
  */
-public class InstanceIdentityStore<V> {
+public class InstanceIdentityStore<K extends InstanceIdentity, V> {
 	// It's important that capacity is a power of 2 to allow calculating page index and offset within the page
 	// with simple division and modulo operations; also static final so JIT can inline these operations.
 	private static final int PAGE_CAPACITY = 1 << 5; // 32, 16 key + value pairs
@@ -25,12 +25,14 @@ public class InstanceIdentityStore<V> {
 	/**
 	 * Represents a page of {@link #PAGE_CAPACITY} objects in the overall array.
 	 */
-	protected static final class Page {
-		private final Object[] elements;
+	protected static final class Page<K, V> {
+		private final K[] keys;
+		private final V[] values;
 		private int lastNotEmptyOffset;
 
 		public Page() {
-			elements = new Object[PAGE_CAPACITY];
+			keys = (K[]) new Object[PAGE_CAPACITY];
+			values = (V[]) new Object[PAGE_CAPACITY];
 			lastNotEmptyOffset = -1;
 		}
 
@@ -39,7 +41,8 @@ public class InstanceIdentityStore<V> {
 		 */
 		public void clear() {
 			// We need to null out everything to prevent GC nepotism (see https://hibernate.atlassian.net/browse/HHH-19047)
-			Arrays.fill( elements, 0, lastNotEmptyOffset + 1, null );
+			Arrays.fill( keys, 0, lastNotEmptyOffset + 1, null );
+			Arrays.fill( values, 0, lastNotEmptyOffset + 1, null );
 			lastNotEmptyOffset = -1;
 		}
 
@@ -47,15 +50,16 @@ public class InstanceIdentityStore<V> {
 		 * Set the provided element at the specified offset.
 		 *
 		 * @param offset the offset in the page where to set the element
-		 * @param element the element to set
+		 * @param key
+		 * @param value
 		 * @return the previous element at {@code offset} if one existed, or {@code null}
 		 */
-		public Object set(int offset, Object element) {
+		public K set(int offset, K key, V value) {
 			if ( offset >= PAGE_CAPACITY ) {
 				throw new IllegalArgumentException( "The required offset is beyond page capacity" );
 			}
-			final Object old = elements[offset];
-			if ( element != null ) {
+			final K old = keys[offset];
+			if ( key != null ) {
 				if ( offset > lastNotEmptyOffset ) {
 					lastNotEmptyOffset = offset;
 				}
@@ -64,13 +68,14 @@ public class InstanceIdentityStore<V> {
 				// must search backward for the first not empty offset
 				int i = offset;
 				for ( ; i >= 0; i-- ) {
-					if ( elements[i] != null ) {
+					if ( keys[i] != null ) {
 						break;
 					}
 				}
 				lastNotEmptyOffset = i;
 			}
-			elements[offset] = element;
+			keys[offset] = key;
+			values[offset] = value;
 			return old;
 		}
 
@@ -80,22 +85,32 @@ public class InstanceIdentityStore<V> {
 		 * @param offset the offset in the page where to set the element
 		 * @return the element at {@code index} if one existed, or {@code null}
 		 */
-		public Object get(final int offset) {
+		public K getKey(final int offset) {
 			if ( offset >= PAGE_CAPACITY ) {
 				throw new IllegalArgumentException( "The required offset is beyond page capacity" );
 			}
 			if ( offset > lastNotEmptyOffset ) {
 				return null;
 			}
-			return elements[offset];
+			return keys[offset];
 		}
 
-		protected int lastNonEmptyOffset() {
+		public V getValue(final int offset) {
+			if ( offset >= PAGE_CAPACITY ) {
+				throw new IllegalArgumentException( "The required offset is beyond page capacity" );
+			}
+			if ( offset > lastNotEmptyOffset ) {
+				return null;
+			}
+			return values[offset];
+		}
+
+		int lastNonEmptyOffset() {
 			return lastNotEmptyOffset;
 		}
 	}
 
-	protected final ArrayList<Page> elementPages;
+	protected final ArrayList<Page<K, V>> elementPages;
 	private int size;
 
 	protected static int toPageIndex(final int index) {
@@ -106,9 +121,9 @@ public class InstanceIdentityStore<V> {
 		return index % PAGE_CAPACITY;
 	}
 
-	private static int toKeyIndex(int instanceId) {
-		return instanceId * 2;
-	}
+//	private static int toKeyIndex(int instanceId) {
+//		return instanceId * 2;
+//	}
 
 	public InstanceIdentityStore() {
 		elementPages = new ArrayList<>();
@@ -141,7 +156,7 @@ public class InstanceIdentityStore<V> {
 	 * @param index the absolute index of the array
 	 * @return the page corresponding to the provided index, or {@code null}
 	 */
-	private Page getPage(int index) {
+	protected Page<K, V> getPage(int index) {
 		final int pageIndex = toPageIndex( index );
 		if ( pageIndex < elementPages.size() ) {
 			return elementPages.get( pageIndex );
@@ -161,30 +176,16 @@ public class InstanceIdentityStore<V> {
 	 * equality check ({@code ==}) with the provided key to ensure it corresponds to the mapped one
 	 */
 	public @Nullable V get(int instanceId, Object key) {
-		final int keyIndex = toKeyIndex( instanceId );
-		final Page page = getPage( keyIndex );
+		final Page<K, V> page = getPage( instanceId );
 		if ( page != null ) {
-			final int offset = toPageOffset( keyIndex );
-			final Object k = page.get( offset );
+			final int offset = toPageOffset( instanceId );
+			final K k = page.getKey( offset );
 			if ( k == key ) {
-				//noinspection unchecked
-				return (V) page.get( offset + 1 );
+				return page.getValue( offset );
 			}
 		}
 
 		return null;
-	}
-
-	/**
-	 * Access the underlying array with an absolute index, only meant to be used by internal iterator implementations
-	 *
-	 * @param index the absolute index in the underlying array
-	 * @return the value contained in the array at the specified position or {@code null}
-	 */
-	protected <T> T get(int index) {
-		final Page page = getPage( index );
-		//noinspection unchecked
-		return page != null ? (T) page.get( toPageOffset( index ) ) : null;
 	}
 
 	/**
@@ -193,15 +194,15 @@ public class InstanceIdentityStore<V> {
 	 * @param index the absolute index of the array
 	 * @return the page corresponding to the provided index
 	 */
-	private Page getOrCreateEntryPage(int index) {
+	private Page<K, V> getOrCreateEntryPage(int index) {
 		final int pages = elementPages.size();
 		final int pageIndex = toPageIndex( index );
 		if ( pageIndex < pages ) {
-			final Page page = elementPages.get( pageIndex );
+			final Page<K, V> page = elementPages.get( pageIndex );
 			if ( page != null ) {
 				return page;
 			}
-			final Page newPage = new Page();
+			final Page<K, V> newPage = new Page<>();
 			elementPages.set( pageIndex, newPage );
 			return newPage;
 		}
@@ -209,7 +210,7 @@ public class InstanceIdentityStore<V> {
 		for ( int i = pages; i < pageIndex; i++ ) {
 			elementPages.add( null );
 		}
-		final Page page = new Page();
+		final Page<K, V> page = new Page<>();
 		elementPages.add( page );
 		return page;
 	}
@@ -222,21 +223,20 @@ public class InstanceIdentityStore<V> {
 	 * @param value value to be associated with the specified key
 	 * @return the previous value associated with {@code key}, or {@code null} if there was none
 	 */
-	public <K extends InstanceIdentity> @Nullable V add(K key, V value) {
+	public @Nullable V add(K key, V value) {
 		if ( key == null ) {
-			throw new NullPointerException( "This store does not support null keys" );
+			throw new NullPointerException( "This map does not support null keys" );
 		}
 
 		final int instanceId = key.$$_hibernate_getInstanceId();
-		final int keyIndex = toKeyIndex( instanceId );
-		final Page page = getOrCreateEntryPage( keyIndex );
-		final int pageOffset = toPageOffset( keyIndex );
-		final Object old = page.set( pageOffset, key );
-		if ( old == null ) {
+		final Page<K, V> page = getOrCreateEntryPage( instanceId );
+		final int pageOffset = toPageOffset( instanceId );
+		final V old = page.getValue( pageOffset );
+		final K k = page.set( pageOffset, key, value );
+		if ( k == null ) {
 			size++;
 		}
-		//noinspection unchecked
-		return (V) page.set( pageOffset + 1, value );
+		return old;
 	}
 
 	/**
@@ -249,27 +249,21 @@ public class InstanceIdentityStore<V> {
 	 * equality check ({@code ==}) with the provided key to ensure it corresponds to the mapped one
 	 */
 	public @Nullable V remove(int instanceId, Object key) {
-		final int keyIndex = toKeyIndex( instanceId );
-		final Page page = getPage( keyIndex );
+		final Page<K, V> page = getPage( instanceId );
 		if ( page != null ) {
-			final int pageOffset = toPageOffset( keyIndex );
-			Object k = page.set( pageOffset, null );
+			final int pageOffset = toPageOffset( instanceId );
+			K k = page.getKey( pageOffset );
 			// Check that the provided instance really matches with the key contained in the store
 			if ( k == key ) {
 				size--;
-				//noinspection unchecked
-				return (V) page.set( pageOffset + 1, null );
-			}
-			else {
-				// If it doesn't, reset the array value to the old key
-				page.set( pageOffset, k );
+				page.set( pageOffset, null, null );
 			}
 		}
 		return null;
 	}
 
 	public void clear() {
-		for ( Page entryPage : elementPages ) {
+		for ( Page<K, V> entryPage : elementPages ) {
 			entryPage.clear();
 		}
 		elementPages.clear();
@@ -283,10 +277,10 @@ public class InstanceIdentityStore<V> {
 
 		public boolean hasNext() {
 			for ( int i = toPageIndex( index ); i < elementPages.size(); i++ ) {
-				final Page page = elementPages.get( i );
+				final Page<K, V> page = elementPages.get( i );
 				if ( page != null ) {
-					for ( int j = toPageOffset( index ); j <= page.lastNotEmptyOffset; j += 2 ) {
-						if ( page.get( j ) != null ) {
+					for ( int j = toPageOffset( index ); j <= page.lastNotEmptyOffset; j++ ) {
+						if ( page.getKey( j ) != null ) {
 							index = i * PAGE_CAPACITY + j;
 							return indexValid = true;
 						}
@@ -304,7 +298,7 @@ public class InstanceIdentityStore<V> {
 
 			indexValid = false;
 			final int nextIndex = index;
-			index += 2;
+			index++;
 			return nextIndex;
 		}
 

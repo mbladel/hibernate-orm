@@ -29,7 +29,8 @@ import static org.hibernate.internal.util.NullnessUtil.castNonNull;
  * to type check against the instance identity interface which might be inefficient,
  * so it's recommended to use the position (int) based variant of those methods.
  */
-public class InstanceIdentityMap<K extends InstanceIdentity, V> extends InstanceIdentityStore<V> implements Map<K, V> {
+public class InstanceIdentityMap<K extends InstanceIdentity, V> extends InstanceIdentityStore<K, V>
+		implements Map<K, V> {
 	// Transient fields caching the views on this map the first time they're accessed.
 	// The views are stateless, so there's no reason to create more than one of each
 	private transient Set<K> keySet;
@@ -109,7 +110,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Instance
 	@Override
 	public @Nullable V remove(Object key) {
 		if ( key instanceof InstanceIdentity instance ) {
-			return super.remove( instance.$$_hibernate_getInstanceId(), instance );
+			return super.remove( instance.$$_hibernate_getInstanceId(), key );
 		}
 		throw new ClassCastException( "Provided key does not support instance identity" );
 	}
@@ -175,16 +176,14 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Instance
 	}
 
 
-
 	@Override
 	public void forEach(BiConsumer<? super K, ? super V> action) {
-		for ( Page page : elementPages ) {
+		for ( Page<K, V> page : elementPages ) {
 			if ( page != null ) {
-				for ( int j = 0; j <= page.lastNonEmptyOffset(); j += 2 ) {
-					Object key;
-					if ( (key = page.get( j )) != null ) {
-						//noinspection unchecked
-						action.accept( (K) key, (V) page.get( j + 1 ) );
+				for ( int j = 0; j <= page.lastNonEmptyOffset(); j++ ) {
+					K key;
+					if ( (key = page.getKey( j )) != null ) {
+						action.accept( key, page.getValue( j ) );
 					}
 				}
 			}
@@ -198,13 +197,15 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Instance
 
 	private class KeyIterator extends InstanceIdentityIterator<K> {
 		public K next() {
-			return get( nextIndex() );
+			final int i = nextIndex();
+			return getPage( i ).getKey( toPageOffset( i ) );
 		}
 	}
 
 	private class ValueIterator extends InstanceIdentityIterator<V> {
 		public V next() {
-			return get( nextIndex() + 1 );
+			final int i = nextIndex();
+			return getPage( i ).getValue( toPageOffset( i ) );
 		}
 	}
 
@@ -221,11 +222,11 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Instance
 			}
 
 			public K getKey() {
-				return get( index );
+				return getPage( index ).getKey( toPageOffset( index ) );
 			}
 
 			public V getValue() {
-				return get( index + 1 );
+				return getPage( index ).getValue( toPageOffset( index ) );
 			}
 
 			public V setValue(V value) {
@@ -307,24 +308,23 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Instance
 			if ( a.length < size ) {
 				a = (T[]) Array.newInstance( a.getClass().getComponentType(), size );
 			}
-			int ti = 0;
-			for ( Page page : elementPages ) {
+			int i = 0;
+			for ( Page<K, V> page : elementPages ) {
 				if ( page != null ) {
-					for ( int j = 0; j <= page.lastNonEmptyOffset(); j += 2 ) {
-						Object key;
-						if ( (key = page.get( j )) != null ) {
-							a[ti++] = (T) new AbstractMap.SimpleImmutableEntry<>( key, page.get( j + 1 ) );
+					for ( int j = 0; j <= page.lastNonEmptyOffset(); j++ ) {
+						K key;
+						if ( (key = page.getKey( j )) != null ) {
+							a[i++] = (T) new AbstractMap.SimpleImmutableEntry<>( key, page.getValue( j ) );
 						}
 					}
 				}
 			}
 			// fewer elements than expected or concurrent modification from other thread detected
-			if ( ti < size ) {
+			if ( i < size ) {
 				throw new ConcurrentModificationException();
 			}
-			// final null marker as per spec
-			if ( ti < a.length ) {
-				a[ti] = null;
+			if ( i < a.length ) {
+				a[i] = null;
 			}
 			return a;
 		}

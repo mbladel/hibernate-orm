@@ -52,7 +52,7 @@ public class EntityEntryContext {
 
 	private final transient PersistenceContext persistenceContext;
 
-	private transient InstanceIdentityStore<ImmutableManagedEntityHolder> immutableManagedEntityXref;
+	private transient InstanceIdentityStore<ManagedEntity, ImmutableManagedEntityHolder> immutableManagedEntityXref;
 	// Current instance id and stack of reusable ones from removed entities.
 	// We reuse ids to avoid growing the identity map unnecessarily and leaving gaps in the underlying array
 	private transient StandardStack<Integer> reusableInstanceIds;
