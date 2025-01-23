@@ -54,11 +54,11 @@ public class InstanceIdentityStore<K extends InstanceIdentity, V> {
 		 * @param value
 		 * @return the previous element at {@code offset} if one existed, or {@code null}
 		 */
-		public K set(int offset, K key, V value) {
+		public V set(int offset, K key, V value) {
 			if ( offset >= PAGE_CAPACITY ) {
 				throw new IllegalArgumentException( "The required offset is beyond page capacity" );
 			}
-			final K old = keys[offset];
+			final V old = values[offset];
 			if ( key != null ) {
 				if ( offset > lastNotEmptyOffset ) {
 					lastNotEmptyOffset = offset;
@@ -224,16 +224,15 @@ public class InstanceIdentityStore<K extends InstanceIdentity, V> {
 	 * @return the previous value associated with {@code key}, or {@code null} if there was none
 	 */
 	public @Nullable V add(K key, V value) {
-		if ( key == null ) {
-			throw new NullPointerException( "This map does not support null keys" );
+		if ( key == null || value == null ) {
+			throw new NullPointerException( "This map does not support null keys or values" );
 		}
 
 		final int instanceId = key.$$_hibernate_getInstanceId();
 		final Page<K, V> page = getOrCreateEntryPage( instanceId );
 		final int pageOffset = toPageOffset( instanceId );
-		final V old = page.getValue( pageOffset );
-		final K k = page.set( pageOffset, key, value );
-		if ( k == null ) {
+		final V old = page.set( pageOffset, key, value );
+		if ( old == null ) {
 			size++;
 		}
 		return old;
@@ -256,7 +255,7 @@ public class InstanceIdentityStore<K extends InstanceIdentity, V> {
 			// Check that the provided instance really matches with the key contained in the store
 			if ( k == key ) {
 				size--;
-				page.set( pageOffset, null, null );
+				return page.set( pageOffset, null, null );
 			}
 		}
 		return null;
