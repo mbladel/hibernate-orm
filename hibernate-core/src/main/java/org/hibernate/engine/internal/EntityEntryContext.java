@@ -211,7 +211,7 @@ public class EntityEntryContext {
 		if ( immutableManagedEntityXref == null ) {
 			immutableManagedEntityXref = new InstanceIdentityStore<>();
 		}
-		immutableManagedEntityXref.add( managed, holder );
+		immutableManagedEntityXref.put( managed, holder );
 	}
 
 	private void checkNotAssociatedWithOtherPersistenceContextIfMutable(ManagedEntity managedEntity) {
