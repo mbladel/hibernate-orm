@@ -57,7 +57,7 @@ public final class ByteBuddyState {
 
 	private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
-	private static final boolean DEBUG = false;
+	private static final boolean DEBUG = true;
 
 	private final ByteBuddy byteBuddy;
 

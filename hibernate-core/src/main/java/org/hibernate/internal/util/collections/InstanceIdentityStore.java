@@ -61,12 +61,11 @@ public class InstanceIdentityStore<V> extends AbstractPagedArray<Object> {
 	 * @param key key with which the specified value is to be associated
 	 * @param value value to be associated with the specified key
 	 */
-	public <K extends InstanceIdentity> void put(K key, V value) {
+	public void put(Object key, int instanceId, V value) {
 		if ( key == null ) {
 			throw new NullPointerException( "This store does not support null keys" );
 		}
 
-		final int instanceId = key.$$_hibernate_getInstanceId();
 		final int keyIndex = toKeyIndex( instanceId );
 		final Page<Object> page = getOrCreateEntryPage( keyIndex );
 		final int pageOffset = toPageOffset( keyIndex );

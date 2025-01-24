@@ -128,4 +128,12 @@ public interface ManagedEntity extends Managed, InstanceIdentity {
 		return this;
 	}
 
+	default EntityEntry $$_hibernate_setPersistenceInfo(EntityEntry entityEntry, ManagedEntity previous, ManagedEntity next, int instanceId) {
+		final EntityEntry oldEntry = $$_hibernate_getEntityEntry();
+		$$_hibernate_setEntityEntry( entityEntry );
+		$$_hibernate_setPreviousManagedEntity( previous );
+		$$_hibernate_setNextManagedEntity( next );
+		$$_hibernate_setInstanceId( instanceId );
+		return oldEntry;
+	}
 }
