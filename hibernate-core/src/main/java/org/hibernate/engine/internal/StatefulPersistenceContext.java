@@ -134,9 +134,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	// Identity map of CollectionEntry instances, by the collection wrapper
 	private InstanceIdentityMap<PersistentCollection<?>, CollectionEntry> collectionEntries;
 
-	// Current collection instance id and stack of reusable ones from removed collections.
-	// We reuse ids to avoid growing the identity map unnecessarily and leaving gaps in the underlying array
-	private StandardStack<Integer> reusableCollectionInstanceIds;
+	// Current collection instance id
 	private int currentCollectionInstanceId;
 
 	// Collection wrappers, by the CollectionKey
@@ -274,7 +272,6 @@ public class StatefulPersistenceContext implements PersistenceContext {
 		nonlazyCollections = null;
 		collectionEntries = null;
 		currentCollectionInstanceId = 0;
-		reusableCollectionInstanceIds = null;
 		unownedCollections = null;
 		nullifiableEntityKeys = null;
 		deletedUnloadedEntityKeys = null;
@@ -1384,9 +1381,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	}
 
 	private int nextCollectionInstanceId() {
-		return reusableCollectionInstanceIds != null && !reusableCollectionInstanceIds.isEmpty() ?
-				reusableCollectionInstanceIds.pop() :
-				currentCollectionInstanceId++;
+		return currentCollectionInstanceId++;
 	}
 
 	@Override
@@ -2189,12 +2184,7 @@ public class StatefulPersistenceContext implements PersistenceContext {
 	@Override
 	public CollectionEntry removeCollectionEntry(PersistentCollection<?> collection) {
 		if ( collectionEntries != null ) {
-			final int instanceId = collection.$$_hibernate_getInstanceId();
-			if ( reusableCollectionInstanceIds == null ) {
-				reusableCollectionInstanceIds = new StandardStack<>();
-			}
-			reusableCollectionInstanceIds.push( instanceId );
-			return collectionEntries.remove( instanceId, collection );
+			return collectionEntries.remove( collection.$$_hibernate_getInstanceId(), collection );
 		}
 		else {
 			return null;

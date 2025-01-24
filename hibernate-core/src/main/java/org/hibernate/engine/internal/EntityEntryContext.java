@@ -53,9 +53,6 @@ public class EntityEntryContext {
 	private final transient PersistenceContext persistenceContext;
 
 	private transient InstanceIdentityStore<ImmutableManagedEntityHolder> immutableManagedEntityXref;
-	// Current instance id and stack of reusable ones from removed entities.
-	// We reuse ids to avoid growing the identity map unnecessarily and leaving gaps in the underlying array
-	private transient StandardStack<Integer> reusableInstanceIds;
 	private transient int currentInstanceId;
 
 	private transient ManagedEntity head;
@@ -202,9 +199,7 @@ public class EntityEntryContext {
 	}
 
 	private int nextManagedEntityInstanceId() {
-		return reusableInstanceIds != null && !reusableInstanceIds.isEmpty() ?
-				reusableInstanceIds.pop() :
-				currentInstanceId++;
+		return currentInstanceId++;
 	}
 
 	private void putImmutableManagedEntity(ManagedEntity managed, ImmutableManagedEntityHolder holder) {
@@ -284,12 +279,7 @@ public class EntityEntryContext {
 		if ( managedEntity instanceof ImmutableManagedEntityHolder holder ) {
 			assert entity == holder.managedEntity;
 			if ( !isReferenceCachingEnabled( holder.$$_hibernate_getEntityEntry().getPersister() ) ) {
-				final int instanceId = managedEntity.$$_hibernate_getInstanceId();
-				immutableManagedEntityXref.remove( instanceId, entity );
-				if ( reusableInstanceIds == null ) {
-					reusableInstanceIds = new StandardStack<>();
-				}
-				reusableInstanceIds.push( instanceId );
+				immutableManagedEntityXref.remove( managedEntity.$$_hibernate_getInstanceId(), entity );
 			}
 			else {
 				nonEnhancedEntityXref.remove( entity );
@@ -425,7 +415,6 @@ public class EntityEntryContext {
 
 		reentrantSafeEntries = null;
 		currentInstanceId = 0;
-		reusableInstanceIds = null;
 	}
 
 	private static void clearManagedEntity(final ManagedEntity node) {

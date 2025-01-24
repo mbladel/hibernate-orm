@@ -1,13 +1,13 @@
+/*
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ * Copyright Red Hat Inc. and Hibernate Authors
+ */
 package org.hibernate.internal.util.collections;
-
-import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.Objects;
-import java.util.stream.Stream;
 
 /**
  * Array-like structures that organizes elements in {@link Page}s, automatically allocating
@@ -180,13 +180,6 @@ public class AbstractPagedArray<E> {
 		}
 		elementPages.clear();
 		elementPages.trimToSize();
-	}
-
-	public @NonNull Stream<E> stream() {
-		//noinspection unchecked
-		return elementPages.stream().filter( Objects::nonNull )
-				.flatMap( p -> Arrays.stream( p.elements, 0, p.lastNotEmptyOffset + 1 ) ).filter( Objects::nonNull )
-				.map( e -> (E) e );
 	}
 
 	protected abstract class PagedArrayIterator<T> implements Iterator<T> {

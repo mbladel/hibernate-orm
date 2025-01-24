@@ -279,8 +279,8 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Abstract
 
 			public boolean equals(Object o) {
 				return o instanceof Map.Entry<?, ?> e
-					   && Objects.equals( e.getKey(), getKey() )
-					   && Objects.equals( e.getValue(), getValue() );
+					&& Objects.equals( e.getKey(), getKey() )
+					&& Objects.equals( e.getValue(), getValue() );
 			}
 
 			public int hashCode() {
@@ -336,7 +336,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Abstract
 		@Override
 		public boolean contains(Object o) {
 			return o instanceof Entry<?, ?> entry
-				   && containsMapping( entry.getKey(), entry.getValue() );
+				&& containsMapping( entry.getKey(), entry.getValue() );
 		}
 
 		@Override
