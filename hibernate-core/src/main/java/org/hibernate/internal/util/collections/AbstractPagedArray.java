@@ -7,9 +7,15 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+/**
+ * Array-like structures that organizes elements in {@link Page}s, automatically allocating
+ * more as needed. Access to data via absolute index is efficient as it requires
+ * a constant amount of operations.
+ *
+ * @param <E> the type of elements contained in the array
+ */
 public class AbstractPagedArray<E> {
 	// It's important that capacity is a power of 2 to allow calculating page index and offset within the page
 	// with simple division and modulo operations; also static final so JIT can inline these operations.
@@ -119,14 +125,26 @@ public class AbstractPagedArray<E> {
 	}
 
 	/**
-	 * Access the underlying array with an absolute index, only meant to be used by internal iterator implementations
+	 * Returns the element from the array at the specified index
 	 *
 	 * @param index the absolute index in the underlying array
-	 * @return the value contained in the array at the specified position or {@code null}
+	 * @return the value contained in the array at the specified position, or {@code null}
 	 */
 	protected E get(int index) {
 		final Page<E> page = getPage( index );
 		return page != null ? page.get( toPageOffset( index ) ) : null;
+	}
+
+	/**
+	 * Sets the specified index to the provided element
+	 *
+	 * @param index the absolute index in the underlying array
+	 * @param element the element to set
+	 * @return the value previously contained in the array at the specified position, or {@code null}
+	 */
+	protected E set(int index, E element) {
+		final Page<E> page = getOrCreateEntryPage( index );
+		return page.set( toPageOffset( index ), element );
 	}
 
 	/**

@@ -20,8 +20,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
-import static org.hibernate.internal.util.NullnessUtil.castNonNull;
-
 /**
  * {@link Map} implementation of based on {@link InstanceIdentity}, similar to {@link InstanceIdentityStore}.
  * This collection also stores values using an array-like structure that automatically grows as needed
@@ -108,13 +106,9 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Abstract
 	 * equality check ({@code ==}) with the provided key to ensure it corresponds to the mapped one
 	 */
 	public @Nullable V get(int instanceId, Object key) {
-		final Page<Map.Entry<K, V>> page = getPage( instanceId );
-		if ( page != null ) {
-			final int offset = toPageOffset( instanceId );
-			final Map.Entry<K, V> entry = page.get( offset );
-			if ( entry != null && entry.getKey() == key ) {
-				return entry.getValue();
-			}
+		final Entry<K, V> entry = get( instanceId );
+		if ( entry != null && entry.getKey() == key ) {
+			return entry.getValue();
 		}
 		return null;
 	}
@@ -139,9 +133,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Abstract
 		}
 
 		final int instanceId = key.$$_hibernate_getInstanceId();
-		final Page<Map.Entry<K, V>> page = getOrCreateEntryPage( instanceId );
-		final int pageOffset = toPageOffset( instanceId );
-		final Map.Entry<K, V> old = page.set( pageOffset, new AbstractMap.SimpleImmutableEntry<>( key, value ) );
+		final Map.Entry<K, V> old = set( instanceId, new AbstractMap.SimpleImmutableEntry<>( key, value ) );
 		if ( old == null ) {
 			size++;
 			return null;
@@ -216,18 +208,17 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Abstract
 	}
 
 	@Override
-	public Set<K> keySet() {
-		// todo marco : these absolutely do not work, need to implement custom iterators / sets here
+	public @NonNull Set<K> keySet() {
 		return new KeySet();
 	}
 
 	@Override
-	public Collection<V> values() {
+	public @NonNull Collection<V> values() {
 		return new Values();
 	}
 
 	@Override
-	public Set<Entry<K, V>> entrySet() {
+	public @NonNull Set<Map.Entry<K, V>> entrySet() {
 		return new EntrySet();
 	}
 
@@ -236,7 +227,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Abstract
 		for ( final Page<Map.Entry<K, V>> page : elementPages ) {
 			if ( page != null ) {
 				for ( int j = 0; j <= page.lastNotEmptyOffset(); j++ ) {
-					final Entry<K, V> entry = page.get( j );
+					final Map.Entry<K, V> entry = page.get( j );
 					if ( entry != null ) {
 						action.accept( entry.getKey(), entry.getValue() );
 					}
@@ -293,8 +284,7 @@ public class InstanceIdentityMap<K extends InstanceIdentity, V> extends Abstract
 			}
 
 			public int hashCode() {
-				return castNonNull( getKey() ).hashCode() ^
-					   Objects.hashCode( getValue() );
+				return getKey().hashCode() ^ Objects.hashCode( getValue() );
 			}
 
 			public String toString() {

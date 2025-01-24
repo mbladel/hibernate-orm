@@ -9,12 +9,14 @@ import org.hibernate.engine.spi.InstanceIdentity;
 
 /**
  * Utility collection that takes advantage of {@link InstanceIdentity}'s identifier to store objects.
- * The store extends from {@link AbstractPagedArray} and it stores element using their instance-id
+ * The store is based on {@link AbstractPagedArray} and it stores element using their instance-id
  * as index.
  * <p>
- * Both keys and values are stored in this array, allowing very few allocation to keep track of the pair.
- * The downside to this is we cannot access the key, especially if asking for a specific type, since
+ * Both keys and values are stored in this array, requiring very few allocations to keep track of the pair.
+ * The downside to this is we cannot easily access the key, especially if asking for a specific type, since
  * that would cause type-pollution issues at the call site that would degrade performance.
+ *
+ * @param <V> the type of values contained in this store
  */
 public class InstanceIdentityStore<V> extends AbstractPagedArray<Object> {
 	/**
