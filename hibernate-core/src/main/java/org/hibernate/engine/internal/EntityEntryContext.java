@@ -673,7 +673,7 @@ public class EntityEntryContext {
 		public void $$_hibernate_setEntityEntry(EntityEntry entityEntry) {
 			// need to think about implications for memory leaks here if we don't removed reference to EntityEntry
 			if ( entityEntry == null ) {
-				if ( canClearEntityEntryReference() ) {
+				if ( canClearEntityEntryReference( managedEntity.$$_hibernate_getEntityEntry() ) ) {
 					managedEntity.$$_hibernate_setEntityEntry( null );
 				}
 				// otherwise, do nothing.
@@ -731,10 +731,9 @@ public class EntityEntryContext {
 
 		// Check instance type of EntityEntry and if type is ImmutableEntityEntry,
 		// check to see if entity is referenced cached in the second level cache
-		private boolean canClearEntityEntryReference() {
-			EntityEntry entityEntry = managedEntity.$$_hibernate_getEntityEntry();
+		private static boolean canClearEntityEntryReference(EntityEntry entityEntry) {
 			return !(entityEntry instanceof ImmutableEntityEntry)
-				|| !entityEntry.getPersister().canUseReferenceCacheEntries();
+				|| !isReferenceCachingEnabled( entityEntry.getPersister() );
 		}
 
 		@Override
@@ -745,6 +744,17 @@ public class EntityEntryContext {
 		@Override
 		public void $$_hibernate_setInstanceId(int id) {
 			managedEntity.$$_hibernate_setInstanceId( id );
+		}
+
+		@Override
+		public EntityEntry $$_hibernate_setPersistenceInfo(EntityEntry entityEntry, ManagedEntity previous, ManagedEntity next, int instanceId) {
+			if ( entityEntry == null ) {
+				final EntityEntry oldEntry = managedEntity.$$_hibernate_getEntityEntry();
+				if ( !canClearEntityEntryReference( oldEntry ) ) {
+					entityEntry = oldEntry;
+				}
+			}
+			return managedEntity.$$_hibernate_setPersistenceInfo( entityEntry, previous, next, instanceId );
 		}
 	}
 
