@@ -4558,7 +4558,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 	}
 
 	@Override
-	public Expression visitPluralValuedPath(SqmPluralValuedSimplePath<?> sqmPath) {
+	public Expression visitPluralValuedPath(SqmPluralValuedSimplePath<?, ?> sqmPath) {
 		return withTreatRestriction(
 				prepareReusablePath( sqmPath, () -> PluralValuedSimplePathInterpretation.from( sqmPath, this ) ),
 				sqmPath

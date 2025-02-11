@@ -7,6 +7,7 @@ package org.hibernate.query.sqm.tree.domain;
 import jakarta.persistence.criteria.PluralJoin;
 
 import org.hibernate.metamodel.model.domain.PluralPersistentAttribute;
+import org.hibernate.query.sqm.tree.from.SqmAttributeJoin;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.query.criteria.JpaJoin;
 import org.hibernate.query.sqm.NodeBuilder;
@@ -23,8 +24,8 @@ import org.hibernate.query.sqm.tree.from.SqmFrom;
  * @author Steve Ebersole
  */
 public abstract class AbstractSqmPluralJoin<L,C,E>
-		extends AbstractSqmAttributeJoin<L,E>
-		implements JpaJoin<L,E>, PluralJoin<L,C,E> {
+		extends AbstractSqmAttributeJoin<L,C>
+		implements JpaJoin<L,C>, PluralJoin<L,C,E> {
 
 	public AbstractSqmPluralJoin(
 			SqmFrom<?, L> lhs,
@@ -53,6 +54,11 @@ public abstract class AbstractSqmPluralJoin<L,C,E>
 			boolean fetched,
 			NodeBuilder nodeBuilder) {
 		super( lhs, navigablePath, joinedNavigable, alias, joinType, fetched, nodeBuilder );
+	}
+
+	@Override
+	public SqmAttributeJoin<L, C> alias(String name) {
+		return super.alias( name );
 	}
 
 	@Override

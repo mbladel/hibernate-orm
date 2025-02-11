@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import jakarta.persistence.metamodel.Bindable;
 import org.hibernate.internal.util.NullnessUtil;
 import org.hibernate.metamodel.mapping.CollectionPart;
 import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
@@ -149,8 +150,9 @@ public abstract class AbstractSqmPath<T> extends AbstractSqmExpression<T> implem
 	}
 
 	@Override
-	public SqmPathSource<T> getModel() {
-		return getReferencedPathSource();
+	public Bindable<T> getModel() {
+		//noinspection unchecked
+		return (Bindable<T>) getReferencedPathSource();
 	}
 
 	@Override

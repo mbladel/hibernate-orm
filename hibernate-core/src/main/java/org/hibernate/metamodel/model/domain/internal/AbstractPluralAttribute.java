@@ -186,7 +186,7 @@ public abstract class AbstractPluralAttribute<D, C, E>
 		}
 		final SqmExpressible<?> parentType = parentPathSource.getSqmPathType();
 		if ( parentType != getDeclaringType() && parentType instanceof EntityDomainType<?> entityDomainType &&
-			 entityDomainType.findPluralAttribute( getName() ) == null ) {
+			entityDomainType.findPluralAttribute( getName() ) == null ) {
 			// If the parent path is an entity type which does not contain the joined attribute
 			// add an implicit treat to the parent's navigable path
 			navigablePath = navigablePath.treatAs( getDeclaringType().getTypeName() );

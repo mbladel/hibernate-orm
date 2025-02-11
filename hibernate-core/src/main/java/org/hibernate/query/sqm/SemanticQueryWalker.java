@@ -242,7 +242,7 @@ public interface SemanticQueryWalker<T> {
 
 	T visitEntityValuedPath(SqmEntityValuedSimplePath<?> path);
 
-	T visitPluralValuedPath(SqmPluralValuedSimplePath<?> path);
+	T visitPluralValuedPath(SqmPluralValuedSimplePath<?, ?> path);
 
 	T visitFkExpression(SqmFkExpression<?> fkExpression);
 

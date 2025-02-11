@@ -763,10 +763,13 @@ public abstract class AbstractSqmFrom<O,T> extends AbstractSqmPath<T> implements
 		return fetch( attribute, JoinType.INNER );
 	}
 
+//	<Y> JpaFetch<T, Y> fetch(PluralAttribute<? super T, ?, Y> attribute, JoinType jt);
+
+
 	@Override
 	public <A> SqmAttributeJoin<T, A> fetch(PluralAttribute<? super T, ?, A> attribute, JoinType jt) {
 		return buildJoin(
-				(PluralPersistentAttribute<? super T, ?, A>) attribute,
+				(PluralPersistentAttribute<? super T, A, ?>) attribute,
 				SqmJoinType.from( jt ),
 				true
 		);

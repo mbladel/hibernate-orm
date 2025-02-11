@@ -37,7 +37,7 @@ public class SqmEntityValuedSimplePath<T> extends AbstractSqmSimplePath<T> {
 				this,
 				new SqmEntityValuedSimplePath<>(
 						getNavigablePathCopy( lhsCopy ),
-						getModel(),
+						getNodeType(),
 						lhsCopy,
 						nodeBuilder()
 				)

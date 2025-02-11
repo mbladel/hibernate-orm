@@ -765,7 +765,7 @@ public class SqmTreePrinter implements SemanticQueryWalker<Object> {
 	}
 
 	@Override
-	public Object visitPluralValuedPath(SqmPluralValuedSimplePath<?> path) {
+	public Object visitPluralValuedPath(SqmPluralValuedSimplePath<?, ?> path) {
 		logWithIndentation( "-> [plural-path] - `%s`", path.getNavigablePath() );
 
 		return null;

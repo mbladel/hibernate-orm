@@ -4,6 +4,7 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
+import jakarta.persistence.metamodel.Bindable;
 import org.hibernate.metamodel.model.domain.SingularPersistentAttribute;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.query.sqm.NodeBuilder;
@@ -57,7 +58,8 @@ public abstract class AbstractSqmSimplePath<T> extends AbstractSqmPath<T> implem
 	}
 
 	@Override
-	public SqmPathSource<T> getModel() {
-		return super.getNodeType();
+	public Bindable<T> getModel() {
+		//noinspection unchecked
+		return (Bindable<T>) super.getNodeType();
 	}
 }

@@ -491,7 +491,7 @@ public abstract class BaseSemanticQueryWalker implements SemanticQueryWalker<Obj
 	}
 
 	@Override
-	public Object visitPluralValuedPath(SqmPluralValuedSimplePath<?> path) {
+	public Object visitPluralValuedPath(SqmPluralValuedSimplePath<?, ?> path) {
 		return path;
 	}
 

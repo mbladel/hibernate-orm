@@ -4,6 +4,7 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
+import jakarta.persistence.metamodel.Bindable;
 import org.hibernate.metamodel.mapping.CollectionPart;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.ListPersistentAttribute;
@@ -59,7 +60,7 @@ public class SqmPluralValuedSimplePath<C, E> extends AbstractSqmSimplePath<C> {
 				this,
 				new SqmPluralValuedSimplePath<>(
 						getNavigablePathCopy( lhsCopy ),
-						getModel(),
+						getReferencedPathSource(),
 						lhsCopy,
 						getExplicitAlias(),
 						nodeBuilder()
@@ -75,8 +76,9 @@ public class SqmPluralValuedSimplePath<C, E> extends AbstractSqmSimplePath<C> {
 	}
 
 	@Override
-	public PluralPersistentAttribute<?, C, E> getModel() {
-		return (PluralPersistentAttribute<?, C, E>) super.getModel();
+	public Bindable<C> getModel() {
+		//noinspection unchecked
+		return (Bindable<C>) getReferencedPathSource().getElementPathSource();
 	}
 
 	@Override

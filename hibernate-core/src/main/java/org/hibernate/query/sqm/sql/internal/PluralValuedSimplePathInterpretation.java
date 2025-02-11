@@ -20,7 +20,7 @@ import org.hibernate.sql.results.graph.DomainResultCreationState;
  */
 public class PluralValuedSimplePathInterpretation<T> extends AbstractSqmPathInterpretation<T> {
 
-	public static SqmPathInterpretation<?> from(SqmPluralValuedSimplePath<?> sqmPath, SqmToSqlAstConverter converter) {
+	public static SqmPathInterpretation<?> from(SqmPluralValuedSimplePath<?, ?> sqmPath, SqmToSqlAstConverter converter) {
 		final TableGroup tableGroup = converter.getFromClauseAccess()
 				.findTableGroup( sqmPath.getLhs().getNavigablePath() );
 

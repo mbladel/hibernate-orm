@@ -19,15 +19,15 @@ import static org.hibernate.query.sqm.internal.TypecheckUtil.areTypesComparable;
  */
 public class SqmMemberOfPredicate extends AbstractNegatableSqmPredicate {
 	private final SqmExpression<?> leftHandExpression;
-	private final SqmPluralValuedSimplePath<?> pluralPath;
+	private final SqmPluralValuedSimplePath<?, ?> pluralPath;
 
-	public SqmMemberOfPredicate(SqmExpression<?> leftHandExpression, SqmPluralValuedSimplePath<?> pluralPath, NodeBuilder nodeBuilder) {
+	public SqmMemberOfPredicate(SqmExpression<?> leftHandExpression, SqmPluralValuedSimplePath<?, ?> pluralPath, NodeBuilder nodeBuilder) {
 		this( leftHandExpression, pluralPath, false, nodeBuilder );
 	}
 
 	public SqmMemberOfPredicate(
 			SqmExpression<?> leftHandExpression,
-			SqmPluralValuedSimplePath<?> pluralPath,
+			SqmPluralValuedSimplePath<?, ?> pluralPath,
 			boolean negated,
 			NodeBuilder nodeBuilder) {
 		super( negated, nodeBuilder );
@@ -73,7 +73,7 @@ public class SqmMemberOfPredicate extends AbstractNegatableSqmPredicate {
 		return leftHandExpression;
 	}
 
-	public SqmPluralValuedSimplePath<?> getPluralPath() {
+	public SqmPluralValuedSimplePath<?, ?> getPluralPath() {
 		return pluralPath;
 	}
 

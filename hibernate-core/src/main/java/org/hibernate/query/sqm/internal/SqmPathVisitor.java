@@ -74,7 +74,7 @@ public class SqmPathVisitor extends BaseSemanticQueryWalker {
 	}
 
 	@Override
-	public Object visitPluralValuedPath(SqmPluralValuedSimplePath<?> path) {
+	public Object visitPluralValuedPath(SqmPluralValuedSimplePath<?, ?> path) {
 		pathConsumer.accept( path );
 		return path;
 	}
