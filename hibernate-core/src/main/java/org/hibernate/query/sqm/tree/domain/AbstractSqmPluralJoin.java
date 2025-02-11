@@ -6,8 +6,11 @@ package org.hibernate.query.sqm.tree.domain;
 
 import jakarta.persistence.criteria.PluralJoin;
 
+import jakarta.persistence.metamodel.SingularAttribute;
+import org.hibernate.metamodel.mapping.CollectionPart;
 import org.hibernate.metamodel.model.domain.PersistentAttribute;
 import org.hibernate.metamodel.model.domain.PluralPersistentAttribute;
+import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.query.criteria.JpaJoin;
 import org.hibernate.query.sqm.NodeBuilder;
@@ -26,7 +29,6 @@ import org.hibernate.query.sqm.tree.from.SqmFrom;
 public abstract class AbstractSqmPluralJoin<L,C,E>
 		extends AbstractSqmAttributeJoin<L,E>
 		implements JpaJoin<L,E>, PluralJoin<L,C,E> {
-
 	private final PluralPersistentAttribute<L,C,E> pluralAttribute;
 
 	public AbstractSqmPluralJoin(
@@ -68,5 +70,23 @@ public abstract class AbstractSqmPluralJoin<L,C,E>
 	@Override
 	public PersistentAttribute<? super L, ?> getAttribute() {
 		return pluralAttribute;
+	}
+
+	@Override
+	public <Y> SqmPath<Y> get(String attributeName) {
+		if ( CollectionPart.Nature.ELEMENT.getName().equals( attributeName ) ) {
+			//noinspection unchecked
+			return resolvePath( attributeName, (SqmPathSource<Y>) getResolvedModel() );
+		}
+		return super.get( attributeName );
+	}
+
+	@Override
+	public <Y> SqmPath<Y> get(String attributeName, boolean includeSubtypes) {
+		if ( CollectionPart.Nature.ELEMENT.getName().equals( attributeName ) ) {
+			//noinspection unchecked
+			return resolvePath( attributeName, (SqmPathSource<Y>) getResolvedModel() );
+		}
+		return super.get( attributeName, includeSubtypes );
 	}
 }

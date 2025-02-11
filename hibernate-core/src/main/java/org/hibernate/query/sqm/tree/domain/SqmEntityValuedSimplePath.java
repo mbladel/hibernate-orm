@@ -5,6 +5,7 @@
 package org.hibernate.query.sqm.tree.domain;
 
 import org.hibernate.metamodel.model.domain.EntityDomainType;
+import org.hibernate.query.sqm.tree.jpa.AbstractJpaTupleElement;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.query.PathException;
 import org.hibernate.query.hql.spi.SqmCreationState;
@@ -37,7 +38,7 @@ public class SqmEntityValuedSimplePath<T> extends AbstractSqmSimplePath<T> {
 				this,
 				new SqmEntityValuedSimplePath<>(
 						getNavigablePathCopy( lhsCopy ),
-						getNodeType(),
+						getSource(),
 						lhsCopy,
 						nodeBuilder()
 				)

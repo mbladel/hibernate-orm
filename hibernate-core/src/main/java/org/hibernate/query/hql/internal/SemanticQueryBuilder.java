@@ -5970,7 +5970,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 
 		final SqmPathSource<?> referencedPathSource = sqmPath.getReferencedPathSource();
 		final TerminalNode firstNode = (TerminalNode) ctx.elementValueQuantifier().getChild(0);
-		checkPluralPath( sqmPath, referencedPathSource, firstNode );
+		checkPluralPath( sqmPath, firstNode );
 
 		if ( getCreationOptions().useStrictJpaCompliance() ) {
 			final PluralPersistentAttribute<?, ?, ?> attribute = (PluralPersistentAttribute<?, ?, ?>) referencedPathSource;
@@ -6053,7 +6053,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 			}
 		}
 		else {
-			checkPluralPath( sqmPath, referencedPathSource, firstNode );
+			checkPluralPath( sqmPath, firstNode );
 		}
 
 		if ( getCreationOptions().useStrictJpaCompliance() ) {
@@ -6131,8 +6131,8 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 		return result;
 	}
 
-	private void checkPluralPath(SqmPath<?> pluralAttributePath, SqmPathSource<?> referencedPathSource, TerminalNode firstNode) {
-		if ( !( referencedPathSource instanceof PluralPersistentAttribute<?, ?, ?> ) ) {
+	private void checkPluralPath(SqmPath<?> pluralAttributePath, TerminalNode firstNode) {
+		if ( !( pluralAttributePath.getModel() instanceof PluralPersistentAttribute<?, ?, ?> ) ) {
 			throw new FunctionArgumentException(
 					String.format(
 							"Argument of '%s' is not a plural path '%s'",
@@ -6178,7 +6178,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 
 	private SqmPath<?> consumePluralAttributeReference(HqlParser.PathContext parserPath) {
 		final SqmPath<?> sqmPath = consumeDomainPath( parserPath );
-		if ( sqmPath.getReferencedPathSource() instanceof PluralPersistentAttribute ) {
+		if ( sqmPath.getModel() instanceof PluralPersistentAttribute ) {
 			return sqmPath;
 		}
 		else {

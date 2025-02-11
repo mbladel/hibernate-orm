@@ -81,12 +81,12 @@ public abstract class AbstractSqmPath<T> extends AbstractSqmExpression<T> implem
 
 	@Override
 	public SqmPathSource<T> getNodeType() {
-		return (SqmPathSource<T>) NullnessUtil.castNonNull( super.getNodeType() );
+		return (SqmPathSource<T>) castNonNull( super.getNodeType() );
 	}
 
 	@Override
 	public SqmPathSource<T> getReferencedPathSource() {
-		return (SqmPathSource<T>) NullnessUtil.castNonNull( super.getNodeType() );
+		return (SqmPathSource<T>) castNonNull( super.getNodeType() );
 	}
 
 	@Override
@@ -155,6 +155,10 @@ public abstract class AbstractSqmPath<T> extends AbstractSqmExpression<T> implem
 		return (Bindable<T>) getReferencedPathSource();
 	}
 
+	public SqmPathSource<T> getSource() {
+		return (SqmPathSource<T>) castNonNull( super.getNodeType() );
+	}
+
 	@Override
 	public SqmPathSource<?> getResolvedModel() {
 		final DomainType<?> lhsType;
@@ -167,8 +171,7 @@ public abstract class AbstractSqmPath<T> extends AbstractSqmExpression<T> implem
 				return (SqmPathSource<?>) concreteAttribute;
 			}
 		}
-		// this might be wrong!
-		return pathSource;
+		return getSource();
 	}
 
 	@Override
