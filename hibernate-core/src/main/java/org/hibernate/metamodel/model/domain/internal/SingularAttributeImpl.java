@@ -121,8 +121,13 @@ public class SingularAttributeImpl<D,J>
 	}
 
 	@Override
-	public Class<J> getBindableJavaType() {
+	public Class<J> getQueryJavaType() {
 		return getJavaType();
+	}
+
+	@Override
+	public Class<J> getBindableJavaType() {
+		return getQueryJavaType();
 	}
 
 	@Override

@@ -42,11 +42,11 @@ public class QueryParameterBindingValidator {
 
 		final Class<?> parameterJavaType;
 		final SqmExpressible<?> sqmExpressible = paramType.resolveExpressible(bindingContext);
-		if ( paramType.getBindableJavaType() != null ) {
-			parameterJavaType = paramType.getBindableJavaType();
+		if ( paramType.getQueryJavaType() != null ) {
+			parameterJavaType = paramType.getQueryJavaType();
 		}
 		else {
-			parameterJavaType = sqmExpressible.getBindableJavaType();
+			parameterJavaType = sqmExpressible.getQueryJavaType();
 		}
 
 		if ( parameterJavaType == null ) {

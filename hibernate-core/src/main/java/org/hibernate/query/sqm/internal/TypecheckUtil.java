@@ -369,7 +369,7 @@ public class TypecheckUtil {
 	}
 
 	private static boolean sameJavaType(SqmExpressible<?> leftType, SqmExpressible<?> rightType) {
-		return canonicalize( leftType.getBindableJavaType() ) == canonicalize( rightType.getBindableJavaType() );
+		return canonicalize( leftType.getQueryJavaType() ) == canonicalize( rightType.getQueryJavaType() );
 	}
 
 	private static boolean isConvertedType(SqmExpressible<?> type) {

@@ -4,10 +4,11 @@
  */
 package org.hibernate.metamodel.model.domain.internal;
 
+import jakarta.persistence.metamodel.Bindable;
 import org.hibernate.query.sqm.SqmPathSource;
 
 /**
  * @author Steve Ebersole
  */
-public interface CompositeSqmPathSource<J> extends SqmPathSource<J> {
+public interface CompositeSqmPathSource<J> extends SqmPathSource<J>, Bindable<J> {
 }

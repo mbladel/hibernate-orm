@@ -64,9 +64,9 @@ public abstract class AbstractAttribute<D,J,B> implements PersistentAttribute<D,
 		return attributeJtd.getJavaTypeClass();
 	}
 
-	public DomainType<B> getSqmPathType() {
-		return valueType;
-	}
+//	public DomainType<B> getSqmPathType() {
+//		return valueType;
+//	}
 
 	@Override
 	public JavaType<J> getAttributeJavaType() {

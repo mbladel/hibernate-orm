@@ -173,8 +173,8 @@ public class MetadataContext {
 	}
 
 	public  void registerEntityType(PersistentClass persistentClass, EntityTypeImpl<?> entityType) {
-		if ( entityType.getBindableJavaType() != null && entityType.getBindableJavaType() != Map.class ) {
-			entityTypes.put( entityType.getBindableJavaType(), entityType );
+		if ( entityType.getQueryJavaType() != null && entityType.getQueryJavaType() != Map.class ) {
+			entityTypes.put( entityType.getQueryJavaType(), entityType );
 		}
 
 		identifiableTypesByName.put( persistentClass.getEntityName(), entityType );

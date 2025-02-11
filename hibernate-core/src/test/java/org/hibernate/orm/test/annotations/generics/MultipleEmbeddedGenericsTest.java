@@ -74,12 +74,12 @@ public class MultipleEmbeddedGenericsTest {
 			final Path<CustomerEmbeddableOne> firstEmbedded = root.get( "firstEmbedded" );
 			assertThat( firstEmbedded.getJavaType() ).isEqualTo( GenericEmbeddableOne.class );
 			assertThat( firstEmbedded.getModel() ).isSameAs( root.getModel().getAttribute( "firstEmbedded" ) );
-			assertThat( ( (SqmPath<?>) firstEmbedded ).getResolvedModel().getBindableJavaType() )
+			assertThat( ( (SqmPath<?>) firstEmbedded ).getResolvedModel().getQueryJavaType() )
 					.isEqualTo( CustomerEmbeddableOne.class );
 			final Path<CustomerEmbeddableTwo> secondEmbedded = root.get( "secondEmbedded" );
 			assertThat( secondEmbedded.getJavaType() ).isEqualTo( GenericEmbeddableTwo.class );
 			assertThat( secondEmbedded.getModel() ).isSameAs( root.getModel().getAttribute( "secondEmbedded" ) );
-			assertThat( ( (SqmPath<?>) secondEmbedded ).getResolvedModel().getBindableJavaType() )
+			assertThat( ( (SqmPath<?>) secondEmbedded ).getResolvedModel().getQueryJavaType() )
 					.isEqualTo( CustomerEmbeddableTwo.class );
 			query.select( root ).where( cb.and(
 					cb.equal( firstEmbedded.get( "genericPropertyA" ), "1" ),
@@ -110,12 +110,12 @@ public class MultipleEmbeddedGenericsTest {
 			final Path<InvoiceEmbeddableOne> firstEmbedded = root.get( "firstEmbedded" );
 			assertThat( firstEmbedded.getJavaType() ).isEqualTo( GenericEmbeddableOne.class );
 			assertThat( firstEmbedded.getModel() ).isSameAs( root.getModel().getAttribute( "firstEmbedded" ) );
-			assertThat( ( (SqmPath<?>) firstEmbedded ).getResolvedModel().getBindableJavaType() )
+			assertThat( ( (SqmPath<?>) firstEmbedded ).getResolvedModel().getQueryJavaType() )
 					.isEqualTo( InvoiceEmbeddableOne.class );
 			final Path<InvoiceEmbeddableTwo> secondEmbedded = root.get( "secondEmbedded" );
 			assertThat( secondEmbedded.getJavaType() ).isEqualTo( GenericEmbeddableTwo.class );
 			assertThat( secondEmbedded.getModel() ).isSameAs( root.getModel().getAttribute( "secondEmbedded" ) );
-			assertThat( ( (SqmPath<?>) secondEmbedded ).getResolvedModel().getBindableJavaType() )
+			assertThat( ( (SqmPath<?>) secondEmbedded ).getResolvedModel().getQueryJavaType() )
 					.isEqualTo( InvoiceEmbeddableTwo.class );
 			query.select( root ).where( cb.and(
 					cb.equal( firstEmbedded.get( "invoicePropertyA" ), 1 ),

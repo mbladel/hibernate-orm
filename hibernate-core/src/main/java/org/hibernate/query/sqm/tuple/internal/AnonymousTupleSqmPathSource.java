@@ -4,12 +4,14 @@
  */
 package org.hibernate.query.sqm.tuple.internal;
 
+import jakarta.persistence.metamodel.Bindable;
 import org.hibernate.Incubating;
 import org.hibernate.metamodel.model.domain.BasicDomainType;
 import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.internal.PathHelper;
+import org.hibernate.query.sqm.SqmExpressible;
 import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.tree.domain.SqmBasicValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmEmbeddedValuedSimplePath;
@@ -21,20 +23,28 @@ import org.hibernate.type.descriptor.java.JavaType;
  * @author Christian Beikov
  */
 @Incubating
-public class AnonymousTupleSqmPathSource<J> implements SqmPathSource<J> {
+public class AnonymousTupleSqmPathSource<J> implements SqmPathSource<J>, Bindable<J> {
 	private final String localPathName;
 	private final SqmPath<J> path;
+	private final BindableType bindableType;
 
 	public AnonymousTupleSqmPathSource(
 			String localPathName,
-			SqmPath<J> path) {
+			SqmPath<J> path,
+			BindableType bindableType) {
 		this.localPathName = localPathName;
 		this.path = path;
+		this.bindableType = bindableType;
+	}
+
+	@Override
+	public Class<J> getQueryJavaType() {
+		return path.getNodeJavaType().getJavaTypeClass();
 	}
 
 	@Override
 	public Class<J> getBindableJavaType() {
-		return path.getNodeJavaType().getJavaTypeClass();
+		return getQueryJavaType();
 	}
 
 	@Override
@@ -49,7 +59,7 @@ public class AnonymousTupleSqmPathSource<J> implements SqmPathSource<J> {
 
 	@Override
 	public BindableType getBindableType() {
-		return path.getNodeType().getBindableType();
+		return bindableType;
 	}
 
 	@Override

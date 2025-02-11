@@ -29,10 +29,10 @@ import org.hibernate.spi.NavigablePath;
  *
  * @author Steve Ebersole
  */
-public class SqmPluralValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
+public class SqmPluralValuedSimplePath<C, E> extends AbstractSqmSimplePath<C> {
 	public SqmPluralValuedSimplePath(
 			NavigablePath navigablePath,
-			PluralPersistentAttribute<?, ?, E> referencedNavigable,
+			PluralPersistentAttribute<?, C, E> referencedNavigable,
 			SqmPath<?> lhs,
 			NodeBuilder nodeBuilder) {
 		this( navigablePath, referencedNavigable, lhs, null, nodeBuilder );
@@ -40,7 +40,7 @@ public class SqmPluralValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
 
 	public SqmPluralValuedSimplePath(
 			NavigablePath navigablePath,
-			PluralPersistentAttribute<?, ?, E> referencedNavigable,
+			PluralPersistentAttribute<?, C, E> referencedNavigable,
 			SqmPath<?> lhs,
 			String explicitAlias,
 			NodeBuilder nodeBuilder) {
@@ -48,14 +48,14 @@ public class SqmPluralValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
 	}
 
 	@Override
-	public SqmPluralValuedSimplePath<E> copy(SqmCopyContext context) {
-		final SqmPluralValuedSimplePath<E> existing = context.getCopy( this );
+	public SqmPluralValuedSimplePath<C, E> copy(SqmCopyContext context) {
+		final SqmPluralValuedSimplePath<C, E> existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
 
 		final SqmPath<?> lhsCopy = getLhs().copy( context );
-		final SqmPluralValuedSimplePath<E> path = context.registerCopy(
+		final SqmPluralValuedSimplePath<C, E> path = context.registerCopy(
 				this,
 				new SqmPluralValuedSimplePath<>(
 						getNavigablePathCopy( lhsCopy ),
@@ -70,17 +70,17 @@ public class SqmPluralValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
 	}
 
 	@Override
-	public PluralPersistentAttribute<?, ?, E> getReferencedPathSource() {
-		return (PluralPersistentAttribute<?, ?, E>) super.getReferencedPathSource();
+	public PluralPersistentAttribute<?, C, E> getReferencedPathSource() {
+		return (PluralPersistentAttribute<?, C, E>) super.getReferencedPathSource();
 	}
 
 	@Override
-	public PluralPersistentAttribute<?, ?, E> getModel() {
-		return (PluralPersistentAttribute<?, ?, E>) super.getModel();
+	public PluralPersistentAttribute<?, C, E> getModel() {
+		return (PluralPersistentAttribute<?, C, E>) super.getModel();
 	}
 
 	@Override
-	public PluralPersistentAttribute<?,?,E> getNodeType() {
+	public PluralPersistentAttribute<?, C, E> getNodeType() {
 		return getReferencedPathSource();
 	}
 
@@ -169,17 +169,17 @@ public class SqmPluralValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
 	}
 
 	@Override
-	public SqmExpression<Class<? extends E>> type() {
+	public SqmExpression<Class<? extends C>> type() {
 		throw new UnsupportedOperationException( "Cannot access the type of plural valued simple paths" );
 	}
 
 	@Override
-	public <S extends E> SqmTreatedPath<E, S> treatAs(Class<S> treatJavaType) throws PathException {
+	public <S extends C> SqmTreatedPath<C, S> treatAs(Class<S> treatJavaType) throws PathException {
 		throw new UnsupportedOperationException( "Cannot treat plural valued simple paths" );
 	}
 
 	@Override
-	public <S extends E> SqmTreatedEntityValuedSimplePath<E, S> treatAs(EntityDomainType<S> treatTarget) throws PathException {
+	public <S extends C> SqmTreatedEntityValuedSimplePath<C, S> treatAs(EntityDomainType<S> treatTarget) throws PathException {
 		throw new UnsupportedOperationException( "Cannot treat plural valued simple paths" );
 	}
 

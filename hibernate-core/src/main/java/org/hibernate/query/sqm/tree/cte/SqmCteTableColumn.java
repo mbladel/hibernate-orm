@@ -50,6 +50,6 @@ public class SqmCteTableColumn implements JpaCteCriteriaAttribute {
 
 	@Override
 	public Class<?> getJavaType() {
-		return typeExpressible == null ? null : typeExpressible.getBindableJavaType();
+		return typeExpressible == null ? null : typeExpressible.getQueryJavaType();
 	}
 }

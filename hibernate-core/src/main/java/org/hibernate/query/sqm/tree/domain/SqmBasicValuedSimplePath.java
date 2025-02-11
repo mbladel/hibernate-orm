@@ -177,7 +177,7 @@ public class SqmBasicValuedSimplePath<T>
 	}
 
 	@Override
-	public Class<T> getBindableJavaType() {
+	public Class<T> getQueryJavaType() {
 		return getJavaType();
 	}
 

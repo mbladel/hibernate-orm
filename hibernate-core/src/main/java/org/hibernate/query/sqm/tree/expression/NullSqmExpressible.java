@@ -18,7 +18,7 @@ public class NullSqmExpressible implements SqmExpressible<Object> {
 	public static final NullSqmExpressible NULL_SQM_EXPRESSIBLE = new NullSqmExpressible();
 
 	@Override
-	public Class<Object> getBindableJavaType() {
+	public Class<Object> getQueryJavaType() {
 		return null;
 	}
 

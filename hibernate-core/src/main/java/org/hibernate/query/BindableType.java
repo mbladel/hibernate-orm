@@ -20,10 +20,10 @@ public interface BindableType<J> {
 	/**
 	 * The expected Java type
 	 */
-	Class<J> getBindableJavaType();
+	Class<J> getQueryJavaType();
 
 	default boolean isInstance(J value) {
-		return getBindableJavaType().isInstance( value );
+		return getQueryJavaType().isInstance( value );
 	}
 
 	/**

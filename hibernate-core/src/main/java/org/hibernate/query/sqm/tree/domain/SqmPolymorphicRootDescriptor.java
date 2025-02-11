@@ -155,8 +155,13 @@ public class SqmPolymorphicRootDescriptor<T> implements EntityDomainType<T> {
 	}
 
 	@Override
-	public Class<T> getBindableJavaType() {
+	public Class<T> getQueryJavaType() {
 		return polymorphicJavaType.getJavaTypeClass();
+	}
+
+	@Override
+	public Class<T> getBindableJavaType() {
+		return getQueryJavaType();
 	}
 
 	@Override
@@ -166,7 +171,7 @@ public class SqmPolymorphicRootDescriptor<T> implements EntityDomainType<T> {
 
 	@Override
 	public Class<T> getJavaType() {
-		return getBindableJavaType();
+		return getQueryJavaType();
 	}
 
 	@Override

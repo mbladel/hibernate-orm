@@ -129,7 +129,7 @@ public class SqmFieldLiteral<T> implements SqmExpression<T>, SqmExpressible<T>, 
 	}
 
 	@Override
-	public Class<T> getBindableJavaType() {
+	public Class<T> getQueryJavaType() {
 		return getJavaTypeDescriptor().getJavaTypeClass();
 	}
 

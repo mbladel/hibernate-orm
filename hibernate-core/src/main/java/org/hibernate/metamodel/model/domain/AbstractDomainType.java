@@ -4,12 +4,13 @@
  */
 package org.hibernate.metamodel.model.domain;
 
+import jakarta.persistence.metamodel.Bindable;
 import org.hibernate.type.descriptor.java.JavaType;
 
 /**
  * @author Steve Ebersole
  */
-public abstract class AbstractDomainType<J> implements SimpleDomainType<J> {
+public abstract class AbstractDomainType<J> implements SimpleDomainType<J>, Bindable<J> {
 	private final JavaType<J> javaType;
 
 	public AbstractDomainType(JavaType<J> javaType) {
@@ -24,6 +25,11 @@ public abstract class AbstractDomainType<J> implements SimpleDomainType<J> {
 	@Override
 	public Class<J> getJavaType() {
 		return getExpressibleJavaType().getJavaTypeClass();
+	}
+
+	@Override
+	public Class<J> getQueryJavaType() {
+		return getJavaType();
 	}
 
 	@Override

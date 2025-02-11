@@ -17,7 +17,7 @@ import org.hibernate.query.sqm.SqmPathSource;
  * @author Steve Ebersole
  */
 public interface PluralPersistentAttribute<D, C, E>
-		extends PersistentAttribute<D, C>, SqmPathSource<E>, SqmJoinable<D,E>, PluralAttribute<D, C, E> {
+		extends PersistentAttribute<D, C>, SqmPathSource<C>, SqmJoinable<D,E>, PluralAttribute<D, C, E> {
 	@Override
 	ManagedDomainType<D> getDeclaringType();
 

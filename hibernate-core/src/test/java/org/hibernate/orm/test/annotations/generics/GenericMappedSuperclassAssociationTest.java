@@ -85,7 +85,7 @@ public class GenericMappedSuperclassAssociationTest {
 			final Root<ChildB> from = cq.from( ChildB.class );
 			final Path<Object> parent = from.get( "parent" );
 			assertThat( parent.getModel().getBindableJavaType() ).isEqualTo( Parent.class );
-			assertThat( ( (SqmPath<?>) parent ).getResolvedModel().getBindableJavaType() ).isEqualTo( ParentB.class );
+			assertThat( ( (SqmPath<?>) parent ).getResolvedModel().getQueryJavaType() ).isEqualTo( ParentB.class );
 			cq.select( from ).where( cb.equal( from.get( "parent" ).get( "id" ), 2L ) );
 			final ChildB result = session.createQuery( cq ).getSingleResult();
 			assertThat( result.getParent().getName() ).isEqualTo( "parent_b" );

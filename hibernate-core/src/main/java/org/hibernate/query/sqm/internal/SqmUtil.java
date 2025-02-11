@@ -832,7 +832,7 @@ public class SqmUtil {
 		else if ( selection != null && selection.getSelectableNode() instanceof SqmParameter<?> sqmParameter ) {
 			final Class<?> anticipatedClass =
 					sqmParameter.getAnticipatedType() != null
-							? sqmParameter.getAnticipatedType().getBindableJavaType()
+							? sqmParameter.getAnticipatedType().getQueryJavaType()
 							: null;
 			return anticipatedClass != null
 				&& expectedResultType.isAssignableFrom( anticipatedClass );
@@ -1118,10 +1118,10 @@ public class SqmUtil {
 
 	private static boolean isEntityIdType(SqmExpressible<?> selectionExpressible, Class<?> resultClass) {
 		if ( selectionExpressible instanceof IdentifiableDomainType<?> identifiableDomainType ) {
-			return resultClass.isAssignableFrom( identifiableDomainType.getIdType().getBindableJavaType() );
+			return resultClass.isAssignableFrom( identifiableDomainType.getIdType().getQueryJavaType() );
 		}
 		else if ( selectionExpressible instanceof EntitySqmPathSource<?> entityPath ) {
-			return resultClass.isAssignableFrom( entityPath.getSqmPathType().getIdType().getBindableJavaType() );
+			return resultClass.isAssignableFrom( entityPath.getSqmPathType().getIdType().getQueryJavaType() );
 		}
 		else {
 			return false;

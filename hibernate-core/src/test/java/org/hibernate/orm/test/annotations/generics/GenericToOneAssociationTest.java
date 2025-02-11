@@ -79,7 +79,7 @@ public class GenericToOneAssociationTest {
 			// generic attributes are always reported as Object java type
 			assertThat( parent.getJavaType() ).isEqualTo( Object.class );
 			assertThat( parent.getModel() ).isSameAs( root.getModel().getAttribute( "parent" ) );
-			assertThat( ( (SqmPath<?>) parent ).getResolvedModel().getBindableJavaType() ).isEqualTo( Parent.class );
+			assertThat( ( (SqmPath<?>) parent ).getResolvedModel().getQueryJavaType() ).isEqualTo( Parent.class );
 			final Long result = session.createQuery( query.select( parent.get( "id" ) ) ).getSingleResult();
 			assertThat( result ).isEqualTo( 1L );
 		} );
@@ -103,7 +103,7 @@ public class GenericToOneAssociationTest {
 			// generic attributes are always reported as Object java type
 			assertThat( join.getJavaType() ).isEqualTo( Object.class );
 			assertThat( join.getModel() ).isSameAs( root.getModel().getAttribute( "child" ) );
-			assertThat( ( (SqmPath<?>) join ).getResolvedModel().getBindableJavaType() ).isEqualTo( Child.class );
+			assertThat( ( (SqmPath<?>) join ).getResolvedModel().getQueryJavaType() ).isEqualTo( Child.class );
 			final Long result = session.createQuery( query.select( join.get( "id" ) ) ).getSingleResult();
 			assertThat( result ).isEqualTo( 2L );
 		} );

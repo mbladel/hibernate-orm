@@ -143,7 +143,7 @@ public class QueryParameterBindingImpl<T> implements QueryParameterBinding<T>, J
 				&& value instanceof Collection
 				&& ( bindableType == null
 					? !isRegisteredAsBasicType( value.getClass() )
-					: !bindableType.getBindableJavaType().isInstance( value ) ) ) {
+					: !bindableType.getQueryJavaType().isInstance( value ) ) ) {
 			//noinspection unchecked
 			setBindValues( (Collection<T>) value );
 			return true;
@@ -267,7 +267,7 @@ public class QueryParameterBindingImpl<T> implements QueryParameterBinding<T>, J
 	public boolean setType(MappingModelExpressible<T> type) {
 		this.type = type;
 		// If the bind type is undetermined or the given type is a model part, then we try to apply a new bind type
-		if ( bindType == null || bindType.getBindableJavaType() == Object.class || type instanceof ModelPart ) {
+		if ( bindType == null || bindType.getQueryJavaType() == Object.class || type instanceof ModelPart ) {
 			if ( type instanceof BindableType<?> ) {
 				final boolean changed = bindType != null && type != bindType;
 				bindType = (BindableType<? super T>) type;

@@ -4,6 +4,7 @@
  */
 package org.hibernate.metamodel.model.domain.internal;
 
+import jakarta.persistence.metamodel.Bindable;
 import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.type.descriptor.java.JavaType;
@@ -11,7 +12,7 @@ import org.hibernate.type.descriptor.java.JavaType;
 /**
  * @author Steve Ebersole
  */
-public abstract class AbstractSqmPathSource<J> implements SqmPathSource<J> {
+public abstract class AbstractSqmPathSource<J> implements SqmPathSource<J>, Bindable<J> {
 	private final String localPathName;
 	protected final SqmPathSource<J> pathModel;
 	private final DomainType<J> domainType;
@@ -29,8 +30,8 @@ public abstract class AbstractSqmPathSource<J> implements SqmPathSource<J> {
 	}
 
 	@Override
-	public Class<J> getBindableJavaType() {
-		return domainType.getBindableJavaType();
+	public Class<J> getQueryJavaType() {
+		return domainType.getQueryJavaType();
 	}
 
 	@Override
@@ -41,6 +42,11 @@ public abstract class AbstractSqmPathSource<J> implements SqmPathSource<J> {
 	@Override
 	public DomainType<J> getSqmPathType() {
 		return domainType;
+	}
+
+	@Override
+	public Class<J> getBindableJavaType() {
+		return getQueryJavaType();
 	}
 
 	@Override

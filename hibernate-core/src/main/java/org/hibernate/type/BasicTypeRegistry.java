@@ -80,7 +80,7 @@ public class BasicTypeRegistry implements Serializable {
 	private BasicType<?> createBasicType(String name, BasicTypeReference<?> typeReference) {
 		final JavaType<Object> javaType =
 				typeConfiguration.getJavaTypeRegistry()
-						.getDescriptor( typeReference.getBindableJavaType() );
+						.getDescriptor( typeReference.getQueryJavaType() );
 		final JdbcType jdbcType =
 				typeConfiguration.getJdbcTypeRegistry()
 						.getDescriptor( typeReference.getSqlTypeCode() );

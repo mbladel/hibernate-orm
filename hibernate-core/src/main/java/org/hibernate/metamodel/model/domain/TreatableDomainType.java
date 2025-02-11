@@ -4,12 +4,13 @@
  */
 package org.hibernate.metamodel.model.domain;
 
+import jakarta.persistence.metamodel.Bindable;
 import org.hibernate.query.sqm.SqmPathSource;
 
 /**
  * @author Marco Belladelli
  */
-public interface TreatableDomainType<J> extends ManagedDomainType<J>, SqmPathSource<J> {
+public interface TreatableDomainType<J> extends ManagedDomainType<J>, SqmPathSource<J>, Bindable<J> {
 	@Override
 	default DomainType<J> getSqmType() {
 		return this;

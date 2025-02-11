@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import jakarta.persistence.metamodel.Bindable;
 import org.hibernate.Incubating;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.metamodel.UnsupportedMappingException;
@@ -42,7 +43,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  * @author Christian Beikov
  */
 @Incubating
-public class AnonymousTupleType<T> implements TupleType<T>, DomainType<T>, ReturnableType<T>, SqmPathSource<T> {
+public class AnonymousTupleType<T> implements TupleType<T>, DomainType<T>, ReturnableType<T>, SqmPathSource<T>, Bindable<T> {
 
 	private final JavaType<T> javaTypeDescriptor;
 	private final @Nullable NavigablePath[] componentSourcePaths;
@@ -267,14 +268,19 @@ public class AnonymousTupleType<T> implements TupleType<T>, DomainType<T>, Retur
 	}
 
 	@Override
-	public Class<T> getBindableJavaType() {
+	public Class<T> getQueryJavaType() {
 		//noinspection unchecked
 		return (Class<T>) javaTypeDescriptor.getJavaType();
 	}
 
 	@Override
 	public Class<T> getJavaType() {
-		return getBindableJavaType();
+		return getQueryJavaType();
+	}
+
+	@Override
+	public Class<T> getBindableJavaType() {
+		return getQueryJavaType();
 	}
 
 	@Override

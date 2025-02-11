@@ -33,7 +33,7 @@ public class ArrayType implements UserType<Array>, BindableType<Array>, BasicVal
 	private final JdbcType jdbcType = VarcharJdbcType.INSTANCE;
 
 	@Override
-	public Class<Array> getBindableJavaType() {
+	public Class<Array> getQueryJavaType() {
 		// really a UserType should not implement BindableType
 		return Array.class;
 	}

@@ -605,7 +605,7 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 	private static <T, E, K> SubGraphImplementor<?> makeAttributeNodeValueSubgraph(
 			AttributeNodeImplementor<T, E, K> attributeNode, Class<?> subgraphType) {
 		final Class<?> attributeValueType =
-				attributeNode.getAttributeDescriptor().getValueGraphType().getBindableJavaType();
+				attributeNode.getAttributeDescriptor().getValueGraphType().getQueryJavaType();
 		if ( !attributeValueType.isAssignableFrom( subgraphType ) ) {
 			throw new AnnotationException( "Named subgraph type '" + subgraphType.getName()
 					+ "' is not a subtype of the value type '" + attributeValueType.getName() + "'" );
@@ -618,7 +618,7 @@ public class JpaMetamodelImpl implements JpaMetamodelImplementor, Serializable {
 	private static <T, E, K> SubGraphImplementor<?> makeAttributeNodeKeySubgraph(
 			AttributeNodeImplementor<T, E, K> attributeNode, Class<?> subgraphType) {
 		final Class<?> attributeKeyType =
-				attributeNode.getAttributeDescriptor().getKeyGraphType().getBindableJavaType();
+				attributeNode.getAttributeDescriptor().getKeyGraphType().getQueryJavaType();
 		if ( !attributeKeyType.isAssignableFrom( subgraphType ) ) {
 			throw new AnnotationException( "Named subgraph type '" + subgraphType.getName()
 					+ "' is not a subtype of the key type '" + attributeKeyType.getName() + "'" );

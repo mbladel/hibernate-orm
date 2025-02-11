@@ -120,7 +120,7 @@ public class DynamicInstantiationTests extends BaseSqmUnitTest {
 				SqmPath.class
 		);
 		assertThat( theIntegerPath.getReferencedPathSource().getPathName(), is( "theInteger" ) );
-		assertThat( theIntegerPath.getReferencedPathSource().getBindableJavaType(), is( equalTo( Integer.class ) ) );
+		assertThat( theIntegerPath.getReferencedPathSource().getQueryJavaType(), is( equalTo( Integer.class ) ) );
 	}
 
 	@Test

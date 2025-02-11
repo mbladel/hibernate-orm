@@ -11,7 +11,7 @@ package org.hibernate.metamodel.model.domain;
  */
 public interface SimpleDomainType<J> extends DomainType<J>, jakarta.persistence.metamodel.Type<J> {
 	@Override
-	default Class<J> getBindableJavaType() {
+	default Class<J> getQueryJavaType() {
 		return getJavaType();
 	}
 }

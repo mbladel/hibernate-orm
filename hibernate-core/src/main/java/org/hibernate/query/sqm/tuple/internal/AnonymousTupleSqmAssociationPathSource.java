@@ -33,7 +33,7 @@ public class AnonymousTupleSqmAssociationPathSource<O, J> extends AnonymousTuple
 			String localPathName,
 			SqmPath<J> path,
 			SimpleDomainType<J> domainType) {
-		super( localPathName, path );
+		super( localPathName, path, BindableType.ENTITY_TYPE );
 		this.domainType = domainType;
 	}
 

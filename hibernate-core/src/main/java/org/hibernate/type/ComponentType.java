@@ -838,7 +838,7 @@ public class ComponentType extends AbstractType implements CompositeTypeImplemen
 	}
 
 	@Override
-	public Class<?> getBindableJavaType() {
+	public Class<?> getQueryJavaType() {
 		return getReturnedClass();
 	}
 

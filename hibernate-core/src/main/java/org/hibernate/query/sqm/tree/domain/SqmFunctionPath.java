@@ -51,7 +51,7 @@ public class SqmFunctionPath<T> extends AbstractSqmPath<T> {
 	private static <X> SqmPathSource<X> determinePathSource(NavigablePath navigablePath, SqmFunction<?> function) {
 		//noinspection unchecked
 		final SqmExpressible<X> nodeType = (SqmExpressible<X>) function.getNodeType();
-		final Class<X> bindableJavaType = nodeType.getBindableJavaType();
+		final Class<X> bindableJavaType = nodeType.getQueryJavaType();
 		final ManagedType<X> managedType = function.nodeBuilder()
 				.getJpaMetamodel()
 				.findManagedType( bindableJavaType );

@@ -14,6 +14,7 @@ import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.PluralPersistentAttribute;
 import org.hibernate.metamodel.model.domain.SimpleDomainType;
+import org.hibernate.query.sqm.SqmExpressible;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.internal.SqmMappingModelHelper;
@@ -104,8 +105,8 @@ public abstract class AbstractPluralAttribute<D, C, E>
 	}
 
 	@Override
-	public JavaType<E> getExpressibleJavaType() {
-		return getElementType().getExpressibleJavaType();
+	public JavaType<C> getExpressibleJavaType() {
+		return getAttributeJavaType();
 	}
 
 	@Override
@@ -151,7 +152,18 @@ public abstract class AbstractPluralAttribute<D, C, E>
 	}
 
 	@Override
-	public SqmPath<E> createSqmPath(SqmPath<?> lhs, SqmPathSource<?> intermediatePathSource) {
+	public Class<C> getQueryJavaType() {
+		return getJavaType();
+	}
+
+	@Override
+	public DomainType<C> getSqmPathType() {
+		// todo marco : this will cause problems, I'm guessing
+		return null;
+	}
+
+	@Override
+	public SqmPath<C> createSqmPath(SqmPath<?> lhs, SqmPathSource<?> intermediatePathSource) {
 		return new SqmPluralValuedSimplePath<>(
 				PathHelper.append( lhs, this, intermediatePathSource ),
 				this,
@@ -172,9 +184,9 @@ public abstract class AbstractPluralAttribute<D, C, E>
 		if ( parentPathSource instanceof PluralPersistentAttribute<?, ?, ?> ) {
 			navigablePath = navigablePath.append( CollectionPart.Nature.ELEMENT.getName() );
 		}
-		final DomainType<?> parentType = parentPathSource.getSqmPathType();
-		if ( parentType != getDeclaringType() && parentType instanceof EntityDomainType &&
-				( (EntityDomainType<?>) parentType ).findPluralAttribute( getName() ) == null ) {
+		final SqmExpressible<?> parentType = parentPathSource.getSqmPathType();
+		if ( parentType != getDeclaringType() && parentType instanceof EntityDomainType<?> entityDomainType &&
+			 entityDomainType.findPluralAttribute( getName() ) == null ) {
 			// If the parent path is an entity type which does not contain the joined attribute
 			// add an implicit treat to the parent's navigable path
 			navigablePath = navigablePath.treatAs( getDeclaringType().getTypeName() );

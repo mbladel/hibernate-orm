@@ -116,7 +116,7 @@ public class SqmEmbeddedValuedSimplePath<T>
 	}
 
 	@Override
-	public Class<T> getBindableJavaType() {
+	public Class<T> getQueryJavaType() {
 		return getJavaType();
 	}
 

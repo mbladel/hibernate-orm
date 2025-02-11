@@ -60,7 +60,7 @@ public class MappedSuperclassTemporalAccessorTest {
 			final Path<Object> createTime = root.get( "createTime" );
 			assertThat( createTime.getModel() ).isSameAs( root.getModel().getAttribute( "createTime" ) );
 			assertThat( ( (SqmPath<?>) createTime ).getResolvedModel()
-								.getBindableJavaType() ).isEqualTo( LocalDateTime.class );
+								.getQueryJavaType() ).isEqualTo( LocalDateTime.class );
 			final Object result = session.createQuery( cq.select( createTime ) ).getSingleResult();
 			assertThat( result ).isEqualTo( LocalDateTime.of( 2023, 6, 16, 11, 41 ) );
 		} );
@@ -75,7 +75,7 @@ public class MappedSuperclassTemporalAccessorTest {
 			final Path<Object> id = root.get( "id" );
 			assertThat( id.getModel() ).isSameAs( root.getModel().getAttribute( "id" ) );
 			assertThat( ( (SqmPath<?>) id ).getResolvedModel()
-								.getBindableJavaType() ).isEqualTo( Long.class );
+								.getQueryJavaType() ).isEqualTo( Long.class );
 			final Object result = session.createQuery( cq.select( id ) ).getSingleResult();
 			assertThat( result ).isEqualTo( 1L );
 		} );
@@ -90,7 +90,7 @@ public class MappedSuperclassTemporalAccessorTest {
 			final Path<Object> createUser = root.get( "createUser" );
 			assertThat( createUser.getModel() ).isSameAs( root.getModel().getAttribute( "createUser" ) );
 			assertThat( ( (SqmPath<?>) createUser ).getResolvedModel()
-								.getBindableJavaType() ).isEqualTo( String.class );
+								.getQueryJavaType() ).isEqualTo( String.class );
 			final Object result = session.createQuery( cq.select( createUser ) ).getSingleResult();
 			assertThat( result ).isEqualTo( "Marco" );
 		} );

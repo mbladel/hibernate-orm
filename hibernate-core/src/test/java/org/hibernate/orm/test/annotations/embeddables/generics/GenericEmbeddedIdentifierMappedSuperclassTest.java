@@ -103,20 +103,20 @@ public class GenericEmbeddedIdentifierMappedSuperclassTest {
 			assertThat( id.getJavaType() ).isEqualTo( EmbeddableKey.class );
 			// assert that the generic attributes inside the component's model are reported as Object type
 			final SqmPathSource<?> modelPathSource = (SqmPathSource<?>) id.getModel();
-			assertThat( modelPathSource.findSubPathSource( "entity" ).getBindableJavaType() ).isEqualTo( Object.class );
+			assertThat( modelPathSource.findSubPathSource( "entity" ).getQueryJavaType() ).isEqualTo( Object.class );
 			assertThat( modelPathSource.findSubPathSource( "embedded" )
-								.getBindableJavaType() ).isEqualTo( Object.class );
+								.getQueryJavaType() ).isEqualTo( Object.class );
 			// the serial property is not generic, so it should have the correct type even in the generic component's model
 			assertThat( modelPathSource.findSubPathSource( "serial" )
-								.getBindableJavaType() ).isEqualTo( Integer.class );
+								.getQueryJavaType() ).isEqualTo( Integer.class );
 			// assert that types of the concrete attributes inside the component's resolved model are reported correctly
 			final SqmPathSource<?> resolvedPathSource = ( (SqmPath<Object>) id ).getResolvedModel();
 			assertThat( resolvedPathSource.findSubPathSource( "entity" )
-								.getBindableJavaType() ).isEqualTo( User.class );
+								.getQueryJavaType() ).isEqualTo( User.class );
 			assertThat( resolvedPathSource.findSubPathSource( "embedded" )
-								.getBindableJavaType() ).isEqualTo( UserReport.class );
+								.getQueryJavaType() ).isEqualTo( UserReport.class );
 			assertThat( modelPathSource.findSubPathSource( "serial" )
-								.getBindableJavaType() ).isEqualTo( Integer.class );
+								.getQueryJavaType() ).isEqualTo( Integer.class );
 			// test same query as HQL
 			query.select( root ).where(
 					cb.and(
@@ -154,20 +154,20 @@ public class GenericEmbeddedIdentifierMappedSuperclassTest {
 			assertThat( id.getJavaType() ).isEqualTo( EmbeddableKey.class );
 			// assert that the generic attributes inside the component's model are reported as Object type
 			final SqmPathSource<?> modelPathSource = (SqmPathSource<?>) id.getModel();
-			assertThat( modelPathSource.findSubPathSource( "entity" ).getBindableJavaType() ).isEqualTo( Object.class );
+			assertThat( modelPathSource.findSubPathSource( "entity" ).getQueryJavaType() ).isEqualTo( Object.class );
 			assertThat( modelPathSource.findSubPathSource( "embedded" )
-								.getBindableJavaType() ).isEqualTo( Object.class );
+								.getQueryJavaType() ).isEqualTo( Object.class );
 			// the serial property is not generic, so it should have the correct type even in the generic component's model
 			assertThat( modelPathSource.findSubPathSource( "serial" )
-								.getBindableJavaType() ).isEqualTo( Integer.class );
+								.getQueryJavaType() ).isEqualTo( Integer.class );
 			// assert that types of the concrete attributes inside the component's resolved model are reported correctly
 			final SqmPathSource<?> resolvedPathSource = ( (SqmPath<Object>) id ).getResolvedModel();
 			assertThat( resolvedPathSource.findSubPathSource( "entity" )
-								.getBindableJavaType() ).isEqualTo( Group.class );
+								.getQueryJavaType() ).isEqualTo( Group.class );
 			assertThat( resolvedPathSource.findSubPathSource( "embedded" )
-								.getBindableJavaType() ).isEqualTo( GroupReport.class );
+								.getQueryJavaType() ).isEqualTo( GroupReport.class );
 			assertThat( modelPathSource.findSubPathSource( "serial" )
-								.getBindableJavaType() ).isEqualTo( Integer.class );
+								.getQueryJavaType() ).isEqualTo( Integer.class );
 			// test same query as HQL
 			query.select( root ).where(
 					cb.and(

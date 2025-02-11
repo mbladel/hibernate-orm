@@ -41,7 +41,7 @@ public class MapAttributeImpl<X, K, V> extends AbstractPluralAttribute<X, Map<K,
 
 	@Override
 	public Class<K> getKeyJavaType() {
-		return keyPathSource.getBindableJavaType();
+		return keyPathSource.getQueryJavaType();
 	}
 
 	@Override

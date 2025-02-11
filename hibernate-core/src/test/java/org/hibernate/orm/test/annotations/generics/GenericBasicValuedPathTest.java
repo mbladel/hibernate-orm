@@ -54,7 +54,7 @@ public class GenericBasicValuedPathTest {
 			// generic attributes are always reported as Object java type
 			assertThat( idPath.getJavaType() ).isEqualTo( Object.class );
 			assertThat( idPath.getModel() ).isSameAs( root.getModel().getAttribute( "id" ) );
-			assertThat( ( (SqmPath<?>) idPath ).getResolvedModel().getBindableJavaType() ).isEqualTo( Integer.class );
+			assertThat( ( (SqmPath<?>) idPath ).getResolvedModel().getQueryJavaType() ).isEqualTo( Integer.class );
 			final Object result = session.createQuery( query.select( idPath ) ).getSingleResult();
 			assertThat( result ).isEqualTo( 1 );
 		} );
@@ -70,7 +70,7 @@ public class GenericBasicValuedPathTest {
 			// generic attributes are always reported as Object java type
 			assertThat( dataPath.getJavaType() ).isEqualTo( Object.class );
 			assertThat( dataPath.getModel() ).isSameAs( root.getModel().getAttribute( "data" ) );
-			assertThat( ( (SqmPath<?>) dataPath ).getResolvedModel().getBindableJavaType() ).isEqualTo( String.class );
+			assertThat( ( (SqmPath<?>) dataPath ).getResolvedModel().getQueryJavaType() ).isEqualTo( String.class );
 			final Object result = session.createQuery( query.select( dataPath ) ).getSingleResult();
 			assertThat( result ).isEqualTo( "my_entity" );
 		} );

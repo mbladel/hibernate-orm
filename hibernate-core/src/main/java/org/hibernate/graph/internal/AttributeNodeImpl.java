@@ -259,7 +259,7 @@ public abstract sealed class AttributeNodeImpl<J, E, K>
 	@Override @Deprecated
 	public <S> SubGraphImplementor<S> makeSubGraph(Class<S> subtype) {
 		final ManagedDomainType<E> managedType = asManagedType( valueGraphType );
-		if ( !managedType.getBindableJavaType().isAssignableFrom( subtype ) ) {
+		if ( !managedType.getQueryJavaType().isAssignableFrom( subtype ) ) {
 			throw new IllegalArgumentException( "Not a subtype: " + subtype.getName() );
 		}
 		@SuppressWarnings("unchecked")
@@ -283,7 +283,7 @@ public abstract sealed class AttributeNodeImpl<J, E, K>
 	public <S> SubGraphImplementor<S> makeKeySubGraph(Class<S> subtype) {
 		checkMap();
 		final ManagedDomainType<K> type = asManagedType( keyGraphType );
-		if ( !type.getBindableJavaType().isAssignableFrom( subtype ) ) {
+		if ( !type.getQueryJavaType().isAssignableFrom( subtype ) ) {
 			throw new IllegalArgumentException( "Not a key subtype: " + subtype.getName() );
 		}
 		@SuppressWarnings("unchecked")
@@ -352,7 +352,7 @@ public abstract sealed class AttributeNodeImpl<J, E, K>
 		}
 		else {
 			final HashMap<Class<?>, SubGraphImplementor<?>> map = new HashMap<>( valueSubgraph.getTreatedSubgraphs() );
-			map.put( attribute.getValueGraphType().getBindableJavaType(), valueSubgraph );
+			map.put( attribute.getValueGraphType().getQueryJavaType(), valueSubgraph );
 			return map;
 		}
 	}
