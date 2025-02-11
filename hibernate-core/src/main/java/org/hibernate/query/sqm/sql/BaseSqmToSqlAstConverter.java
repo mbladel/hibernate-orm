@@ -3324,8 +3324,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 			TableGroup lhsTableGroup,
 			TableGroup ownerTableGroup,
 			boolean transitive) {
-
-		final SqmPathSource<?> pathSource = sqmJoin.getReferencedPathSource();
+		final PersistentAttribute<?, ?> attribute = sqmJoin.getAttribute();
 		final SqmJoinType sqmJoinType = sqmJoin.getSqmJoinType();
 
 		final TableGroupJoin joinedTableGroupJoin;
@@ -3335,10 +3334,10 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 
 		final ModelPart modelPart =
 				ownerTableGroup.getModelPart()
-						.findSubPart( pathSource.getPathName(),
+						.findSubPart( attribute.getName(),
 								resolveExplicitTreatTarget( sqmJoin, this ) );
 
-		if ( pathSource instanceof PluralPersistentAttribute ) {
+		if ( attribute instanceof PluralPersistentAttribute ) {
 			assert modelPart instanceof PluralAttributeMapping;
 			final PluralAttributeMapping pluralAttributeMapping = (PluralAttributeMapping) modelPart;
 
@@ -4571,7 +4570,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		prepareReusablePath( lhs, () -> null );
 		final TableGroup tableGroup = getFromClauseIndex().findTableGroup( lhs.getNavigablePath() );
 		final ModelPart subPart = tableGroup.getModelPart()
-				.findSubPart( fkExpression.getToOnePath().getModel().getPathName(), null );
+				.findSubPart( fkExpression.getToOnePath().getNodeType().getPathName(), null );
 		assert subPart instanceof ToOneAttributeMapping;
 
 		final ToOneAttributeMapping toOneMapping = (ToOneAttributeMapping) subPart;
@@ -7883,7 +7882,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 
 		pushProcessingState( subQueryState );
 		try {
-			final SqmPluralValuedSimplePath<?> sqmPluralPath = predicate.getPluralPath();
+			final SqmPluralValuedSimplePath<?, ?> sqmPluralPath = predicate.getPluralPath();
 
 			final NavigablePath pluralPathNavPath = sqmPluralPath.getNavigablePath();
 			final NavigablePath parentNavPath = pluralPathNavPath.getParent();

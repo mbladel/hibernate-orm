@@ -52,7 +52,7 @@ public class SqmAnyValuedSimplePath<T> extends AbstractSqmSimplePath<T> {
 				this,
 				new SqmAnyValuedSimplePath<>(
 						getNavigablePathCopy( lhsCopy ),
-						getModel(),
+						getNodeType(),
 						lhsCopy,
 						getExplicitAlias(),
 						nodeBuilder()

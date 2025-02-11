@@ -2432,7 +2432,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 	@Override
 	public SqmEmptinessPredicate visitIsEmptyPredicate(HqlParser.IsEmptyPredicateContext ctx) {
 		SqmExpression<?> expression = (SqmExpression<?>) ctx.expression().accept(this);
-		if ( expression instanceof SqmPluralValuedSimplePath<?> pluralValuedSimplePath ) {
+		if ( expression instanceof SqmPluralValuedSimplePath<?, ?> pluralValuedSimplePath ) {
 			return new SqmEmptinessPredicate(
 					pluralValuedSimplePath,
 					ctx.NOT() != null,
@@ -3285,7 +3285,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 	public SqmPredicate visitMemberOfPredicate(HqlParser.MemberOfPredicateContext ctx) {
 		final boolean negated = ctx.NOT() != null;
 		final SqmPath<?> sqmPluralPath = consumeDomainPath( ctx.path() );
-		if ( sqmPluralPath instanceof SqmPluralValuedSimplePath<?> pluralValuedSimplePath ) {
+		if ( sqmPluralPath instanceof SqmPluralValuedSimplePath<?, ?> pluralValuedSimplePath ) {
 			return new SqmMemberOfPredicate(
 					(SqmExpression<?>) ctx.expression().accept( this ),
 					pluralValuedSimplePath,
@@ -3567,7 +3567,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 		final SqmPath<?> sqmPath = consumeDomainPath( (HqlParser.PathContext) ctx.getChild( 2 ) );
 		final SqmPathSource<?> toOneReference = sqmPath.getReferencedPathSource();
 		final boolean validToOneRef =
-				toOneReference.getBindableType() == Bindable.BindableType.SINGULAR_ATTRIBUTE
+				sqmPath.getModel().getBindableType() == Bindable.BindableType.SINGULAR_ATTRIBUTE
 						&& toOneReference instanceof EntitySqmPathSource;
 		if ( !validToOneRef ) {
 			throw new FunctionArgumentException(
@@ -6098,7 +6098,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 		}
 		else {
 			assert sqmPath instanceof SqmPluralValuedSimplePath;
-			final SqmPluralValuedSimplePath<?> mapPath = (SqmPluralValuedSimplePath<?>) sqmPath;
+			final SqmPluralValuedSimplePath<?, ?> mapPath = (SqmPluralValuedSimplePath<?, ?>) sqmPath;
 			result = mapPath.resolvePathPart( CollectionPart.Nature.INDEX.getName(), !hasContinuation, this );
 		}
 

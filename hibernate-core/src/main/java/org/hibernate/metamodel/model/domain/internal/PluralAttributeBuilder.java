@@ -34,7 +34,6 @@ public class PluralAttributeBuilder<D, C, E, K> {
 	private final AttributeClassification attributeClassification;
 	private final CollectionClassification collectionClassification;
 
-	private final DomainType<C> collectionType;
 	private final DomainType<E> elementType;
 	private final DomainType<K> listIndexOrMapKeyType;
 
@@ -48,7 +47,6 @@ public class PluralAttributeBuilder<D, C, E, K> {
 			boolean isGeneric,
 			AttributeClassification attributeClassification,
 			CollectionClassification collectionClassification,
-			DomainType<E> collectionType,
 			DomainType<E> elementType,
 			DomainType<K> listIndexOrMapKeyType,
 			ManagedDomainType<D> declaringType,
@@ -58,7 +56,6 @@ public class PluralAttributeBuilder<D, C, E, K> {
 		this.isGeneric = isGeneric;
 		this.attributeClassification = attributeClassification;
 		this.collectionClassification = collectionClassification;
-		this.collectionType = collectionType;
 		this.elementType = elementType;
 		this.listIndexOrMapKeyType = listIndexOrMapKeyType;
 		this.declaringType = declaringType;

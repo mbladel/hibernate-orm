@@ -62,7 +62,7 @@ public class SqmBasicValuedSimplePath<T>
 				this,
 				new SqmBasicValuedSimplePath<>(
 						getNavigablePathCopy( lhsCopy ),
-						getModel(),
+						getNodeType(),
 						lhsCopy,
 						getExplicitAlias(),
 						nodeBuilder()

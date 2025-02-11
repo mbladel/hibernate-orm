@@ -167,7 +167,8 @@ public abstract class AbstractSqmPath<T> extends AbstractSqmExpression<T> implem
 				return (SqmPathSource<?>) concreteAttribute;
 			}
 		}
-		return getModel();
+		// this might be wrong!
+		return pathSource;
 	}
 
 	@Override

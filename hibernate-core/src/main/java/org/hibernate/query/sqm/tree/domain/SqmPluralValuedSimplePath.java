@@ -78,7 +78,7 @@ public class SqmPluralValuedSimplePath<C, E> extends AbstractSqmSimplePath<C> {
 	@Override
 	public Bindable<C> getModel() {
 		//noinspection unchecked
-		return (Bindable<C>) getReferencedPathSource().getElementPathSource();
+		return (Bindable<C>) getReferencedPathSource();
 	}
 
 	@Override
