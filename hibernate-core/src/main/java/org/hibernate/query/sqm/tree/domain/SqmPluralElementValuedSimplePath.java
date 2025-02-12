@@ -29,8 +29,8 @@ import org.hibernate.spi.NavigablePath;
  *
  * @author Steve Ebersole
  */
-public class SqmPluralElementValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
-	public SqmPluralElementValuedSimplePath(
+public class SqmPluralValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
+	public SqmPluralValuedSimplePath(
 			NavigablePath navigablePath,
 			PluralPersistentAttribute<?, ?, E> referencedNavigable,
 			SqmPath<?> lhs,
@@ -38,7 +38,7 @@ public class SqmPluralElementValuedSimplePath<E> extends AbstractSqmSimplePath<E
 		this( navigablePath, referencedNavigable, lhs, null, nodeBuilder );
 	}
 
-	public SqmPluralElementValuedSimplePath(
+	public SqmPluralValuedSimplePath(
 			NavigablePath navigablePath,
 			PluralPersistentAttribute<?, ?, E> referencedNavigable,
 			SqmPath<?> lhs,
@@ -48,16 +48,16 @@ public class SqmPluralElementValuedSimplePath<E> extends AbstractSqmSimplePath<E
 	}
 
 	@Override
-	public SqmPluralElementValuedSimplePath<E> copy(SqmCopyContext context) {
-		final SqmPluralElementValuedSimplePath<E> existing = context.getCopy( this );
+	public SqmPluralValuedSimplePath<E> copy(SqmCopyContext context) {
+		final SqmPluralValuedSimplePath<E> existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
 
 		final SqmPath<?> lhsCopy = getLhs().copy( context );
-		final SqmPluralElementValuedSimplePath<E> path = context.registerCopy(
+		final SqmPluralValuedSimplePath<E> path = context.registerCopy(
 				this,
-				new SqmPluralElementValuedSimplePath<>(
+				new SqmPluralValuedSimplePath<>(
 						getNavigablePathCopy( lhsCopy ),
 						getModel(),
 						lhsCopy,
