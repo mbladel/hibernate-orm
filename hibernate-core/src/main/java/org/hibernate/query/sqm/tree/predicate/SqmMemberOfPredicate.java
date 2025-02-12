@@ -9,7 +9,7 @@ import org.hibernate.query.SemanticException;
 import org.hibernate.query.sqm.NodeBuilder;
 import org.hibernate.query.sqm.SemanticQueryWalker;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
-import org.hibernate.query.sqm.tree.domain.SqmPluralValuedSimplePath;
+import org.hibernate.query.sqm.tree.domain.SqmPluralElementValuedSimplePath;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
 
 import static org.hibernate.query.sqm.internal.TypecheckUtil.areTypesComparable;
@@ -19,15 +19,15 @@ import static org.hibernate.query.sqm.internal.TypecheckUtil.areTypesComparable;
  */
 public class SqmMemberOfPredicate extends AbstractNegatableSqmPredicate {
 	private final SqmExpression<?> leftHandExpression;
-	private final SqmPluralValuedSimplePath<?> pluralPath;
+	private final SqmPluralElementValuedSimplePath<?> pluralPath;
 
-	public SqmMemberOfPredicate(SqmExpression<?> leftHandExpression, SqmPluralValuedSimplePath<?> pluralPath, NodeBuilder nodeBuilder) {
+	public SqmMemberOfPredicate(SqmExpression<?> leftHandExpression, SqmPluralElementValuedSimplePath<?> pluralPath, NodeBuilder nodeBuilder) {
 		this( leftHandExpression, pluralPath, false, nodeBuilder );
 	}
 
 	public SqmMemberOfPredicate(
 			SqmExpression<?> leftHandExpression,
-			SqmPluralValuedSimplePath<?> pluralPath,
+			SqmPluralElementValuedSimplePath<?> pluralPath,
 			boolean negated,
 			NodeBuilder nodeBuilder) {
 		super( negated, nodeBuilder );
@@ -73,7 +73,7 @@ public class SqmMemberOfPredicate extends AbstractNegatableSqmPredicate {
 		return leftHandExpression;
 	}
 
-	public SqmPluralValuedSimplePath<?> getPluralPath() {
+	public SqmPluralElementValuedSimplePath<?> getPluralPath() {
 		return pluralPath;
 	}
 

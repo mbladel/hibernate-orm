@@ -7,7 +7,7 @@ package org.hibernate.query.sqm.sql.internal;
 import org.hibernate.metamodel.mapping.CollectionPart;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.query.sqm.sql.SqmToSqlAstConverter;
-import org.hibernate.query.sqm.tree.domain.SqmPluralValuedSimplePath;
+import org.hibernate.query.sqm.tree.domain.SqmPluralElementValuedSimplePath;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.SqlAstWalker;
 import org.hibernate.sql.ast.tree.expression.Expression;
@@ -20,7 +20,7 @@ import org.hibernate.sql.results.graph.DomainResultCreationState;
  */
 public class PluralValuedSimplePathInterpretation<T> extends AbstractSqmPathInterpretation<T> {
 
-	public static SqmPathInterpretation<?> from(SqmPluralValuedSimplePath<?> sqmPath, SqmToSqlAstConverter converter) {
+	public static SqmPathInterpretation<?> from(SqmPluralElementValuedSimplePath<?> sqmPath, SqmToSqlAstConverter converter) {
 		final TableGroup tableGroup = converter.getFromClauseAccess()
 				.findTableGroup( sqmPath.getLhs().getNavigablePath() );
 

@@ -133,7 +133,7 @@ import org.hibernate.query.sqm.tree.domain.SqmListJoin;
 import org.hibernate.query.sqm.tree.domain.SqmMapEntryReference;
 import org.hibernate.query.sqm.tree.domain.SqmMapJoin;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
-import org.hibernate.query.sqm.tree.domain.SqmPluralValuedSimplePath;
+import org.hibernate.query.sqm.tree.domain.SqmPluralElementValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmPolymorphicRootDescriptor;
 import org.hibernate.query.sqm.tree.expression.*;
 import org.hibernate.query.sqm.tree.from.SqmAttributeJoin;
@@ -2432,7 +2432,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 	@Override
 	public SqmEmptinessPredicate visitIsEmptyPredicate(HqlParser.IsEmptyPredicateContext ctx) {
 		SqmExpression<?> expression = (SqmExpression<?>) ctx.expression().accept(this);
-		if ( expression instanceof SqmPluralValuedSimplePath<?> pluralValuedSimplePath ) {
+		if ( expression instanceof SqmPluralElementValuedSimplePath<?> pluralValuedSimplePath ) {
 			return new SqmEmptinessPredicate(
 					pluralValuedSimplePath,
 					ctx.NOT() != null,
@@ -3285,7 +3285,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 	public SqmPredicate visitMemberOfPredicate(HqlParser.MemberOfPredicateContext ctx) {
 		final boolean negated = ctx.NOT() != null;
 		final SqmPath<?> sqmPluralPath = consumeDomainPath( ctx.path() );
-		if ( sqmPluralPath instanceof SqmPluralValuedSimplePath<?> pluralValuedSimplePath ) {
+		if ( sqmPluralPath instanceof SqmPluralElementValuedSimplePath<?> pluralValuedSimplePath ) {
 			return new SqmMemberOfPredicate(
 					(SqmExpression<?>) ctx.expression().accept( this ),
 					pluralValuedSimplePath,
@@ -5598,7 +5598,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 		final String functionName = ctx.getChild(0).getText().substring(0, 3);
 
 		final SqmPath<?> pluralPath = consumePluralAttributeReference( ctx.path() );
-		if ( pluralPath instanceof SqmPluralValuedSimplePath ) {
+		if ( pluralPath instanceof SqmPluralElementValuedSimplePath ) {
 			return new SqmElementAggregateFunction<>( pluralPath, functionName );
 		}
 		else {
@@ -5628,7 +5628,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 		final String functionName = ctx.getChild(0).getText().substring(0, 3);
 
 		final SqmPath<?> pluralPath = consumePluralAttributeReference( ctx.path() );
-		if ( pluralPath instanceof SqmPluralValuedSimplePath ) {
+		if ( pluralPath instanceof SqmPluralElementValuedSimplePath ) {
 			if ( isIndexedPluralAttribute( pluralPath ) ) {
 				return new SqmIndexAggregateFunction<>( pluralPath, functionName );
 			}
@@ -5778,7 +5778,7 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 				);
 			}
 			else if ( lhsExpressible.getRelationalJavaType() instanceof StringJavaType
-					&& !(lhs instanceof SqmPluralValuedSimplePath) ) {
+					&& !(lhs instanceof SqmPluralElementValuedSimplePath) ) {
 				final SqmExpression<?> start = (SqmExpression<?>) slicedFragments.get( 0 ).accept( this );
 				final SqmExpression<?> end = (SqmExpression<?>) slicedFragments.get( 1 ).accept( this );
 				return getFunctionDescriptor( "substring" ).generateSqmExpression(
@@ -6097,8 +6097,8 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 			result = functionJoin.index();
 		}
 		else {
-			assert sqmPath instanceof SqmPluralValuedSimplePath;
-			final SqmPluralValuedSimplePath<?> mapPath = (SqmPluralValuedSimplePath<?>) sqmPath;
+			assert sqmPath instanceof SqmPluralElementValuedSimplePath;
+			final SqmPluralElementValuedSimplePath<?> mapPath = (SqmPluralElementValuedSimplePath<?>) sqmPath;
 			result = mapPath.resolvePathPart( CollectionPart.Nature.INDEX.getName(), !hasContinuation, this );
 		}
 

@@ -14,7 +14,7 @@ import org.hibernate.query.sqm.tree.domain.SqmBasicValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmEmbeddedValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmEntityValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
-import org.hibernate.query.sqm.tree.domain.SqmPluralValuedSimplePath;
+import org.hibernate.query.sqm.tree.domain.SqmPluralElementValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmTreatedPath;
 import org.hibernate.query.sqm.tree.from.SqmAttributeJoin;
 
@@ -74,7 +74,7 @@ public class SqmPathVisitor extends BaseSemanticQueryWalker {
 	}
 
 	@Override
-	public Object visitPluralValuedPath(SqmPluralValuedSimplePath<?> path) {
+	public Object visitPluralValuedPath(SqmPluralElementValuedSimplePath<?> path) {
 		pathConsumer.accept( path );
 		return path;
 	}

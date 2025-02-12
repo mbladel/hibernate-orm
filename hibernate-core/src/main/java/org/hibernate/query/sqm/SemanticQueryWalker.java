@@ -40,7 +40,7 @@ import org.hibernate.query.sqm.tree.domain.SqmElementAggregateFunction;
 import org.hibernate.query.sqm.tree.domain.SqmIndexAggregateFunction;
 import org.hibernate.query.sqm.tree.domain.SqmMapJoin;
 import org.hibernate.query.sqm.tree.domain.SqmPluralPartJoin;
-import org.hibernate.query.sqm.tree.domain.SqmPluralValuedSimplePath;
+import org.hibernate.query.sqm.tree.domain.SqmPluralElementValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmSetJoin;
 import org.hibernate.query.sqm.tree.domain.SqmSingularJoin;
 import org.hibernate.query.sqm.tree.domain.SqmTreatedPath;
@@ -242,7 +242,7 @@ public interface SemanticQueryWalker<T> {
 
 	T visitEntityValuedPath(SqmEntityValuedSimplePath<?> path);
 
-	T visitPluralValuedPath(SqmPluralValuedSimplePath<?> path);
+	T visitPluralValuedPath(SqmPluralElementValuedSimplePath<?> path);
 
 	T visitFkExpression(SqmFkExpression<?> fkExpression);
 

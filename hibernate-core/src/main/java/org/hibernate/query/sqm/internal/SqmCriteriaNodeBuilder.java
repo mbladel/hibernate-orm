@@ -103,7 +103,7 @@ import org.hibernate.query.sqm.tree.domain.SqmFkExpression;
 import org.hibernate.query.sqm.tree.domain.SqmListJoin;
 import org.hibernate.query.sqm.tree.domain.SqmMapJoin;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
-import org.hibernate.query.sqm.tree.domain.SqmPluralValuedSimplePath;
+import org.hibernate.query.sqm.tree.domain.SqmPluralElementValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmSetJoin;
 import org.hibernate.query.sqm.tree.domain.SqmSingularJoin;
 import org.hibernate.query.sqm.tree.domain.SqmTreatedRoot;
@@ -2679,12 +2679,12 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 
 	@Override
 	public <C extends Collection<?>> SqmPredicate isEmpty(Expression<C> collection) {
-		return new SqmEmptinessPredicate( (SqmPluralValuedSimplePath<C>) collection, false, this );
+		return new SqmEmptinessPredicate( (SqmPluralElementValuedSimplePath<C>) collection, false, this );
 	}
 
 	@Override
 	public <C extends Collection<?>> SqmPredicate isNotEmpty(Expression<C> collection) {
-		return new SqmEmptinessPredicate( (SqmPluralValuedSimplePath<C>) collection, true, this );
+		return new SqmEmptinessPredicate( (SqmPluralElementValuedSimplePath<C>) collection, true, this );
 	}
 
 	@Override
@@ -2708,7 +2708,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	private SqmMemberOfPredicate createSqmMemberOfPredicate(SqmExpression<?> elem, SqmPath<?> collection, boolean negated) {
-		if ( collection instanceof SqmPluralValuedSimplePath<?> pluralValuedSimplePath ) {
+		if ( collection instanceof SqmPluralElementValuedSimplePath<?> pluralValuedSimplePath ) {
 			return new SqmMemberOfPredicate( elem, pluralValuedSimplePath, negated, this );
 		}
 		else {
@@ -2958,12 +2958,12 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 
 	@Override
 	public <M extends Map<?, ?>> SqmPredicate isMapEmpty(JpaExpression<M> mapExpression) {
-		return new SqmEmptinessPredicate( (SqmPluralValuedSimplePath<?>) mapExpression, false, this );
+		return new SqmEmptinessPredicate( (SqmPluralElementValuedSimplePath<?>) mapExpression, false, this );
 	}
 
 	@Override
 	public <M extends Map<?, ?>> SqmPredicate isMapNotEmpty(JpaExpression<M> mapExpression) {
-		return new SqmEmptinessPredicate( (SqmPluralValuedSimplePath<?>) mapExpression, true, this );
+		return new SqmEmptinessPredicate( (SqmPluralElementValuedSimplePath<?>) mapExpression, true, this );
 	}
 
 	/**

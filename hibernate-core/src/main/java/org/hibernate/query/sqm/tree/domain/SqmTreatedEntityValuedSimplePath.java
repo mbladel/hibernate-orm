@@ -23,7 +23,7 @@ public class SqmTreatedEntityValuedSimplePath<T, S extends T>
 	private final SqmPath<T> wrappedPath;
 
 	public SqmTreatedEntityValuedSimplePath(
-			SqmPluralValuedSimplePath<T> wrappedPath,
+			SqmPluralElementValuedSimplePath<T> wrappedPath,
 			EntityDomainType<S> treatTarget,
 			NodeBuilder nodeBuilder) {
 		//noinspection unchecked

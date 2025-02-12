@@ -188,7 +188,7 @@ import org.hibernate.query.sqm.tree.domain.SqmIndexedCollectionAccessPath;
 import org.hibernate.query.sqm.tree.domain.SqmMapEntryReference;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.domain.SqmPluralPartJoin;
-import org.hibernate.query.sqm.tree.domain.SqmPluralValuedSimplePath;
+import org.hibernate.query.sqm.tree.domain.SqmPluralElementValuedSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmSimplePath;
 import org.hibernate.query.sqm.tree.domain.SqmTreatedFrom;
 import org.hibernate.query.sqm.tree.domain.SqmTreatedPath;
@@ -4558,7 +4558,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 	}
 
 	@Override
-	public Expression visitPluralValuedPath(SqmPluralValuedSimplePath<?> sqmPath) {
+	public Expression visitPluralValuedPath(SqmPluralElementValuedSimplePath<?> sqmPath) {
 		return withTreatRestriction(
 				prepareReusablePath( sqmPath, () -> PluralValuedSimplePathInterpretation.from( sqmPath, this ) ),
 				sqmPath
@@ -7883,7 +7883,7 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 
 		pushProcessingState( subQueryState );
 		try {
-			final SqmPluralValuedSimplePath<?> sqmPluralPath = predicate.getPluralPath();
+			final SqmPluralElementValuedSimplePath<?> sqmPluralPath = predicate.getPluralPath();
 
 			final NavigablePath pluralPathNavPath = sqmPluralPath.getNavigablePath();
 			final NavigablePath parentNavPath = pluralPathNavPath.getParent();

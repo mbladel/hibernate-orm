@@ -21,7 +21,7 @@ import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.UnaryArithmeticOperator;
 import org.hibernate.query.sqm.tree.SqmTypedNode;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
-import org.hibernate.query.sqm.tree.domain.SqmPluralValuedSimplePath;
+import org.hibernate.query.sqm.tree.domain.SqmPluralElementValuedSimplePath;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
 import org.hibernate.query.sqm.tree.expression.SqmLiteralNull;
 import org.hibernate.type.BasicPluralType;
@@ -418,7 +418,7 @@ public class TypecheckUtil {
 
 		// SqmMemberOfPredicate is the only one allowing multivalued paths, its comparability is now evaluated in areTypesComparable
 		// i.e. without calling this method, so we can check this here for other Predicates that do call this
-		if ( left instanceof SqmPluralValuedSimplePath || right instanceof SqmPluralValuedSimplePath ) {
+		if ( left instanceof SqmPluralElementValuedSimplePath || right instanceof SqmPluralElementValuedSimplePath ) {
 			throw new SemanticException( "Multivalued paths are only allowed for the 'member of' operator" );
 		}
 
