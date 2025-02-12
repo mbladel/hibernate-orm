@@ -5,9 +5,11 @@
 package org.hibernate.query.sqm.tree.domain;
 
 import org.hibernate.metamodel.mapping.CollectionPart;
+import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.ListPersistentAttribute;
 import org.hibernate.metamodel.model.domain.MapPersistentAttribute;
+import org.hibernate.metamodel.model.domain.PluralPersistentAttribute;
 import org.hibernate.metamodel.model.domain.internal.PluralSqmPathSource;
 import org.hibernate.query.NotIndexedCollectionException;
 import org.hibernate.query.PathException;
@@ -15,6 +17,7 @@ import org.hibernate.query.hql.spi.SqmCreationState;
 import org.hibernate.query.hql.spi.SqmPathRegistry;
 import org.hibernate.query.sqm.NodeBuilder;
 import org.hibernate.query.sqm.SemanticQueryWalker;
+import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.SqmJoinType;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
@@ -32,15 +35,15 @@ import org.hibernate.spi.NavigablePath;
 public class SqmPluralValuedSimplePath<C, E> extends AbstractSqmSimplePath<C> {
 	public SqmPluralValuedSimplePath(
 			NavigablePath navigablePath,
-			PluralSqmPathSource<?, C, E> referencedNavigable,
+			PluralPersistentAttribute<?, C, E> referencedNavigable,
 			SqmPath<?> lhs,
 			NodeBuilder nodeBuilder) {
-		this( navigablePath, referencedNavigable, lhs, null, nodeBuilder );
+		this( navigablePath, referencedNavigable.getCollectionPathSource(), lhs, null, nodeBuilder );
 	}
 
 	public SqmPluralValuedSimplePath(
 			NavigablePath navigablePath,
-			PluralSqmPathSource<?, C, E> referencedNavigable,
+			SqmPathSource<C> referencedNavigable,
 			SqmPath<?> lhs,
 			String explicitAlias,
 			NodeBuilder nodeBuilder) {

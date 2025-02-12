@@ -87,6 +87,11 @@ public abstract class AbstractPluralAttribute<D, C, E>
 	}
 
 	@Override
+	public SqmPathSource<C> getCollectionPathSource() {
+		return collectionPathSource;
+	}
+
+	@Override
 	public SqmPathSource<?> findSubPathSource(String name) {
 		if ( CollectionPart.Nature.ELEMENT.getName().equals( name ) ) {
 			return elementPathSource;

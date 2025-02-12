@@ -53,6 +53,7 @@ public class PluralSqmPathSource<X, C, E> extends AbstractSqmPathSource<C> imple
 				PathHelper.append( lhs, this, intermediatePathSource ),
 				this,
 				lhs,
+				null,
 				lhs.nodeBuilder()
 		);
 	}

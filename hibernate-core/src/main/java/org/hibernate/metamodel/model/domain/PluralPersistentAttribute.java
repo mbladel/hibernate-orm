@@ -25,6 +25,8 @@ public interface PluralPersistentAttribute<D, C, E>
 
 	SqmPathSource<E> getElementPathSource();
 
+	SqmPathSource<C> getCollectionPathSource();
+
 	default SqmPathSource<?> getIndexPathSource() {
 		throw new NotIndexedCollectionException(
 				"Plural attribute [" +  getPathName() + "] is not indexed (list / map)"
