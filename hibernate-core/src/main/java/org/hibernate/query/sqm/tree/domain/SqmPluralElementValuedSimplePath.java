@@ -29,8 +29,8 @@ import org.hibernate.spi.NavigablePath;
  *
  * @author Steve Ebersole
  */
-public class SqmPluralValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
-	public SqmPluralValuedSimplePath(
+public class SqmPluralElementValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
+	public SqmPluralElementValuedSimplePath(
 			NavigablePath navigablePath,
 			PluralPersistentAttribute<?, ?, E> referencedNavigable,
 			SqmPath<?> lhs,
@@ -38,7 +38,7 @@ public class SqmPluralValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
 		this( navigablePath, referencedNavigable, lhs, null, nodeBuilder );
 	}
 
-	public SqmPluralValuedSimplePath(
+	public SqmPluralElementValuedSimplePath(
 			NavigablePath navigablePath,
 			PluralPersistentAttribute<?, ?, E> referencedNavigable,
 			SqmPath<?> lhs,
@@ -48,16 +48,16 @@ public class SqmPluralValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
 	}
 
 	@Override
-	public SqmPluralValuedSimplePath<E> copy(SqmCopyContext context) {
-		final SqmPluralValuedSimplePath<E> existing = context.getCopy( this );
+	public SqmPluralElementValuedSimplePath<E> copy(SqmCopyContext context) {
+		final SqmPluralElementValuedSimplePath<E> existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
 
 		final SqmPath<?> lhsCopy = getLhs().copy( context );
-		final SqmPluralValuedSimplePath<E> path = context.registerCopy(
+		final SqmPluralElementValuedSimplePath<E> path = context.registerCopy(
 				this,
-				new SqmPluralValuedSimplePath<>(
+				new SqmPluralElementValuedSimplePath<>(
 						getNavigablePathCopy( lhsCopy ),
 						getModel(),
 						lhsCopy,
@@ -94,13 +94,6 @@ public class SqmPluralValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
 			String name,
 			boolean isTerminal,
 			SqmCreationState creationState) {
-		// this is a reference to a collection outside the from clause
-		final CollectionPart.Nature nature = CollectionPart.Nature.fromNameExact( name );
-		if ( nature == null ) {
-			throw new PathException( "Plural path '" + getNavigablePath()
-					+ "' refers to a collection and so element attribute '" + name
-					+ "' may not be referenced directly (use element() function)" );
-		}
 		final SqmPath<?> sqmPath = get( name, true );
 		creationState.getProcessingStateStack().getCurrent().getPathRegistry().register( sqmPath );
 		return sqmPath;
