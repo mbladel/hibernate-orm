@@ -230,6 +230,10 @@ public class AttributeFactory {
 		return determineSimpleType( typeContext, context );
 	}
 
+	private static <C> DomainType<C> determineCollectionType() {
+
+	}
+
 	public static <Y> DomainType<Y> determineSimpleType(ValueContext typeContext, MetadataContext context) {
 		return switch ( typeContext.getValueClassification() ) {
 			case BASIC -> basicDomainType( typeContext, context );

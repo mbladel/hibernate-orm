@@ -6097,9 +6097,11 @@ public class SemanticQueryBuilder<R> extends HqlParserBaseVisitor<Object> implem
 			result = functionJoin.index();
 		}
 		else {
-			assert sqmPath instanceof SqmPluralValuedSimplePath;
-			final SqmPluralValuedSimplePath<?> mapPath = (SqmPluralValuedSimplePath<?>) sqmPath;
-			result = mapPath.resolvePathPart( CollectionPart.Nature.INDEX.getName(), !hasContinuation, this );
+			throw new UnsupportedOperationException(); // todo marco : check this
+//			assert sqmPath instanceof SqmPluralValuedSimplePath;
+//			final SqmPluralValuedSimplePath<?> mapPath = (SqmPluralValuedSimplePath<?>) sqmPath;
+//			result = mapPath.getReferencedPathSource().getIndexPathSource();
+//			result = mapPath.resolvePathPart( CollectionPart.Nature.INDEX.getName(), !hasContinuation, this );
 		}
 
 		if ( hasContinuation ) {

@@ -4559,9 +4559,9 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 
 	@Override
 	public Expression visitPluralValuedPath(SqmPluralValuedSimplePath<?> sqmPath) {
-		return withTreatRestriction(
-				prepareReusablePath( sqmPath, () -> PluralValuedSimplePathInterpretation.from( sqmPath, this ) ),
-				sqmPath
+		return parentTreatRestriction(
+				prepareReusablePath( sqmPath.getLhs(), () -> PluralValuedSimplePathInterpretation.from( sqmPath, this ) ),
+				sqmPath.getLhs()
 		);
 	}
 
@@ -5247,6 +5247,10 @@ public abstract class BaseSqmToSqlAstConverter<T extends Statement> extends Base
 		else {
 			lhs = path.getLhs();
 		}
+		return parentTreatRestriction( expression, lhs );
+	}
+
+	private Expression parentTreatRestriction(Expression expression, SqmPath<?> lhs) {
 		if ( lhs instanceof SqmTreatedPath<?, ?> treatedPath ) {
 			final ManagedDomainType<?> treatTarget = treatedPath.getTreatTarget();
 			final Class<?> treatTargetJavaType = treatTarget.getJavaType();

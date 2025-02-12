@@ -4,64 +4,212 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
-import org.hibernate.metamodel.mapping.CollectionPart;
+import jakarta.persistence.metamodel.Bindable;
+import jakarta.persistence.metamodel.MapAttribute;
+import jakarta.persistence.metamodel.PluralAttribute;
+import jakarta.persistence.metamodel.SingularAttribute;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
-import org.hibernate.metamodel.model.domain.ListPersistentAttribute;
-import org.hibernate.metamodel.model.domain.MapPersistentAttribute;
+import org.hibernate.metamodel.model.domain.ManagedDomainType;
+import org.hibernate.metamodel.model.domain.PersistentAttribute;
 import org.hibernate.metamodel.model.domain.PluralPersistentAttribute;
-import org.hibernate.query.NotIndexedCollectionException;
-import org.hibernate.query.PathException;
+import org.hibernate.metamodel.model.domain.internal.AbstractSqmPathSource;
 import org.hibernate.query.hql.spi.SqmCreationState;
-import org.hibernate.query.hql.spi.SqmPathRegistry;
 import org.hibernate.query.sqm.NodeBuilder;
 import org.hibernate.query.sqm.SemanticQueryWalker;
+import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
-import org.hibernate.query.sqm.tree.SqmJoinType;
+import org.hibernate.query.sqm.tree.expression.AbstractSqmExpression;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
-import org.hibernate.query.sqm.tree.from.SqmFrom;
-import org.hibernate.query.sqm.tree.from.SqmJoin;
 import org.hibernate.spi.NavigablePath;
+import org.hibernate.type.descriptor.java.JavaType;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
 /**
  * An SqmPath for plural attribute paths
  *
- * @param <E> The collection element type, which is the "bindable" type in the SQM tree
+ * @param <C> The collection type
  *
  * @author Steve Ebersole
  */
-public class SqmPluralValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
+public class SqmPluralValuedSimplePath<C> extends AbstractSqmExpression<C> implements SqmPath<C> {
+	private final PluralPersistentAttribute<?, C, ?> pluralAttribute;
+	private final NavigablePath navigablePath;
+	private final SqmPath<?> lhs;
+
+	private String alias;
+
 	public SqmPluralValuedSimplePath(
 			NavigablePath navigablePath,
-			PluralPersistentAttribute<?, ?, E> referencedNavigable,
+			PluralPersistentAttribute<?, C, ?> pluralAttribute,
 			SqmPath<?> lhs,
 			NodeBuilder nodeBuilder) {
-		this( navigablePath, referencedNavigable, lhs, null, nodeBuilder );
+		this( navigablePath, pluralAttribute, lhs, null, nodeBuilder );
 	}
 
 	public SqmPluralValuedSimplePath(
 			NavigablePath navigablePath,
-			PluralPersistentAttribute<?, ?, E> referencedNavigable,
+			PluralPersistentAttribute<?, C, ?> pluralAttribute,
 			SqmPath<?> lhs,
 			String explicitAlias,
 			NodeBuilder nodeBuilder) {
-		super( navigablePath, referencedNavigable, lhs, explicitAlias, nodeBuilder );
+		super( new SqmCollectionPathSource( pluralAttribute ), nodeBuilder );
+		this.lhs = lhs;
+		this.alias = explicitAlias;
+		this.pluralAttribute = pluralAttribute;
+		this.navigablePath = navigablePath;
 	}
 
 	@Override
-	public SqmPluralValuedSimplePath<E> copy(SqmCopyContext context) {
-		final SqmPluralValuedSimplePath<E> existing = context.getCopy( this );
+	public PluralPersistentAttribute<?, C, ?> getReferencedPathSource() {
+		return pluralAttribute;
+	}
+
+	@Override
+	public String getExplicitAlias() {
+		return alias;
+	}
+
+	@Override
+	public void setExplicitAlias(String explicitAlias) {
+		this.alias = explicitAlias;
+	}
+
+	public NavigablePath getNavigablePath() {
+		return navigablePath;
+	}
+
+	public SqmPath<?> getLhs() {
+		return lhs;
+	}
+
+	@Override
+	public List<SqmPath<?>> getReusablePaths() {
+		return List.of();
+	}
+
+	@Override
+	public void visitReusablePaths(Consumer<SqmPath<?>> consumer) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public void registerReusablePath(SqmPath<?> path) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public SqmPath<?> getReusablePath(String name) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public <S extends C> SqmTreatedPath<C, S> treatAs(Class<S> treatJavaType) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public <S extends C> SqmTreatedPath<C, S> treatAs(EntityDomainType<S> treatTarget) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public <S extends C> SqmTreatedPath<C, S> treatAs(Class<S> treatJavaType, String alias) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public <S extends C> SqmTreatedPath<C, S> treatAs(EntityDomainType<S> treatTarget, String alias) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public <S extends C> SqmTreatedPath<C, S> treatAs(Class<S> treatJavaType, String alias, boolean fetch) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public <S extends C> SqmTreatedPath<C, S> treatAs(EntityDomainType<S> treatTarget, String alias, boolean fetch) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public SqmPath<?> resolvePathPart(String name, boolean isTerminal, SqmCreationState creationState) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public SqmPathSource<?> getResolvedModel() {
+		final DomainType<?> lhsType;
+		if ( pluralAttribute.isGeneric() && ( lhsType = getLhs().getResolvedModel().getSqmPathType() ) instanceof ManagedDomainType ) {
+			final PersistentAttribute<?, ?> concreteAttribute = ( (ManagedDomainType<?>) lhsType ).findConcreteGenericAttribute(
+					pluralAttribute.getPathName()
+			);
+			if ( concreteAttribute != null ) {
+				return (SqmPathSource<?>) concreteAttribute;
+			}
+		}
+		return pluralAttribute;
+	}
+
+	@Override
+	public SqmPluralValuedSimplePath.SqmCollectionPathSource<C> getNodeType() {
+		return (SqmCollectionPathSource<C>) super.getNodeType();
+	}
+
+	@Override
+	public Bindable<C> getModel() {
+		return getNodeType();
+	}
+
+	@Override
+	public <Y> SqmPath<Y> get(SingularAttribute<? super C, Y> attribute) {
+		return null;
+	}
+
+	@Override
+	public <E, C1 extends Collection<E>> SqmExpression<C1> get(PluralAttribute<? super C, C1, E> collection) {
+		return null;
+	}
+
+	@Override
+	public <K, V, M extends Map<K, V>> SqmExpression<M> get(MapAttribute<? super C, K, V> map) {
+		return null;
+	}
+
+	@Override
+	public SqmExpression<Class<? extends C>> type() {
+		return null;
+	}
+
+	@Override
+	public <Y> SqmPath<Y> get(String attributeName) {
+		return null;
+	}
+
+	@Override
+	public SqmPluralValuedSimplePath<C> copy(SqmCopyContext context) {
+		final SqmPluralValuedSimplePath<C> existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
 
-		final SqmPath<?> lhsCopy = getLhs().copy( context );
-		final SqmPluralValuedSimplePath<E> path = context.registerCopy(
+		final SqmPath<?> lhsCopy = lhs.copy( context );
+		final SqmPluralValuedSimplePath<C> path = context.registerCopy(
 				this,
 				new SqmPluralValuedSimplePath<>(
-						getNavigablePathCopy( lhsCopy ),
-						getModel(),
+						// todo marco : extract getNavigablePathCopy from AbstractSqmPath
+						navigablePath,
+						pluralAttribute,
 						lhsCopy,
-						getExplicitAlias(),
+						alias,
 						nodeBuilder()
 				)
 		);
@@ -70,137 +218,52 @@ public class SqmPluralValuedSimplePath<E> extends AbstractSqmSimplePath<E> {
 	}
 
 	@Override
-	public PluralPersistentAttribute<?, ?, E> getReferencedPathSource() {
-		return (PluralPersistentAttribute<?, ?, E>) super.getReferencedPathSource();
-	}
-
-	@Override
-	public PluralPersistentAttribute<?, ?, E> getModel() {
-		return (PluralPersistentAttribute<?, ?, E>) super.getModel();
-	}
-
-	@Override
-	public PluralPersistentAttribute<?,?,E> getNodeType() {
-		return getReferencedPathSource();
-	}
-
-	@Override
 	public <T> T accept(SemanticQueryWalker<T> walker) {
 		return walker.visitPluralValuedPath( this );
 	}
 
 	@Override
-	public SqmPath<?> resolvePathPart(
-			String name,
-			boolean isTerminal,
-			SqmCreationState creationState) {
-		// this is a reference to a collection outside the from clause
-		final CollectionPart.Nature nature = CollectionPart.Nature.fromNameExact( name );
-		if ( nature == null ) {
-			throw new PathException( "Plural path '" + getNavigablePath()
-					+ "' refers to a collection and so element attribute '" + name
-					+ "' may not be referenced directly (use element() function)" );
+	public void appendHqlString(StringBuilder hql) {
+		// todo marco
+	}
+
+	private static class SqmCollectionPathSource<C> extends AbstractSqmPathSource<C> {
+		private final PluralPersistentAttribute<?, C, ?> pluralAttribute;
+
+		public SqmCollectionPathSource(PluralPersistentAttribute<?, C, ?> pluralAttribute) {
+			// todo marco : resolve the domain type in the plural attribute and cache it by java type
+			super( pluralAttribute.getPathName(), null, new DomainType<>() {
+				@Override
+				public JavaType<C> getExpressibleJavaType() {
+					return pluralAttribute.getAttributeJavaType();
+				}
+
+				@Override
+				public Class<C> getBindableJavaType() {
+					return pluralAttribute.getJavaType();
+				}
+			}, BindableType.PLURAL_ATTRIBUTE );
+			this.pluralAttribute = pluralAttribute;
 		}
-		final SqmPath<?> sqmPath = get( name, true );
-		creationState.getProcessingStateStack().getCurrent().getPathRegistry().register( sqmPath );
-		return sqmPath;
-	}
 
-	@Override
-	public SqmPath<?> resolveIndexedAccess(
-			SqmExpression<?> selector,
-			boolean isTerminal,
-			SqmCreationState creationState) {
-		final SqmPathRegistry pathRegistry = creationState.getCurrentProcessingState().getPathRegistry();
-		final String alias = selector.toHqlString();
-		final NavigablePath navigablePath = getNavigablePath().getParent().append(
-				getNavigablePath().getLocalName(),
-				alias
-		).append( CollectionPart.Nature.ELEMENT.getName() );
-		final SqmFrom<?, ?> indexedPath = pathRegistry.findFromByPath( navigablePath );
-		if ( indexedPath != null ) {
-			return indexedPath;
+		@Override
+		public JavaType<C> getExpressibleJavaType() {
+			return pluralAttribute.getAttributeJavaType();
 		}
-		SqmFrom<?, ?> path = pathRegistry.findFromByPath( navigablePath.getParent() );
-		if ( path == null ) {
-			final PluralPersistentAttribute<?, ?, E> referencedPathSource = getReferencedPathSource();
-			final SqmFrom<?, Object> parent = pathRegistry.resolveFrom( getLhs() );
-			final SqmJoin<Object, ?> join;
-			final SqmExpression<?> index;
-			if ( referencedPathSource instanceof ListPersistentAttribute<?, ?> ) {
-				//noinspection unchecked
-				join = new SqmListJoin<>(
-						parent,
-						(ListPersistentAttribute<Object, ?>) referencedPathSource,
-						alias,
-						SqmJoinType.INNER,
-						false,
-						parent.nodeBuilder()
-				);
-				index = ( (SqmListJoin<?, ?>) join ).index();
-			}
-			else if ( referencedPathSource instanceof MapPersistentAttribute<?, ?, ?> ) {
-				//noinspection unchecked
-				join = new SqmMapJoin<>(
-						parent,
-						(MapPersistentAttribute<Object, ?, ?>) referencedPathSource,
-						alias,
-						SqmJoinType.INNER,
-						false,
-						parent.nodeBuilder()
-				);
-				index = ( (SqmMapJoin<?, ?, ?>) join ).key();
-			}
-			else {
-				throw new NotIndexedCollectionException( "Index operator applied to path '" + getNavigablePath()
-						+ "' which is not a list or map" );
-			}
-			join.setJoinPredicate( creationState.getCreationContext().getNodeBuilder().equal( index, selector ) );
-			parent.addSqmJoin( join );
-			pathRegistry.register( path = join );
+
+		@Override
+		public BindableType getBindableType() {
+			return BindableType.PLURAL_ATTRIBUTE;
 		}
-		final SqmIndexedCollectionAccessPath<Object> result = new SqmIndexedCollectionAccessPath<>(
-				navigablePath,
-				path,
-				selector
-		);
-		pathRegistry.register( result );
-		return result;
+
+		@Override
+		public SqmPathSource<?> findSubPathSource(String name) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public SqmPath<C> createSqmPath(SqmPath<?> lhs, SqmPathSource<?> intermediatePathSource) {
+			throw new UnsupportedOperationException();
+		}
 	}
-
-	@Override
-	public SqmExpression<Class<? extends E>> type() {
-		throw new UnsupportedOperationException( "Cannot access the type of plural valued simple paths" );
-	}
-
-	@Override
-	public <S extends E> SqmTreatedPath<E, S> treatAs(Class<S> treatJavaType) throws PathException {
-		throw new UnsupportedOperationException( "Cannot treat plural valued simple paths" );
-	}
-
-	@Override
-	public <S extends E> SqmTreatedEntityValuedSimplePath<E, S> treatAs(EntityDomainType<S> treatTarget) throws PathException {
-		throw new UnsupportedOperationException( "Cannot treat plural valued simple paths" );
-	}
-
-//	@Override
-//	public DomainResult createDomainResult(
-//			String resultVariable,
-//			DomainResultCreationState creationState,
-//			DomainResultCreationContext creationContext) {
-//		return new CollectionResultImpl(
-//				getReferencedNavigable().getPluralAttribute().getDescribedAttribute(),
-//				getNavigablePath(),
-//				resultVariable,
-//				LockMode.NONE,
-//				getReferencedNavigable().getPluralAttribute().getCollectionKeyDescriptor().createDomainResult(
-//						getNavigablePath().append( "{id}" ),
-//						null,
-//						creationState,
-//						creationContext
-//				),
-//				initializerProducerCreator.createProducer( resultVariable, creationState, creationContext )
-//		);
-//	}
-
 }

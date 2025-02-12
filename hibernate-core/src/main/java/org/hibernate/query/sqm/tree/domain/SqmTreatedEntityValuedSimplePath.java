@@ -23,23 +23,6 @@ public class SqmTreatedEntityValuedSimplePath<T, S extends T>
 	private final SqmPath<T> wrappedPath;
 
 	public SqmTreatedEntityValuedSimplePath(
-			SqmPluralValuedSimplePath<T> wrappedPath,
-			EntityDomainType<S> treatTarget,
-			NodeBuilder nodeBuilder) {
-		//noinspection unchecked
-		super(
-				wrappedPath.getNavigablePath().treatAs(
-						treatTarget.getHibernateEntityName()
-				),
-				(SqmPathSource<S>) wrappedPath.getReferencedPathSource(),
-				wrappedPath.getLhs(),
-				nodeBuilder
-		);
-		this.treatTarget = treatTarget;
-		this.wrappedPath = wrappedPath;
-	}
-
-	public SqmTreatedEntityValuedSimplePath(
 			SqmPath<T> wrappedPath,
 			EntityDomainType<S> treatTarget,
 			NodeBuilder nodeBuilder) {

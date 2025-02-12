@@ -152,7 +152,9 @@ public abstract class AbstractPluralAttribute<D, C, E>
 
 	@Override
 	public SqmPath<E> createSqmPath(SqmPath<?> lhs, SqmPathSource<?> intermediatePathSource) {
-		return new SqmPluralValuedSimplePath<>(
+		// todo marco : add note about this unchecked cast
+		// this is actually SqmPath<C>, but we cannot avoid unchecked cast: Bindable<C> conflicts with Bindable<E>
+		return (SqmPath<E>) new SqmPluralValuedSimplePath<>(
 				PathHelper.append( lhs, this, intermediatePathSource ),
 				this,
 				lhs,
