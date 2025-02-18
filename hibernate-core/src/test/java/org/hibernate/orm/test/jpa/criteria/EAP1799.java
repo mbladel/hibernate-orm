@@ -36,11 +36,6 @@ public class EAP1799 {
 	@BeforeAll
 	public void setUp(EntityManagerFactoryScope scope) {
 		scope.inTransaction( em -> {
-			final EntIngotRelationship ent = new EntIngotRelationship();
-			ent.ingotKey = 1L;
-			ent.numberSerial = "1";
-			em.persist( ent );
-
 			final EntIngotNoRelationship entNo = new EntIngotNoRelationship();
 			entNo.ingotKey = 1L;
 			entNo.numberSerial = "1";
