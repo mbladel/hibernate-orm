@@ -36,28 +36,32 @@ public class EAP1799 {
 	@BeforeAll
 	public void setUp(EntityManagerFactoryScope scope) {
 		scope.inTransaction( em -> {
+			final Date now = new Date();
+
 			final EntIngotNoRelationship entNo = new EntIngotNoRelationship();
 			entNo.ingotKey = 1L;
 			entNo.numberSerial = "1";
+			entNo.codeIngotToken = now;
 			em.persist( entNo );
 
 			final EntIngotId id1 = new EntIngotId();
 			id1.entIngot = entNo;
-			id1.id = new EntIngotIdPK("1");
+			id1.id = new EntIngotIdPK("1", now);
 			em.persist( id1 );
 
 			final EntIngotId id2 = new EntIngotId();
 			id2.entIngot = entNo;
-			id2.id = new EntIngotIdPK("2");
+			id2.id = new EntIngotIdPK("2", now);
 			em.persist( id2 );
 		} );
 	}
 
 	@Test
 	public void test(EntityManagerFactoryScope scope) {
-		scope.inTransaction( em -> {
-			final EntIngotRelationship result = EntIngotRelationship.findBySerial( em, "1" );
-		} );
+		final EntityManager em = scope.getEntityManagerFactory().createEntityManager();
+		final EntIngotRelationship result = EntIngotRelationship.findBySerial( em, "1" );
+		assert result != null;
+		em.close();
 	}
 
 	@Embeddable
@@ -65,14 +69,19 @@ public class EAP1799 {
 		// default serial version id, required for serializable classes.
 		private static final long serialVersionUID = 1L;
 
+		@Temporal(TemporalType.TIMESTAMP)
+		@Column(name = "CODE_INGOT_TOKEN")
+		private Date codeIngotToken;
+
 		@Column(name = "NUMBER_SERIAL")
 		private String numberSerial;
 
 		public EntIngotIdPK() {
 		}
 
-		public EntIngotIdPK(String numberSerial) {
+		public EntIngotIdPK(String numberSerial, Date codeIngotToken) {
 			this.numberSerial = numberSerial;
+			this.codeIngotToken = codeIngotToken;
 		}
 
 		public String getNumberSerial() {
@@ -147,6 +156,7 @@ public class EAP1799 {
 		@Column(name = "NUMBER_SERIAL")
 		private String numberSerial;
 
+		@Temporal(TemporalType.TIMESTAMP)
 		@Column(name = "CODE_INGOT_TOKEN")
 		private Date codeIngotToken;
 
