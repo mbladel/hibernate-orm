@@ -580,7 +580,7 @@ public class EnhancerImpl implements Enhancer {
 			}
 			// convert first field letter to lower case
 			fieldName = getJavaBeansFieldName( fieldName );
-			if ( fieldName != null && !isPersistentMethod( methodDescription )
+			if ( fieldName != null && isPersistentMethod( methodDescription )
 				&& !containsField( managedCtClass.asGenericType(), fieldName, enhancementContext ) ) {
 				// We shouldn't even be in this method if using LEGACY, see top of this method.
 				return switch ( strategy ) {
