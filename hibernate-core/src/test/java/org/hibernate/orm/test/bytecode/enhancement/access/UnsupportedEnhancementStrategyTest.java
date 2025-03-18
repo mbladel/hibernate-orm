@@ -207,7 +207,7 @@ public class UnsupportedEnhancementStrategyTest {
 		}
 
 		@PostLoad
-		public void setState() {
+		public void setState(String state) {
 			status = "loaded";
 		}
 
