@@ -24,6 +24,7 @@ import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.FetchProfile;
 import org.hibernate.annotations.FetchProfile.FetchOverride;
 import org.hibernate.annotations.FetchProfiles;
+import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.GenericGenerators;
 import org.hibernate.annotations.Imported;
@@ -69,6 +70,7 @@ import jakarta.persistence.TableGenerators;
 
 import static org.hibernate.boot.model.internal.AnnotatedClassType.EMBEDDABLE;
 import static org.hibernate.boot.model.internal.AnnotatedClassType.ENTITY;
+import static org.hibernate.boot.model.internal.FilterDefBinder.bindFilterDef;
 import static org.hibernate.boot.model.internal.FilterDefBinder.bindFilterDefs;
 import static org.hibernate.boot.model.internal.GeneratorBinder.buildGenerators;
 import static org.hibernate.boot.model.internal.GeneratorBinder.buildIdGenerator;
@@ -388,7 +390,7 @@ public final class AnnotationBinder {
 
 		bindQueries( annotatedClass, context );
 		handleImport( annotatedClass, context );
-		bindFilterDefs( annotatedClass, context );
+		// bindFilterDefs( annotatedClass, context ); filter defs are already processed in AnnotationMetadataSourceProcessorImpl#processFilterDefinitions
 		bindTypeDescriptorRegistrations( annotatedClass, context );
 		bindEmbeddableInstantiatorRegistrations( annotatedClass, context );
 		bindUserTypeRegistrations( annotatedClass, context );
@@ -400,6 +402,10 @@ public final class AnnotationBinder {
 		if ( context.getMetadataCollector().getClassType( annotatedClass ) == ENTITY ) {
 			EntityBinder.bindEntityClass( annotatedClass, inheritanceStatePerClass, generators, context );
 		}
+	}
+
+	public static void bindFilterDefinition(FilterDef filterDef, MetadataBuildingContext context) {
+		bindFilterDef( filterDef, context );
 	}
 
 	private static void handleImport(XClass annotatedClass, MetadataBuildingContext context) {

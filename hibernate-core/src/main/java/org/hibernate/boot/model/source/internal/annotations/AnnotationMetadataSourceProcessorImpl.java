@@ -16,6 +16,8 @@ import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.MappedSuperclass;
+import org.hibernate.annotations.FilterDef;
+import org.hibernate.annotations.FilterDefs;
 import org.hibernate.annotations.common.reflection.MetadataProviderInjector;
 import org.hibernate.annotations.common.reflection.ReflectionManager;
 import org.hibernate.annotations.common.reflection.XClass;
@@ -37,6 +39,9 @@ import org.hibernate.internal.util.collections.CollectionHelper;
 import org.jboss.jandex.IndexView;
 import org.jboss.logging.Logger;
 
+import static org.hibernate.boot.model.internal.AnnotationBinder.bindFilterDefinition;
+import static org.hibernate.boot.model.internal.BinderHelper.getOverridableAnnotation;
+
 /**
  * @author Steve Ebersole
  */
@@ -54,6 +59,8 @@ public class AnnotationMetadataSourceProcessorImpl implements MetadataSourceProc
 
 	private final List<XClass> xClasses = new ArrayList<>();
 	private final ClassLoaderService classLoaderService;
+
+	private List<XClass> orderedClasses;
 
 	/**
 	 * Normal constructor used while processing {@linkplain org.hibernate.boot.MetadataSources mapping sources}
@@ -143,6 +150,7 @@ public class AnnotationMetadataSourceProcessorImpl implements MetadataSourceProc
 			processor.xClasses.add( xClass );
 		}
 
+		processor.processFilterDefinitions();
 		processor.processEntityHierarchies( new LinkedHashSet<>() );
 	}
 
@@ -171,6 +179,13 @@ public class AnnotationMetadataSourceProcessorImpl implements MetadataSourceProc
 
 	private XClass toXClass(String className, ReflectionManager reflectionManager, ClassLoaderService cls) {
 		return reflectionManager.toXClass( cls.classForName( className ) );
+	}
+
+	private List<XClass> getOrderedClasses() {
+		if ( orderedClasses == null ) {
+			orderedClasses = orderAndFillHierarchy( xClasses );
+		}
+		return orderedClasses;
 	}
 
 	@Override
@@ -231,6 +246,18 @@ public class AnnotationMetadataSourceProcessorImpl implements MetadataSourceProc
 
 	@Override
 	public void processFilterDefinitions() {
+		for ( XClass xClass : getOrderedClasses() ) {
+			final FilterDef filterDef = xClass.getAnnotation( FilterDef.class );
+			final FilterDefs filterDefs = getOverridableAnnotation( xClass, FilterDefs.class, rootMetadataBuildingContext );
+			if ( filterDef != null ) {
+				bindFilterDefinition( filterDef, rootMetadataBuildingContext );
+			}
+			if ( filterDefs != null ) {
+				for ( FilterDef def : filterDefs.value() ) {
+					bindFilterDefinition( def, rootMetadataBuildingContext );
+				}
+			}
+		}
 	}
 
 	@Override
@@ -243,7 +270,7 @@ public class AnnotationMetadataSourceProcessorImpl implements MetadataSourceProc
 
 	@Override
 	public void processEntityHierarchies(Set<String> processedEntityNames) {
-		final List<XClass> orderedClasses = orderAndFillHierarchy( xClasses );
+		final List<XClass> orderedClasses = getOrderedClasses();
 		Map<XClass, InheritanceState> inheritanceStatePerClass = AnnotationBinder.buildInheritanceStates(
 				orderedClasses,
 				rootMetadataBuildingContext
