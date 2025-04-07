@@ -114,7 +114,7 @@ public abstract class AbstractSaveEventListener<C> implements CallbackRegistryCo
 			// the @PrePersist callback to happen first
 			generatedId = null;
 		}
-		else if ( generatedBeforeExecution && ( ! generator.allowAssignedIdentifiers() || persister.getIdentifier( entity, source ) == null ) ) {
+		else if ( generatedBeforeExecution ) {
 			// go ahead and generate id, and then set it to
 			// the entity instance, so it will be available
 			// to the entity in the @PrePersist callback
@@ -152,7 +152,8 @@ public abstract class AbstractSaveEventListener<C> implements CallbackRegistryCo
 			EventSource source,
 			BeforeExecutionGenerator generator,
 			EntityPersister persister) {
-		final Object id = generator.generate( source, entity, null, INSERT );
+		final Object currentValue = generator.allowAssignedIdentifiers() ? persister.getIdentifier( entity ) : null;
+		final Object id = generator.generate( source, entity, currentValue, INSERT );
 		if ( id == null ) {
 			throw new IdentifierGenerationException( "Null id generated for entity '" + persister.getEntityName() + "'" );
 		}
