@@ -4,7 +4,6 @@
  */
 package org.hibernate.dialect;
 
-
 import java.io.OutputStream;
 import java.lang.reflect.Array;
 import java.sql.SQLException;
@@ -13,20 +12,36 @@ import java.time.format.DateTimeFormatter;
 import java.util.AbstractCollection;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import org.hibernate.Internal;
+import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
+import org.hibernate.collection.spi.CollectionSemantics;
+import org.hibernate.collection.spi.PersistentCollection;
+import org.hibernate.collection.spi.PersistentMap;
 import org.hibernate.internal.build.AllowReflection;
 import org.hibernate.internal.util.CharSequenceHelper;
 import org.hibernate.internal.util.collections.ArrayHelper;
+import org.hibernate.internal.util.collections.IdentitySet;
+import org.hibernate.metamodel.mapping.CollectionPart;
+import org.hibernate.metamodel.mapping.CompositeIdentifierMapping;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
+import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
+import org.hibernate.metamodel.mapping.EntityMappingType;
+import org.hibernate.metamodel.mapping.EntityValuedModelPart;
 import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.metamodel.mapping.ManagedMappingType;
 import org.hibernate.metamodel.mapping.MappingType;
+import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.ValuedModelPart;
+import org.hibernate.metamodel.mapping.internal.BasicValuedCollectionPart;
 import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
+import org.hibernate.metamodel.mapping.internal.SingleAttributeIdentifierMapping;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.BasicType;
@@ -44,21 +59,22 @@ import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 import org.hibernate.type.descriptor.jdbc.ArrayJdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 
-import static org.hibernate.dialect.StructHelper.getEmbeddedPart;
+import static org.hibernate.Hibernate.isInitialized;
+import static org.hibernate.dialect.StructHelper.getSubPart;
 import static org.hibernate.dialect.StructHelper.instantiate;
 
 /**
- * A Helper for serializing and deserializing JSON, based on an {@link org.hibernate.metamodel.mapping.EmbeddableMappingType}.
+ * A Helper for serializing and deserializing JSON, based on the {@link org.hibernate.metamodel.mapping mapping model}.
  */
 @Internal
 public class JsonHelper {
 
-	public static String toString(EmbeddableMappingType embeddableMappingType, Object value, WrapperOptions options) {
+	public static String toString(ManagedMappingType mappingType, Object value, WrapperOptions options) {
 		if ( value == null ) {
 			return null;
 		}
 		final StringBuilder sb = new StringBuilder();
-		toString( embeddableMappingType, value, options, new JsonAppender( sb ) );
+		toString( value, mappingType, options, new JsonAppender( sb, false ) );
 		return sb.toString();
 	}
 
@@ -67,11 +83,11 @@ public class JsonHelper {
 			return "[]";
 		}
 		final StringBuilder sb = new StringBuilder();
-		final JsonAppender jsonAppender = new JsonAppender( sb );
+		final JsonAppender jsonAppender = new JsonAppender( sb, false );
 		char separator = '[';
 		for ( Object value : values ) {
 			sb.append( separator );
-			toString( elementMappingType, value, options, jsonAppender );
+			toString( value, elementMappingType, options, jsonAppender );
 			separator = ',';
 		}
 		sb.append( ']' );
@@ -87,7 +103,7 @@ public class JsonHelper {
 			return "[]";
 		}
 		final StringBuilder sb = new StringBuilder();
-		final JsonAppender jsonAppender = new JsonAppender( sb );
+		final JsonAppender jsonAppender = new JsonAppender( sb, false );
 		char separator = '[';
 		for ( Object value : values ) {
 			sb.append( separator );
@@ -99,74 +115,232 @@ public class JsonHelper {
 		return sb.toString();
 	}
 
-	private static void toString(EmbeddableMappingType embeddableMappingType, Object value, WrapperOptions options, JsonAppender appender) {
-		toString( embeddableMappingType, options, appender, value, '{' );
-		appender.append( '}' );
-	}
-
-	private static void toString(
-			EmbeddableMappingType embeddableMappingType,
+	public static void toString(
+			Object object,
+			ManagedMappingType managedMappingType,
 			WrapperOptions options,
 			JsonAppender appender,
-			Object domainValue,
 			char separator) {
-		final Object[] values = embeddableMappingType.getValues( domainValue );
+		final Object[] values = managedMappingType.getValues( object );
 		for ( int i = 0; i < values.length; i++ ) {
-			final ValuedModelPart attributeMapping = getEmbeddedPart( embeddableMappingType, i );
-			if ( attributeMapping instanceof SelectableMapping ) {
-				final String name = ( (SelectableMapping) attributeMapping ).getSelectableName();
-				appender.append( separator );
-				appender.append( '"' );
-				appender.append( name );
-				appender.append( "\":" );
-				toString( attributeMapping.getMappedType(), values[i], options, appender );
-			}
-			else if ( attributeMapping instanceof EmbeddedAttributeMapping ) {
-				if ( values[i] == null ) {
-					// Skipping the update of the separator is on purpose
-					continue;
-				}
-				final EmbeddableMappingType mappingType = (EmbeddableMappingType) attributeMapping.getMappedType();
-				final SelectableMapping aggregateMapping = mappingType.getAggregateMapping();
-				if ( aggregateMapping == null ) {
-					toString(
-							mappingType,
-							options,
-							appender,
-							values[i],
-							separator
-					);
-				}
-				else {
-					final String name = aggregateMapping.getSelectableName();
-					appender.append( separator );
-					appender.append( '"' );
-					appender.append( name );
-					appender.append( "\":" );
-					toString( mappingType, values[i], options, appender );
-				}
-			}
-			else {
-				throw new UnsupportedOperationException( "Support for attribute mapping type not yet implemented: " + attributeMapping.getClass().getName() );
-			}
+			final ValuedModelPart subPart = getSubPart( managedMappingType, i );
+			final Object value = values[i];
+			toString( value, subPart, options, appender, separator );
 			separator = ',';
 		}
 	}
 
-	private static void toString(MappingType mappedType, Object value, WrapperOptions options, JsonAppender appender) {
-		if ( value == null ) {
-			appender.append( "null" );
+	private static void toString(
+			Object value,
+			ValuedModelPart modelPart,
+			WrapperOptions options,
+			JsonAppender appender,
+			char separator) {
+		switch ( modelPart ) {
+			case SelectableMapping selectable -> {
+				final String name = appender.propertyNames() ? modelPart.getPartName() : selectable.getSelectableName();
+				appender.append( separator ).append( '"' ).append( name ).append( "\":" );
+				toString( value, modelPart.getMappedType(), options, appender );
+			}
+			case EmbeddedAttributeMapping embeddedAttribute -> {
+				final EmbeddableMappingType mappingType = embeddedAttribute.getMappedType();
+				final SelectableMapping aggregateMapping = mappingType.getAggregateMapping();
+				if ( aggregateMapping == null && !appender.propertyNames() ) {
+					if ( value != null ) {
+						toString( value, mappingType, options, appender, ',' );
+					}
+				}
+				else {
+					final String attributeName = appender.propertyNames() || aggregateMapping == null ?
+							embeddedAttribute.getAttributeName() :
+							aggregateMapping.getSelectableName();
+					appender.append( separator ).append( '"' ).append( attributeName ).append( "\":" );
+					toString( value, mappingType, options, appender );
+				}
+			}
+			case EntityValuedModelPart entityPart -> {
+				appender.append( separator ).append( '"' ).append( entityPart.getPartName() ).append( "\":" );
+				toString( value, entityPart.getEntityMappingType(), options, appender );
+			}
+			case PluralAttributeMapping plural -> {
+				appender.append( separator ).append( '"' ).append( plural.getAttributeName() ).append( "\":" );
+				pluralAttributeToString( value, plural, options, appender );
+			}
+			case null, default -> throw new UnsupportedOperationException(
+					"Support for attribute mapping type not yet implemented: " + ( modelPart != null
+							? modelPart.getClass().getName() : "null" ) );
 		}
-		else if ( mappedType instanceof EmbeddableMappingType ) {
-			toString( (EmbeddableMappingType) mappedType, value, options, appender );
-		}
-		else if ( mappedType instanceof BasicType<?> ) {
-			//noinspection unchecked
-			final BasicType<Object> basicType = (BasicType<Object>) mappedType;
-			convertedBasicValueToString( basicType.convertToRelationalValue( value ), options, appender, basicType );
+	}
+
+	private static void entityToString(
+			Object value,
+			EntityMappingType entityType,
+			WrapperOptions options,
+			JsonAppender appender) {
+		if ( appender.propertyNames() ) {
+			// when using property names, append the whole entity
+			if ( appender.wasEntityEncountered( value, entityType ) ) {
+				// if it was already encountered, this is a circular relationship - append the identity string
+				appender.append( '\"' ).append( entityType.getEntityName() ).append( '#' );
+				entityIdentifierToString( value, entityType, options, appender, false );
+				appender.append( '\"' );
+			}
+			else {
+				toString( value, entityType, options, appender, '{' );
+				entityIdentifierToString( value, entityType, options, appender, true );
+				appender.append( '}' );
+				appender.circularityTracker.get( entityType.getEntityName() ).remove( value );
+			}
 		}
 		else {
-			throw new UnsupportedOperationException( "Support for mapping type not yet implemented: " + mappedType.getClass().getName() );
+			entityIdentifierToString( value, entityType, options, appender, false );
+		}
+	}
+
+	private static void entityIdentifierToString(
+			Object value,
+			EntityMappingType entityType,
+			WrapperOptions options,
+			JsonAppender appender,
+			boolean includeName) {
+		final EntityIdentifierMapping identifierMapping = entityType.getIdentifierMapping();
+		if ( includeName ) {
+			final String name = identifierMapping.getAttributeName();
+			appender.append( ",\"" ).append( name ).append( "\":" );
+		}
+		final Object identifier = identifierMapping.getIdentifier( value );
+		if ( identifierMapping instanceof SingleAttributeIdentifierMapping singleAttribute ) {
+			//noinspection unchecked
+			convertedValueToString(
+					(JavaType<Object>) singleAttribute.getJavaType(),
+					singleAttribute.getSingleJdbcMapping().getJdbcType(),
+					identifier,
+					options,
+					appender
+			);
+		}
+		else if ( identifier instanceof CompositeIdentifierMapping composite ) {
+			toString( identifier, composite.getMappedType(), options, appender );
+		}
+		else {
+			throw new UnsupportedOperationException( "Unsupported identifier type: " + identifier.getClass().getName() );
+		}
+	}
+
+	private static void pluralAttributeToString(
+			Object value,
+			PluralAttributeMapping plural,
+			WrapperOptions options,
+			JsonAppender appender) {
+		if ( !handleNullOrLazy( value, appender ) ) {
+			final CollectionPart element = plural.getElementDescriptor();
+			final CollectionSemantics<?, ?> collectionSemantics = plural.getMappedType().getCollectionSemantics();
+			switch ( collectionSemantics.getCollectionClassification() ) {
+				case MAP:
+				case SORTED_MAP:
+				case ORDERED_MAP:
+					final PersistentMap<?, ?> pm = (PersistentMap<?, ?>) value;
+					persistentMapToString( pm, plural.getIndexDescriptor(), element, options, appender );
+					break;
+				default:
+					final PersistentCollection<?> pc = (PersistentCollection<?>) value;
+					final Iterator<?> entries = pc.entries( plural.getCollectionDescriptor() );
+					char separator = '[';
+					while ( entries.hasNext() ) {
+						appender.append( separator );
+						collectionPartToString( entries.next(), element, options, appender );
+						separator = ',';
+					}
+					appender.append( ']' );
+			}
+		}
+	}
+
+	private static <K, E> void persistentMapToString(
+			PersistentMap<K, E> map,
+			CollectionPart key,
+			CollectionPart value,
+			WrapperOptions options,
+			JsonAppender appender) {
+		char separator = '{';
+		for ( final Map.Entry<K, E> entry : map.entrySet() ) {
+			appender.append( separator );
+			collectionPartToString( entry.getKey(), key, options, appender );
+			appender.append( ':' );
+			collectionPartToString( entry.getValue(), value, options, appender );
+			separator = ',';
+		}
+		appender.append( '}' );
+	}
+
+	private static void collectionPartToString(
+			Object value,
+			CollectionPart collectionPart,
+			WrapperOptions options,
+			JsonAppender appender) {
+		if ( collectionPart instanceof BasicValuedCollectionPart basic ) {
+			// special case for basic values as they use lambdas as mapping type
+			//noinspection unchecked
+			convertedValueToString(
+					(JavaType<Object>) basic.getJavaType(),
+					basic.getJdbcMapping().getJdbcType(),
+					value,
+					options,
+					appender
+			);
+		}
+		else {
+			toString( value, collectionPart.getMappedType(), options, appender );
+		}
+	}
+
+	/**
+	 * Checks the provided {@code value} is either null or a lazy property.
+	 *
+	 * @param value the value to check
+	 * @param appender the current {@link JsonAppender}
+	 *
+	 * @return {@code true} if it was, indicating no further processing of the value is needed, {@code false otherwise}.
+	 */
+	private static boolean handleNullOrLazy(Object value, JsonAppender appender) {
+		if ( value == null ) {
+			appender.append( "null" );
+			return true;
+		}
+		else if ( !appender.propertyNames() ) {
+			// avoid force-initialization when using property names
+			if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY ) {
+				appender.append( '"' ).append( value.toString() ).append( '"' );
+				return true;
+			}
+			else if ( !isInitialized( value ) ) {
+				appender.append( '"' ).append( "<uninitialized>" ).append( '"' );
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static void toString(Object value, MappingType mappedType, WrapperOptions options, JsonAppender appender) {
+		if ( !handleNullOrLazy( value, appender ) ) {
+			switch ( mappedType ) {
+				case EntityMappingType entityType -> entityToString( value, entityType, options, appender );
+				case ManagedMappingType managedMappingType -> {
+					toString( value, managedMappingType, options, appender, '{' );
+					appender.append( '}' );
+				}
+				case BasicType<?> type -> //noinspection unchecked
+						convertedBasicValueToString(
+								type.convertToRelationalValue( value ),
+								options,
+								appender,
+								(JavaType<Object>) type.getJdbcJavaType(),
+								type.getJdbcType()
+						);
+				default -> throw new UnsupportedOperationException(
+						"Support for mapping type not yet implemented: " + mappedType.getClass().getName()
+				);
+			}
 		}
 	}
 
@@ -180,27 +354,11 @@ public class JsonHelper {
 			appender.append( "null" );
 		}
 		else if ( jdbcType instanceof AggregateJdbcType aggregateJdbcType ) {
-			toString( aggregateJdbcType.getEmbeddableMappingType(), value, options, appender );
+			toString( value, aggregateJdbcType.getEmbeddableMappingType(), options, appender );
 		}
 		else {
 			convertedBasicValueToString( value, options, appender, javaType, jdbcType );
 		}
-	}
-
-
-	private static void convertedBasicValueToString(
-			Object value,
-			WrapperOptions options,
-			JsonAppender appender,
-			BasicType<Object> basicType) {
-		//noinspection unchecked
-		convertedBasicValueToString(
-				value,
-				options,
-				appender,
-				(JavaType<Object>) basicType.getJdbcJavaType(),
-				basicType.getJdbcType()
-		);
 	}
 
 	private static void convertedBasicValueToString(
@@ -1370,15 +1528,23 @@ public class JsonHelper {
 		}
 	}
 
-	private static class JsonAppender extends OutputStream implements SqlAppender {
+	public static class JsonAppender extends OutputStream implements SqlAppender {
 
 		private final static char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
 		private final StringBuilder sb;
-		private boolean escape;
+		private final boolean propertyNames;
 
-		public JsonAppender(StringBuilder sb) {
+		private boolean escape;
+		private Map<String, IdentitySet<Object>> circularityTracker;
+
+		public JsonAppender(StringBuilder sb, boolean propertyNames) {
 			this.sb = sb;
+			this.propertyNames = propertyNames;
+		}
+
+		public boolean propertyNames() {
+			return propertyNames;
 		}
 
 		@Override
@@ -1477,6 +1643,23 @@ public class JsonHelper {
 			}
 		}
 
+		/**
+		 * Tracks the provided {@code entity} using {@link #circularityTracker},
+		 * and returns {@code true} if it was previously encountered.
+		 *
+		 * @param entity the entity instance to track
+		 * @param entityType the type of the entity instance
+		 *
+		 * @return {@code true} if the entity was already encountered, {@code false} otherwise
+		 */
+		private boolean wasEntityEncountered(Object entity, EntityMappingType entityType) {
+			if ( circularityTracker == null ) {
+				circularityTracker = new HashMap<>();
+			}
+			return !circularityTracker.computeIfAbsent( entityType.getEntityName(), k -> new IdentitySet<>() )
+					.add( entity );
+		}
+
 		private void appendEscaped(char fragment) {
 			switch ( fragment ) {
 				case 0:
@@ -1539,7 +1722,6 @@ public class JsonHelper {
 					break;
 			}
 		}
-
 	}
 
 	private static class CustomArrayList extends AbstractCollection<Object> implements Collection<Object> {
