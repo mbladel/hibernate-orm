@@ -16,13 +16,17 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.function.BiFunction;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.Internal;
 import org.hibernate.internal.build.AllowReflection;
 import org.hibernate.internal.util.CharSequenceHelper;
 import org.hibernate.internal.util.collections.ArrayHelper;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
+import org.hibernate.metamodel.mapping.EntityValuedModelPart;
 import org.hibernate.metamodel.mapping.JdbcMapping;
+import org.hibernate.metamodel.mapping.ManagedMappingType;
 import org.hibernate.metamodel.mapping.MappingType;
 import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.ValuedModelPart;
@@ -44,11 +48,11 @@ import org.hibernate.type.descriptor.jdbc.AggregateJdbcType;
 import org.hibernate.type.descriptor.jdbc.ArrayJdbcType;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
 
-import static org.hibernate.dialect.StructHelper.getEmbeddedPart;
+import static org.hibernate.dialect.StructHelper.getSubPart;
 import static org.hibernate.dialect.StructHelper.instantiate;
 
 /**
- * A Helper for serializing and deserializing JSON, based on an {@link org.hibernate.metamodel.mapping.EmbeddableMappingType}.
+ * A Helper for serializing and deserializing JSON, based on the {@link org.hibernate.metamodel.mapping mapping model}.
  */
 @Internal
 public class JsonHelper {
@@ -105,49 +109,61 @@ public class JsonHelper {
 	}
 
 	private static void toString(
-			EmbeddableMappingType embeddableMappingType,
+			ManagedMappingType managedMappingType,
 			WrapperOptions options,
 			JsonAppender appender,
-			Object domainValue,
+			@Nullable Object value,
 			char separator) {
-		final Object[] values = embeddableMappingType.getValues( domainValue );
+		toString( managedMappingType, options, appender, value, false, null, separator );
+	}
+
+	public static void toString(
+			ManagedMappingType managedMappingType,
+			WrapperOptions options,
+			JsonAppender appender,
+			@Nullable Object value,
+			boolean usePropertyNames,
+			BiFunction<Object, JsonAppender, Boolean> entityPreProcessor,
+			char separator) {
+		final Object[] values = managedMappingType.getValues( value );
 		for ( int i = 0; i < values.length; i++ ) {
-			final ValuedModelPart attributeMapping = getEmbeddedPart( embeddableMappingType, i );
-			if ( attributeMapping instanceof SelectableMapping ) {
-				final String name = ( (SelectableMapping) attributeMapping ).getSelectableName();
-				appender.append( separator );
-				appender.append( '"' );
-				appender.append( name );
-				appender.append( "\":" );
-				toString( attributeMapping.getMappedType(), values[i], options, appender );
-			}
-			else if ( attributeMapping instanceof EmbeddedAttributeMapping ) {
-				if ( values[i] == null ) {
-					// Skipping the update of the separator is on purpose
-					continue;
-				}
-				final EmbeddableMappingType mappingType = (EmbeddableMappingType) attributeMapping.getMappedType();
-				final SelectableMapping aggregateMapping = mappingType.getAggregateMapping();
-				if ( aggregateMapping == null ) {
-					toString(
-							mappingType,
-							options,
-							appender,
-							values[i],
-							separator
-					);
-				}
-				else {
-					final String name = aggregateMapping.getSelectableName();
+			final ValuedModelPart subPart = getSubPart( managedMappingType, i );
+			switch ( subPart ) {
+				case SelectableMapping selectable -> {
+					final String name = usePropertyNames ? subPart.getPartName() : selectable.getSelectableName();
 					appender.append( separator );
 					appender.append( '"' );
 					appender.append( name );
 					appender.append( "\":" );
-					toString( mappingType, values[i], options, appender );
+					toString( subPart.getMappedType(), values[i], options, appender );
 				}
-			}
-			else {
-				throw new UnsupportedOperationException( "Support for attribute mapping type not yet implemented: " + attributeMapping.getClass().getName() );
+				case EmbeddedAttributeMapping embeddedAttribute -> {
+					final EmbeddableMappingType mappingType = embeddedAttribute.getMappedType();
+					final SelectableMapping aggregateMapping = mappingType.getAggregateMapping();
+					if ( aggregateMapping == null && !usePropertyNames ) {
+						toString( mappingType, options, appender, values[i], separator );
+					}
+					else {
+						final String attributeName = usePropertyNames ?
+								embeddedAttribute.getAttributeName() :
+								aggregateMapping.getSelectableName();
+						appender.append( separator ).append( '"' ).append( attributeName ).append( "\":" );
+						toString( mappingType, values[i], options, appender );
+					}
+				}
+				case EntityValuedModelPart entityPart -> {
+						if ( entityPreProcessor != null ) {
+							final Boolean result = entityPreProcessor.apply( values[i], appender );
+							if ( !Boolean.TRUE.equals( result ) ) {
+								// When the pre-processor doesn't return true, we should stop processing the value
+								return;
+							}
+						}
+						toString( entityPart.getEntityMappingType(), options, appender, values[i], separator );
+				}
+				case null, default -> throw new UnsupportedOperationException(
+						"Support for attribute mapping type not yet implemented: " + (subPart != null
+								? subPart.getClass().getName() : "null") );
 			}
 			separator = ',';
 		}
@@ -157,8 +173,8 @@ public class JsonHelper {
 		if ( value == null ) {
 			appender.append( "null" );
 		}
-		else if ( mappedType instanceof EmbeddableMappingType ) {
-			toString( (EmbeddableMappingType) mappedType, value, options, appender );
+		else if ( mappedType instanceof ManagedMappingType managedMappingType ) {
+			toString( managedMappingType, value, options, appender );
 		}
 		else if ( mappedType instanceof BasicType<?> ) {
 			//noinspection unchecked
@@ -1370,7 +1386,7 @@ public class JsonHelper {
 		}
 	}
 
-	private static class JsonAppender extends OutputStream implements SqlAppender {
+	public static class JsonAppender extends OutputStream implements SqlAppender {
 
 		private final static char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
