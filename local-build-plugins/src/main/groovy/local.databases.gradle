@@ -374,5 +374,15 @@ ext {
                     'jdbc.url'   : 'jdbc:Altibase://' + dbHost + ':20300/mydb?force_clob_bind=true',
                     'jdbc.datasource' : 'Altibase.jdbc.driver.AltibaseDriver'
             ],
+            milvus : [
+                    'db.dialect' : 'org.hibernate.milvus.MilvusDialect',
+                    'jdbc.driver': 'org.hibernate.milvus.jdbc.internal.MilvusDriver',
+                    'jdbc.user'  : 'sa',
+                    'jdbc.pass'  : '',
+                    'jdbc.url'   : 'jdbc:milvus://' + dbHost + '/default',
+                    'jdbc.datasource' : 'org.hibernate.milvus.jdbc.internal.MilvusDriver',
+                    'connection.init_sql' : '',
+                    'hibernate.dialect.native_param_markers' : 'true'
+            ],
     ]
 }
