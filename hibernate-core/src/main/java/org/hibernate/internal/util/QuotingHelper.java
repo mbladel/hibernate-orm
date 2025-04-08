@@ -152,6 +152,18 @@ public final class QuotingHelper {
 		return sb.toString();
 	}
 
+	public static String doubleQuoteEscapedString(String text) {
+		final StringBuilder sb = new StringBuilder( text.length() + 2 );
+		appendDoubleQuoteEscapedString( sb, text );
+		return sb.toString();
+	}
+
+	public static String singleQuoteEscapedString(String text) {
+		final StringBuilder sb = new StringBuilder( text.length() + 2 );
+		appendSingleQuoteEscapedString( sb, text );
+		return sb.toString();
+	}
+
 	public static void appendDoubleQuoteEscapedString(StringBuilder sb, String text) {
 		appendWithDoubleEscaping( sb, text, '"' );
 	}

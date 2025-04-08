@@ -13,6 +13,7 @@ description = 'Support for testing Hibernate ORM functionality'
 dependencies {
     api project( ':hibernate-core' )
     api project( ':hibernate-community-dialects' )
+    api project( ':hibernate-milvus' )
 
     api testLibs.junit4
     api testLibs.junit5Api

@@ -481,6 +481,10 @@ public abstract class AbstractSqlAstTranslator<T extends JdbcOperation> implemen
 		additionalWherePredicate = Predicate.combinePredicates( additionalWherePredicate, predicate );
 	}
 
+	protected Predicate getAdditionalWherePredicate() {
+		return additionalWherePredicate;
+	}
+
 	@Override
 	public void appendSql(String fragment) {
 		sqlBuffer.append( fragment );

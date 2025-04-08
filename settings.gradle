@@ -308,6 +308,7 @@ include 'hibernate-spatial'
 include 'hibernate-platform'
 
 include 'hibernate-community-dialects'
+include 'hibernate-milvus'
 include 'hibernate-vector'
 
 include 'hibernate-c3p0'
