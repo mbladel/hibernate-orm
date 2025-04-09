@@ -13,17 +13,21 @@ import java.time.format.DateTimeFormatter;
 import java.util.AbstractCollection;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.function.BiFunction;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.Internal;
 import org.hibernate.internal.build.AllowReflection;
 import org.hibernate.internal.util.CharSequenceHelper;
 import org.hibernate.internal.util.collections.ArrayHelper;
+import org.hibernate.internal.util.collections.IdentitySet;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
+import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
+import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.EntityValuedModelPart;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.ManagedMappingType;
@@ -31,6 +35,7 @@ import org.hibernate.metamodel.mapping.MappingType;
 import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.ValuedModelPart;
 import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.BasicType;
@@ -57,21 +62,25 @@ import static org.hibernate.dialect.StructHelper.instantiate;
 @Internal
 public class JsonHelper {
 
-	public static String toString(EmbeddableMappingType embeddableMappingType, Object value, WrapperOptions options) {
+	public static String toString(ManagedMappingType mappingType, Object value, WrapperOptions options) {
 		if ( value == null ) {
 			return null;
 		}
 		final StringBuilder sb = new StringBuilder();
-		toString( embeddableMappingType, value, options, new JsonAppender( sb ) );
+		toString( mappingType, value, options, new JsonAppender( sb, false ) );
 		return sb.toString();
 	}
 
 	public static String arrayToString(MappingType elementMappingType, Object[] values, WrapperOptions options) {
+		return arrayToString( elementMappingType, values, options, false );
+	}
+
+	public static String arrayToString(MappingType elementMappingType, Object[] values, WrapperOptions options, boolean usePropertyNames) {
 		if ( values.length == 0 ) {
 			return "[]";
 		}
 		final StringBuilder sb = new StringBuilder();
-		final JsonAppender jsonAppender = new JsonAppender( sb );
+		final JsonAppender jsonAppender = new JsonAppender( sb, usePropertyNames );
 		char separator = '[';
 		for ( Object value : values ) {
 			sb.append( separator );
@@ -91,7 +100,7 @@ public class JsonHelper {
 			return "[]";
 		}
 		final StringBuilder sb = new StringBuilder();
-		final JsonAppender jsonAppender = new JsonAppender( sb );
+		final JsonAppender jsonAppender = new JsonAppender( sb, false );
 		char separator = '[';
 		for ( Object value : values ) {
 			sb.append( separator );
@@ -108,58 +117,57 @@ public class JsonHelper {
 		appender.append( '}' );
 	}
 
-	private static void toString(
-			ManagedMappingType managedMappingType,
-			WrapperOptions options,
-			JsonAppender appender,
-			@Nullable Object value,
-			char separator) {
-		toString( managedMappingType, options, appender, value, false, null, separator );
-	}
-
 	public static void toString(
 			ManagedMappingType managedMappingType,
 			WrapperOptions options,
 			JsonAppender appender,
 			@Nullable Object value,
-			boolean usePropertyNames,
-			BiFunction<Object, JsonAppender, Boolean> entityPreProcessor,
 			char separator) {
 		final Object[] values = managedMappingType.getValues( value );
 		for ( int i = 0; i < values.length; i++ ) {
 			final ValuedModelPart subPart = getSubPart( managedMappingType, i );
+			final Object currentValue = values[i];
 			switch ( subPart ) {
 				case SelectableMapping selectable -> {
-					final String name = usePropertyNames ? subPart.getPartName() : selectable.getSelectableName();
+					final String name = appender.propertyNames() ? subPart.getPartName() : selectable.getSelectableName();
 					appender.append( separator );
 					appender.append( '"' );
 					appender.append( name );
 					appender.append( "\":" );
-					toString( subPart.getMappedType(), values[i], options, appender );
+					toString( subPart.getMappedType(), currentValue, options, appender );
 				}
 				case EmbeddedAttributeMapping embeddedAttribute -> {
 					final EmbeddableMappingType mappingType = embeddedAttribute.getMappedType();
 					final SelectableMapping aggregateMapping = mappingType.getAggregateMapping();
-					if ( aggregateMapping == null && !usePropertyNames ) {
-						toString( mappingType, options, appender, values[i], separator );
+					if ( aggregateMapping == null && !appender.propertyNames() ) {
+						toString( mappingType, options, appender, currentValue, separator );
 					}
 					else {
-						final String attributeName = usePropertyNames ?
+						final String attributeName = appender.propertyNames() || aggregateMapping == null ?
 								embeddedAttribute.getAttributeName() :
 								aggregateMapping.getSelectableName();
 						appender.append( separator ).append( '"' ).append( attributeName ).append( "\":" );
-						toString( mappingType, values[i], options, appender );
+						toString( mappingType, currentValue, options, appender );
 					}
 				}
 				case EntityValuedModelPart entityPart -> {
-						if ( entityPreProcessor != null ) {
-							final Boolean result = entityPreProcessor.apply( values[i], appender );
-							if ( !Boolean.TRUE.equals( result ) ) {
-								// When the pre-processor doesn't return true, we should stop processing the value
-								return;
+					final EntityMappingType entityMappingType = entityPart.getEntityMappingType();
+					if ( appender.propertyNames() ) {
+							// when using property names, append the whole entity if it wasn't already encountered
+							if ( appender.wasEntityEncountered( currentValue, entityMappingType ) ) {
+								appender.append( entityIdentityString( currentValue, entityMappingType.getEntityPersister() ) );
+							}
+							else {
+								toString( entityMappingType, options, appender, currentValue, separator );
+								appender.circularityTracker.get( entityMappingType.getEntityName() ).remove( value );
 							}
 						}
-						toString( entityPart.getEntityMappingType(), options, appender, values[i], separator );
+						else {
+							final EntityIdentifierMapping identifierMapping = entityMappingType
+									.getIdentifierMapping();
+							final Object identifier = identifierMapping.getIdentifier( currentValue );
+							toString( identifierMapping.getMappedType(), identifier, options, appender );
+						}
 				}
 				case null, default -> throw new UnsupportedOperationException(
 						"Support for attribute mapping type not yet implemented: " + (subPart != null
@@ -169,12 +177,22 @@ public class JsonHelper {
 		}
 	}
 
-	private static void toString(MappingType mappedType, Object value, WrapperOptions options, JsonAppender appender) {
+	private static String entityIdentityString(Object value, EntityPersister entityType) {
+		final EntityIdentifierMapping identifierMapping = entityType.getIdentifierMapping();
+		final Object identifier = identifierMapping.getIdentifier( value );
+		// note : using #toLoggableString should be enough here
+		return entityType.getEntityName() + "#" + entityType.getIdentifierType().toLoggableString(
+				identifier,
+				entityType.getFactory()
+		);
+	}
+
+	public static void toString(MappingType mappedType, Object value, WrapperOptions options, JsonAppender appender) {
 		if ( value == null ) {
 			appender.append( "null" );
 		}
 		else if ( mappedType instanceof ManagedMappingType managedMappingType ) {
-			toString( managedMappingType, value, options, appender );
+			toString( managedMappingType, options, appender, value, '{' );
 		}
 		else if ( mappedType instanceof BasicType<?> ) {
 			//noinspection unchecked
@@ -1391,10 +1409,18 @@ public class JsonHelper {
 		private final static char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
 		private final StringBuilder sb;
-		private boolean escape;
+		private final boolean propertyNames;
 
-		public JsonAppender(StringBuilder sb) {
+		private boolean escape;
+		private Map<String, IdentitySet<Object>> circularityTracker;
+
+		public JsonAppender(StringBuilder sb, boolean propertyNames) {
 			this.sb = sb;
+			this.propertyNames = propertyNames;
+		}
+
+		public boolean propertyNames() {
+			return propertyNames;
 		}
 
 		@Override
@@ -1493,6 +1519,23 @@ public class JsonHelper {
 			}
 		}
 
+		/**
+		 * Tracks the provided {@code entity} using {@link #circularityTracker},
+		 * and returns {@code true} if it was previously encountered.
+		 *
+		 * @param entity the entity instance to track
+		 * @param entityType the type of the entity instance
+		 *
+		 * @return {@code true} if the entity was already encountered, {@code false} otherwise
+		 */
+		private boolean wasEntityEncountered(Object entity, EntityMappingType entityType) {
+			if ( circularityTracker == null ) {
+				circularityTracker = new HashMap<>();
+			}
+			return !circularityTracker.computeIfAbsent( entityType.getEntityName(), k -> new IdentitySet<>() )
+					.add( entity );
+		}
+
 		private void appendEscaped(char fragment) {
 			switch ( fragment ) {
 				case 0:
@@ -1555,7 +1598,6 @@ public class JsonHelper {
 					break;
 			}
 		}
-
 	}
 
 	private static class CustomArrayList extends AbstractCollection<Object> implements Collection<Object> {
