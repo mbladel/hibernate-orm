@@ -207,7 +207,7 @@ public class StructHelper {
 	public static ValuedModelPart getSubPart(ManagedMappingType type, int position) {
 		if ( position == type.getNumberOfAttributeMappings() ) {
 			assert type instanceof EmbeddableMappingType;
-			return ((EmbeddableMappingType) type).getDiscriminatorMapping();
+			return ( (EmbeddableMappingType) type ).getDiscriminatorMapping();
 		}
 		return type.getAttributeMapping( position );
 	}
