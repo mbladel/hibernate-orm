@@ -40,6 +40,7 @@ import org.hibernate.metamodel.mapping.MappingType;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.metamodel.mapping.SelectableMapping;
 import org.hibernate.metamodel.mapping.ValuedModelPart;
+import org.hibernate.metamodel.mapping.internal.BasicValuedCollectionPart;
 import org.hibernate.metamodel.mapping.internal.EmbeddedAttributeMapping;
 import org.hibernate.metamodel.mapping.internal.SingleAttributeIdentifierMapping;
 import org.hibernate.sql.ast.spi.SqlAppender;
@@ -197,61 +198,6 @@ public class JsonHelper {
 		}
 	}
 
-	private static void pluralAttributeToString(
-			Object value,
-			PluralAttributeMapping plural,
-			WrapperOptions options,
-			JsonAppender appender) {
-		if ( value == null ) {
-			appender.append( "null" );
-		}
-		else if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY ) {
-			appender.append( value.toString() );
-		}
-		else if ( !isInitialized( value ) ) {
-			appender.append( "\"<uninitialized>\"" );
-		}
-		else {
-			final CollectionPart element = plural.getElementDescriptor();
-			final CollectionSemantics<?, ?> collectionSemantics = plural.getMappedType().getCollectionSemantics();
-			switch ( collectionSemantics.getCollectionClassification() ) {
-				case MAP:
-					final PersistentMap<?, ?> pm = (PersistentMap<?, ?>) value;
-					persistentMapToString( pm, plural.getIndexDescriptor(), element, options, appender );
-				case SORTED_MAP:
-				case ORDERED_MAP:
-					final PersistentMap<?, ?> pm1 = (PersistentMap<?, ?>) value;
-					persistentMapToString( pm1, plural.getIndexDescriptor(), element, options, appender );
-				default:
-					final PersistentCollection<?> pc = (PersistentCollection<?>) value;
-					appender.append( '[' );
-					pc.entries( plural.getCollectionDescriptor() ).forEachRemaining( e -> {
-						toString( e, element.getMappedType(), options, appender );
-						appender.append( ',' );
-					} );
-					appender.sb.deleteCharAt( appender.sb.length() - 1 );
-					appender.append( ']' );
-			}
-		}
-	}
-
-	private static <K, E> void persistentMapToString(
-			PersistentMap<K, E> map,
-			CollectionPart key,
-			CollectionPart value,
-			WrapperOptions options,
-			JsonAppender appender) {
-		char separator = '{';
-		for ( final Map.Entry<K, E> entry : map.entrySet() ) {
-			appender.append( separator );
-			toString( entry.getKey(), key.getMappedType(), options, appender );
-			appender.append( ':' );
-			toString( entry.getValue(), value.getMappedType(), options, appender );
-			separator = ',';
-		}
-		appender.append( '}' );
-	}
-
 	private static void entityIdentifierToString(
 			Object value,
 			EntityMappingType entityType,
@@ -279,6 +225,82 @@ public class JsonHelper {
 		}
 		else {
 			throw new UnsupportedOperationException( "Unsupported identifier type: " + identifier.getClass().getName() );
+		}
+	}
+
+	private static void pluralAttributeToString(
+			Object value,
+			PluralAttributeMapping plural,
+			WrapperOptions options,
+			JsonAppender appender) {
+		if ( value == null ) {
+			appender.append( "null" );
+		}
+		else if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY ) {
+			appender.append( value.toString() );
+		}
+		else if ( !isInitialized( value ) ) {
+			appender.append( "\"<uninitialized>\"" );
+		}
+		else {
+			final CollectionPart element = plural.getElementDescriptor();
+			final CollectionSemantics<?, ?> collectionSemantics = plural.getMappedType().getCollectionSemantics();
+			switch ( collectionSemantics.getCollectionClassification() ) {
+				case MAP:
+				case SORTED_MAP:
+				case ORDERED_MAP:
+					final PersistentMap<?, ?> pm = (PersistentMap<?, ?>) value;
+					persistentMapToString( pm, plural.getIndexDescriptor(), element, options, appender );
+					break;
+				default:
+					final PersistentCollection<?> pc = (PersistentCollection<?>) value;
+					final Iterator<?> entries = pc.entries( plural.getCollectionDescriptor() );
+					char separator = '[';
+					while ( entries.hasNext() ) {
+						appender.append( separator );
+						collectionPartToString( entries.next(), element, options, appender );
+						separator = ',';
+					}
+					appender.append( ']' );
+			}
+		}
+	}
+
+	private static <K, E> void persistentMapToString(
+			PersistentMap<K, E> map,
+			CollectionPart key,
+			CollectionPart value,
+			WrapperOptions options,
+			JsonAppender appender) {
+		char separator = '{';
+		for ( final Map.Entry<K, E> entry : map.entrySet() ) {
+			appender.append( separator );
+			collectionPartToString( entry.getKey(), key, options, appender );
+			appender.append( ':' );
+			collectionPartToString( entry.getValue(), value, options, appender );
+			separator = ',';
+		}
+		appender.append( '}' );
+	}
+
+	private static void collectionPartToString(
+			Object value,
+			CollectionPart collectionPart,
+			WrapperOptions options,
+			JsonAppender appender) {
+		if ( collectionPart instanceof BasicValuedCollectionPart basic ) {
+			// special case for basic values as they use lambdas as mapping type
+			//noinspection unchecked
+			convertedValueToString(
+					(JavaType<Object>) basic.getJavaType(),
+					basic.getJdbcMapping().getJdbcType(),
+					value,
+					options,
+					appender
+			);
+		}
+		else {
+			toString( value, collectionPart.getMappedType(), options, appender );
 		}
 	}
 
