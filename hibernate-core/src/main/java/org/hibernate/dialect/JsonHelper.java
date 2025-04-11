@@ -4,7 +4,6 @@
  */
 package org.hibernate.dialect;
 
-
 import java.io.OutputStream;
 import java.lang.reflect.Array;
 import java.sql.SQLException;
@@ -212,15 +211,15 @@ public class JsonHelper {
 		final Object identifier = identifierMapping.getIdentifier( value );
 		if ( identifierMapping instanceof SingleAttributeIdentifierMapping singleAttribute ) {
 			//noinspection unchecked
-			convertedBasicValueToString(
+			convertedValueToString(
+					(JavaType<Object>) singleAttribute.getJavaType(),
+					singleAttribute.getSingleJdbcMapping().getJdbcType(),
 					identifier,
 					options,
-					appender,
-					(JavaType<Object>) singleAttribute.getJavaType(),
-					singleAttribute.getSingleJdbcMapping().getJdbcType()
+					appender
 			);
 		}
-		else if ( identifier instanceof  CompositeIdentifierMapping composite ) {
+		else if ( identifier instanceof CompositeIdentifierMapping composite ) {
 			toString( identifier, composite.getMappedType(), options, appender );
 		}
 		else {
@@ -233,16 +232,7 @@ public class JsonHelper {
 			PluralAttributeMapping plural,
 			WrapperOptions options,
 			JsonAppender appender) {
-		if ( value == null ) {
-			appender.append( "null" );
-		}
-		else if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY ) {
-			appender.append( value.toString() );
-		}
-		else if ( !isInitialized( value ) ) {
-			appender.append( "\"<uninitialized>\"" );
-		}
-		else {
+		if ( !handleNullOrLazy( value, appender ) ) {
 			final CollectionPart element = plural.getElementDescriptor();
 			final CollectionSemantics<?, ?> collectionSemantics = plural.getMappedType().getCollectionSemantics();
 			switch ( collectionSemantics.getCollectionClassification() ) {
@@ -304,30 +294,53 @@ public class JsonHelper {
 		}
 	}
 
-	public static void toString(Object value, MappingType mappedType, WrapperOptions options, JsonAppender appender) {
+	/**
+	 * Checks the provided {@code value} is either null or a lazy property.
+	 *
+	 * @param value the value to check
+	 * @param appender the current {@link JsonAppender}
+	 *
+	 * @return {@code true} if it was, indicating no further processing of the value is needed, {@code false otherwise}.
+	 */
+	private static boolean handleNullOrLazy(Object value, JsonAppender appender) {
 		if ( value == null ) {
 			appender.append( "null" );
+			return true;
 		}
-		else if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY ) {
-			appender.append( value.toString() );
+		else if ( !appender.propertyNames() ) {
+			// avoid force-initialization when using property names
+			if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY ) {
+				appender.append( '"' ).append( value.toString() ).append( '"' );
+				return true;
+			}
+			else if ( !isInitialized( value ) ) {
+				appender.append( '"' ).append( "<uninitialized>" ).append( '"' );
+				return true;
+			}
 		}
-		else if ( !isInitialized( value ) ) {
-			appender.append( "<uninitialized>" );
-		}
-		else if ( mappedType instanceof EntityMappingType entityType ) {
-			entityToString( value, entityType, options, appender );
-		}
-		else if ( mappedType instanceof ManagedMappingType managedMappingType ) {
-			toString( value, managedMappingType, options, appender, '{' );
-			appender.append( '}' );
-		}
-		else if ( mappedType instanceof BasicType<?> ) {
-			//noinspection unchecked
-			final BasicType<Object> basicType = (BasicType<Object>) mappedType;
-			convertedBasicValueToString( basicType.convertToRelationalValue( value ), options, appender, basicType );
-		}
-		else {
-			throw new UnsupportedOperationException( "Support for mapping type not yet implemented: " + mappedType.getClass().getName() );
+		return false;
+	}
+
+	public static void toString(Object value, MappingType mappedType, WrapperOptions options, JsonAppender appender) {
+		if ( !handleNullOrLazy( value, appender ) ) {
+			switch ( mappedType ) {
+				case EntityMappingType entityType -> entityToString( value, entityType, options, appender );
+				case ManagedMappingType managedMappingType -> {
+					toString( value, managedMappingType, options, appender, '{' );
+					appender.append( '}' );
+				}
+				case BasicType<?> type -> //noinspection unchecked
+						convertedBasicValueToString(
+								type.convertToRelationalValue( value ),
+								options,
+								appender,
+								(JavaType<Object>) type.getJdbcJavaType(),
+								type.getJdbcType()
+						);
+				default -> throw new UnsupportedOperationException(
+						"Support for mapping type not yet implemented: " + mappedType.getClass().getName()
+				);
+			}
 		}
 	}
 
@@ -346,22 +359,6 @@ public class JsonHelper {
 		else {
 			convertedBasicValueToString( value, options, appender, javaType, jdbcType );
 		}
-	}
-
-
-	private static void convertedBasicValueToString(
-			Object value,
-			WrapperOptions options,
-			JsonAppender appender,
-			BasicType<Object> basicType) {
-		//noinspection unchecked
-		convertedBasicValueToString(
-				value,
-				options,
-				appender,
-				(JavaType<Object>) basicType.getJdbcJavaType(),
-				basicType.getJdbcType()
-		);
 	}
 
 	private static void convertedBasicValueToString(
