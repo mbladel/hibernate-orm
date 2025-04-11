@@ -17,6 +17,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import org.hibernate.Internal;
 import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
@@ -69,12 +70,12 @@ import static org.hibernate.dialect.StructHelper.instantiate;
 @Internal
 public class JsonHelper {
 
-	public static String toString(ManagedMappingType mappingType, Object value, WrapperOptions options) {
+	public static String toString(EmbeddableMappingType embeddableMappingType, Object value, WrapperOptions options) {
 		if ( value == null ) {
 			return null;
 		}
 		final StringBuilder sb = new StringBuilder();
-		toString( value, mappingType, options, new JsonAppender( sb, false ) );
+		toString( value, embeddableMappingType, options, new JsonAppender( sb, false ) );
 		return sb.toString();
 	}
 
@@ -115,7 +116,7 @@ public class JsonHelper {
 		return sb.toString();
 	}
 
-	public static void toString(
+	private static void toString(
 			Object object,
 			ManagedMappingType managedMappingType,
 			WrapperOptions options,
@@ -130,40 +131,48 @@ public class JsonHelper {
 		}
 	}
 
-	private static void toString(
+	public static void toString(
 			Object value,
 			ValuedModelPart modelPart,
 			WrapperOptions options,
 			JsonAppender appender,
-			char separator) {
+			Character separator) {
 		switch ( modelPart ) {
 			case SelectableMapping selectable -> {
-				final String name = appender.propertyNames() ? modelPart.getPartName() : selectable.getSelectableName();
-				appender.append( separator ).append( '"' ).append( name ).append( "\":" );
+				if ( separator != null ) {
+					final String name = appender.expandProperties() ? modelPart.getPartName() : selectable.getSelectableName();
+					appender.append( separator ).append( '"' ).append( name ).append( "\":" );
+				}
 				toString( value, modelPart.getMappedType(), options, appender );
 			}
 			case EmbeddedAttributeMapping embeddedAttribute -> {
 				final EmbeddableMappingType mappingType = embeddedAttribute.getMappedType();
 				final SelectableMapping aggregateMapping = mappingType.getAggregateMapping();
-				if ( aggregateMapping == null && !appender.propertyNames() ) {
+				if ( aggregateMapping == null && !appender.expandProperties() ) {
 					if ( value != null ) {
 						toString( value, mappingType, options, appender, ',' );
 					}
 				}
 				else {
-					final String attributeName = appender.propertyNames() || aggregateMapping == null ?
-							embeddedAttribute.getAttributeName() :
-							aggregateMapping.getSelectableName();
-					appender.append( separator ).append( '"' ).append( attributeName ).append( "\":" );
+					if ( separator != null ) {
+						final String attributeName = appender.expandProperties() || aggregateMapping == null ?
+								embeddedAttribute.getAttributeName() :
+								aggregateMapping.getSelectableName();
+						appender.append( separator ).append( '"' ).append( attributeName ).append( "\":" );
+					}
 					toString( value, mappingType, options, appender );
 				}
 			}
 			case EntityValuedModelPart entityPart -> {
-				appender.append( separator ).append( '"' ).append( entityPart.getPartName() ).append( "\":" );
+				if ( separator != null ) {
+					appender.append( separator ).append( '"' ).append( entityPart.getPartName() ).append( "\":" );
+				}
 				toString( value, entityPart.getEntityMappingType(), options, appender );
 			}
 			case PluralAttributeMapping plural -> {
-				appender.append( separator ).append( '"' ).append( plural.getAttributeName() ).append( "\":" );
+				if ( separator != null ) {
+					appender.append( separator ).append( '"' ).append( plural.getAttributeName() ).append( "\":" );
+				}
 				pluralAttributeToString( value, plural, options, appender );
 			}
 			case null, default -> throw new UnsupportedOperationException(
@@ -177,20 +186,21 @@ public class JsonHelper {
 			EntityMappingType entityType,
 			WrapperOptions options,
 			JsonAppender appender) {
-		if ( appender.propertyNames() ) {
+		if ( appender.expandProperties() ) {
 			// when using property names, append the whole entity
-			if ( appender.wasEntityEncountered( value, entityType ) ) {
-				// if it was already encountered, this is a circular relationship - append the identity string
-				appender.append( '\"' ).append( entityType.getEntityName() ).append( '#' );
-				entityIdentifierToString( value, entityType, options, appender, false );
-				appender.append( '\"' );
-			}
-			else {
-				toString( value, entityType, options, appender, '{' );
-				entityIdentifierToString( value, entityType, options, appender, true );
-				appender.append( '}' );
-				appender.circularityTracker.get( entityType.getEntityName() ).remove( value );
-			}
+			appender.trackingEntity( value, entityType, shouldProcessEntity -> {
+				if ( shouldProcessEntity ) {
+					toString( value, entityType, options, appender, '{' );
+					entityIdentifierToString( value, entityType, options, appender, true );
+					appender.append( '}' );
+				}
+				else {
+					// if it was already encountered, only append the identity string
+					appender.append( '\"' ).append( entityType.getEntityName() ).append( '#' );
+					entityIdentifierToString( value, entityType, options, appender, false );
+					appender.append( '\"' );
+				}
+			} );
 		}
 		else {
 			entityIdentifierToString( value, entityType, options, appender, false );
@@ -307,8 +317,8 @@ public class JsonHelper {
 			appender.append( "null" );
 			return true;
 		}
-		else if ( !appender.propertyNames() ) {
-			// avoid force-initialization when using property names
+		else if ( appender.expandProperties() ) {
+			// avoid force-initialization when serializing all properties
 			if ( value == LazyPropertyInitializer.UNFETCHED_PROPERTY ) {
 				appender.append( '"' ).append( value.toString() ).append( '"' );
 				return true;
@@ -321,6 +331,7 @@ public class JsonHelper {
 		return false;
 	}
 
+	@SuppressWarnings("unchecked")
 	public static void toString(Object value, MappingType mappedType, WrapperOptions options, JsonAppender appender) {
 		if ( !handleNullOrLazy( value, appender ) ) {
 			switch ( mappedType ) {
@@ -329,14 +340,13 @@ public class JsonHelper {
 					toString( value, managedMappingType, options, appender, '{' );
 					appender.append( '}' );
 				}
-				case BasicType<?> type -> //noinspection unchecked
-						convertedBasicValueToString(
-								type.convertToRelationalValue( value ),
-								options,
-								appender,
-								(JavaType<Object>) type.getJdbcJavaType(),
-								type.getJdbcType()
-						);
+				case BasicType<?> type -> convertedBasicValueToString(
+						type.convertToRelationalValue( value ),
+						options,
+						appender,
+						(JavaType<Object>) type.getJdbcJavaType(),
+						type.getJdbcType()
+				);
 				default -> throw new UnsupportedOperationException(
 						"Support for mapping type not yet implemented: " + mappedType.getClass().getName()
 				);
@@ -1533,18 +1543,18 @@ public class JsonHelper {
 		private final static char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
 		private final StringBuilder sb;
-		private final boolean propertyNames;
+		private final boolean expandProperties;
 
 		private boolean escape;
 		private Map<String, IdentitySet<Object>> circularityTracker;
 
-		public JsonAppender(StringBuilder sb, boolean propertyNames) {
+		public JsonAppender(StringBuilder sb, boolean expandProperties) {
 			this.sb = sb;
-			this.propertyNames = propertyNames;
+			this.expandProperties = expandProperties;
 		}
 
-		public boolean propertyNames() {
-			return propertyNames;
+		public boolean expandProperties() {
+			return expandProperties;
 		}
 
 		@Override
@@ -1644,20 +1654,26 @@ public class JsonHelper {
 		}
 
 		/**
-		 * Tracks the provided {@code entity} using {@link #circularityTracker},
-		 * and returns {@code true} if it was previously encountered.
+		 * Tracks the provided {@code entity} instance and invokes the {@code action} with either
+		 * {@code true} if the entity was not already encountered or {@code false} otherwise.
 		 *
 		 * @param entity the entity instance to track
 		 * @param entityType the type of the entity instance
-		 *
-		 * @return {@code true} if the entity was already encountered, {@code false} otherwise
+		 * @param action the action to invoke while tracking the entity
 		 */
-		private boolean wasEntityEncountered(Object entity, EntityMappingType entityType) {
+		public void trackingEntity(Object entity, EntityMappingType entityType, Consumer<Boolean> action) {
 			if ( circularityTracker == null ) {
 				circularityTracker = new HashMap<>();
 			}
-			return !circularityTracker.computeIfAbsent( entityType.getEntityName(), k -> new IdentitySet<>() )
-					.add( entity );
+			final IdentitySet<Object> entities = circularityTracker.computeIfAbsent(
+					entityType.getEntityName(),
+					k -> new IdentitySet<>()
+			);
+			final boolean added = entities.add( entity );
+			action.accept( added );
+			if ( added ) {
+				entities.remove( entity );
+			}
 		}
 
 		private void appendEscaped(char fragment) {
