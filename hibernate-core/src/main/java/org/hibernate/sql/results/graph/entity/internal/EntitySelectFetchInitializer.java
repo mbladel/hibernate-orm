@@ -51,7 +51,6 @@ public class EntitySelectFetchInitializer<Data extends EntitySelectFetchInitiali
 	protected final ToOneAttributeMapping toOneMapping;
 	protected final boolean affectedByFilter;
 	protected final boolean keyIsEager;
-	protected final boolean hasLazySubInitializer;
 
 	public static class EntitySelectFetchInitializerData extends InitializerData {
 		// per-row state
@@ -88,14 +87,7 @@ public class EntitySelectFetchInitializer<Data extends EntitySelectFetchInitiali
 		this.isEnhancedForLazyLoading = concreteDescriptor.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading();
 		this.affectedByFilter = affectedByFilter;
 		final Initializer<?> initializer = keyAssembler.getInitializer();
-		if ( initializer == null ) {
-			this.keyIsEager = false;
-			this.hasLazySubInitializer = false;
-		}
-		else {
-			this.keyIsEager = initializer.isEager();
-			this.hasLazySubInitializer = !initializer.isEager() || initializer.hasLazySubInitializers();
-		}
+		this.keyIsEager = initializer != null && initializer.isEager();
 	}
 
 	@Override
@@ -327,7 +319,8 @@ public class EntitySelectFetchInitializer<Data extends EntitySelectFetchInitiali
 
 	@Override
 	public boolean hasLazySubInitializers() {
-		return hasLazySubInitializer;
+		// We can't be sure the select-fetched entity does not contain lazy associations
+		return true;
 	}
 
 	@Override
