@@ -8,26 +8,38 @@ import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
-import org.hibernate.dialect.SimpleDatabaseVersion;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
-import org.hibernate.internal.util.StringHelper;
 import org.hibernate.mapping.Table;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.tool.schema.spi.Exporter;
 
-import java.lang.reflect.Type;
-import java.sql.SQLException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static java.lang.Integer.parseInt;
+import static org.hibernate.type.SqlTypes.BIGINT;
+import static org.hibernate.type.SqlTypes.BOOLEAN;
 import static org.hibernate.type.SqlTypes.CHAR;
 import static org.hibernate.type.SqlTypes.CLOB;
+import static org.hibernate.type.SqlTypes.DATE;
+import static org.hibernate.type.SqlTypes.DECIMAL;
+import static org.hibernate.type.SqlTypes.DOUBLE;
+import static org.hibernate.type.SqlTypes.DURATION;
+import static org.hibernate.type.SqlTypes.FLOAT;
+import static org.hibernate.type.SqlTypes.INTEGER;
+import static org.hibernate.type.SqlTypes.LONG32NVARCHAR;
+import static org.hibernate.type.SqlTypes.LONG32VARCHAR;
 import static org.hibernate.type.SqlTypes.NCHAR;
 import static org.hibernate.type.SqlTypes.NCLOB;
+import static org.hibernate.type.SqlTypes.NUMERIC;
 import static org.hibernate.type.SqlTypes.NVARCHAR;
+import static org.hibernate.type.SqlTypes.REAL;
+import static org.hibernate.type.SqlTypes.SMALLINT;
+import static org.hibernate.type.SqlTypes.TIME;
+import static org.hibernate.type.SqlTypes.TIMESTAMP;
+import static org.hibernate.type.SqlTypes.TIMESTAMP_UTC;
+import static org.hibernate.type.SqlTypes.TIMESTAMP_WITH_TIMEZONE;
+import static org.hibernate.type.SqlTypes.TIME_UTC;
+import static org.hibernate.type.SqlTypes.TIME_WITH_TIMEZONE;
+import static org.hibernate.type.SqlTypes.TINYINT;
 import static org.hibernate.type.SqlTypes.VARCHAR;
 
 /**
@@ -35,59 +47,29 @@ import static org.hibernate.type.SqlTypes.VARCHAR;
  */
 public class Neo4jDialect extends Dialect {
 
-	private static final Pattern VERSION_PATTERN = Pattern.compile( "[\\d]+\\.[\\d]+\\.[\\d]+" );
-	private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make( 2, 5 );
-	private static final Type[] VECTOR_JAVA_TYPES = {
-			Float[].class,
-			float[].class
-	};
-	private static final Type[] BINARY_VECTOR_JAVA_TYPES = {
-			Byte[].class,
-			byte[].class
-	};
+	private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make( 5, 0 );
+
+	private final boolean enterpriseEdition;
 
 	@SuppressWarnings("unused")
 	public Neo4jDialect() {
 		this( MINIMUM_VERSION );
 	}
 
-	public Neo4jDialect(DialectResolutionInfo info) {
-		this( determineVersion( info ) );
-		registerKeywords( info );
-	}
-
 	public Neo4jDialect(DatabaseVersion version) {
 		super( version );
+		this.enterpriseEdition = false;
 	}
 
-	protected static DatabaseVersion determineVersion(DialectResolutionInfo info) {
-		String versionString = null;
-		if ( info.getDatabaseMetadata() != null ) {
-			try {
-				versionString = info.getDatabaseMetadata().getDatabaseProductVersion();
-			}
-			catch (SQLException ex) {
-				// Ignore
-			}
-		}
-		return versionString != null ? parseVersion( versionString ) : info.makeCopyOrDefault( MINIMUM_VERSION );
+	@SuppressWarnings("unused")
+	public Neo4jDialect(DialectResolutionInfo info) {
+		this( info, Neo4jServerConfiguration.fromDialectResolutionInfo( info ) );
 	}
 
-	public static DatabaseVersion parseVersion(String versionString) {
-		DatabaseVersion databaseVersion = null;
-		final Matcher matcher = VERSION_PATTERN.matcher( versionString == null ? "" : versionString );
-		if ( matcher.matches() ) {
-			final String[] versionParts = StringHelper.split( ".", versionString );
-			// if we got to this point, there is at least a major version, so no need to check [].length > 0
-			int majorVersion = parseInt( versionParts[0] );
-			int minorVersion = versionParts.length > 1 ? parseInt( versionParts[1] ) : 0;
-			int microVersion = versionParts.length > 2 ? parseInt( versionParts[2] ) : 0;
-			databaseVersion = new SimpleDatabaseVersion( majorVersion, minorVersion, microVersion );
-		}
-		if ( databaseVersion == null ) {
-			databaseVersion = MINIMUM_VERSION;
-		}
-		return databaseVersion;
+	public Neo4jDialect(DialectResolutionInfo info, Neo4jServerConfiguration serverConfiguration) {
+		super( serverConfiguration.getDatabaseVersion() );
+		this.enterpriseEdition = serverConfiguration.isEnterpriseEdition();
+		registerKeywords( info );
 	}
 
 	@Override
@@ -95,6 +77,10 @@ public class Neo4jDialect extends Dialect {
 		super.contributeTypes( typeContributions, serviceRegistry );
 
 		// todo neo4j : do we need anything here?
+	}
+
+	public boolean isEnterpriseEdition() {
+		return enterpriseEdition;
 	}
 
 	@Override
@@ -117,7 +103,18 @@ public class Neo4jDialect extends Dialect {
 	@Override
 	protected String columnType(int sqlTypeCode) {
 		return switch ( sqlTypeCode ) {
-			case CHAR,VARCHAR, NCHAR, NVARCHAR, CLOB, NCLOB -> "varchar";
+			case CHAR,VARCHAR, NCHAR, NVARCHAR, CLOB, NCLOB, LONG32VARCHAR, LONG32NVARCHAR -> "string";
+			case BOOLEAN -> "boolean";
+			case TINYINT, SMALLINT, INTEGER, BIGINT -> "integer";
+			case FLOAT, REAL, DOUBLE, NUMERIC, DECIMAL -> "float";
+
+			case DATE -> "date";
+			case TIME, TIME_UTC -> "local time";
+			case TIME_WITH_TIMEZONE -> "zoned time";
+			case TIMESTAMP, TIMESTAMP_UTC -> "local datetime";
+			case TIMESTAMP_WITH_TIMEZONE -> "zoned datetime";
+			case DURATION -> "duration";
+
 			default -> super.columnType( sqlTypeCode );
 		};
 	}
