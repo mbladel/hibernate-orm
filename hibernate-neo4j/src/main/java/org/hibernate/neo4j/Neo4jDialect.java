@@ -8,11 +8,18 @@ import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.dialect.DmlTargetColumnQualifierSupport;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.mapping.Table;
 import org.hibernate.service.ServiceRegistry;
+import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
+import org.hibernate.sql.ast.SqlParameterInfo;
 import org.hibernate.sql.ast.spi.SqlAppender;
+import org.hibernate.sql.ast.spi.StandardSqlAstTranslatorFactory;
+import org.hibernate.sql.ast.tree.Statement;
+import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.tool.schema.spi.Exporter;
 
 import static org.hibernate.type.SqlTypes.BIGINT;
@@ -103,7 +110,7 @@ public class Neo4jDialect extends Dialect {
 	@Override
 	protected String columnType(int sqlTypeCode) {
 		return switch ( sqlTypeCode ) {
-			case CHAR,VARCHAR, NCHAR, NVARCHAR, CLOB, NCLOB, LONG32VARCHAR, LONG32NVARCHAR -> "string";
+			case CHAR, VARCHAR, NCHAR, NVARCHAR, CLOB, NCLOB, LONG32VARCHAR, LONG32NVARCHAR -> "string";
 			case BOOLEAN -> "boolean";
 			case TINYINT, SMALLINT, INTEGER, BIGINT -> "integer";
 			case FLOAT, REAL, DOUBLE, NUMERIC, DECIMAL -> "float";
@@ -131,14 +138,22 @@ public class Neo4jDialect extends Dialect {
 
 	@Override
 	public SqlAstTranslatorFactory getSqlAstTranslatorFactory() {
-		// todo neo4j
-		return super.getSqlAstTranslatorFactory();
-//		return new StandardSqlAstTranslatorFactory() {
-//			@Override
-//			protected <T extends JdbcOperation> SqlAstTranslator<T> buildTranslator(
-//					SessionFactoryImplementor sessionFactory, Statement statement, SqlParameterInfo parameterInfo) {
-//				return new MilvusSqlAstTranslator<>( sessionFactory, statement, parameterInfo );
-//			}
-//		};
+		return new StandardSqlAstTranslatorFactory() {
+			@Override
+			protected <T extends JdbcOperation> SqlAstTranslator<T> buildTranslator(
+					SessionFactoryImplementor sessionFactory, Statement statement, SqlParameterInfo parameterInfo) {
+				return new Neo4jSqlAstTranslator<>( sessionFactory, statement, parameterInfo );
+			}
+		};
+	}
+
+	@Override
+	public DmlTargetColumnQualifierSupport getDmlTargetColumnQualifierSupport() {
+		return DmlTargetColumnQualifierSupport.TABLE_ALIAS;
+	}
+
+	@Override
+	public String[] getTruncateTableStatements(String[] tableNames) {
+		return new String[] {"match(n:" + String.join( "|", tableNames ) + ") detach delete n"};
 	}
 }

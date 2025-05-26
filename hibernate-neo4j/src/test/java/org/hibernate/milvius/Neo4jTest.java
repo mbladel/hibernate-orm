@@ -7,14 +7,12 @@ package org.hibernate.milvius;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.neo4j.Neo4jDialect;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.RequiresDialect;
 import org.hibernate.testing.orm.junit.ServiceRegistry;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
-import org.hibernate.testing.orm.junit.Setting;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
@@ -38,8 +36,21 @@ public class Neo4jTest {
 	@Test
 	public void test(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
-
+			final TestEntity testEntity = new TestEntity();
+			testEntity.id = 1L;
+			testEntity.name = "test_1";
+			session.persist( testEntity );
 		} );
+
+		scope.inTransaction( session -> {
+			TestEntity testEntity = session.find( TestEntity.class, 1L );
+			testEntity.name = "test_1_updated";
+		} );
+	}
+
+	@AfterAll
+	public void tearDown(SessionFactoryScope scope) {
+		scope.getSessionFactory().getSchemaManager().truncateMappedObjects();
 	}
 
 	@Entity(name = "TestEntity")
@@ -54,6 +65,6 @@ public class Neo4jTest {
 
 		private LocalDateTime localDateTime;
 
-		private String[] array;
+		// todo neo4j : test more types (also translate arrays into native lists ?)
 	}
 }
