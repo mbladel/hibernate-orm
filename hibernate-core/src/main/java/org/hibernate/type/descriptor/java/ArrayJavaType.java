@@ -8,6 +8,7 @@ import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.function.IntFunction;
 
 import org.hibernate.HibernateException;
 import org.hibernate.SharedSessionContract;
@@ -298,7 +299,8 @@ public class ArrayJavaType<T> extends AbstractArrayJavaType<T[], T> {
 			}
 		}
 
-		if ( value instanceof Object[] raw ) {
+		if ( value.getClass().isArray() ) {
+			final Object[] raw = toObjectArray( value );
 			final Class<T> componentClass = getElementJavaType().getJavaTypeClass();
 			//noinspection unchecked
 			final T[] wrapped = (T[]) java.lang.reflect.Array.newInstance( componentClass, raw.length );
@@ -376,6 +378,77 @@ public class ArrayJavaType<T> extends AbstractArrayJavaType<T[], T> {
 			//noinspection unchecked
 			return (T[]) SerializationHelper.deserialize(bytes);
 		}
+	}
+
+	private static Object[] toObjectArray(Object value) {
+		assert value.getClass().isArray();
+		final Class<?> componentType = value.getClass().getComponentType();
+		if ( componentType.isPrimitive() ) {
+			if ( componentType == boolean.class ) {
+				return toObject( (boolean[]) value );
+			}
+			else if ( componentType == byte.class ) {
+				return toObject( (byte[]) value );
+			}
+			else if ( componentType == char.class ) {
+				return toObject( (char[]) value );
+			}
+			else if ( componentType == double.class ) {
+				return toObject( (double[]) value );
+			}
+			else if ( componentType == float.class ) {
+				return toObject( (float[]) value );
+			}
+			else if ( componentType == int.class ) {
+				return toObject( (int[]) value );
+			}
+			else if ( componentType == long.class ) {
+				return toObject( (long[]) value );
+			}
+			else if ( componentType == short.class ) {
+				return toObject( (short[]) value );
+			}
+		}
+		return (Object[]) value;
+	}
+
+	private static Boolean[] toObject(final boolean[] array) {
+		return setAll( new Boolean[array.length], i -> array[i] );
+	}
+
+	private static Byte[] toObject(final byte[] array) {
+		return setAll( new Byte[array.length], i -> array[i] );
+	}
+
+	private static Character[] toObject(final char[] array) {
+		return setAll( new Character[array.length], i -> array[i] );
+	}
+
+	private static Double[] toObject(final double[] array) {
+		return setAll( new Double[array.length], i -> array[i] );
+	}
+
+	private static Float[] toObject(final float[] array) {
+		return setAll( new Float[array.length], i -> array[i] );
+	}
+
+	private static Integer[] toObject(final int[] array) {
+		return setAll( new Integer[array.length], i -> array[i] );
+	}
+
+	private static Long[] toObject(final long[] array) {
+		return setAll( new Long[array.length], i -> array[i] );
+	}
+
+	private static Short[] toObject(final short[] array) {
+		return setAll( new Short[array.length], i -> array[i] );
+	}
+
+	private static <T> T[] setAll(T[] array, IntFunction<T> generator) {
+		for ( int i = 0; i < array.length; i++ ) {
+			array[i] = generator.apply( i );
+		}
+		return array;
 	}
 
 	@AllowReflection

@@ -51,6 +51,31 @@ EOF
           milvus run standalone  1> /dev/null
 }
 
+neo4j() {
+  neo4j_2025_4
+}
+
+neo4j_2025_4() {
+  $CONTAINER_CLI rm -f neo4j || true
+  $CONTAINER_CLI run -d \
+         --name neo4j \
+         -p7474:7474 \
+         -p7687:7687 \
+         -e NEO4J_AUTH=neo4j/hibernate_orm_test \
+         -e NEO4J_apoc_export_file_enabled=true \
+         -e NEO4J_apoc_import_file_enabled=true \
+         -e NEO4J_apoc_import_file_use__neo4j__config=true \
+         -e NEO4J_PLUGINS=\[\"apoc\"\] \
+         ${DB_IMAGE_NEO4J_2025_4:-docker.io/neo4j:2025.04.0}
+  # Give the container some time to start
+  OUTPUT=
+  while [[ $OUTPUT != *"Started"* ]]; do
+      echo "Waiting for Neo4j to start..."
+      sleep 2
+      OUTPUT=$($CONTAINER_CLI logs neo4j 2>&1)
+  done
+}
+
 mysql() {
   mysql_9_2
 }

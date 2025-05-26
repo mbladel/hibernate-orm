@@ -1,0 +1,27 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright Red Hat Inc. and Hibernate Authors
+ */
+
+plugins {
+    id "local.publishing-java-module"
+    id "local.publishing-group-relocation"
+}
+
+description = 'Hibernate\'s extensions for Neo4j database'
+
+dependencies {
+    api project( ':hibernate-core' )
+    implementation project( ':hibernate-vector' )
+//    implementation 'io.milvus:milvus-sdk-java:2.5.2'
+//    implementation 'io.milvus:milvus-sdk-java-bulkwriter:2.5.2'
+    implementation 'org.neo4j:neo4j-jdbc-full-bundle:6.5.0'
+
+
+    testImplementation project( ':hibernate-testing' )
+    testImplementation project( path: ':hibernate-core', configuration: 'tests' )
+}
+
+test {
+    include '**/**'
+}

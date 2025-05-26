@@ -312,6 +312,7 @@ include 'hibernate-platform'
 
 include 'hibernate-community-dialects'
 include 'hibernate-milvus'
+include 'hibernate-neo4j'
 include 'hibernate-vector'
 
 include 'hibernate-c3p0'
