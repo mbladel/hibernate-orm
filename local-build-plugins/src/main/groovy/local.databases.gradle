@@ -23,6 +23,15 @@ ext {
                     'connection.init_sql' : '',
                     'hibernate.dialect.native_param_markers' : 'true'
             ],
+            neo4j : [
+                    'db.dialect' : 'org.hibernate.neo4j.Neo4jDialect',
+                    'jdbc.driver': 'org.neo4j.jdbc.Neo4jDriver',
+                    'jdbc.user'  : 'neo4j',
+                    'jdbc.pass'  : 'hibernate_orm_test',
+                    'jdbc.url'   : 'jdbc:neo4j://' + dbHost + ':7687',
+                    'jdbc.datasource' : 'org.neo4j.jdbc.Neo4jDriver',
+                    'connection.init_sql' : ''
+            ],
             hsqldb : [
                     'db.dialect' : 'org.hibernate.dialect.HSQLDialect',
                     'jdbc.driver': 'org.hsqldb.jdbc.JDBCDriver',
