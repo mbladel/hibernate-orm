@@ -21,6 +21,19 @@ import org.hibernate.sql.ast.spi.StandardSqlAstTranslatorFactory;
 import org.hibernate.sql.ast.tree.Statement;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.tool.schema.spi.Exporter;
+import org.hibernate.type.BasicArrayType;
+import org.hibernate.type.BasicType;
+import org.hibernate.type.BasicTypeRegistry;
+import org.hibernate.type.SqlTypes;
+import org.hibernate.type.StandardBasicTypes;
+import org.hibernate.type.descriptor.java.spi.JavaTypeRegistry;
+import org.hibernate.type.descriptor.jdbc.ArrayJdbcType;
+import org.hibernate.type.descriptor.jdbc.spi.JdbcTypeRegistry;
+import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
+import org.hibernate.type.descriptor.sql.spi.DdlTypeRegistry;
+import org.hibernate.type.spi.TypeConfiguration;
+
+import java.lang.reflect.Type;
 
 import static org.hibernate.type.SqlTypes.BIGINT;
 import static org.hibernate.type.SqlTypes.BOOLEAN;
@@ -56,6 +69,13 @@ public class Neo4jDialect extends Dialect {
 
 	private static final DatabaseVersion MINIMUM_VERSION = DatabaseVersion.make( 5, 0 );
 
+	private static final Class<?>[] VECTOR_JAVA_TYPES = {
+			Float[].class,
+			float[].class,
+			Integer[].class,
+			int[].class,
+	};
+
 	private final boolean enterpriseEdition;
 
 	@SuppressWarnings("unused")
@@ -83,7 +103,37 @@ public class Neo4jDialect extends Dialect {
 	public void contributeTypes(TypeContributions typeContributions, ServiceRegistry serviceRegistry) {
 		super.contributeTypes( typeContributions, serviceRegistry );
 
-		// todo neo4j : do we need anything here?
+		final TypeConfiguration typeConfiguration = typeContributions.getTypeConfiguration();
+		final JavaTypeRegistry javaTypeRegistry = typeConfiguration.getJavaTypeRegistry();
+		final JdbcTypeRegistry jdbcTypeRegistry = typeConfiguration.getJdbcTypeRegistry();
+		final DdlTypeRegistry ddlTypeRegistry = typeConfiguration.getDdlTypeRegistry();
+		final BasicTypeRegistry basicTypeRegistry = typeConfiguration.getBasicTypeRegistry();
+
+		// generic array type constructor
+		jdbcTypeRegistry.addTypeConstructor( Neo4jArrayJdbcType.Neo4jArrayJdbcTypeConstructor.INSTANCE );
+
+		// vector type support
+		final BasicType<Float> floatBasicType = basicTypeRegistry.resolve( StandardBasicTypes.FLOAT );
+		final BasicType<Integer> integerBasicType = basicTypeRegistry.resolve( StandardBasicTypes.INTEGER );
+		final ArrayJdbcType vectorJdbcType = new Neo4jArrayJdbcType( jdbcTypeRegistry.getDescriptor( SqlTypes.FLOAT ) );
+		for ( Class<?> vectorJavaType : VECTOR_JAVA_TYPES ) {
+			final BasicType<?> basicType = vectorJavaType == float[].class || vectorJavaType == Float[].class ?
+					floatBasicType :
+					integerBasicType;
+			basicTypeRegistry.register(
+					new BasicArrayType<>(
+							basicType,
+							vectorJdbcType,
+							javaTypeRegistry.getDescriptor( vectorJavaType )
+					),
+					StandardBasicTypes.VECTOR.getName()
+			);
+		}
+		ddlTypeRegistry.addDescriptor(
+				new DdlTypeImpl( SqlTypes.VECTOR, "list<integer | float>", this )
+		);
+
+		// todo neo4j : json type support ?
 	}
 
 	public boolean isEnterpriseEdition() {
@@ -105,6 +155,11 @@ public class Neo4jDialect extends Dialect {
 	@Override
 	public boolean supportsStandardArrays() {
 		return true;
+	}
+
+	@Override
+	public String getArrayTypeName(String javaElementTypeName, String elementTypeName, Integer maxLength) {
+		return "list<" + elementTypeName + ">";
 	}
 
 	@Override
