@@ -199,6 +199,7 @@ public class Neo4jDialect extends Dialect {
 
 	@Override
 	protected String columnType(int sqlTypeCode) {
+		// https://neo4j.com/docs/cypher-manual/current/values-and-types/property-structural-constructed/#types-synonyms
 		return switch ( sqlTypeCode ) {
 			case CHAR, VARCHAR, NCHAR, NVARCHAR, CLOB, NCLOB, LONG32VARCHAR, LONG32NVARCHAR -> "string";
 			case BOOLEAN -> "boolean";

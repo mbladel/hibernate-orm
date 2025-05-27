@@ -31,7 +31,7 @@ public class Neo4jServerConfiguration {
 			return new Neo4jServerConfiguration( "enterprise".equalsIgnoreCase( split[1] ), parseVersion( split[2] ) );
 		}
 		catch (SQLException e) {
-			return new Neo4jServerConfiguration(false, null);
+			return new Neo4jServerConfiguration( false, null );
 		}
 	}
 

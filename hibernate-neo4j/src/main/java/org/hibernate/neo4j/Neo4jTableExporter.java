@@ -8,7 +8,6 @@ import org.hibernate.boot.Metadata;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Table;
-import org.hibernate.neo4j.internal.Neo4jHelper;
 import org.hibernate.tool.schema.spi.Exporter;
 
 import java.util.ArrayList;
@@ -45,7 +44,7 @@ public class Neo4jTableExporter implements Exporter<Table> {
 		}
 
 		// Neo4j Community Edition only supports identity constraints
-		if ( ((Neo4jDialect)context.getDialect()).isEnterpriseEdition() ) {
+		if ( ((Neo4jDialect) context.getDialect()).isEnterpriseEdition() ) {
 			for ( Column column : columns ) {
 				final String propertyName = column.getName();
 
@@ -64,16 +63,17 @@ public class Neo4jTableExporter implements Exporter<Table> {
 				if ( context.getDialect().getVersion().isSameOrAfter( 5, 9 ) ) {
 					// Create property type constraints
 					// https://neo4j.com/docs/cypher-manual/current/constraints/managing-constraints/#create-property-type-constraints
-
 					final String sqlType = column.getSqlType( metadata );
-					statements.add( String.format(
-							"create constraint %s_%s_type for (n:%s) require n.%s is :: %s",
-							label,
-							propertyName,
-							label,
-							propertyName,
-							sqlType
-					) );
+					if ( !sqlType.startsWith( "list" ) || context.getDialect().getVersion().isSameOrAfter( 5, 10 ) ) {
+						statements.add( String.format(
+								"create constraint %s_%s_type for (n:%s) require n.%s is :: %s",
+								label,
+								propertyName,
+								label,
+								propertyName,
+								sqlType
+						) );
+					}
 				}
 			}
 		}
@@ -94,7 +94,7 @@ public class Neo4jTableExporter implements Exporter<Table> {
 		}
 
 		// Neo4j Community Edition only supports identity constraints
-		if ( ((Neo4jDialect)context.getDialect()).isEnterpriseEdition() ) {
+		if ( ((Neo4jDialect) context.getDialect()).isEnterpriseEdition() ) {
 			for ( Column column : table.getColumns() ) {
 				final String propertyName = column.getName();
 
