@@ -156,4 +156,9 @@ public class Neo4jDialect extends Dialect {
 	public String[] getTruncateTableStatements(String[] tableNames) {
 		return new String[] {"match(n:" + String.join( "|", tableNames ) + ") detach delete n"};
 	}
+
+	@Override
+	public boolean hasAlterTable() {
+		return false;
+	}
 }

@@ -7,6 +7,7 @@ package org.hibernate.milvius;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
 import org.hibernate.neo4j.Neo4jDialect;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.RequiresDialect;
@@ -19,32 +20,63 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 
 /**
  * @author Christian Beikov
  */
-@DomainModel(annotatedClasses = {Neo4jTest.TestEntity.class})
+@DomainModel(annotatedClasses = {
+		Neo4jSmokeTest.TestEntity.class,
+		Neo4jSmokeTest.ChildEntity.class
+})
 @SessionFactory
-@ServiceRegistry(
-//		services = {
-//				@ServiceRegistry.Service( role = NativeQueryInterpreter.class, impl = MilvusNativeQueryInterpreter.class)
-//		}
-)
 @RequiresDialect(value = Neo4jDialect.class)
-public class Neo4jTest {
+public class Neo4jSmokeTest {
 
 	@Test
-	public void test(SessionFactoryScope scope) {
+	public void persistAndUpdateTest(SessionFactoryScope scope) {
 		scope.inTransaction( session -> {
+			final ChildEntity child = new ChildEntity();
+			child.id = "child_1";
+			session.persist( child );
 			final TestEntity testEntity = new TestEntity();
 			testEntity.id = 1L;
 			testEntity.name = "test_1";
+			testEntity.child = child;
 			session.persist( testEntity );
 		} );
 
 		scope.inTransaction( session -> {
 			TestEntity testEntity = session.find( TestEntity.class, 1L );
 			testEntity.name = "test_1_updated";
+		} );
+
+		scope.inSession( session -> {
+			final String result = session.createQuery( "select t.name from TestEntity t where id = ?1", String.class )
+					.setParameter( 1, 1L )
+					.getSingleResult();
+			assertThat( result ).isEqualTo( "test_1_updated" );
+		} );
+	}
+
+	@Test
+	public void persistNoChildAndRemoveTest(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			final TestEntity testEntity = new TestEntity();
+			testEntity.id = 2L;
+			testEntity.name = "test_2";
+			session.persist( testEntity );
+		} );
+
+		scope.inTransaction( session -> {
+			TestEntity testEntity = session.find( TestEntity.class, 2L );
+			session.remove( testEntity );
+		} );
+
+		scope.inSession( session -> {
+			TestEntity testEntity = session.find( TestEntity.class, 2L );
+			assertThat( testEntity ).isNull();
 		} );
 	}
 
@@ -65,6 +97,13 @@ public class Neo4jTest {
 
 		private LocalDateTime localDateTime;
 
-		// todo neo4j : test more types (also translate arrays into native lists ?)
+		@ManyToOne
+		private ChildEntity child;
+	}
+
+	@Entity(name = "ChildEntity")
+	static class ChildEntity {
+		@Id
+		private String id;
 	}
 }

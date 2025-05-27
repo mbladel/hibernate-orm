@@ -1,25 +1,41 @@
 package org.hibernate.neo4j;
 
 import org.hibernate.LockMode;
+import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.metamodel.mapping.ModelPartContainer;
+import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.sqm.tuple.internal.AnonymousTupleTableGroupProducer;
 import org.hibernate.sql.ast.Clause;
+import org.hibernate.sql.ast.SqlAstJoinType;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.SqlParameterInfo;
+import org.hibernate.sql.ast.internal.TableGroupHelper;
 import org.hibernate.sql.ast.spi.AbstractSqlAstTranslator;
 import org.hibernate.sql.ast.tree.SqlAstNode;
 import org.hibernate.sql.ast.tree.Statement;
+import org.hibernate.sql.ast.tree.expression.QueryLiteral;
 import org.hibernate.sql.ast.tree.from.FromClause;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroupJoin;
+import org.hibernate.sql.ast.tree.from.TableReferenceJoin;
+import org.hibernate.sql.ast.tree.predicate.BooleanExpressionPredicate;
+import org.hibernate.sql.ast.tree.predicate.Predicate;
 import org.hibernate.sql.ast.tree.select.QuerySpec;
 import org.hibernate.sql.ast.tree.select.SelectClause;
 import org.hibernate.sql.exec.spi.JdbcOperation;
+import org.hibernate.sql.model.MutationOperation;
+import org.hibernate.sql.model.ast.RestrictedTableMutation;
+import org.hibernate.sql.model.internal.OptionalTableUpdate;
+import org.hibernate.sql.model.internal.TableDeleteCustomSql;
 import org.hibernate.sql.model.internal.TableDeleteStandard;
+import org.hibernate.sql.model.internal.TableInsertCustomSql;
 import org.hibernate.sql.model.internal.TableInsertStandard;
+import org.hibernate.sql.model.internal.TableUpdateCustomSql;
 import org.hibernate.sql.model.internal.TableUpdateStandard;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Neo4jSqlAstTranslator<T extends JdbcOperation> extends AbstractSqlAstTranslator<T> {
@@ -36,33 +52,6 @@ public class Neo4jSqlAstTranslator<T extends JdbcOperation> extends AbstractSqlA
 	@Override
 	public void render(SqlAstNode sqlAstNode, SqlAstNodeRenderingMode renderingMode) {
 		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public void visitStandardTableInsert(TableInsertStandard tableInsert) {
-		getCurrentClauseStack().push( Clause.INSERT );
-		appendSql( "create " );
-		appendSql( OPEN_PARENTHESIS );
-
-		appendSql( "e:" ); // generic variable name, not needed
-		appendSql( tableInsert.getMutatingTable().getTableName() );
-		appendSql( ' ' );
-
-		getCurrentClauseStack().push( Clause.VALUES );
-		tableInsert.forEachValueBinding( (columnPosition, columnValueBinding) -> {
-			if ( columnPosition == 0 ) {
-				appendSql( '{' );
-			}
-			else {
-				appendSql( ',' );
-			}
-			appendSql( columnValueBinding.getColumnReference().getColumnExpression() );
-			appendSql( ':' );
-			columnValueBinding.getValueExpression().accept( this );
-		} );
-		appendSql( "})" );
-
-		getCurrentClauseStack().pop();
 	}
 
 	@Override
@@ -88,6 +77,7 @@ public class Neo4jSqlAstTranslator<T extends JdbcOperation> extends AbstractSqlA
 			throw new UnsupportedOperationException( "Neo4j doesn't support an empty from clause" );
 		}
 		else {
+			appendSql( "match " );
 			renderFromClauseSpaces( fromClause );
 		}
 	}
@@ -119,20 +109,20 @@ public class Neo4jSqlAstTranslator<T extends JdbcOperation> extends AbstractSqlA
 		}
 		else if ( root.isInitialized() ) {
 			appendSql( separator );
-			appendSql( "match(" );
 			renderRootTableGroup( root, null );
-			appendSql( ')' ); // separate labels with a pipe
 		}
-		return " ";
+		return ",";
 	}
 
 	@Override
 	protected boolean renderNamedTableReference(NamedTableReference tableReference, LockMode lockMode) {
+		appendSql( '(' );
 		appendSql( tableReference.getIdentificationVariable() != null
 				? tableReference.getIdentificationVariable()
 				: tableReference.getTableId() );
-		appendSql( ":" );
+		appendSql( ':' );
 		appendSql( tableReference.getTableExpression() );
+		appendSql( ')' );
 		registerAffectedTable( tableReference );
 		return false;
 	}
@@ -155,12 +145,397 @@ public class Neo4jSqlAstTranslator<T extends JdbcOperation> extends AbstractSqlA
 	}
 
 	@Override
+	protected void renderTableGroupJoin(TableGroupJoin tableGroupJoin, List<TableGroupJoin> tableGroupJoinCollector) {
+		appendSql( WHITESPACE );
+		if ( tableGroupJoin.getJoinType() != SqlAstJoinType.INNER ) {
+			appendSql( "optional " );
+		}
+		appendSql( "match " );
+
+		final Predicate predicate;
+		if ( tableGroupJoin.getPredicate() == null ) {
+			if ( tableGroupJoin.getJoinType() == SqlAstJoinType.CROSS ) {
+				predicate = null;
+			}
+			else {
+				predicate = new BooleanExpressionPredicate( new QueryLiteral<>( true, getBooleanType() ) );
+			}
+		}
+		else {
+			predicate = tableGroupJoin.getPredicate();
+		}
+		if ( predicate != null && !predicate.isEmpty() ) {
+			renderTableGroup( tableGroupJoin.getJoinedGroup(), predicate, tableGroupJoinCollector );
+		}
+		else {
+			renderTableGroup( tableGroupJoin.getJoinedGroup(), null, tableGroupJoinCollector );
+		}
+	}
+
+	@Override
+	protected void renderTableGroup(TableGroup tableGroup, Predicate predicate, List<TableGroupJoin> tableGroupJoinCollector) {
+		final boolean realTableGroup;
+		int swappedJoinIndex = -1;
+		boolean forceLeftJoin = false;
+		if ( tableGroup.isRealTableGroup() ) {
+			if ( hasNestedTableGroupsToRender( tableGroup.getNestedTableGroupJoins() ) ) {
+				// If there are nested table groups, we need to render a real table group
+				realTableGroup = true;
+			}
+			else {
+				// Determine the reference join indexes of the table reference used in the predicate
+				final int referenceJoinIndexForPredicateSwap = TableGroupHelper.findReferenceJoinForPredicateSwap(
+						tableGroup,
+						predicate
+				);
+				if ( referenceJoinIndexForPredicateSwap == TableGroupHelper.REAL_TABLE_GROUP_REQUIRED ) {
+					// Means that real table group rendering is necessary
+					realTableGroup = true;
+				}
+				else if ( referenceJoinIndexForPredicateSwap == TableGroupHelper.NO_TABLE_GROUP_REQUIRED ) {
+					// Means that no swap is necessary to avoid the table group rendering
+					realTableGroup = false;
+					forceLeftJoin = !tableGroup.canUseInnerJoins();
+				}
+				else {
+					// Means that real table group rendering can be avoided if the primary table reference is swapped
+					// with the table reference join at the given index
+					realTableGroup = false;
+					forceLeftJoin = !tableGroup.canUseInnerJoins();
+					swappedJoinIndex = referenceJoinIndexForPredicateSwap;
+
+					// Render the table reference of the table reference join first
+					final TableReferenceJoin tableReferenceJoin = tableGroup.getTableReferenceJoins()
+							.get( swappedJoinIndex );
+					renderNamedTableReference( tableReferenceJoin.getJoinedTableReference(), LockMode.NONE );
+					// along with the predicate for the table group
+					renderJoinPredicate( predicate );
+
+					// Then render the join syntax and fall through to rendering the primary table reference
+					appendSql( WHITESPACE );
+					if ( !tableGroup.canUseInnerJoins() || tableReferenceJoin.getJoinType() != SqlAstJoinType.LEFT ) {
+						appendSql( "optional " );
+					}
+					appendSql( "match " );
+				}
+			}
+		}
+		else {
+			realTableGroup = false;
+		}
+		if ( realTableGroup ) {
+			appendSql( OPEN_PARENTHESIS );
+		}
+
+		final LockMode effectiveLockMode = getEffectiveLockMode( tableGroup.getSourceAlias() );
+		final boolean usesLockHint = renderPrimaryTableReference( tableGroup, effectiveLockMode );
+		final List<TableGroupJoin> tableGroupJoins;
+
+		if ( realTableGroup ) {
+			// For real table groups, we collect all normal table group joins within that table group
+			// The purpose of that is to render them in-order outside of the group/parenthesis
+			// This is necessary for at least Derby but is also a lot easier to read
+			renderTableReferenceJoins( tableGroup );
+			if ( tableGroupJoinCollector == null ) {
+				tableGroupJoins = new ArrayList<>();
+				processNestedTableGroupJoins( tableGroup, tableGroupJoins );
+			}
+			else {
+				tableGroupJoins = null;
+				processNestedTableGroupJoins( tableGroup, tableGroupJoinCollector );
+			}
+			appendSql( CLOSE_PARENTHESIS );
+		}
+		else {
+			tableGroupJoins = null;
+		}
+
+		// Predicate was already rendered when swappedJoinIndex is not equal to -1
+		if ( predicate != null && swappedJoinIndex == -1 ) {
+			renderJoinPredicate( predicate );
+		}
+		if ( tableGroup.isLateral() && !getDialect().supportsLateral() ) {
+			final Predicate lateralEmulationPredicate = determineLateralEmulationPredicate( tableGroup );
+			if ( lateralEmulationPredicate != null ) {
+				if ( predicate == null ) {
+					renderJoinPredicate( lateralEmulationPredicate );
+				}
+				else {
+					appendSql( " and " );
+					lateralEmulationPredicate.accept( this );
+				}
+			}
+		}
+
+		if ( !realTableGroup ) {
+			renderTableReferenceJoins( tableGroup, swappedJoinIndex, forceLeftJoin );
+			processNestedTableGroupJoins( tableGroup, tableGroupJoinCollector );
+		}
+		if ( tableGroupJoinCollector != null ) {
+			tableGroupJoinCollector.addAll( tableGroup.getTableGroupJoins() );
+		}
+		else {
+			if ( tableGroupJoins != null ) {
+				for ( TableGroupJoin tableGroupJoin : tableGroupJoins ) {
+					processTableGroupJoin( tableGroupJoin, null );
+				}
+			}
+			processTableGroupJoins( tableGroup );
+		}
+
+		ModelPartContainer modelPart = tableGroup.getModelPart();
+		if ( modelPart instanceof EntityPersister persister ) {
+			final String[] querySpaces = (String[]) persister.getQuerySpaces();
+			for ( String querySpace : querySpaces ) {
+				registerAffectedTable( querySpace );
+			}
+		}
+	}
+
+	@Override
+	protected void renderTableReferenceJoins(TableGroup tableGroup, int swappedJoinIndex, boolean forceLeftJoin) {
+		final List<TableReferenceJoin> joins = tableGroup.getTableReferenceJoins();
+		if ( joins == null || joins.isEmpty() ) {
+			return;
+		}
+
+		if ( swappedJoinIndex != -1 ) {
+			// Finish the join against the primary table reference after the swap
+			final TableReferenceJoin swappedJoin = joins.get( swappedJoinIndex );
+			renderJoinPredicate( swappedJoin.getPredicate() );
+		}
+
+		for ( int i = 0; i < joins.size(); i++ ) {
+			// Skip the swapped join since it was already rendered
+			if ( swappedJoinIndex != i ) {
+				final TableReferenceJoin tableJoin = joins.get( i );
+				appendSql( WHITESPACE );
+				if ( forceLeftJoin || tableJoin.getJoinType() != SqlAstJoinType.INNER ) {
+					append( "optional " );
+				}
+				appendSql( "match " );
+
+				renderNamedTableReference( tableJoin.getJoinedTableReference(), LockMode.NONE );
+
+				renderJoinPredicate( tableJoin.getPredicate() );
+			}
+		}
+	}
+
+	private void renderJoinPredicate(Predicate predicate) {
+		if ( predicate != null && !predicate.isEmpty() ) {
+			if ( getCurrentQueryPart().isRoot() ) {
+				addAdditionalWherePredicate( predicate );
+			}
+			else {
+				appendSql( " where " );
+				predicate.accept( this );
+			}
+		}
+	}
+
+	// ~ MUTATION OPERATIONS
+
+	@Override
+	public void visitStandardTableInsert(TableInsertStandard tableInsert) {
+		getCurrentClauseStack().push( Clause.INSERT );
+		appendSql( "create " );
+		appendSql( OPEN_PARENTHESIS );
+
+		appendSql( "e:" ); // generic variable name, not needed
+		appendSql( tableInsert.getMutatingTable().getTableName() );
+		appendSql( ' ' );
+
+		getCurrentClauseStack().push( Clause.VALUES );
+		tableInsert.forEachValueBinding( (columnPosition, columnValueBinding) -> {
+			if ( columnPosition == 0 ) {
+				appendSql( '{' );
+			}
+			else {
+				appendSql( ',' );
+			}
+			appendSql( columnValueBinding.getColumnReference().getColumnExpression() );
+			appendSql( ':' );
+			columnValueBinding.getValueExpression().accept( this );
+		} );
+		appendSql( "})" );
+
+		if ( tableInsert.getNumberOfReturningColumns() > 0 ) {
+			visitReturningColumns( tableInsert::getReturningColumns );
+		}
+
+		getCurrentClauseStack().pop();
+	}
+
+	@Override
+	public void visitCustomTableInsert(TableInsertCustomSql tableInsert) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public void visitStandardTableUpdate(TableUpdateStandard tableUpdate) {
-		super.visitStandardTableUpdate( tableUpdate );
+		getCurrentClauseStack().push( Clause.UPDATE );
+		try {
+			visitTableUpdate( tableUpdate, tableUpdate.getWhereFragment() );
+			if ( tableUpdate.getNumberOfReturningColumns() > 0 ) {
+				visitReturningColumns( tableUpdate::getReturningColumns );
+			}
+		}
+		finally {
+			getCurrentClauseStack().pop();
+		}
+	}
+
+	private void visitTableUpdate(RestrictedTableMutation<? extends MutationOperation> tableUpdate, String whereFragment) {
+		applySqlComment( tableUpdate.getMutationComment() );
+
+		appendSql( "match(n:" );
+		appendSql( tableUpdate.getMutatingTable().getTableName() );
+		registerAffectedTable( tableUpdate.getMutatingTable().getTableName() );
+		appendSql( ')' );
+
+		getCurrentClauseStack().push( Clause.WHERE );
+		try {
+			appendSql( " where" );
+			tableUpdate.forEachKeyBinding( (position, columnValueBinding) -> {
+				if ( position == 0 ) {
+					appendSql( ' ' );
+				}
+				else {
+					appendSql( " and " );
+				}
+				appendSql( "n." );
+				appendSql( columnValueBinding.getColumnReference().getColumnExpression() );
+				appendSql( '=' );
+				columnValueBinding.getValueExpression().accept( this );
+			} );
+
+			if ( tableUpdate.getNumberOfOptimisticLockBindings() > 0 ) {
+				tableUpdate.forEachOptimisticLockBinding( (position, columnValueBinding) -> {
+					appendSql( " and n." );
+					appendSql( columnValueBinding.getColumnReference().getColumnExpression() );
+					if ( columnValueBinding.getValueExpression() == null
+						 || columnValueBinding.getValueExpression().getFragment() == null ) {
+						appendSql( " is null" );
+					}
+					else {
+						appendSql( "=" );
+						columnValueBinding.getValueExpression().accept( this );
+					}
+				} );
+			}
+
+		}
+		finally {
+			getCurrentClauseStack().pop();
+		}
+
+		getCurrentClauseStack().push( Clause.SET );
+		try {
+			appendSql( " set" );
+			tableUpdate.forEachValueBinding( (columnPosition, columnValueBinding) -> {
+				if ( columnPosition == 0 ) {
+					appendSql( ' ' );
+				}
+				else {
+					appendSql( ',' );
+				}
+				appendSql( "n." );
+				appendSql( columnValueBinding.getColumnReference().getColumnExpression() );
+				appendSql( '=' );
+				columnValueBinding.getValueExpression().accept( this );
+			} );
+		}
+		finally {
+			getCurrentClauseStack().pop();
+		}
+	}
+
+	private void applySqlComment(String comment) {
+		if ( getSessionFactory().getSessionFactoryOptions().isCommentsEnabled() ) {
+			if ( comment != null ) {
+				appendSql( "/* " );
+				appendSql( Dialect.escapeComment( comment ) );
+				appendSql( " */" );
+			}
+		}
+	}
+
+	@Override
+	public void visitOptionalTableUpdate(OptionalTableUpdate tableUpdate) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public void visitCustomTableUpdate(TableUpdateCustomSql tableUpdate) {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public void visitStandardTableDelete(TableDeleteStandard tableDelete) {
-		super.visitStandardTableDelete( tableDelete );
+		getCurrentClauseStack().push( Clause.DELETE );
+		try {
+			applySqlComment( tableDelete.getMutationComment() );
+
+			appendSql( "match(n:" );
+			appendSql( tableDelete.getMutatingTable().getTableName() );
+			appendSql( ')' );
+			registerAffectedTable( tableDelete.getMutatingTable().getTableName() );
+
+			getCurrentClauseStack().push( Clause.WHERE );
+			try {
+				appendSql( " where " );
+
+				tableDelete.forEachKeyBinding( (columnPosition, columnValueBinding) -> {
+					appendSql( "n." );
+					appendSql( columnValueBinding.getColumnReference().getColumnExpression() );
+					appendSql( "=" );
+					columnValueBinding.getValueExpression().accept( this );
+
+					if ( columnPosition < tableDelete.getNumberOfKeyBindings() - 1 ) {
+						appendSql( " and " );
+					}
+				} );
+
+				if ( tableDelete.getNumberOfOptimisticLockBindings() > 0 ) {
+					appendSql( " and " );
+
+					tableDelete.forEachOptimisticLockBinding( (columnPosition, columnValueBinding) -> {
+						appendSql( "n." );
+						appendSql( columnValueBinding.getColumnReference().getColumnExpression() );
+						if ( columnValueBinding.getValueExpression() == null ) {
+							appendSql( " is null" );
+						}
+						else {
+							appendSql( "=" );
+							columnValueBinding.getValueExpression().accept( this );
+						}
+
+						if ( columnPosition < tableDelete.getNumberOfOptimisticLockBindings() - 1 ) {
+							appendSql( " and " );
+						}
+					} );
+				}
+
+				if ( tableDelete.getWhereFragment() != null ) {
+					appendSql( " and (" );
+					appendSql( tableDelete.getWhereFragment() );
+					appendSql( ")" );
+				}
+			}
+			finally {
+				getCurrentClauseStack().pop();
+			}
+
+			appendSql( " delete n" );
+		}
+		finally {
+			getCurrentClauseStack().pop();
+		}
+	}
+
+	@Override
+	public void visitCustomTableDelete(TableDeleteCustomSql tableDelete) {
+		throw new UnsupportedOperationException();
 	}
 }
