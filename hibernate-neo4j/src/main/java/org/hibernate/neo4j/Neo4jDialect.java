@@ -12,7 +12,12 @@ import org.hibernate.dialect.DmlTargetColumnQualifierSupport;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.mapping.Table;
+import org.hibernate.query.sqm.function.SqmFunctionRegistry;
+import org.hibernate.query.sqm.produce.function.FunctionParameterType;
+import org.hibernate.query.sqm.produce.function.StandardFunctionArgumentTypeResolvers;
+import org.hibernate.query.sqm.produce.function.StandardFunctionReturnTypeResolvers;
 import org.hibernate.service.ServiceRegistry;
+import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
 import org.hibernate.sql.ast.SqlAstTranslator;
 import org.hibernate.sql.ast.SqlAstTranslatorFactory;
 import org.hibernate.sql.ast.SqlParameterInfo;
@@ -32,8 +37,6 @@ import org.hibernate.type.descriptor.jdbc.spi.JdbcTypeRegistry;
 import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
 import org.hibernate.type.descriptor.sql.spi.DdlTypeRegistry;
 import org.hibernate.type.spi.TypeConfiguration;
-
-import java.lang.reflect.Type;
 
 import static org.hibernate.type.SqlTypes.BIGINT;
 import static org.hibernate.type.SqlTypes.BOOLEAN;
@@ -144,7 +147,39 @@ public class Neo4jDialect extends Dialect {
 	public void initializeFunctionRegistry(FunctionContributions functionContributions) {
 		super.initializeFunctionRegistry( functionContributions );
 
-		// todo neo4j : do we need anything here?
+		final TypeConfiguration typeConfiguration = functionContributions.getTypeConfiguration();
+		final BasicTypeRegistry basicTypeRegistry = typeConfiguration.getBasicTypeRegistry();
+		final SqmFunctionRegistry functionRegistry = functionContributions.getFunctionRegistry();
+		final BasicType<Double> doubleBasicType = basicTypeRegistry.resolve( StandardBasicTypes.DOUBLE );
+
+		// custom aggregate functions
+		functionRegistry.namedAggregateDescriptorBuilder( "percentileCont" )
+				.setArgumentRenderingMode( SqlAstNodeRenderingMode.DEFAULT )
+				.setExactArgumentCount( 2 )
+				.setParameterTypes( FunctionParameterType.NUMERIC, FunctionParameterType.NUMERIC )
+				.setReturnTypeResolver( StandardFunctionReturnTypeResolvers.invariant( doubleBasicType ) )
+				.register();
+		functionRegistry.registerAlternateKey( "percentile_cont", "percentileCont" );
+		functionRegistry.namedAggregateDescriptorBuilder( "percentileDisc" )
+				.setArgumentRenderingMode( SqlAstNodeRenderingMode.DEFAULT )
+				.setExactArgumentCount( 2 )
+				.setParameterTypes( FunctionParameterType.NUMERIC, FunctionParameterType.NUMERIC )
+				.setArgumentTypeResolver( StandardFunctionArgumentTypeResolvers.ARGUMENT_OR_IMPLIED_RESULT_TYPE )
+				.setReturnTypeResolver( StandardFunctionReturnTypeResolvers.invariant( doubleBasicType ) )
+				.register();
+		functionRegistry.registerAlternateKey( "percentile_disc", "percentileDisc" );
+		functionRegistry.namedAggregateDescriptorBuilder( "stDev" )
+				.setArgumentRenderingMode( SqlAstNodeRenderingMode.DEFAULT )
+				.setExactArgumentCount( 1 )
+				.setParameterTypes( FunctionParameterType.NUMERIC )
+				.setReturnTypeResolver( StandardFunctionReturnTypeResolvers.invariant( doubleBasicType ) )
+				.register();
+		functionRegistry.namedAggregateDescriptorBuilder( "stDevP" )
+				.setArgumentRenderingMode( SqlAstNodeRenderingMode.DEFAULT )
+				.setExactArgumentCount( 1 )
+				.setParameterTypes( FunctionParameterType.NUMERIC )
+				.setReturnTypeResolver( StandardFunctionReturnTypeResolvers.invariant( doubleBasicType ) )
+				.register();
 	}
 
 	@Override

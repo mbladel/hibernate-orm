@@ -152,6 +152,20 @@ public class Neo4jTest {
 		} );
 	}
 
+	@Test
+	public void testAggregateFunctions(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			session.createQuery( "select count(*) from TestEntity", Long.class ).getSingleResult();
+			session.createQuery( "select max(t.id) from TestEntity t", Long.class ).getSingleResult();
+			session.createQuery( "select sum(t.id) from TestEntity t", Long.class ).getSingleResult();
+			session.createQuery( "select avg(t.id) from TestEntity t", Double.class ).getSingleResult();
+			session.createQuery( "select percentile_cont(t.id, 0.5) from TestEntity t", Double.class ).getSingleResult();
+			session.createQuery( "select percentile_disc(t.id, 0.5) from TestEntity t", Double.class ).getSingleResult();
+			session.createQuery( "select stDev(t.id) from TestEntity t", Double.class ).getSingleResult();
+			session.createQuery( "select stDevP(t.id) from TestEntity t", Double.class ).getSingleResult();
+		} );
+	}
+
 	@AfterAll
 	public void tearDown(SessionFactoryScope scope) {
 		scope.getSessionFactory().getSchemaManager().truncateMappedObjects();

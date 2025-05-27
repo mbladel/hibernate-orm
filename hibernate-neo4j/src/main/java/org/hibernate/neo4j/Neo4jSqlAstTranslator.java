@@ -27,12 +27,9 @@ import org.hibernate.sql.ast.tree.select.SelectClause;
 import org.hibernate.sql.exec.spi.JdbcOperation;
 import org.hibernate.sql.model.MutationOperation;
 import org.hibernate.sql.model.ast.RestrictedTableMutation;
-import org.hibernate.sql.model.internal.OptionalTableUpdate;
-import org.hibernate.sql.model.internal.TableDeleteCustomSql;
 import org.hibernate.sql.model.internal.TableDeleteStandard;
 import org.hibernate.sql.model.internal.TableInsertCustomSql;
 import org.hibernate.sql.model.internal.TableInsertStandard;
-import org.hibernate.sql.model.internal.TableUpdateCustomSql;
 import org.hibernate.sql.model.internal.TableUpdateStandard;
 
 import java.util.ArrayList;
@@ -42,16 +39,6 @@ public class Neo4jSqlAstTranslator<T extends JdbcOperation> extends AbstractSqlA
 
 	protected Neo4jSqlAstTranslator(SessionFactoryImplementor sessionFactory, Statement statement, SqlParameterInfo parameterInfo) {
 		super( sessionFactory, statement, parameterInfo );
-	}
-
-	@Override
-	public void renderNamedSetReturningFunction(String functionName, List<? extends SqlAstNode> sqlAstArguments, AnonymousTupleTableGroupProducer tupleType, String tableIdentifierVariable, SqlAstNodeRenderingMode argumentRenderingMode) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public void render(SqlAstNode sqlAstNode, SqlAstNodeRenderingMode renderingMode) {
-		throw new UnsupportedOperationException();
 	}
 
 	@Override
@@ -462,16 +449,6 @@ public class Neo4jSqlAstTranslator<T extends JdbcOperation> extends AbstractSqlA
 	}
 
 	@Override
-	public void visitOptionalTableUpdate(OptionalTableUpdate tableUpdate) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public void visitCustomTableUpdate(TableUpdateCustomSql tableUpdate) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
 	public void visitStandardTableDelete(TableDeleteStandard tableDelete) {
 		getCurrentClauseStack().push( Clause.DELETE );
 		try {
@@ -535,7 +512,7 @@ public class Neo4jSqlAstTranslator<T extends JdbcOperation> extends AbstractSqlA
 	}
 
 	@Override
-	public void visitCustomTableDelete(TableDeleteCustomSql tableDelete) {
+	public void renderNamedSetReturningFunction(String functionName, List<? extends SqlAstNode> sqlAstArguments, AnonymousTupleTableGroupProducer tupleType, String tableIdentifierVariable, SqlAstNodeRenderingMode argumentRenderingMode) {
 		throw new UnsupportedOperationException();
 	}
 }
