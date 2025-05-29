@@ -28,23 +28,16 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DomainModel(annotatedClasses = {
-		Neo4jTest.TestEntity.class,
-		Neo4jTest.ChildEntity.class,
-		Neo4jTest.CollectionEntity.class,
-		Neo4jTest.ArrayEntity.class,
-})
+@DomainModel(
+		annotatedClasses = {Neo4jTest.TestEntity.class, Neo4jTest.ChildEntity.class, Neo4jTest.CollectionEntity.class, Neo4jTest.ArrayEntity.class,})
 @SessionFactory
 @RequiresDialect(value = Neo4jDialect.class)
 public class Neo4jTest {
 
 	@Test
 	public void persistAndUpdateTest(SessionFactoryScope scope) {
-		final ZonedDateTime birthday = ZonedDateTime.of(
-				LocalDate.of( 1996, 10, 15 ),
-				LocalTime.of( 20, 32 ),
-				ZoneId.systemDefault()
-		);
+		final ZonedDateTime birthday = ZonedDateTime.of( LocalDate.of( 1996, 10, 15 ), LocalTime.of( 20, 32 ),
+				ZoneId.systemDefault() );
 		scope.inTransaction( session -> {
 			final ChildEntity child = new ChildEntity();
 			child.id = "child_1";
@@ -67,8 +60,7 @@ public class Neo4jTest {
 
 		scope.inSession( session -> {
 			final String result = session.createQuery( "select t.name from TestEntity t where id = ?1", String.class )
-					.setParameter( 1, 1L )
-					.getSingleResult();
+					.setParameter( 1, 1L ).getSingleResult();
 			assertThat( result ).isEqualTo( "test_1_updated" );
 		} );
 	}
@@ -90,6 +82,32 @@ public class Neo4jTest {
 		scope.inSession( session -> {
 			TestEntity testEntity = session.find( TestEntity.class, 2L );
 			assertThat( testEntity ).isNull();
+		} );
+	}
+
+	@Test
+	public void dmlQueriesTest(SessionFactoryScope scope) {
+		scope.inTransaction( session -> {
+			// insert-selects not supported
+			final TestEntity t1 = new TestEntity();
+			t1.id = 3L;
+			t1.name = "test_3";
+			session.persist( t1 );
+		} );
+
+		scope.inTransaction( session -> {
+			// update
+			assertThat( session.createMutationQuery(
+					"update TestEntity t set t.name = 'test_3_updated' where t.id = 3"
+			).executeUpdate() ).isEqualTo( 1 );
+			assertThat( session.createQuery( "select t.name from TestEntity t where t.id = 3", String.class )
+					.getSingleResult() ).isEqualTo( "test_3_updated" );
+			// delete
+			assertThat( session.createMutationQuery(
+					"delete from TestEntity t where t.id = 3"
+			).executeUpdate() ).isEqualTo( 1 );
+			assertThat( session.createQuery( "select count(t) from TestEntity t where t.id = 3", Long.class )
+					.getSingleResult() ).isEqualTo( 0L );
 		} );
 	}
 
@@ -124,11 +142,10 @@ public class Neo4jTest {
 
 		scope.inSession( session -> {
 			final List<ChildEntity> resultList = session.createQuery(
-							"select c from CollectionEntity e left join e.children c", ChildEntity.class )
-					.getResultList();
+					"select c from CollectionEntity e left join e.children c", ChildEntity.class ).getResultList();
 			assertThat( resultList ).hasSize( 3 );
-			assertThat( resultList.stream().map( c -> c.id ).toList() )
-					.containsExactlyInAnyOrder( "cc_1", "cc_2", "cc_3" );
+			assertThat( resultList.stream().map( c -> c.id ).toList() ).containsExactlyInAnyOrder( "cc_1", "cc_2",
+					"cc_3" );
 		} );
 	}
 
@@ -137,9 +154,9 @@ public class Neo4jTest {
 		scope.inTransaction( session -> {
 			final ArrayEntity arrayEntity = new ArrayEntity();
 			arrayEntity.id = 1L;
-			arrayEntity.stringArray = new String[] { "a", "b", "c" };
-			arrayEntity.integerArray = new Integer[] { 1, 2, 3, 4, 5 };
-			arrayEntity.byteArray = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+			arrayEntity.stringArray = new String[] {"a", "b", "c"};
+			arrayEntity.integerArray = new Integer[] {1, 2, 3, 4, 5};
+			arrayEntity.byteArray = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 			session.persist( arrayEntity );
 		} );
 
@@ -147,8 +164,8 @@ public class Neo4jTest {
 			final ArrayEntity arrayEntity = session.find( ArrayEntity.class, 1L );
 			assertThat( arrayEntity.stringArray ).containsExactly( "a", "b", "c" );
 			assertThat( arrayEntity.integerArray ).containsExactly( 1, 2, 3, 4, 5 );
-			assertThat( arrayEntity.byteArray ).containsExactly( (byte) 1, (byte) 2, (byte) 3, (byte) 4,
-					(byte) 5, (byte) 6, (byte) 7, (byte) 8, (byte) 9, (byte) 10 );
+			assertThat( arrayEntity.byteArray ).containsExactly( (byte) 1, (byte) 2, (byte) 3, (byte) 4, (byte) 5,
+					(byte) 6, (byte) 7, (byte) 8, (byte) 9, (byte) 10 );
 		} );
 	}
 
@@ -159,8 +176,10 @@ public class Neo4jTest {
 			session.createQuery( "select max(t.id) from TestEntity t", Long.class ).getSingleResult();
 			session.createQuery( "select sum(t.id) from TestEntity t", Long.class ).getSingleResult();
 			session.createQuery( "select avg(t.id) from TestEntity t", Double.class ).getSingleResult();
-			session.createQuery( "select percentile_cont(t.id, 0.5) from TestEntity t", Double.class ).getSingleResult();
-			session.createQuery( "select percentile_disc(t.id, 0.5) from TestEntity t", Double.class ).getSingleResult();
+			session.createQuery( "select percentile_cont(t.id, 0.5) from TestEntity t", Double.class )
+					.getSingleResult();
+			session.createQuery( "select percentile_disc(t.id, 0.5) from TestEntity t", Double.class )
+					.getSingleResult();
 			session.createQuery( "select stDev(t.id) from TestEntity t", Double.class ).getSingleResult();
 			session.createQuery( "select stDevP(t.id) from TestEntity t", Double.class ).getSingleResult();
 		} );
@@ -205,17 +224,17 @@ public class Neo4jTest {
 		@Id
 		private Long id;
 
-		@Column( name = "string_array", nullable = false )
+		@Column(name = "string_array", nullable = false)
 		@JdbcTypeCode(SqlTypes.ARRAY)
 		@Array(length = 3)
 		private String[] stringArray;
 
-		@Column( name = "integer_array" )
+		@Column(name = "integer_array")
 		@JdbcTypeCode(SqlTypes.ARRAY)
 		@Array(length = 33)
 		private Integer[] integerArray;
 
-		@Column( name = "byte_array" )
+		@Column(name = "byte_array")
 		@JdbcTypeCode(SqlTypes.VECTOR)
 		@Array(length = 100)
 		private byte[] byteArray;

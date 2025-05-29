@@ -252,4 +252,9 @@ public class Neo4jDialect extends Dialect {
 	public boolean hasAlterTable() {
 		return false;
 	}
+
+	@Override
+	public boolean supportsFromClauseInUpdate() {
+		return true;
+	}
 }
