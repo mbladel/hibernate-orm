@@ -4,6 +4,7 @@
  */
 package org.hibernate.bytecode.internal;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
@@ -62,6 +63,13 @@ public final class BytecodeProviderInitiator implements StandardServiceInitiator
 		if ( iterator.hasNext() ) {
 			throw new IllegalStateException( "Found multiple BytecodeProvider service registrations, cannot determine which one to use" );
 		}
-		return provider;
+		Class<? extends BytecodeProvider> aClass = provider.getClass();
+		try {
+			// ensure a new instance is created every time
+			return aClass.getConstructor().newInstance();
+		}
+		catch (Exception e) {
+			throw new RuntimeException( e );
+		}
 	}
 }
