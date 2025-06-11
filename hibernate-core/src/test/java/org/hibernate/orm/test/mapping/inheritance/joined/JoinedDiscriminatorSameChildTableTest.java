@@ -14,6 +14,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import org.hibernate.testing.jdbc.SQLStatementInspector;
 import org.hibernate.testing.orm.junit.DomainModel;
+import org.hibernate.testing.orm.junit.Jira;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.junit.jupiter.api.AfterAll;
@@ -31,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 		JoinedDiscriminatorSameChildTableTest.EntityRelation.class,
 })
 @SessionFactory(useCollectingStatementInspector = true)
+@Jira("https://hibernate.atlassian.net/browse/HHH-19457")
 public class JoinedDiscriminatorSameChildTableTest {
 	@Test
 	public void testParents(SessionFactoryScope scope) {
